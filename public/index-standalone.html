@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apex Stock & Site Management System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <!-- Firebase App & Realtime Database SDKs (Compat CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased selection:bg-slate-900 selection:text-white">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- FIREBASE CONFIGURATION ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyApU0FcmTmk4qEwc235f11ZZRrjMt-P1gM",
+      authDomain: "stock-management-system-61c6f.firebaseapp.com",
+      databaseURL: "https://stock-management-system-61c6f-default-rtdb.firebaseio.com",
+      projectId: "stock-management-system-61c6f",
+      storageBucket: "stock-management-system-61c6f.firebasestorage.app",
+      messagingSenderId: "576165978947",
+      appId: "1:576165978947:web:d79ebf390256ecd244c5f6"
+    };
+
+    let rtdb = null;
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      rtdb = firebase.database();
+    } catch (e) {
+      console.warn("Firebase Init Error:", e);
+    }
+
+    // Default Clean Initial State
+    const INITIAL_CONFIG = {
+      companyName: 'Comtec Systems',
+      systemName: 'Apex Stock & Site Management System',
+      currencySymbol: 'Rs.',
+      defaultLowStockThreshold: 15
+    };
+
+    const INITIAL_SITES = [
+      { id: 'site-main', name: 'Main Central Warehouse', isMainWarehouse: true, location: 'Central Logistics Yard', supervisorName: 'Arthur Vance', contactNumber: '+94 77 123 4567' }
+    ];
+
+    const INITIAL_USERS = [
+      { id: 'usr-1', username: 'admin', fullName: 'System Super Admin', role: 'Central Warehouse Admin', siteId: 'all' },
+      { id: 'usr-2', username: 'site.east', fullName: 'Kamal Perera', role: 'Site Supervisor', siteId: 'site-main' }
+    ];
+
+    function App() {
+      const [currentTab, setCurrentTab] = useState('dashboard');
+      const [config, setConfig] = useState(INITIAL_CONFIG);
+      const [sites, setSites] = useState(INITIAL_SITES);
+      const [users, setUsers] = useState(INITIAL_USERS);
+      const [currentUser, setCurrentUser] = useState(INITIAL_USERS[0]);
+      
+      const [items, setItems] = useState([]);
+      const [mainStockEntries, setMainStockEntries] = useState([]);
+      const [stockRequests, setStockRequests] = useState([]);
+      const [teamIssues, setTeamIssues] = useState([]);
+      const [teamReturns, setTeamReturns] = useState([]);
+      const [teams, setTeams] = useState([]);
+      const [auditLogs, setAuditLogs] = useState([]);
+      const [firebaseStatus, setFirebaseStatus] = useState('Connecting...');
+
+      const isRemoteUpdate = useRef(false);
+
+      // --- FIREBASE REALTIME LISTENERS ---
+      useEffect(() => {
+        if (!rtdb) return;
+
+        const handleSync = (path, setter, defVal) => {
+          rtdb.ref(path).on('value', (snap) => {
+            const val = snap.val();
+            isRemoteUpdate.current = true;
+            if (val !== null && val !== undefined) {
+              const list = Array.isArray(val) ? val.filter(Boolean) : Object.values(val).filter(Boolean);
+              setter(list);
+            } else if (defVal !== undefined) {
+              setter(defVal);
+            }
+            setFirebaseStatus('Connected');
+            setTimeout(() => { isRemoteUpdate.current = false; }, 100);
+          }, (err) => {
+            console.warn(path + ' sync error:', err);
+            setFirebaseStatus('Offline / Local');
+          });
+        };
+
+        handleSync('items', setItems, []);
+        handleSync('sites', setSites, INITIAL_SITES);
+        handleSync('users', setUsers, INITIAL_USERS);
+        handleSync('teams', setTeams, []);
+        handleSync('mainStockEntries', setMainStockEntries, []);
+        handleSync('stockRequests', setStockRequests, []);
+        handleSync('teamIssues', setTeamIssues, []);
+        handleSync('teamReturns', setTeamReturns, []);
+        handleSync('auditLogs', setAuditLogs, []);
+
+        rtdb.ref('config').on('value', (snap) => {
+          const val = snap.val();
+          if (val && val.companyName) setConfig(val);
+        });
+
+        return () => {
+          if (rtdb) {
+            ['items','sites','users','teams','mainStockEntries','stockRequests','teamIssues','teamReturns','auditLogs','config'].forEach(p => rtdb.ref(p).off());
+          }
+        };
+      }, []);
+
+      // Push to Firebase on Local Change
+      const saveFirebase = (path, data) => {
+        if (!rtdb || isRemoteUpdate.current) return;
+        rtdb.ref(path).set(data).catch(err => console.error(err));
+      };
+
+      const updateItems = (newItems) => { setItems(newItems); saveFirebase('items', newItems); };
+      const updateSites = (newSites) => { setSites(newSites); saveFirebase('sites', newSites); };
+      const updateTeams = (newTeams) => { setTeams(newTeams); saveFirebase('teams', newTeams); };
+      const updateEntries = (newEntries) => { setMainStockEntries(newEntries); saveFirebase('mainStockEntries', newEntries); };
+      const updateRequests = (newReqs) => { setStockRequests(newReqs); saveFirebase('stockRequests', newReqs); };
+      const updateIssues = (newIssues) => { setTeamIssues(newIssues); saveFirebase('teamIssues', newIssues); };
+      const updateReturns = (newReturns) => { setTeamReturns(newReturns); saveFirebase('teamReturns', newReturns); };
+
+      const addAudit = (action, refNo, site, details) => {
+        const log = {
+          id: 'log-' + Date.now(),
+          timestamp: new Date().toISOString(),
+          action,
+          referenceNo: refNo,
+          siteName: site,
+          performedBy: currentUser.fullName,
+          details
+        };
+        const updated = [log, ...auditLogs].slice(0, 100);
+        setAuditLogs(updated);
+        saveFirebase('auditLogs', updated);
+      };
+
+      // --- PURGE SAMPLE DATA ---
+      const handleClearAllSampleData = () => {
+        if (!confirm("Are you sure you want to permanently clear all sample data and start fresh?")) return;
+        const cleanSite = INITIAL_SITES;
+        const cleanUser = INITIAL_USERS;
+        const cleanLog = [{
+          id: 'log-' + Date.now(),
+          timestamp: new Date().toISOString(),
+          action: 'DATA_PURGED',
+          referenceNo: 'SYS-CLEAN',
+          siteName: 'Main Central Warehouse',
+          performedBy: currentUser.fullName,
+          details: 'All demo data permanently cleared. Production mode ready.'
+        }];
+        setItems([]);
+        setMainStockEntries([]);
+        setStockRequests([]);
+        setTeamIssues([]);
+        setTeamReturns([]);
+        setTeams([]);
+        setSites(cleanSite);
+        setUsers(cleanUser);
+        setAuditLogs(cleanLog);
+
+        if (rtdb) {
+          rtdb.ref('items').set([]);
+          rtdb.ref('mainStockEntries').set([]);
+          rtdb.ref('stockRequests').set([]);
+          rtdb.ref('teamIssues').set([]);
+          rtdb.ref('teamReturns').set([]);
+          rtdb.ref('teams').set([]);
+          rtdb.ref('sites').set(cleanSite);
+          rtdb.ref('users').set(cleanUser);
+          rtdb.ref('auditLogs').set(cleanLog);
+        }
+        alert("All sample data cleared successfully! System is now clean.");
+      };
+
+      // --- STOCK CALCULATIONS ---
+      const isCentralAdmin = currentUser.role === 'Central Warehouse Admin';
+
+      const getMainStock = (itemId) => {
+        const item = items.find(i => i.id === itemId);
+        const threshold = item?.lowStockThreshold || config.defaultLowStockThreshold;
+        const totalReceived = mainStockEntries
+          .filter(e => e.itemId === itemId)
+          .reduce((sum, e) => sum + Number(e.quantity), 0);
+        const dispatched = stockRequests
+          .filter(r => r.status === 'Approved' || r.status === 'Accepted')
+          .reduce((sum, r) => {
+            const row = (r.items || []).find(i => i.itemId === itemId);
+            return sum + (row ? Number(row.approvedQty || row.requestedQty) : 0);
+          }, 0);
+        const availableBalance = Math.max(0, totalReceived - dispatched);
+        const isLow = totalReceived > 0 && availableBalance <= threshold;
+        return { totalReceived, dispatched, availableBalance, threshold, isLow };
+      };
+
+      const getSiteStock = (siteId, itemId) => {
+        const item = items.find(i => i.id === itemId);
+        const threshold = item?.lowStockThreshold || config.defaultLowStockThreshold;
+        const received = stockRequests
+          .filter(r => r.siteId === siteId && r.status === 'Accepted')
+          .reduce((sum, r) => {
+            const row = (r.items || []).find(i => i.itemId === itemId);
+            return sum + (row ? Number(row.receivedQty || row.approvedQty || row.requestedQty) : 0);
+          }, 0);
+        const returned = teamReturns
+          .filter(ret => ret.siteId === siteId && ret.itemId === itemId && ret.condition === 'Good')
+          .reduce((sum, ret) => sum + Number(ret.quantity), 0);
+        const issued = teamIssues
+          .filter(iss => iss.siteId === siteId)
+          .reduce((sum, iss) => {
+            const row = (iss.items || []).find(i => i.itemId === itemId);
+            return sum + (row ? Number(row.quantity) : 0);
+          }, 0);
+        const availableBalance = Math.max(0, received + returned - issued);
+        const hasActivity = received > 0;
+        const isLow = hasActivity && availableBalance <= threshold;
+        return { received, returned, issued, availableBalance, threshold, isLow, hasActivity };
+      };
+
+      // Total Low Stock count (never duplicates on site addition)
+      const lowStockAlerts = useMemo(() => {
+        let alerts = [];
+        items.forEach(item => {
+          const main = getMainStock(item.id);
+          if (main.isLow) {
+            alerts.push({ location: 'Main Central Warehouse', item, balance: main.availableBalance, threshold: main.threshold });
+          }
+        });
+        sites.filter(s => !s.isMainWarehouse).forEach(site => {
+          items.forEach(item => {
+            const siteStk = getSiteStock(site.id, item.id);
+            if (siteStk.isLow) {
+              alerts.push({ location: site.name, item, balance: siteStk.availableBalance, threshold: siteStk.threshold });
+            }
+          });
+        });
+        return alerts;
+      }, [items, sites, mainStockEntries, stockRequests, teamIssues, teamReturns]);
+
+      // RENDER ICONS VIA SVG HELPERS
+      const Icon = ({ name, className = "w-4 h-4" }) => {
+        // Quick inline SVGs for reliability
+        if (name === 'dashboard') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>;
+        if (name === 'items') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>;
+        if (name === 'main-stock') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>;
+        if (name === 'sites') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>;
+        if (name === 'requests') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>;
+        if (name === 'dispatch') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>;
+        if (name === 'returns') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>;
+        if (name === 'teams') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>;
+        if (name === 'audit') return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>;
+        return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50">
+          {/* TOP HEADER */}
+          <header className="bg-slate-900 text-white sticky top-0 z-30 border-b border-slate-800 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold">
+                  ⚡
+                </div>
+                <div>
+                  <div className="font-bold text-slate-100 text-base leading-tight">{config.companyName}</div>
+                  <div className="text-xs text-emerald-400 font-medium">{config.systemName}</div>
+                </div>
+              </div>
+
+              {/* Badges & Role Simulator */}
+              <div className="flex items-center gap-3">
+                {lowStockAlerts.length > 0 && (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-semibold text-xs">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                    <span>{lowStockAlerts.length} Low Stock</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs">
+                  <span className="text-slate-400 text-[10px]">Role:</span>
+                  <select 
+                    value={currentUser.id} 
+                    onChange={e => setCurrentUser(users.find(u => u.id === e.target.value) || users[0])}
+                    className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+                  >
+                    {users.map(u => (
+                      <option key={u.id} value={u.id} className="bg-slate-900">{u.fullName} ({u.role})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 text-[11px] font-mono text-slate-300">
+                  <span className={`w-2 h-2 rounded-full ${firebaseStatus === 'Connected' ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                  <span>{firebaseStatus}</span>
+                </div>
+
+                <button
+                  onClick={handleClearAllSampleData}
+                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-semibold"
+                  title="Purge all dummy sample data"
+                >
+                  Purge Sample Data
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* MAIN BODY: SIDEBAR + CONTENT */}
+          <div className="flex-1 flex max-w-7xl w-full mx-auto">
+            {/* LEFT SIDEBAR NAVIGATION */}
+            <aside className="w-64 bg-white border-r border-slate-200 shrink-0 p-4 hidden md:block">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">
+                Operations Navigation
+              </div>
+              <nav className="space-y-1">
+                {[
+                  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', badge: lowStockAlerts.length ? `${lowStockAlerts.length}` : null },
+                  { id: 'items', label: 'Items (Excel Import)', icon: 'items', sub: isCentralAdmin ? 'Import & Catalog' : 'Catalog Read-Only' },
+                  { id: 'main-stock', label: 'Main Stock (Central)', icon: 'main-stock', sub: isCentralAdmin ? 'PO & Inbound' : 'View Balances' },
+                  { id: 'sites', label: 'Sites & Branches', icon: 'sites', sub: isCentralAdmin ? 'Master Setup' : 'Branch Yards' },
+                  { id: 'requests', label: 'Site Stock Requests', icon: 'requests', badge: stockRequests.filter(r => r.status === 'Pending').length || null },
+                  { id: 'dispatch', label: 'Issue to Teams', icon: 'dispatch', sub: 'Daily Field Dispatch' },
+                  { id: 'returns', label: 'Team Returns', icon: 'returns', sub: 'Recovery Notes' },
+                  { id: 'teams', label: 'Field Teams Stock', icon: 'teams', sub: 'In-Hand Balances' },
+                  { id: 'audit', label: 'Audit Trail & Logs', icon: 'audit' },
+                ].map(item => {
+                  const isActive = currentTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setCurrentTab(item.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                        isActive ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon name={item.icon} className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                        <div>
+                          <div>{item.label}</div>
+                          {item.sub && <div className={`text-[10px] font-normal ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>{item.sub}</div>}
+                        </div>
+                      </div>
+                      {item.badge && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </aside>
+
+            {/* VIEWPORT CONTENT */}
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
+              {/* TAB 1: DASHBOARD */}
+              {currentTab === 'dashboard' && (
+                <div className="space-y-6">
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Overview Hub</span>
+                      <h1 className="text-xl font-bold text-slate-900 mt-0.5">Central Inventory & Site Control</h1>
+                      <p className="text-xs text-slate-600 mt-0.5">Live operational tracking for Central Depot, site yards, and field teams.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setCurrentTab('items')} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold">
+                        + Import Excel Items
+                      </button>
+                      <button onClick={() => setCurrentTab('requests')} className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold">
+                        + Request Stock
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* KPI Cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200">
+                      <div className="text-xs text-slate-500 font-medium">Master Items Catalog</div>
+                      <div className="text-2xl font-bold font-mono text-slate-900 mt-1">{items.length}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Unique assembly items</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200">
+                      <div className="text-xs text-slate-500 font-medium">Central Main Stock Units</div>
+                      <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
+                        {items.reduce((s, i) => s + getMainStock(i.id).availableBalance, 0)}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Units in central warehouse</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200">
+                      <div className="text-xs text-slate-500 font-medium">Active Site Branches</div>
+                      <div className="text-2xl font-bold font-mono text-slate-900 mt-1">{sites.length}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Depots & field sites</div>
+                    </div>
+                    <div className={`p-4 rounded-xl border ${lowStockAlerts.length > 0 ? 'bg-rose-50/50 border-rose-300' : 'bg-white border-slate-200'}`}>
+                      <div className="text-xs font-medium text-slate-500">Low Stock Alerts</div>
+                      <div className={`text-2xl font-bold font-mono mt-1 ${lowStockAlerts.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                        {lowStockAlerts.length}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Requires replenishment</div>
+                    </div>
+                  </div>
+
+                  {/* Low Stock Alerts Table */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                      <h2 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse"></span>
+                        Low Stock Alerts Table (Bold Red Highlight)
+                      </h2>
+                      <span className="text-xs text-slate-500 font-mono">{lowStockAlerts.length} alerts</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-50 text-slate-700 font-semibold border-b">
+                          <tr>
+                            <th className="py-2.5 px-3">Location</th>
+                            <th className="py-2.5 px-3">Item Code</th>
+                            <th className="py-2.5 px-3">Item Name</th>
+                            <th className="py-2.5 px-3 text-right">In-Stock Balance</th>
+                            <th className="py-2.5 px-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {lowStockAlerts.length === 0 ? (
+                            <tr><td colSpan="5" className="py-8 text-center text-slate-400">All stocked items are above threshold. No deficits.</td></tr>
+                          ) : (
+                            lowStockAlerts.map((a, idx) => (
+                              <tr key={idx} className="hover:bg-rose-50/30">
+                                <td className="py-2.5 px-3 font-semibold text-slate-900">{a.location}</td>
+                                <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{a.item.itemCode}</td>
+                                <td className="py-2.5 px-3 text-slate-700">{a.item.itemName}</td>
+                                <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-600 bg-rose-50/60 px-2 rounded">
+                                  {a.balance} {a.item.unit} (Min: {a.threshold})
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <button onClick={() => setCurrentTab('main-stock')} className="text-xs text-emerald-700 hover:underline font-semibold">
+                                    Receive Stock
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: ITEMS (EXCEL IMPORT & CATALOG) */}
+              {currentTab === 'items' && <ItemsView items={items} onUpdateItems={updateItems} isCentralAdmin={isCentralAdmin} addAudit={addAudit} />}
+
+              {/* TAB 3: MAIN STOCK (PURCHASE / INBOUND) */}
+              {currentTab === 'main-stock' && <MainStockView items={items} entries={mainStockEntries} onUpdateEntries={updateEntries} isCentralAdmin={isCentralAdmin} getMainStock={getMainStock} addAudit={addAudit} />}
+
+              {/* TAB 4: SITES & BRANCHES */}
+              {currentTab === 'sites' && <SitesView sites={sites} onUpdateSites={updateSites} isCentralAdmin={isCentralAdmin} addAudit={addAudit} items={items} getSiteStock={getSiteStock} />}
+
+              {/* TAB 5: STOCK REQUESTS */}
+              {currentTab === 'requests' && <RequestsView items={items} sites={sites} requests={stockRequests} onUpdateRequests={updateRequests} currentUser={currentUser} isCentralAdmin={isCentralAdmin} getMainStock={getMainStock} addAudit={addAudit} />}
+
+              {/* TAB 6: DISPATCH TO TEAMS */}
+              {currentTab === 'dispatch' && <DispatchView items={items} sites={sites} teams={teams} issues={teamIssues} onUpdateIssues={updateIssues} currentUser={currentUser} getSiteStock={getSiteStock} addAudit={addAudit} />}
+
+              {/* TAB 7: TEAM RETURNS */}
+              {currentTab === 'returns' && <ReturnsView items={items} sites={sites} teams={teams} returns={teamReturns} onUpdateReturns={updateReturns} currentUser={currentUser} addAudit={addAudit} />}
+
+              {/* TAB 8: TEAMS */}
+              {currentTab === 'teams' && <TeamsView teams={teams} sites={sites} onUpdateTeams={updateTeams} isCentralAdmin={isCentralAdmin} addAudit={addAudit} teamIssues={teamIssues} teamReturns={teamReturns} items={items} />}
+
+              {/* TAB 9: AUDIT TRAIL */}
+              {currentTab === 'audit' && <AuditView logs={auditLogs} />}
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: ITEMS MANAGEMENT (EXCEL IMPORT) ---
+    function ItemsView({ items, onUpdateItems, isCentralAdmin, addAudit }) {
+      const [search, setSearch] = useState('');
+      const [code, setCode] = useState('');
+      const [name, setName] = useState('');
+      const [category, setCategory] = useState('Electrical');
+      const [unit, setUnit] = useState('Pcs');
+      const [threshold, setThreshold] = useState(15);
+      const [price, setPrice] = useState(150);
+
+      const filtered = items.filter(i => 
+        i.itemCode.toLowerCase().includes(search.toLowerCase()) || 
+        i.itemName.toLowerCase().includes(search.toLowerCase())
+      );
+
+      // Download Sample Excel Template
+      const handleDownloadTemplate = () => {
+        const sampleData = [
+          { "Item Code": "CBL-CU-400", "Item Name": "400mm² Copper Cable XLPE", "Category": "Electrical", "Unit": "Meters", "Unit Price": 4500, "Min Threshold": 20, "Description": "Main heavy duty transmission" },
+          { "Item Code": "ST-BAR-16", "Item Name": "16mm TMT Deformed Steel Bar", "Category": "Structural Steel", "Unit": "Pcs", "Unit Price": 1200, "Min Threshold": 50, "Description": "High tensile rebar" },
+          { "Item Code": "CONC-C30", "Item Name": "Ready-Mix Concrete Grade 30", "Category": "Civil", "Unit": "Bags", "Unit Price": 1850, "Min Threshold": 30, "Description": "Standard foundation bag" },
+          { "Item Code": "PPE-HLM-Y", "Item Name": "Industrial Safety Helmet Yellow", "Category": "Safety", "Unit": "Pcs", "Unit Price": 750, "Min Threshold": 15, "Description": "Class E certified" }
+        ];
+        const ws = XLSX.utils.json_to_sheet(sampleData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Items_Template");
+        XLSX.writeFile(wb, "Item_Master_Template.xlsx");
+      };
+
+      // Handle Excel Upload
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+            
+            let added = 0;
+            let updated = 0;
+            let current = [...items];
+
+            json.forEach(row => {
+              const itemCode = String(row["Item Code"] || row["itemCode"] || "").trim().toUpperCase();
+              const itemName = String(row["Item Name"] || row["itemName"] || "").trim();
+              if (!itemCode || !itemName) return;
+
+              const existingIdx = current.findIndex(i => i.itemCode.toUpperCase() === itemCode);
+              const newItem = {
+                id: 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                itemCode,
+                itemName,
+                category: String(row["Category"] || row["category"] || "General"),
+                unit: String(row["Unit"] || row["unit"] || "Pcs"),
+                unitPrice: Number(row["Unit Price"] || row["unitPrice"] || 0),
+                lowStockThreshold: Number(row["Min Threshold"] || row["lowStockThreshold"] || 15),
+                description: String(row["Description"] || row["description"] || itemName)
+              };
+
+              if (existingIdx >= 0) {
+                current[existingIdx] = { ...current[existingIdx], ...newItem, id: current[existingIdx].id };
+                updated++;
+              } else {
+                current.push(newItem);
+                added++;
+              }
+            });
+
+            onUpdateItems(current);
+            addAudit('EXCEL_IMPORT', `IMP-${Date.now()}`, 'Central Warehouse', `Imported Excel: ${added} added, ${updated} updated.`);
+            alert(`Excel Import Success! ${added} new items added, ${updated} items updated.`);
+          } catch (err) {
+            alert("Error parsing Excel file. Please use the downloaded template.");
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      };
+
+      const handleManualAdd = (e) => {
+        e.preventDefault();
+        const upper = code.trim().toUpperCase();
+        if (items.some(i => i.itemCode.toUpperCase() === upper)) {
+          alert(`Item Code "${upper}" already exists!`);
+          return;
+        }
+        const newItem = {
+          id: 'item-' + Date.now(),
+          itemCode: upper,
+          itemName: name.trim(),
+          category,
+          unit,
+          lowStockThreshold: Number(threshold),
+          unitPrice: Number(price)
+        };
+        onUpdateItems([...items, newItem]);
+        addAudit('ITEM_CREATED', upper, 'Central Warehouse', `Created item ${upper} - ${name}`);
+        setCode(''); setName('');
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">Items Master Management</h1>
+              <p className="text-xs text-slate-600">Download formatted .xlsx template, upload bulk items, or manage catalog specifications.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={handleDownloadTemplate} className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-semibold hover:bg-emerald-100">
+                📥 Download Template (.xlsx)
+              </button>
+              {isCentralAdmin && (
+                <label className="px-3.5 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold cursor-pointer hover:bg-slate-800">
+                  📤 Upload Excel File
+                  <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} className="hidden" />
+                </label>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Add Item Form (Admin only) */}
+            {isCentralAdmin ? (
+              <form onSubmit={handleManualAdd} className="lg:col-span-4 bg-white p-5 rounded-xl border border-slate-200 space-y-3">
+                <h2 className="font-bold text-sm text-slate-900 border-b pb-2">Add Master Item</h2>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Item Code *</label>
+                  <input required value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. CBL-CU-400" className="w-full px-3 py-1.5 border rounded text-xs font-mono uppercase focus:ring-1 focus:ring-slate-900" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Item Name *</label>
+                  <input required value={name} onChange={e => setName(e.target.value)} placeholder="Full specification" className="w-full px-3 py-1.5 border rounded text-xs focus:ring-1 focus:ring-slate-900" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                    <input value={category} onChange={e => setCategory(e.target.value)} className="w-full px-3 py-1.5 border rounded text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Unit</label>
+                    <input value={unit} onChange={e => setUnit(e.target.value)} className="w-full px-3 py-1.5 border rounded text-xs" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Min Threshold</label>
+                    <input type="number" value={threshold} onChange={e => setThreshold(e.target.value)} className="w-full px-3 py-1.5 border rounded text-xs font-mono" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Unit Price (Rs.)</label>
+                    <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-1.5 border rounded text-xs font-mono" />
+                  </div>
+                </div>
+                <button type="submit" className="w-full py-2 bg-slate-900 text-white rounded text-xs font-semibold hover:bg-slate-800">
+                  Save Item
+                </button>
+              </form>
+            ) : (
+              <div className="lg:col-span-4 bg-white p-6 rounded-xl border border-slate-200 text-center">
+                <div className="text-3xl mb-2">🔒</div>
+                <h3 className="font-bold text-sm text-slate-900">Catalog Read-Only</h3>
+                <p className="text-xs text-slate-500 mt-1">Only Central Warehouse Admin can add or edit master catalog items.</p>
+              </div>
+            )}
+
+            {/* Right: Items Catalog Table */}
+            <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col">
+              <div className="p-3 border-b flex items-center justify-between">
+                <input 
+                  type="text" 
+                  value={search} 
+                  onChange={e => setSearch(e.target.value)} 
+                  placeholder="Search item code or name..." 
+                  className="px-3 py-1.5 border rounded-lg text-xs w-64 focus:outline-none"
+                />
+                <span className="text-xs font-mono text-slate-500">{filtered.length} of {items.length} items</span>
+              </div>
+              <div className="overflow-x-auto flex-1 max-h-[500px]">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-700 border-b sticky top-0">
+                    <tr>
+                      <th className="py-2.5 px-3">Item Code</th>
+                      <th className="py-2.5 px-3">Item Name</th>
+                      <th className="py-2.5 px-3">Category</th>
+                      <th className="py-2.5 px-3">Unit</th>
+                      <th className="py-2.5 px-3 text-right">Price</th>
+                      {isCentralAdmin && <th className="py-2.5 px-3 text-right">Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan="6" className="py-8 text-center text-slate-400">No items registered. Import Excel template or add an item.</td></tr>
+                    ) : (
+                      filtered.map(i => (
+                        <tr key={i.id} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{i.itemCode}</td>
+                          <td className="py-2.5 px-3 text-slate-800">{i.itemName}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{i.category}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{i.unit}</td>
+                          <td className="py-2.5 px-3 text-right font-mono">Rs. {i.unitPrice}</td>
+                          {isCentralAdmin && (
+                            <td className="py-2.5 px-3 text-right">
+                              <button onClick={() => {
+                                if (confirm(`Delete ${i.itemCode}?`)) {
+                                  onUpdateItems(items.filter(x => x.id !== i.id));
+                                }
+                              }} className="text-rose-600 hover:underline">Delete</button>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: MAIN STOCK INBOUND (PURCHASE / MANUAL) ---
+    function MainStockView({ items, entries, onUpdateEntries, isCentralAdmin, getMainStock, addAudit }) {
+      const [showModal, setShowModal] = useState(false);
+      const [filterAvailable, setFilterAvailable] = useState(false);
+      const [selectedItemId, setSelectedItemId] = useState(items[0]?.id || '');
+      const [qty, setQty] = useState('');
+      const [refNo, setRefNo] = useState('PO-' + Math.floor(1000 + Math.random() * 9000));
+      const [supplier, setSupplier] = useState('');
+
+      const filteredItems = items.filter(i => {
+        if (!filterAvailable) return true;
+        return getMainStock(i.id).availableBalance > 0;
+      });
+
+      const handleAddEntry = (e) => {
+        e.preventDefault();
+        if (!selectedItemId || Number(qty) <= 0) return;
+        const itm = items.find(i => i.id === selectedItemId);
+        const newEntry = {
+          id: 'mse-' + Date.now(),
+          timestamp: new Date().toISOString(),
+          referenceNo: refNo,
+          supplier: supplier || 'Standard Vendor',
+          itemId: selectedItemId,
+          quantity: Number(qty)
+        };
+        onUpdateEntries([newEntry, ...entries]);
+        addAudit('MAIN_STOCK_RECEIPT', refNo, 'Central Warehouse', `Received ${qty} ${itm?.unit} of ${itm?.itemCode}`);
+        setShowModal(false);
+        setQty('');
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">Main Warehouse Central Stock</h1>
+              <p className="text-xs text-slate-600">Receive supplier shipments, track stock availability, and manage central balances.</p>
+            </div>
+            {isCentralAdmin ? (
+              <button onClick={() => setShowModal(true)} className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold">
+                + Log Incoming Stock Receipt
+              </button>
+            ) : (
+              <div className="text-xs bg-slate-100 text-slate-500 px-3 py-1.5 rounded">🔒 Central Receipts Read-Only</div>
+            )}
+          </div>
+
+          {/* Filter Bar */}
+          <div className="bg-white p-3 rounded-xl border flex items-center justify-between text-xs">
+            <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+              <input type="checkbox" checked={filterAvailable} onChange={e => setFilterAvailable(e.target.checked)} className="rounded" />
+              <span>Show Only In-Stock Available Items ({items.filter(i => getMainStock(i.id).availableBalance > 0).length})</span>
+            </label>
+            <span className="text-slate-500 font-mono">Showing {filteredItems.length} items</span>
+          </div>
+
+          {/* Inventory Table */}
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-700 border-b">
+                <tr>
+                  <th className="py-2.5 px-3">Item Code</th>
+                  <th className="py-2.5 px-3">Item Name</th>
+                  <th className="py-2.5 px-3">Category</th>
+                  <th className="py-2.5 px-3 text-right">Total Received</th>
+                  <th className="py-2.5 px-3 text-right">Dispatched</th>
+                  <th className="py-2.5 px-3 text-right">Available Balance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredItems.map(i => {
+                  const s = getMainStock(i.id);
+                  return (
+                    <tr key={i.id} className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{i.itemCode}</td>
+                      <td className="py-2.5 px-3 text-slate-800">{i.itemName}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{i.category}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{s.totalReceived} {i.unit}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-500">{s.dispatched} {i.unit}</td>
+                      <td className={`py-2.5 px-3 text-right font-mono font-bold ${s.availableBalance > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>
+                        {s.availableBalance} {i.unit}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Modal */}
+          {showModal && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+              <form onSubmit={handleAddEntry} className="bg-white p-6 rounded-xl border max-w-md w-full space-y-4">
+                <h3 className="font-bold text-sm text-slate-900 border-b pb-2">Receive Stock to Central Depot</h3>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Select Item *</label>
+                  <select value={selectedItemId} onChange={e => setSelectedItemId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                    {items.map(i => <option key={i.id} value={i.id}>{i.itemCode} - {i.itemName}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Quantity *</label>
+                  <input type="number" required min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Units received" className="w-full p-2 border rounded text-xs font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">PO / Reference No *</label>
+                  <input required value={refNo} onChange={e => setRefNo(e.target.value)} className="w-full p-2 border rounded text-xs font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Supplier Name</label>
+                  <input value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Vendor name" className="w-full p-2 border rounded text-xs" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 border rounded text-xs">Cancel</button>
+                  <button type="submit" className="flex-1 py-2 bg-slate-900 text-white rounded text-xs font-semibold">Confirm Receipt</button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: SITES & BRANCHES ---
+    function SitesView({ sites, onUpdateSites, isCentralAdmin, addAudit, items, getSiteStock }) {
+      const [name, setName] = useState('');
+      const [supervisor, setSupervisor] = useState('');
+      const [location, setLocation] = useState('');
+      const [phone, setPhone] = useState('');
+      const [selectedSiteId, setSelectedSiteId] = useState(sites[0]?.id || '');
+
+      const handleAddSite = (e) => {
+        e.preventDefault();
+        const newSite = {
+          id: 'site-' + Date.now(),
+          name: name.trim(),
+          supervisorName: supervisor.trim(),
+          location: location.trim(),
+          contactNumber: phone.trim() || '+94 77 000 0000',
+          isMainWarehouse: false
+        };
+        onUpdateSites([...sites, newSite]);
+        addAudit('SITE_CREATED', newSite.name, newSite.name, `Added site ${newSite.name}`);
+        setName(''); setSupervisor(''); setLocation(''); setPhone('');
+      };
+
+      const selectedSite = sites.find(s => s.id === selectedSiteId) || sites[0];
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border flex justify-between items-center">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">Site Branches & Yards</h1>
+              <p className="text-xs text-slate-600">Register new field yards, assign supervisors, and inspect branch inventories.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {isCentralAdmin ? (
+              <form onSubmit={handleAddSite} className="lg:col-span-4 bg-white p-5 rounded-xl border space-y-3">
+                <h3 className="font-bold text-sm text-slate-900 border-b pb-2">Register New Site Branch</h3>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Site Name *</label>
+                  <input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Jaffna Transmission Yard" className="w-full p-2 border rounded text-xs" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Supervisor Name *</label>
+                  <input required value={supervisor} onChange={e => setSupervisor(e.target.value)} placeholder="e.g. Nimal Silva" className="w-full p-2 border rounded text-xs" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Location Details *</label>
+                  <input required value={location} onChange={e => setLocation(e.target.value)} placeholder="Address or yard depot" className="w-full p-2 border rounded text-xs" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Phone</label>
+                  <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+94 77 ..." className="w-full p-2 border rounded text-xs" />
+                </div>
+                <button type="submit" className="w-full py-2 bg-slate-900 text-white rounded text-xs font-semibold">
+                  Add Site Branch
+                </button>
+              </form>
+            ) : (
+              <div className="lg:col-span-4 bg-white p-6 rounded-xl border text-center">
+                <div className="text-3xl mb-2">🔒</div>
+                <h3 className="font-bold text-sm text-slate-900">Site Registration Read-Only</h3>
+                <p className="text-xs text-slate-500 mt-1">Only Central Warehouse Admin can add or delete site branches.</p>
+              </div>
+            )}
+
+            {/* Sites List & Balances */}
+            <div className="lg:col-span-8 space-y-4">
+              <div className="flex gap-2 flex-wrap">
+                {sites.map(s => (
+                  <button key={s.id} onClick={() => setSelectedSiteId(s.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${selectedSiteId === s.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700'}`}>
+                    {s.name} {s.isMainWarehouse ? '(HQ)' : ''}
+                  </button>
+                ))}
+              </div>
+
+              {selectedSite && (
+                <div className="bg-white p-4 rounded-xl border space-y-3">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900">{selectedSite.name}</h3>
+                      <div className="text-xs text-slate-500">Supervisor: <strong>{selectedSite.supervisorName}</strong> · Location: {selectedSite.location}</div>
+                    </div>
+                    {isCentralAdmin && !selectedSite.isMainWarehouse && (
+                      <button onClick={() => {
+                        if (confirm(`Delete ${selectedSite.name}?`)) {
+                          onUpdateSites(sites.filter(x => x.id !== selectedSite.id));
+                        }
+                      }} className="text-xs text-rose-600 hover:underline">Delete Site</button>
+                    )}
+                  </div>
+
+                  <h4 className="text-xs font-bold text-slate-700">Stock Held at This Site</h4>
+                  <div className="overflow-x-auto max-h-[300px]">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 border-b">
+                        <tr>
+                          <th className="py-1.5 px-2">Item Code</th>
+                          <th className="py-1.5 px-2">Item Name</th>
+                          <th className="py-1.5 px-2 text-right">Received</th>
+                          <th className="py-1.5 px-2 text-right">Issued</th>
+                          <th className="py-1.5 px-2 text-right">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {items.filter(i => getSiteStock(selectedSite.id, i.id).hasActivity).length === 0 ? (
+                          <tr><td colSpan="5" className="py-6 text-center text-slate-400">No stock transferred to this site yet.</td></tr>
+                        ) : (
+                          items.filter(i => getSiteStock(selectedSite.id, i.id).hasActivity).map(i => {
+                            const stk = getSiteStock(selectedSite.id, i.id);
+                            return (
+                              <tr key={i.id}>
+                                <td className="py-1.5 px-2 font-mono font-bold">{i.itemCode}</td>
+                                <td className="py-1.5 px-2">{i.itemName}</td>
+                                <td className="py-1.5 px-2 text-right font-mono">{stk.received}</td>
+                                <td className="py-1.5 px-2 text-right font-mono text-slate-500">{stk.issued}</td>
+                                <td className="py-1.5 px-2 text-right font-mono font-bold text-emerald-700">{stk.availableBalance}</td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: REQUESTS & REQUISITIONS ---
+    function RequestsView({ items, sites, requests, onUpdateRequests, currentUser, isCentralAdmin, getMainStock, addAudit }) {
+      const [showModal, setShowModal] = useState(false);
+      const [siteId, setSiteId] = useState(sites.find(s => !s.isMainWarehouse)?.id || sites[0]?.id);
+      const [selectedRows, setSelectedRows] = useState([]);
+      const [searchItem, setSearchItem] = useState('');
+
+      const branchSites = sites.filter(s => !s.isMainWarehouse);
+
+      const handleAddRow = (item) => {
+        if (selectedRows.some(r => r.itemId === item.id)) return;
+        setSelectedRows([...selectedRows, { itemId: item.id, itemCode: item.itemCode, itemName: item.itemName, unit: item.unit, quantity: 10 }]);
+      };
+
+      const handleCreateRequest = (e) => {
+        e.preventDefault();
+        if (selectedRows.length === 0) { alert("Select at least one item."); return; }
+        const newReq = {
+          id: 'sr-' + Date.now(),
+          requestNoteNumber: 'RN-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000),
+          requestedDate: new Date().toISOString(),
+          requestedBy: currentUser.fullName,
+          siteId,
+          status: 'Pending',
+          items: selectedRows.map(r => ({ ...r, requestedQty: Number(r.quantity), approvedQty: Number(r.quantity) }))
+        };
+        onUpdateRequests([newReq, ...requests]);
+        addAudit('REQUEST_CREATED', newReq.requestNoteNumber, sites.find(s => s.id === siteId)?.name || 'Site', `Created request for ${selectedRows.length} items.`);
+        setShowModal(false);
+        setSelectedRows([]);
+      };
+
+      const handleApprove = (req) => {
+        const updated = requests.map(r => r.id === req.id ? { ...r, status: 'Approved' } : r);
+        onUpdateRequests(updated);
+        addAudit('REQUEST_APPROVED', req.requestNoteNumber, 'Central Warehouse', `Approved stock transfer.`);
+      };
+
+      const handleAccept = (req) => {
+        const updated = requests.map(r => r.id === req.id ? { ...r, status: 'Accepted' } : r);
+        onUpdateRequests(updated);
+        addAudit('REQUEST_ACCEPTED', req.requestNoteNumber, sites.find(s => s.id === req.siteId)?.name || 'Site', `Site received and accepted stock.`);
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border flex justify-between items-center">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">Site Stock Requisitions</h1>
+              <p className="text-xs text-slate-600">Request material transfers from Main Warehouse to project sites with wide item selection.</p>
+            </div>
+            <button onClick={() => setShowModal(true)} className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold">
+              + New Stock Request Note
+            </button>
+          </div>
+
+          {/* Requests Ledger Table */}
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-700 border-b">
+                <tr>
+                  <th className="py-2.5 px-3">Note No</th>
+                  <th className="py-2.5 px-3">Target Site</th>
+                  <th className="py-2.5 px-3">Items Requested</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {requests.length === 0 ? (
+                  <tr><td colSpan="5" className="py-8 text-center text-slate-400">No transfer requests logged yet.</td></tr>
+                ) : (
+                  requests.map(r => {
+                    const targetSite = sites.find(s => s.id === r.siteId);
+                    return (
+                      <tr key={r.id}>
+                        <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{r.requestNoteNumber}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">{targetSite?.name || 'Site'}</td>
+                        <td className="py-2.5 px-3">{(r.items || []).map(i => `${i.itemCode} (${i.requestedQty} ${i.unit})`).join(', ')}</td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            r.status === 'Accepted' ? 'bg-emerald-100 text-emerald-800' :
+                            r.status === 'Approved' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                          }`}>{r.status}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {r.status === 'Pending' && isCentralAdmin && (
+                            <button onClick={() => handleApprove(r)} className="px-2 py-1 bg-blue-600 text-white rounded text-[11px] font-semibold hover:bg-blue-500">
+                              Approve Transfer
+                            </button>
+                          )}
+                          {r.status === 'Approved' && (
+                            <button onClick={() => handleAccept(r)} className="px-2 py-1 bg-emerald-600 text-white rounded text-[11px] font-semibold hover:bg-emerald-500">
+                              Accept at Site Yard
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Expansive Modal Dialog for Item Picker */}
+          {showModal && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-xl border max-w-3xl w-full p-5 space-y-4 max-h-[90vh] flex flex-col">
+                <h3 className="font-bold text-sm text-slate-900 border-b pb-2">Expansive Item Picker - Requisition Request</h3>
+                
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Target Site Branch *</label>
+                  <select value={siteId} onChange={e => setSiteId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                    {branchSites.map(s => <option key={s.id} value={s.id}>{s.name} ({s.location})</option>)}
+                  </select>
+                </div>
+
+                {/* Search Bar */}
+                <input 
+                  type="text" 
+                  value={searchItem} 
+                  onChange={e => setSearchItem(e.target.value)} 
+                  placeholder="Instant search items by code or description..." 
+                  className="w-full p-2 border rounded text-xs" 
+                />
+
+                {/* Items selection table */}
+                <div className="border rounded-lg overflow-y-auto max-h-48 text-xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b sticky top-0">
+                      <tr>
+                        <th className="p-2">Code</th>
+                        <th className="p-2">Name</th>
+                        <th className="p-2 text-right">Central Stock</th>
+                        <th className="p-2 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {items.filter(i => i.itemCode.toLowerCase().includes(searchItem.toLowerCase()) || i.itemName.toLowerCase().includes(searchItem.toLowerCase())).map(i => (
+                        <tr key={i.id} className="hover:bg-slate-50">
+                          <td className="p-2 font-mono font-bold">{i.itemCode}</td>
+                          <td className="p-2">{i.itemName}</td>
+                          <td className="p-2 text-right font-mono">{getMainStock(i.id).availableBalance} {i.unit}</td>
+                          <td className="p-2 text-right">
+                            <button onClick={() => handleAddRow(i)} className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px]">
+                              + Pick
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Selected Rows Qty Input */}
+                {selectedRows.length > 0 && (
+                  <div className="space-y-2 border-t pt-2">
+                    <div className="text-xs font-bold text-slate-800">Selected Items & Quantities:</div>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {selectedRows.map((r, idx) => (
+                        <div key={r.itemId} className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded border">
+                          <span className="font-mono font-bold">{r.itemCode} - {r.itemName}</span>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="number" 
+                              min="1" 
+                              value={r.quantity} 
+                              onChange={e => {
+                                const val = e.target.value;
+                                setSelectedRows(selectedRows.map((x, i) => i === idx ? { ...x, quantity: val } : x));
+                              }} 
+                              className="w-20 p-1 border rounded text-xs font-mono text-right"
+                            />
+                            <span>{r.unit}</span>
+                            <button onClick={() => setSelectedRows(selectedRows.filter((_, i) => i !== idx))} className="text-rose-600 font-bold ml-1">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2 border-t">
+                  <button onClick={() => setShowModal(false)} className="flex-1 py-2 border rounded text-xs">Cancel</button>
+                  <button onClick={handleCreateRequest} className="flex-1 py-2 bg-slate-900 text-white rounded text-xs font-semibold">
+                    Submit Request Note ({selectedRows.length} items)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: DISPATCH TO TEAMS ---
+    function DispatchView({ items, sites, teams, issues, onUpdateIssues, currentUser, getSiteStock, addAudit }) {
+      const [siteId, setSiteId] = useState(sites.find(s => !s.isMainWarehouse)?.id || sites[0]?.id);
+      const [teamId, setTeamId] = useState(teams[0]?.id || '');
+      const [selectedItemId, setSelectedItemId] = useState(items[0]?.id || '');
+      const [qty, setQty] = useState('');
+      const [workOrder, setWorkOrder] = useState('WO-' + Math.floor(100 + Math.random() * 900));
+
+      const handleDispatch = (e) => {
+        e.preventDefault();
+        if (!selectedItemId || !teamId || Number(qty) <= 0) return;
+        const itm = items.find(i => i.id === selectedItemId);
+        const newIssue = {
+          id: 'iss-' + Date.now(),
+          issueNoteNumber: 'IN-' + Date.now().toString().slice(-4),
+          issueDate: new Date().toISOString(),
+          siteId,
+          teamId,
+          workOrderRef: workOrder,
+          items: [{ itemId: selectedItemId, quantity: Number(qty) }]
+        };
+        onUpdateIssues([newIssue, ...issues]);
+        addAudit('TEAM_DISPATCH', newIssue.issueNoteNumber, sites.find(s => s.id === siteId)?.name || 'Site', `Issued ${qty} ${itm?.unit} of ${itm?.itemCode} to team.`);
+        setQty('');
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border">
+            <h1 className="text-xl font-bold text-slate-900">Issue Stock to Field Teams (Daily Dispatch)</h1>
+            <p className="text-xs text-slate-600">Dispatches material from site branch inventory to field crews for work orders.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <form onSubmit={handleDispatch} className="lg:col-span-5 bg-white p-5 rounded-xl border space-y-3">
+              <h3 className="font-bold text-sm text-slate-900 border-b pb-2">Issue Material to Field Crew</h3>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Dispatching Site Yard *</label>
+                <select value={siteId} onChange={e => setSiteId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                  {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Target Field Team *</label>
+                <select value={teamId} onChange={e => setTeamId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                  {teams.length === 0 ? <option value="">No teams registered yet</option> : teams.map(t => <option key={t.id} value={t.id}>{t.teamName}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Select Item *</label>
+                <select value={selectedItemId} onChange={e => setSelectedItemId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                  {items.map(i => <option key={i.id} value={i.id}>{i.itemCode} - {i.itemName} (Available: {getSiteStock(siteId, i.id).availableBalance})</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Quantity *</label>
+                  <input type="number" required min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Units" className="w-full p-2 border rounded text-xs font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Work Order Ref</label>
+                  <input value={workOrder} onChange={e => setWorkOrder(e.target.value)} className="w-full p-2 border rounded text-xs font-mono" />
+                </div>
+              </div>
+              <button type="submit" className="w-full py-2 bg-slate-900 text-white rounded text-xs font-semibold">
+                Confirm Dispatch Note
+              </button>
+            </form>
+
+            <div className="lg:col-span-7 bg-white rounded-xl border overflow-hidden">
+              <div className="p-3 border-b font-bold text-xs text-slate-800">Recent Team Dispatch Notes</div>
+              <div className="overflow-x-auto max-h-80">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 border-b">
+                    <tr>
+                      <th className="p-2">Note No</th>
+                      <th className="p-2">Team</th>
+                      <th className="p-2">Items</th>
+                      <th className="p-2">Work Order</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {issues.length === 0 ? (
+                      <tr><td colSpan="4" className="py-6 text-center text-slate-400">No dispatches logged.</td></tr>
+                    ) : (
+                      issues.map(iss => {
+                        const t = teams.find(x => x.id === iss.teamId);
+                        return (
+                          <tr key={iss.id}>
+                            <td className="p-2 font-mono font-bold">{iss.issueNoteNumber}</td>
+                            <td className="p-2 font-semibold">{t?.teamName || 'Team'}</td>
+                            <td className="p-2">{(iss.items || []).map(i => `${items.find(x => x.id === i.itemId)?.itemCode || 'Item'} (${i.quantity})`).join(', ')}</td>
+                            <td className="p-2 font-mono text-slate-500">{iss.workOrderRef}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: TEAM RETURNS ---
+    function ReturnsView({ items, sites, teams, returns, onUpdateReturns, currentUser, addAudit }) {
+      const [siteId, setSiteId] = useState(sites.find(s => !s.isMainWarehouse)?.id || sites[0]?.id);
+      const [teamId, setTeamId] = useState(teams[0]?.id || '');
+      const [selectedItemId, setSelectedItemId] = useState(items[0]?.id || '');
+      const [qty, setQty] = useState('');
+      const [condition, setCondition] = useState('Good');
+
+      const handleReturn = (e) => {
+        e.preventDefault();
+        if (!selectedItemId || !teamId || Number(qty) <= 0) return;
+        const itm = items.find(i => i.id === selectedItemId);
+        const newRet = {
+          id: 'ret-' + Date.now(),
+          returnVoucherNumber: 'RV-' + Date.now().toString().slice(-4),
+          returnDate: new Date().toISOString(),
+          siteId,
+          teamId,
+          itemId: selectedItemId,
+          quantity: Number(qty),
+          condition
+        };
+        onUpdateReturns([newRet, ...returns]);
+        addAudit('TEAM_RETURN', newRet.returnVoucherNumber, sites.find(s => s.id === siteId)?.name || 'Site', `Returned ${qty} ${itm?.unit} of ${itm?.itemCode} (${condition})`);
+        setQty('');
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border">
+            <h1 className="text-xl font-bold text-slate-900">Field Team Stock Returns</h1>
+            <p className="text-xs text-slate-600">Restock unused or recovered items from field teams back into site inventory.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <form onSubmit={handleReturn} className="lg:col-span-5 bg-white p-5 rounded-xl border space-y-3">
+              <h3 className="font-bold text-sm text-slate-900 border-b pb-2">Log Material Return Voucher</h3>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Receiving Site Yard *</label>
+                <select value={siteId} onChange={e => setSiteId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                  {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Returning Team *</label>
+                <select value={teamId} onChange={e => setTeamId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                  {teams.length === 0 ? <option value="">No teams</option> : teams.map(t => <option key={t.id} value={t.id}>{t.teamName}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Item Returned *</label>
+                <select value={selectedItemId} onChange={e => setSelectedItemId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                  {items.map(i => <option key={i.id} value={i.id}>{i.itemCode} - {i.itemName}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Quantity Returned *</label>
+                  <input type="number" required min="1" value={qty} onChange={e => setQty(e.target.value)} className="w-full p-2 border rounded text-xs font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Condition</label>
+                  <select value={condition} onChange={e => setCondition(e.target.value)} className="w-full p-2 border rounded text-xs">
+                    <option value="Good">Good / Restock</option>
+                    <option value="Damaged">Damaged / Scrap</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="w-full py-2 bg-slate-900 text-white rounded text-xs font-semibold">
+                Submit Return Voucher
+              </button>
+            </form>
+
+            <div className="lg:col-span-7 bg-white rounded-xl border overflow-hidden">
+              <div className="p-3 border-b font-bold text-xs text-slate-800">Return Vouchers History</div>
+              <div className="overflow-x-auto max-h-80">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 border-b">
+                    <tr>
+                      <th className="p-2">Voucher No</th>
+                      <th className="p-2">Team</th>
+                      <th className="p-2">Item</th>
+                      <th className="p-2 text-right">Qty</th>
+                      <th className="p-2">Condition</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {returns.length === 0 ? (
+                      <tr><td colSpan="5" className="py-6 text-center text-slate-400">No returns recorded.</td></tr>
+                    ) : (
+                      returns.map(ret => {
+                        const t = teams.find(x => x.id === ret.teamId);
+                        const itm = items.find(x => x.id === ret.itemId);
+                        return (
+                          <tr key={ret.id}>
+                            <td className="p-2 font-mono font-bold">{ret.returnVoucherNumber}</td>
+                            <td className="p-2 font-semibold">{t?.teamName || 'Team'}</td>
+                            <td className="p-2">{itm?.itemCode || 'Item'}</td>
+                            <td className="p-2 text-right font-mono font-bold">{ret.quantity}</td>
+                            <td className="p-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ret.condition === 'Good' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                {ret.condition}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: TEAMS & IN-HAND BALANCES ---
+    function TeamsView({ teams, sites, onUpdateTeams, isCentralAdmin, addAudit, teamIssues, teamReturns, items }) {
+      const [teamName, setTeamName] = useState('');
+      const [leader, setLeader] = useState('');
+      const [siteId, setSiteId] = useState(sites.find(s => !s.isMainWarehouse)?.id || sites[0]?.id);
+
+      const handleAddTeam = (e) => {
+        e.preventDefault();
+        const newTeam = {
+          id: 'team-' + Date.now(),
+          teamName: teamName.trim(),
+          teamLeaderName: leader.trim(),
+          assignedSiteId: siteId
+        };
+        onUpdateTeams([...teams, newTeam]);
+        addAudit('TEAM_CREATED', newTeam.teamName, sites.find(s => s.id === siteId)?.name || 'Site', `Registered field team ${newTeam.teamName}`);
+        setTeamName(''); setLeader('');
+      };
+
+      const getTeamBalance = (teamId, itemId) => {
+        const issued = teamIssues.filter(i => i.teamId === teamId).reduce((s, i) => {
+          const row = (i.items || []).find(x => x.itemId === itemId);
+          return s + (row ? Number(row.quantity) : 0);
+        }, 0);
+        const returned = teamReturns.filter(r => r.teamId === teamId && r.itemId === itemId).reduce((s, r) => s + Number(r.quantity), 0);
+        return Math.max(0, issued - returned);
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border">
+            <h1 className="text-xl font-bold text-slate-900">Field Work Teams & In-Hand Stock</h1>
+            <p className="text-xs text-slate-600">Register field crews and inspect material actively in their custody.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <form onSubmit={handleAddTeam} className="lg:col-span-4 bg-white p-5 rounded-xl border space-y-3">
+              <h3 className="font-bold text-sm text-slate-900 border-b pb-2">Register Field Team</h3>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Team Name *</label>
+                <input required value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="e.g. Stringing Crew Alpha" className="w-full p-2 border rounded text-xs" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Team Leader / Foreman *</label>
+                <input required value={leader} onChange={e => setLeader(e.target.value)} placeholder="e.g. Sunil Shantha" className="w-full p-2 border rounded text-xs" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Assigned Site *</label>
+                <select value={siteId} onChange={e => setSiteId(e.target.value)} className="w-full p-2 border rounded text-xs">
+                  {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <button type="submit" className="w-full py-2 bg-slate-900 text-white rounded text-xs font-semibold">
+                Register Team
+              </button>
+            </form>
+
+            <div className="lg:col-span-8 space-y-3">
+              {teams.length === 0 ? (
+                <div className="bg-white p-8 rounded-xl border text-center text-slate-400 text-xs">No field teams registered yet.</div>
+              ) : (
+                teams.map(t => {
+                  const s = sites.find(x => x.id === t.assignedSiteId);
+                  const heldItems = items.filter(i => getTeamBalance(t.id, i.id) > 0);
+                  return (
+                    <div key={t.id} className="bg-white p-4 rounded-xl border">
+                      <div className="flex justify-between items-center border-b pb-2 mb-2">
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900">{t.teamName}</h4>
+                          <div className="text-xs text-slate-500">Foreman: {t.teamLeaderName} · Assigned to: <strong>{s?.name || 'Site'}</strong></div>
+                        </div>
+                        {isCentralAdmin && (
+                          <button onClick={() => onUpdateTeams(teams.filter(x => x.id !== t.id))} className="text-xs text-rose-600 hover:underline">Remove</button>
+                        )}
+                      </div>
+                      <div className="text-xs font-semibold text-slate-700 mb-1">Active Material In-Hand:</div>
+                      {heldItems.length === 0 ? (
+                        <div className="text-xs text-slate-400 italic">No material currently in custody.</div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {heldItems.map(i => (
+                            <span key={i.id} className="px-2 py-1 rounded bg-blue-50 border border-blue-200 text-blue-900 text-xs font-mono">
+                              {i.itemCode}: <strong>{getTeamBalance(t.id, i.id)} {i.unit}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- SUB-VIEW: AUDIT TRAIL ---
+    function AuditView({ logs }) {
+      return (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-xl border">
+            <h1 className="text-xl font-bold text-slate-900">Audit Trail & Transaction History</h1>
+            <p className="text-xs text-slate-600">Immutable ledger of all purchases, transfers, issues, and returns.</p>
+          </div>
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 border-b">
+                <tr>
+                  <th className="p-2.5">Timestamp</th>
+                  <th className="p-2.5">Action</th>
+                  <th className="p-2.5">Ref No</th>
+                  <th className="p-2.5">Location</th>
+                  <th className="p-2.5">Performed By</th>
+                  <th className="p-2.5">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {logs.length === 0 ? (
+                  <tr><td colSpan="6" className="py-8 text-center text-slate-400">No audit activity logged.</td></tr>
+                ) : (
+                  logs.map(l => (
+                    <tr key={l.id} className="hover:bg-slate-50">
+                      <td className="p-2.5 font-mono text-slate-500">{new Date(l.timestamp).toLocaleString()}</td>
+                      <td className="p-2.5 font-semibold text-slate-900">{l.action}</td>
+                      <td className="p-2.5 font-mono">{l.referenceNo}</td>
+                      <td className="p-2.5">{l.siteName}</td>
+                      <td className="p-2.5 font-medium text-slate-700">{l.performedBy}</td>
+                      <td className="p-2.5 text-slate-600">{l.details}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

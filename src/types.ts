@@ -1,0 +1,403 @@
+export type UserRole = 
+  | 'Central Warehouse Admin' 
+  | 'Site Admin' 
+  | 'Field Logistics Officer' 
+  | 'Auditor';
+
+export interface SystemConfig {
+  companyName: string;
+  systemName: string;
+  defaultLowStockThreshold: number;
+  currencySymbol: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  logoType?: 'icon' | 'image' | 'monogram';
+  logoIcon?: string;
+  logoImage?: string;
+  logoMonogram?: string;
+  logoColor?: string;
+  themeId?: string;
+  bgEffect?: string;
+}
+
+export interface Site {
+  id: string;
+  name: string;
+  isMainWarehouse: boolean;
+  supervisorName: string;
+  location: string;
+  contactNumber: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  fullName: string;
+  siteId: string; // 'all' or specific site id
+  role: UserRole;
+  password: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export interface Item {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  category: string;
+  unit: string; // 'pcs' | 'm' | 'kg' | 'boxes' | 'bags' | 'sets' | 'coils' | 'drums' etc.
+  unitPrice: number;
+  lowStockThreshold: number;
+  description?: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export interface ExcelItemRow {
+  itemNo?: number | string;
+  itemCode: string;
+  itemName: string;
+  category?: string;
+  unit: string;
+  description?: string;
+  unitPrice?: number;
+  lowStockThreshold?: number;
+  initialStock?: number;
+}
+
+export interface ImportResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  total: number;
+  errors: string[];
+}
+
+export interface Team {
+  id: string;
+  teamName: string;
+  teamLeaderName: string;
+  assignedSiteId: string;
+  contactPhone: string;
+  crewSize: number;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export type MainStockEntryType = 'Purchase' | 'Manual Entry';
+
+export interface MainStockEntry {
+  id: string;
+  timestamp: string;
+  entryType: MainStockEntryType;
+  referenceNo: string; // PO Number or Adjustment Ref
+  supplier: string;
+  itemId: string;
+  quantity: number;
+  unitCost: number;
+  notes: string;
+  receivedBy: string;
+}
+
+export type RequestStatus = 
+  | 'Pending Approval' 
+  | 'Approved / In-Transit' 
+  | 'Accepted' 
+  | 'Rejected';
+
+export type RequestPriority = 'Normal' | 'Urgent' | 'Emergency';
+
+export interface RequestItemRow {
+  itemId: string;
+  requestedQty: number;
+  approvedQty?: number;
+  receivedQty?: number;
+}
+
+export interface StockTransferRequest {
+  id: string;
+  requestNoteNumber: string; // RN-2026-XXXX
+  siteId: string;
+  requestedBy: string;
+  requestedDate: string;
+  status: RequestStatus;
+  priority: RequestPriority;
+  purpose: string;
+  items: RequestItemRow[];
+  approvalDate?: string;
+  approvedBy?: string;
+  approvalNotes?: string;
+  acceptanceDate?: string;
+  acceptedBy?: string;
+  acceptanceNotes?: string;
+}
+
+export interface IssueItemRow {
+  itemId: string;
+  quantity: number;
+}
+
+export interface TeamIssue {
+  id: string;
+  issueNoteNumber: string; // IN-2026-XXXX
+  siteId: string;
+  teamId: string;
+  issuedBy: string;
+  issueDate: string;
+  workOrderRef: string;
+  items: IssueItemRow[];
+  notes?: string;
+}
+
+export type ReturnCondition = 'Good / Restock' | 'Damaged / Scrap';
+
+export interface TeamReturn {
+  id: string;
+  returnVoucherNumber: string; // RV-2026-XXXX
+  siteId: string;
+  teamId: string;
+  returnedBy: string;
+  returnDate: string;
+  itemId: string;
+  quantity: number;
+  condition: ReturnCondition;
+  reason: string;
+}
+
+export type AuditAction = 
+  | 'MAIN_STOCK_RECEIPT'
+  | 'SITE_REQUEST_CREATED'
+  | 'SITE_REQUEST_APPROVED'
+  | 'SITE_REQUEST_ACCEPTED'
+  | 'SITE_REQUEST_REJECTED'
+  | 'TEAM_ISSUE_DISPATCHED'
+  | 'TEAM_RETURN_LOGGED'
+  | 'RECORD_DELETED'
+  | 'MASTER_ITEM_CREATED'
+  | 'MASTER_ITEM_UPDATED'
+  | 'MASTER_ITEM_SOFT_DELETED'
+  | 'MASTER_ITEM_RESTORED'
+  | 'MASTER_ITEM_PERMANENTLY_DELETED'
+  | 'MASTER_SITE_CREATED'
+  | 'MASTER_SITE_UPDATED'
+  | 'MASTER_SITE_SOFT_DELETED'
+  | 'MASTER_SITE_RESTORED'
+  | 'MASTER_SITE_PERMANENTLY_DELETED'
+  | 'MASTER_TEAM_CREATED'
+  | 'MASTER_TEAM_UPDATED'
+  | 'MASTER_TEAM_SOFT_DELETED'
+  | 'MASTER_TEAM_RESTORED'
+  | 'MASTER_TEAM_PERMANENTLY_DELETED'
+  | 'MASTER_USER_CREATED'
+  | 'MASTER_USER_UPDATED'
+  | 'MASTER_USER_SOFT_DELETED'
+  | 'MASTER_USER_RESTORED'
+  | 'MASTER_USER_PERMANENTLY_DELETED'
+  | 'ITEMS_IMPORTED_EXCEL'
+  | 'DEMO_DATA_CLEARED'
+  | 'DEMO_DATA_RESTORED'
+  | 'PROJECT_CREATED'
+  | 'PROJECT_UPDATED'
+  | 'PROJECT_DELETED'
+  | 'PROJECT_MATERIAL_USED'
+  | 'BRANCH_RETURN_TO_MAIN'
+  | 'DAMAGED_STOCK_RESTORED'
+  | 'SYSTEM_FLUSHED_WITH_BACKUP'
+  | 'BACKUP_CREATED'
+  | 'BACKUP_RESTORED'
+  | 'TEMPLATE_UPDATED'
+  | 'OTHER';
+
+export type RecycleEntityType = 'item' | 'site' | 'user' | 'team' | 'project';
+
+export interface Project {
+  id: string;
+  projectId: string; // e.g. PRJ-2026-001
+  projectName: string;
+  referenceNo: string;
+  district: string;
+  subArea: string;
+  status?: 'Active' | 'Completed' | 'On-Hold';
+  createdAt: string;
+  description?: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export interface ProjectUsageItemRow {
+  itemId: string;
+  quantity: number;
+}
+
+export interface ProjectMaterialUsage {
+  id: string;
+  usageVoucherNumber: string; // UV-2026-XXXX
+  projectId: string;
+  projectName: string;
+  siteId: string;
+  teamId: string;
+  teamName?: string;
+  supervisorOrLeader: string;
+  supervisorOrLeaderName?: string;
+  loggedBy: string;
+  date: string;
+  usageDate?: string;
+  workDetails: string;
+  items: ProjectUsageItemRow[];
+  isDeleted?: boolean;
+}
+
+export interface BranchReturn {
+  id: string;
+  branchReturnNumber: string; // BRN-2026-XXXX
+  siteId: string;
+  siteName: string;
+  fromSiteId?: string;
+  fromSiteName?: string;
+  itemId: string;
+  quantity: number;
+  condition: ReturnCondition;
+  reason: string;
+  returnedBy: string;
+  returnDate: string;
+  receivedAtMainBy?: string;
+  isDeleted?: boolean;
+}
+
+export interface DamagedStockRestoration {
+  id: string;
+  restorationNumber: string; // DSR-2026-XXXX
+  itemId: string;
+  quantity: number;
+  restoredDate: string;
+  restoredBy: string;
+  notes: string;
+  isDeleted?: boolean;
+}
+
+export interface StockBackup {
+  id: string;
+  backupNumber: number;
+  name: string;
+  createdAt: string;
+  createdBy: string;
+  reason: string;
+  itemCount?: number;
+  transactionCount?: number;
+  stats?: {
+    itemCount: number;
+    siteCount: number;
+    teamCount: number;
+    projectCount: number;
+    requestCount: number;
+    issueCount: number;
+    returnCount: number;
+    usageCount: number;
+    totalMainUnits: number;
+  };
+  snapshot: {
+    items: Item[];
+    mainStockEntries: MainStockEntry[];
+    stockRequests: StockTransferRequest[];
+    teamIssues: TeamIssue[];
+    teamReturns: TeamReturn[];
+    projectUsages: ProjectMaterialUsage[];
+    branchReturns: BranchReturn[];
+    damagedRestorations?: DamagedStockRestoration[];
+    projects: Project[];
+    sites: Site[];
+    teams: Team[];
+    users: User[];
+    auditLogs: AuditLogEntry[];
+    config: SystemConfig;
+  };
+}
+
+export interface RecycleBinItem {
+  id: string;
+  type: RecycleEntityType;
+  title: string;
+  subtitle: string;
+  deletedAt: string;
+  deletedBy: string;
+  originalData: Item | Site | User | Team | Project;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: AuditAction;
+  referenceNo: string;
+  siteName: string;
+  performedBy: string;
+  details: string;
+  itemCode?: string;
+  quantityChanged?: number;
+}
+
+export interface TeamInHandBalanceItem {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  unit: string;
+  totalIssued: number;
+  totalReturned: number;
+  totalUsedInProjects: number;
+  currentInHand: number;
+  lastIssuedDate: string;
+}
+
+export interface TeamInHandSummary {
+  team: Team;
+  site: Site;
+  items: TeamInHandBalanceItem[];
+  totalUnitsHeld: number;
+  distinctItemsCount: number;
+}
+
+export interface LetterheadTemplate {
+  id: string;
+  templateName: string;
+  companyName: string;
+  subtitle: string;
+  tel: string;
+  fax: string;
+  email: string;
+  address: string;
+  logoText: string;
+  logoType?: 'text' | 'image';
+  logoImage?: string;
+  designeePrepared: string;
+  designeeApproved: string;
+  departmentPrepared: string;
+  departmentApproved: string;
+  issueNo: string;
+  revisionNo: string;
+  reviewedBy: string;
+  approvedBy: string;
+  preparedBy?: string;
+  paperSize?: string;
+  orientation?: string;
+}
+
+export interface DigitalSignature {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  signatureDataUrl: string;
+  createdAt: string;
+}
+

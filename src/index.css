@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media print {
+  /* Hide non-printable elements */
+  nav, header, aside, .no-print, button, input[type="search"] {
+    display: none !important;
+  }
+
+  body.has-print-modal main,
+  body:has(#letterhead-printable-area) main {
+    display: none !important;
+  }
+  
+  body, #root {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Make modal containers full-width and unconstrained when printing */
+  .fixed.inset-0 {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .max-w-4xl, .max-w-xl, .max-w-lg, .max-w-md, .max-h-\[92vh\], .max-h-\[90vh\], .max-h-\[95vh\] {
+    max-width: 100% !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .printable-document, .printable-voucher-sheet {
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  @page {
+    margin: 8mm;
+    size: A4 portrait;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}

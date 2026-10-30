@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apex Stock & Site Management System - Production Standalone</title>
+  <meta name="description" content="Single-file production-ready Stock Management Application with Excel upload, Stock Requests, Main Stock addition, and Firebase Realtime Database." />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- SheetJS / XLSX CDN -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <!-- React 18 & ReactDOM UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+
+  <!-- Firebase 10 SDK via Browser ES Module -->
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyApU0FcmTmk4qEwc235f11ZZRrjMt-P1gM",
+      authDomain: "stock-management-system-61c6f.firebaseapp.com",
+      databaseURL: "https://stock-management-system-61c6f-default-rtdb.firebaseio.com",
+      projectId: "stock-management-system-61c6f",
+      storageBucket: "stock-management-system-61c6f.firebasestorage.app",
+      messagingSenderId: "576165978947",
+      appId: "1:576165978947:web:d79ebf390256ecd244c5f6"
+    };
+
+    try {
+      const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+      const rtdb = getDatabase(app);
+
+      window.FirebaseService = {
+        connected: true,
+        db: rtdb,
+        databaseURL: firebaseConfig.databaseURL,
+        subscribe: (path, callback) => {
+          const itemRef = ref(rtdb, path);
+          return onValue(itemRef, (snapshot) => {
+            const val = snapshot.val();
+            let data = [];
+            if (val) {
+              data = Array.isArray(val) ? val.filter(Boolean) : Object.values(val);
+            }
+            callback(data);
+          }, (err) => {
+            console.warn(`Firebase read error for ${path}:`, err);
+          });
+        },
+        save: async (path, data) => {
+          const itemRef = ref(rtdb, path);
+          await set(itemRef, data);
+        }
+      };
+      window.dispatchEvent(new CustomEvent('firebase-connected'));
+      console.log('Connected to Firebase Realtime Database:', firebaseConfig.databaseURL);
+    } catch (e) {
+      console.warn('Firebase initialization notice:', e);
+      window.FirebaseService = { connected: false, error: e.message };
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased selection:bg-slate-900 selection:text-white">
+  <div id="root"></div>
+
+  <!-- Main React Application Script (Compiled by Babel in Browser) -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // Default Seed Data
+    const INITIAL_SITES = [
+      { id: 'site-main', name: 'Main Central Warehouse', isMainWarehouse: true, location: 'Building A, Metro Logistics Park', contactNumber: '+1 (555) 019-4401', supervisorName: 'Arthur Vance' },
+      { id: 'site-east', name: 'East Distribution Yard', isMainWarehouse: false, location: 'Sector 4 Industrial Zone', contactNumber: '+1 (555) 019-4402', supervisorName: 'Marcus Kane' },
+      { id: 'site-west', name: 'West Metro Substation', isMainWarehouse: false, location: 'Plot 12 Grid Corridor', contactNumber: '+1 (555) 019-4403', supervisorName: 'Elena Rostova' },
+    ];
+
+    const INITIAL_ITEMS = [
+      { id: 'itm-1', itemCode: 'CBL-FIB-48F', itemName: '48-Core Single Mode Armored Fiber Cable', category: 'Optical Fiber Cables', unit: 'Meters', unitPrice: 14.50, lowStockThreshold: 500, description: 'Outdoor direct burial fiber optic spool' },
+      { id: 'itm-2', itemCode: 'MH-ENC-900', itemName: 'Composite Concrete Handhole 900x600', category: 'Assembly Units (Manholes & Handholes)', unit: 'Pcs', unitPrice: 285.00, lowStockThreshold: 15, description: 'Heavy vehicle traffic-rated cover' },
+      { id: 'itm-3', itemCode: 'CON-PVC-110', itemName: '110mm Heavy Duty Underground PVC Conduit', category: 'Conduits & Ducts', unit: 'Meters', unitPrice: 8.20, lowStockThreshold: 200, description: 'Bell-end electrical & telecom ducting 6m length' },
+      { id: 'itm-4', itemCode: 'TR-DRM-28T', itemName: 'Tension Cable Pulling Winch 28kN', category: 'Machinery & Heavy Tools', unit: 'Sets', unitPrice: 4200.00, lowStockThreshold: 2, description: 'Hydraulic high-tension capstan puller' },
+      { id: 'itm-5', itemCode: 'FIB-SPL-BOX', itemName: '96-Core Fiber Dome Splice Enclosure IP68', category: 'Optical Fiber Cables', unit: 'Pcs', unitPrice: 95.00, lowStockThreshold: 25, description: 'Waterproof underground optical closure kit' },
+      { id: 'itm-6', itemCode: 'SUB-TX-100KVA', itemName: 'Distribution Transformer 100kVA 11kV/415V', category: 'Machinery & Heavy Tools', unit: 'Pcs', unitPrice: 8500.00, lowStockThreshold: 1, description: 'Oil-immersed step-down power transformer' },
+    ];
+
+    const INITIAL_MAIN_STOCK_ENTRIES = [
+      { id: 'mse-1', timestamp: new Date(Date.now() - 86400000 * 3).toISOString(), entryType: 'Purchase', referenceNo: 'PO-2026-8812', supplier: 'Corning Cable Systems Inc.', itemId: 'itm-1', quantity: 2500, unitCost: 14.50, receivedBy: 'Arthur Vance', notes: 'Quarterly shipment' },
+      { id: 'mse-2', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), entryType: 'Purchase', referenceNo: 'PO-2026-8815', supplier: 'Precast Utility Enclosures Ltd', itemId: 'itm-2', quantity: 45, unitCost: 285.00, receivedBy: 'Arthur Vance', notes: 'Direct yard delivery' },
+      { id: 'mse-3', timestamp: new Date(Date.now() - 86400000 * 1).toISOString(), entryType: 'Purchase', referenceNo: 'PO-2026-8820', supplier: 'Duraduct Plastics Co.', itemId: 'itm-3', quantity: 1200, unitCost: 8.20, receivedBy: 'Arthur Vance', notes: 'Civil conduit batch' },
+      { id: 'mse-4', timestamp: new Date().toISOString(), entryType: 'Purchase', referenceNo: 'PO-2026-8824', supplier: 'OptiConnect Global', itemId: 'itm-5', quantity: 80, unitCost: 95.00, receivedBy: 'Arthur Vance', notes: 'Splice closures' },
+    ];
+
+    const INITIAL_STOCK_REQUESTS = [
+      {
+        id: 'sr-1',
+        requestNoteNumber: 'RN-2026-0041',
+        requestedDate: new Date(Date.now() - 3600000 * 5).toISOString(),
+        siteId: 'site-east',
+        requestedBy: 'Marcus Kane',
+        priority: 'Urgent',
+        purpose: 'Main arterial trunkline conduit pull and splice preparation',
+        status: 'Approved / In-Transit',
+        items: [
+          { itemId: 'itm-1', requestedQty: 800, approvedQty: 800, receivedQty: 0 },
+          { itemId: 'itm-5', requestedQty: 10, approvedQty: 10, receivedQty: 0 },
+        ]
+      }
+    ];
+
+    // Helper functions
+    const formatNumber = (num) => (num !== undefined && num !== null ? Number(num).toLocaleString('en-US') : '0');
+    const formatCurrency = (num) => '$' + Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatDateTime = (iso) => {
+      if (!iso) return '-';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {
+        return iso;
+      }
+    };
+
+    function App() {
+      // Data States with LocalStorage fallback
+      const [sites] = useState(INITIAL_SITES);
+      const [items, setItems] = useState(() => {
+        try {
+          const saved = localStorage.getItem('apex_standalone_items');
+          return saved ? JSON.parse(saved) : INITIAL_ITEMS;
+        } catch (e) { return INITIAL_ITEMS; }
+      });
+      const [mainStockEntries, setMainStockEntries] = useState(() => {
+        try {
+          const saved = localStorage.getItem('apex_standalone_main_stock');
+          return saved ? JSON.parse(saved) : INITIAL_MAIN_STOCK_ENTRIES;
+        } catch (e) { return INITIAL_MAIN_STOCK_ENTRIES; }
+      });
+      const [stockRequests, setStockRequests] = useState(() => {
+        try {
+          const saved = localStorage.getItem('apex_standalone_requests');
+          return saved ? JSON.parse(saved) : INITIAL_STOCK_REQUESTS;
+        } catch (e) { return INITIAL_STOCK_REQUESTS; }
+      });
+
+      // App navigation & status
+      const [currentTab, setCurrentTab] = useState('items'); // 'items' | 'main-stock' | 'requests' | 'dashboard'
+      const [firebaseStatus, setFirebaseStatus] = useState({ connected: false, text: 'Connecting...' });
+      const [toast, setToast] = useState(null);
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+      };
+
+      // Realtime Database Subscriptions
+      useEffect(() => {
+        const initFirebase = () => {
+          if (window.FirebaseService && window.FirebaseService.db) {
+            setFirebaseStatus({ connected: true, text: 'Firebase Realtime DB: Connected' });
+
+            // Subscribe to Items
+            window.FirebaseService.subscribe('items', (remoteItems) => {
+              if (remoteItems && remoteItems.length > 0) {
+                setItems(remoteItems);
+                localStorage.setItem('apex_standalone_items', JSON.stringify(remoteItems));
+              } else {
+                // If remote is empty, seed it
+                window.FirebaseService.save('items', items);
+              }
+            });
+
+            // Subscribe to Stock Requests
+            window.FirebaseService.subscribe('stockRequests', (remoteRequests) => {
+              if (remoteRequests && remoteRequests.length > 0) {
+                setStockRequests(remoteRequests);
+                localStorage.setItem('apex_standalone_requests', JSON.stringify(remoteRequests));
+              } else {
+                window.FirebaseService.save('stockRequests', stockRequests);
+              }
+            });
+
+            // Subscribe to Main Stock Entries
+            window.FirebaseService.subscribe('mainStockEntries', (remoteEntries) => {
+              if (remoteEntries && remoteEntries.length > 0) {
+                setMainStockEntries(remoteEntries);
+                localStorage.setItem('apex_standalone_main_stock', JSON.stringify(remoteEntries));
+              } else {
+                window.FirebaseService.save('mainStockEntries', mainStockEntries);
+              }
+            });
+          }
+        };
+
+        if (window.FirebaseService && window.FirebaseService.db) {
+          initFirebase();
+        } else {
+          window.addEventListener('firebase-connected', initFirebase);
+          const timer = setTimeout(initFirebase, 1500);
+          return () => {
+            window.removeEventListener('firebase-connected', initFirebase);
+            clearTimeout(timer);
+          };
+        }
+      }, []);
+
+      // Persistence helper: saves locally and to Firebase
+      const updateItemsState = (newItems) => {
+        setItems(newItems);
+        localStorage.setItem('apex_standalone_items', JSON.stringify(newItems));
+        if (window.FirebaseService?.save) {
+          window.FirebaseService.save('items', newItems).catch(console.warn);
+        }
+      };
+
+      const updateMainStockState = (newEntries) => {
+        setMainStockEntries(newEntries);
+        localStorage.setItem('apex_standalone_main_stock', JSON.stringify(newEntries));
+        if (window.FirebaseService?.save) {
+          window.FirebaseService.save('mainStockEntries', newEntries).catch(console.warn);
+        }
+      };
+
+      const updateStockRequestsState = (newRequests) => {
+        setStockRequests(newRequests);
+        localStorage.setItem('apex_standalone_requests', JSON.stringify(newRequests));
+        if (window.FirebaseService?.save) {
+          window.FirebaseService.save('stockRequests', newRequests).catch(console.warn);
+        }
+      };
+
+      // Stock Balance Calculations
+      const getMainWarehouseStock = (itemId) => {
+        const received = mainStockEntries
+          .filter((e) => e.itemId === itemId)
+          .reduce((sum, e) => sum + (Number(e.quantity) || 0), 0);
+
+        const dispatched = stockRequests
+          .filter((r) => r.status === 'Approved / In-Transit' || r.status === 'Accepted')
+          .reduce((sum, r) => {
+            const row = r.items.find((i) => i.itemId === itemId);
+            return sum + (Number(row?.approvedQty) || 0);
+          }, 0);
+
+        const availableBalance = Math.max(0, received - dispatched);
+        const item = items.find((i) => i.id === itemId);
+        const threshold = item?.lowStockThreshold || 10;
+        const isLowStock = availableBalance <= threshold;
+
+        return { totalReceived: received, dispatched, availableBalance, threshold, isLowStock };
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+          {/* TOP NAVBAR */}
+          <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-sm no-print">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                </div>
+                <div>
+                  <h1 className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
+                    <span>Apex Stock &amp; Site Manager</span>
+                    <span className="hidden md:inline-block text-[10px] font-mono uppercase bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Production Standalone</span>
+                  </h1>
+                  <p className="text-[11px] text-slate-400 hidden sm:block">Central Warehouse · Branch Sites · Excel Ingest · Firebase RTDB</p>
+                </div>
+              </div>
+
+              {/* Status and Action Buttons */}
+              <div className="flex items-center gap-2 sm:gap-4">
+                {/* Firebase Connection Badge */}
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-xs text-slate-300">
+                  <span className={`w-2 h-2 rounded-full ${firebaseStatus.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                  <span className="font-mono text-[11px] font-semibold text-slate-200 hidden sm:inline">Firebase RTDB</span>
+                  <span className="font-mono text-[10px] text-emerald-400 sm:hidden">Live</span>
+                </div>
+
+                {/* Force Firebase Sync */}
+                <button
+                  onClick={() => {
+                    if (window.FirebaseService?.save) {
+                      Promise.all([
+                        window.FirebaseService.save('items', items),
+                        window.FirebaseService.save('stockRequests', stockRequests),
+                        window.FirebaseService.save('mainStockEntries', mainStockEntries)
+                      ]).then(() => showToast('Synced directly with Firebase Realtime Database!'))
+                        .catch((e) => showToast('Sync error: ' + e.message, 'error'));
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors"
+                  title="Push state directly to Firebase Realtime Database"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  <span className="hidden sm:inline">Sync Now</span>
+                </button>
+              </div>
+            </div>
+
+            {/* TAB NAVIGATION BAR */}
+            <div className="bg-slate-900/95 border-t border-slate-800 px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto scrollbar-none py-1.5">
+              {[
+                { id: 'items', label: 'Items (Excel Import)', count: items.length },
+                { id: 'main-stock', label: 'Main Stock (Central)', count: mainStockEntries.length },
+                { id: 'requests', label: 'Site Stock Requests', count: stockRequests.length },
+                { id: 'dashboard', label: 'Dashboard & Metrics' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-2 ${
+                    currentTab === tab.id
+                      ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                      currentTab === tab.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </header>
+
+          {/* TOAST ALERT */}
+          {toast && (
+            <div className="fixed bottom-4 right-4 z-50 animate-bounce">
+              <div className={`px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 text-white ${
+                toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
+              }`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                <span>{toast.message}</span>
+              </div>
+            </div>
+          )}
+
+          {/* MAIN BODY VIEW */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            {currentTab === 'items' && (
+              <ItemsManagementView
+                items={items}
+                updateItemsState={updateItemsState}
+                showToast={showToast}
+              />
+            )}
+
+            {currentTab === 'main-stock' && (
+              <MainStockView
+                items={items}
+                mainStockEntries={mainStockEntries}
+                updateMainStockState={updateMainStockState}
+                getMainWarehouseStock={getMainWarehouseStock}
+                showToast={showToast}
+              />
+            )}
+
+            {currentTab === 'requests' && (
+              <StockRequestsView
+                sites={sites}
+                items={items}
+                stockRequests={stockRequests}
+                updateStockRequestsState={updateStockRequestsState}
+                getMainWarehouseStock={getMainWarehouseStock}
+                showToast={showToast}
+              />
+            )}
+
+            {currentTab === 'dashboard' && (
+              <DashboardView
+                sites={sites}
+                items={items}
+                stockRequests={stockRequests}
+                mainStockEntries={mainStockEntries}
+                getMainWarehouseStock={getMainWarehouseStock}
+                onNavigate={(tab) => setCurrentTab(tab)}
+              />
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 1. ITEMS MANAGEMENT & EXCEL UPLOADER VIEW
+    // ==========================================
+    function ItemsManagementView({ items, updateItemsState, showToast }) {
+      const [searchQuery, setSearchQuery] = useState('');
+      const [categoryFilter, setCategoryFilter] = useState('all');
+      const [importMode, setImportMode] = useState('sync'); // 'sync' | 'append'
+      const [showUploadModal, setShowUploadModal] = useState(false);
+      const [showCreateModal, setShowCreateModal] = useState(false);
+      const [excelParsedRows, setExcelParsedRows] = useState(null);
+      const fileInputRef = useRef(null);
+
+      // New Item Form state
+      const [newItem, setNewItem] = useState({
+        itemCode: '',
+        itemName: '',
+        category: 'Optical Fiber Cables',
+        unit: 'Pcs',
+        unitPrice: 50,
+        lowStockThreshold: 10,
+        description: ''
+      });
+
+      const categories = useMemo(() => Array.from(new Set(items.map((i) => i.category))), [items]);
+
+      const filteredItems = useMemo(() => {
+        return items.filter((item) => {
+          const matchQuery = item.itemCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+          const matchCat = categoryFilter === 'all' || item.category === categoryFilter;
+          return matchQuery && matchCat;
+        });
+      }, [items, searchQuery, categoryFilter]);
+
+      // Download Sample Excel Template
+      const downloadTemplate = () => {
+        const sampleData = [
+          {
+            'Item Code': 'CBL-FIB-96F',
+            'Item Name': '96-Core Armored Single-Mode Fiber Spool',
+            'Category': 'Optical Fiber Cables',
+            'Unit of Measure': 'Meters',
+            'Unit Price': 22.50,
+            'Min Stock Threshold': 300,
+            'Description': 'Underground dielectric gel-filled optical cable'
+          },
+          {
+            'Item Code': 'MH-CON-1200',
+            'Item Name': 'Precast Concrete Manhole Box 1200x800',
+            'Category': 'Assembly Units (Manholes & Handholes)',
+            'Unit of Measure': 'Pcs',
+            'Unit Price': 450.00,
+            'Min Stock Threshold': 10,
+            'Description': 'Reinforced junction box with iron lock frame'
+          }
+        ];
+
+        const ws = XLSX.utils.json_to_sheet(sampleData);
+        ws['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 30 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 45 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Items_Template');
+        XLSX.writeFile(wb, 'Items_Master_Import_Template.xlsx');
+        showToast('Downloaded sample Excel template (.xlsx)');
+      };
+
+      // Handle Excel File Read
+      const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+
+            const parsed = [];
+            const errors = [];
+
+            raw.forEach((row, idx) => {
+              const code = String(row['Item Code'] || row['item_code'] || row['ItemCode'] || '').trim();
+              const name = String(row['Item Name'] || row['item_name'] || row['ItemName'] || '').trim();
+              const category = String(row['Category'] || row['category'] || 'General').trim();
+              const unit = String(row['Unit of Measure'] || row['Unit'] || row['unit'] || 'Pcs').trim();
+              const price = parseFloat(row['Unit Price'] || row['unit_price'] || row['Price'] || '0') || 0;
+              const threshold = parseInt(row['Min Stock Threshold'] || row['Threshold'] || row['threshold'] || '10', 10);
+              const desc = String(row['Description'] || row['description'] || '').trim();
+
+              if (!code || !name) {
+                errors.push(`Row ${idx + 2}: Missing required Item Code or Item Name.`);
+              } else {
+                parsed.push({ itemCode: code, itemName: name, category, unit, unitPrice: price, lowStockThreshold: threshold, description: desc });
+              }
+            });
+
+            setExcelParsedRows({ rows: parsed, errors, fileName: file.name });
+            setShowUploadModal(true);
+          } catch (err) {
+            showToast('Failed to parse Excel file: ' + err.message, 'error');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      };
+
+      // Commit Excel Import to State & Firebase
+      const commitExcelImport = () => {
+        if (!excelParsedRows || !excelParsedRows.rows.length) return;
+
+        let updatedList = [...items];
+        let addedCount = 0;
+        let updatedCount = 0;
+
+        excelParsedRows.rows.forEach((row) => {
+          const existingIdx = updatedList.findIndex((i) => i.itemCode.toUpperCase() === row.itemCode.toUpperCase());
+          if (existingIdx >= 0) {
+            if (importMode === 'sync') {
+              updatedList[existingIdx] = {
+                ...updatedList[existingIdx],
+                itemName: row.itemName,
+                category: row.category,
+                unit: row.unit,
+                unitPrice: row.unitPrice,
+                lowStockThreshold: row.lowStockThreshold,
+                description: row.description
+              };
+              updatedCount++;
+            }
+          } else {
+            updatedList.push({
+              id: 'itm-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+              ...row
+            });
+            addedCount++;
+          }
+        });
+
+        updateItemsState(updatedList);
+        setShowUploadModal(false);
+        setExcelParsedRows(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        showToast(`Successfully imported items: ${addedCount} added, ${updatedCount} updated.`);
+      };
+
+      // Handle Manual Create
+      const handleCreateItemSubmit = (e) => {
+        e.preventDefault();
+        if (!newItem.itemCode.trim() || !newItem.itemName.trim()) {
+          showToast('Item Code and Name are required.', 'error');
+          return;
+        }
+
+        const exists = items.some((i) => i.itemCode.toUpperCase() === newItem.itemCode.trim().toUpperCase());
+        if (exists) {
+          showToast(`Item code "${newItem.itemCode}" already exists.`, 'error');
+          return;
+        }
+
+        const itemToAdd = {
+          id: 'itm-' + Date.now(),
+          itemCode: newItem.itemCode.trim().toUpperCase(),
+          itemName: newItem.itemName.trim(),
+          category: newItem.category,
+          unit: newItem.unit,
+          unitPrice: Number(newItem.unitPrice) || 0,
+          lowStockThreshold: Number(newItem.lowStockThreshold) || 10,
+          description: newItem.description.trim()
+        };
+
+        updateItemsState([itemToAdd, ...items]);
+        setShowCreateModal(false);
+        setNewItem({ itemCode: '', itemName: '', category: 'Optical Fiber Cables', unit: 'Pcs', unitPrice: 50, lowStockThreshold: 10, description: '' });
+        showToast(`Created new master item: ${itemToAdd.itemCode}`);
+      };
+
+      // Handle Delete Item
+      const handleDeleteItem = (itemId) => {
+        const itm = items.find((i) => i.id === itemId);
+        if (confirm(`Are you sure you want to delete ${itm?.itemCode} (${itm?.itemName})?`)) {
+          updateItemsState(items.filter((i) => i.id !== itemId));
+          showToast(`Deleted ${itm?.itemCode}`);
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header & Controls */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Catalog &amp; Master Records</span>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">Items Management &amp; Excel Import</h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">Upload `.xlsx` / `.xls` spreadsheets to dynamically populate and sync all items across Main Stock and Site Operations.</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={downloadTemplate}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-2xs"
+                >
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  <span>Download Sample Template</span>
+                </button>
+
+                <label className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors shadow-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                  <span>Upload Excel Sheet</span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                  <span>Add Item</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filters Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mt-5 pt-4 border-t border-slate-100">
+              <div className="sm:col-span-8 relative">
+                <input
+                  type="text"
+                  placeholder="Search item code, name, specifications..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                />
+                <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              </div>
+
+              <div className="sm:col-span-4">
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full py-2 px-3 border border-slate-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                >
+                  <option value="all">All Categories ({items.length})</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Items Catalog Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>Showing <strong>{filteredItems.length}</strong> of <strong>{items.length}</strong> items in database</span>
+              <span className="font-mono text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Firebase Synced</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Item Code</th>
+                    <th className="py-3 px-4">Item Name &amp; Description</th>
+                    <th className="py-3 px-3">Category</th>
+                    <th className="py-3 px-3 text-center">Unit</th>
+                    <th className="py-3 px-3 text-right">Est. Unit Price</th>
+                    <th className="py-3 px-3 text-right">Low Stock Alert</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-12 text-center text-slate-400">
+                        No matching items found. Upload an Excel sheet above to quickly import items.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                          <span className="bg-slate-100 px-2 py-1 rounded border border-slate-200">{item.itemCode}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-slate-900">{item.itemName}</div>
+                          {item.description && <div className="text-[11px] text-slate-500 mt-0.5">{item.description}</div>}
+                        </td>
+                        <td className="py-3 px-3 text-slate-600 whitespace-nowrap">{item.category}</td>
+                        <td className="py-3 px-3 text-center font-mono text-slate-500">{item.unit}</td>
+                        <td className="py-3 px-3 text-right font-mono font-semibold text-slate-800">{formatCurrency(item.unitPrice)}</td>
+                        <td className="py-3 px-3 text-right font-mono text-slate-600">&le; {item.lowStockThreshold} {item.unit}</td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Delete Item"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* EXCEL UPLOAD PREVIEW MODAL */}
+          {showUploadModal && excelParsedRows && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <h3 className="font-bold text-slate-900">Excel Import Preview: {excelParsedRows.fileName}</h3>
+                  </div>
+                  <button onClick={() => setShowUploadModal(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Valid Rows Ready to Import:</span>
+                    <strong className="font-mono text-emerald-700 font-bold text-sm">{excelParsedRows.rows.length} rows</strong>
+                  </div>
+                  {excelParsedRows.errors.length > 0 && (
+                    <div className="p-2 bg-rose-50 border border-rose-200 rounded text-rose-700 font-medium">
+                      Found {excelParsedRows.errors.length} validation errors (these rows will be skipped).
+                    </div>
+                  )}
+                </div>
+
+                {/* Import Mode Selector */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-800">Choose Import Mode:</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setImportMode('sync')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        importMode === 'sync'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-600/10'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="font-bold text-xs text-slate-900">Sync / Overwrite Mode</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Update matching Item Codes with new specs &amp; add new ones.</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setImportMode('append')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        importMode === 'append'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-600/10'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="font-bold text-xs text-slate-900">Append Only Mode</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Add only new Item Codes without altering existing records.</div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => setShowUploadModal(false)}
+                    className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={commitExcelImport}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                  >
+                    Confirm Import &amp; Save to Firebase
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MANUAL ADD ITEM MODAL */}
+          {showCreateModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <h3 className="font-bold text-slate-900">Add New Item to Catalog</h3>
+                  <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+                </div>
+
+                <form onSubmit={handleCreateItemSubmit} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Item Code *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CBL-FIB-24F"
+                      value={newItem.itemCode}
+                      onChange={(e) => setNewItem({ ...newItem, itemCode: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Item Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 24-Core Single Mode Fiber Spool"
+                      value={newItem.itemName}
+                      onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Category</label>
+                      <input
+                        type="text"
+                        value={newItem.category}
+                        onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Unit of Measure</label>
+                      <input
+                        type="text"
+                        value={newItem.unit}
+                        onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Unit Price ($)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={newItem.unitPrice}
+                        onChange={(e) => setNewItem({ ...newItem, unitPrice: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Low Stock Threshold</label>
+                      <input
+                        type="number"
+                        value={newItem.lowStockThreshold}
+                        onChange={(e) => setNewItem({ ...newItem, lowStockThreshold: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Description</label>
+                    <textarea
+                      rows="2"
+                      value={newItem.description}
+                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateModal(false)}
+                      className="px-4 py-2 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold"
+                    >
+                      Save Item
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 2. MAIN STOCK INVENTORY & INBOUND VIEW
+    // ==========================================
+    function MainStockView({ items, mainStockEntries, updateMainStockState, getMainWarehouseStock, showToast }) {
+      const [searchQuery, setSearchQuery] = useState('');
+      const [categoryFilter, setCategoryFilter] = useState('all');
+      const [onlyAvailable, setOnlyAvailable] = useState(false);
+      const [activeSubTab, setActiveSubTab] = useState('inventory'); // 'inventory' | 'history'
+      const [showInboundModal, setShowInboundModal] = useState(false);
+
+      // Inbound Form State
+      const [inboundForm, setInboundForm] = useState({
+        entryType: 'Purchase',
+        referenceNo: 'PO-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000),
+        supplier: '',
+        itemId: items[0]?.id || '',
+        quantity: 50,
+        unitCost: items[0]?.unitPrice || 10,
+        notes: ''
+      });
+
+      const categories = useMemo(() => Array.from(new Set(items.map((i) => i.category))), [items]);
+
+      // Stock Available Items count
+      const availableItemsCount = useMemo(() => {
+        return items.filter((i) => getMainWarehouseStock(i.id).availableBalance > 0).length;
+      }, [items, mainStockEntries]);
+
+      // Filtered items in inventory
+      const filteredInventory = useMemo(() => {
+        return items.filter((item) => {
+          const matchQuery = item.itemCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.itemName.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchCat = categoryFilter === 'all' || item.category === categoryFilter;
+
+          const stock = getMainWarehouseStock(item.id);
+          if (onlyAvailable && stock.availableBalance <= 0) {
+            return false;
+          }
+          return matchQuery && matchCat;
+        });
+      }, [items, searchQuery, categoryFilter, onlyAvailable, mainStockEntries]);
+
+      const handleInboundSubmit = (e) => {
+        e.preventDefault();
+        if (!inboundForm.itemId || !inboundForm.quantity || inboundForm.quantity <= 0) {
+          showToast('Please specify valid item and quantity.', 'error');
+          return;
+        }
+
+        const newEntry = {
+          id: 'mse-' + Date.now(),
+          timestamp: new Date().toISOString(),
+          entryType: inboundForm.entryType,
+          referenceNo: inboundForm.referenceNo.trim(),
+          supplier: inboundForm.supplier.trim() || 'Standard Supplier',
+          itemId: inboundForm.itemId,
+          quantity: Number(inboundForm.quantity),
+          unitCost: Number(inboundForm.unitCost) || 0,
+          receivedBy: 'Arthur Vance',
+          notes: inboundForm.notes
+        };
+
+        updateMainStockState([newEntry, ...mainStockEntries]);
+        setShowInboundModal(false);
+        setInboundForm({
+          entryType: 'Purchase',
+          referenceNo: 'PO-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000),
+          supplier: '',
+          itemId: items[0]?.id || '',
+          quantity: 50,
+          unitCost: items[0]?.unitPrice || 10,
+          notes: ''
+        });
+        showToast(`Inbound stock added: ${newEntry.quantity} units for ${newEntry.referenceNo}`);
+      };
+
+      const handleClearHistory = () => {
+        if (confirm(`Are you sure you want to clear all ${mainStockEntries.length} logged inbound receipt records?`)) {
+          updateMainStockState([]);
+          showToast('Cleared all inbound history.');
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Central Depot</span>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">Main Stock Operations &amp; Inventory</h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">Receive purchases, record audit receipts, and monitor available balances with automatic low-stock alerts.</p>
+              </div>
+
+              <button
+                onClick={() => setShowInboundModal(true)}
+                className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors self-start shadow-sm"
+              >
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                <span>+ Inbound Stock Receipt</span>
+              </button>
+            </div>
+
+            {/* Sub-tabs & Search Toolbar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-5 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+                <button
+                  onClick={() => setActiveSubTab('inventory')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    activeSubTab === 'inventory' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Stock Balances ({items.length})
+                </button>
+                <button
+                  onClick={() => setActiveSubTab('history')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    activeSubTab === 'history' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Inbound Receipts History ({mainStockEntries.length})
+                </button>
+              </div>
+
+              {activeSubTab === 'inventory' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search items..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none w-48 sm:w-56"
+                    />
+                    <svg className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  </div>
+
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="py-1.5 px-2.5 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none"
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+
+                  {/* Stock Available Only Filter Button */}
+                  <button
+                    onClick={() => setOnlyAvailable(!onlyAvailable)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-colors ${
+                      onlyAvailable
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                    title="Filter to show only items with stock available (> 0)"
+                  >
+                    <svg className={`w-3.5 h-3.5 ${onlyAvailable ? 'text-white' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Stock Available Only ({availableItemsCount})</span>
+                  </button>
+                </div>
+              )}
+
+              {activeSubTab === 'history' && mainStockEntries.length > 0 && (
+                <button
+                  onClick={handleClearHistory}
+                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  <span>Clear All History</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* SubTab 1: Live Inventory Table */}
+          {activeSubTab === 'inventory' && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4">Item Code</th>
+                      <th className="py-3 px-4">Item Name &amp; Category</th>
+                      <th className="py-3 px-3 text-center">Unit</th>
+                      <th className="py-3 px-3 text-right">Total Inbound</th>
+                      <th className="py-3 px-3 text-right">Dispatched</th>
+                      <th className="py-3 px-4 text-right">Current Available Stock</th>
+                      <th className="py-3 px-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredInventory.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="py-12 text-center text-slate-400">
+                          No items match current filters.
+                          {onlyAvailable && (
+                            <div className="mt-1">
+                              <button onClick={() => setOnlyAvailable(false)} className="text-emerald-700 underline font-semibold">View all catalog items</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredInventory.map((item) => {
+                        const stock = getMainWarehouseStock(item.id);
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                              <span className="bg-slate-100 px-2 py-1 rounded border border-slate-200">{item.itemCode}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-slate-900">{item.itemName}</div>
+                              <div className="text-[11px] text-slate-500">{item.category}</div>
+                            </td>
+                            <td className="py-3 px-3 text-center font-mono text-slate-500">{item.unit}</td>
+                            <td className="py-3 px-3 text-right font-mono text-slate-600">{formatNumber(stock.totalReceived)}</td>
+                            <td className="py-3 px-3 text-right font-mono text-slate-600">{formatNumber(stock.dispatched)}</td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-sm whitespace-nowrap">
+                              <span className={stock.availableBalance === 0 ? 'text-rose-600' : stock.isLowStock ? 'text-amber-600' : 'text-slate-900'}>
+                                {formatNumber(stock.availableBalance)} {item.unit}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {stock.availableBalance === 0 ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Out of Stock</span>
+                              ) : stock.isLowStock ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Low (&le; {stock.threshold})</span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Healthy</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SubTab 2: Inbound Receipts History Table */}
+          {activeSubTab === 'history' && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4">Date &amp; Time</th>
+                      <th className="py-3 px-3">Type</th>
+                      <th className="py-3 px-3">Ref / PO #</th>
+                      <th className="py-3 px-4">Supplier / Source</th>
+                      <th className="py-3 px-4">Item Details</th>
+                      <th className="py-3 px-3 text-right">Qty Received</th>
+                      <th className="py-3 px-3 text-right">Unit Cost</th>
+                      <th className="py-3 px-4 text-right">Total Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {mainStockEntries.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="py-12 text-center text-slate-400">
+                          No inbound stock transactions logged yet. Click "+ Inbound Stock Receipt" to log receipts.
+                        </td>
+                      </tr>
+                    ) : (
+                      mainStockEntries.map((e) => {
+                        const item = items.find((i) => i.id === e.itemId);
+                        return (
+                          <tr key={e.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">{formatDateTime(e.timestamp)}</td>
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">{e.entryType}</span>
+                            </td>
+                            <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{e.referenceNo}</td>
+                            <td className="py-3 px-4 text-slate-700 font-medium">{e.supplier}</td>
+                            <td className="py-3 px-4">
+                              <span className="font-mono font-bold text-slate-900">[{item?.itemCode || '?'}]</span> {item?.itemName || 'Item'}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                              +{formatNumber(e.quantity)} {item?.unit}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-slate-600">{formatCurrency(e.unitCost)}</td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{formatCurrency(e.quantity * e.unitCost)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* INBOUND STOCK MODAL */}
+          {showInboundModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <h3 className="font-bold text-slate-900">Inbound Stock Receipt (Main Central Depot)</h3>
+                  <button onClick={() => setShowInboundModal(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+                </div>
+
+                <form onSubmit={handleInboundSubmit} className="space-y-3.5 text-xs">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Receipt Type *</label>
+                      <select
+                        value={inboundForm.entryType}
+                        onChange={(e) => setInboundForm({ ...inboundForm, entryType: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      >
+                        <option value="Purchase">Purchase Order Receipt</option>
+                        <option value="Adjustment">Audit / Inventory Adjustment</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">PO / Reference # *</label>
+                      <input
+                        type="text"
+                        value={inboundForm.referenceNo}
+                        onChange={(e) => setInboundForm({ ...inboundForm, referenceNo: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Supplier / Origin *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Corning Cable Systems Inc."
+                      value={inboundForm.supplier}
+                      onChange={(e) => setInboundForm({ ...inboundForm, supplier: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Select Item from Catalog *</label>
+                    <select
+                      value={inboundForm.itemId}
+                      onChange={(e) => {
+                        const selected = items.find((i) => i.id === e.target.value);
+                        setInboundForm({
+                          ...inboundForm,
+                          itemId: e.target.value,
+                          unitCost: selected?.unitPrice || inboundForm.unitCost
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                    >
+                      {items.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          [{i.itemCode}] {i.itemName} ({i.unit})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Quantity Received *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="any"
+                        value={inboundForm.quantity}
+                        onChange={(e) => setInboundForm({ ...inboundForm, quantity: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono font-bold text-right focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Unit Cost ($)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={inboundForm.unitCost}
+                        onChange={(e) => setInboundForm({ ...inboundForm, unitCost: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-right focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Notes / Delivery Reference</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Delivery dock bay 2 inspection passed"
+                      value={inboundForm.notes}
+                      onChange={(e) => setInboundForm({ ...inboundForm, notes: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowInboundModal(false)}
+                      className="px-4 py-2 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-sm"
+                    >
+                      Receive Stock &amp; Save
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 3. SITE STOCK REQUESTS (REQUISITIONS) VIEW
+    // ==========================================
+    function StockRequestsView({ sites, items, stockRequests, updateStockRequestsState, getMainWarehouseStock, showToast }) {
+      const [showCreateModal, setShowCreateModal] = useState(false);
+      const [statusFilter, setStatusFilter] = useState('all');
+
+      // Request Creation Form State
+      const [siteId, setSiteId] = useState(sites.find((s) => !s.isMainWarehouse)?.id || sites[0]?.id);
+      const [priority, setPriority] = useState('Normal');
+      const [purpose, setPurpose] = useState('');
+      const [rows, setRows] = useState([
+        { itemId: items[0]?.id || '', requestedQty: 10 }
+      ]);
+
+      const filteredRequests = useMemo(() => {
+        if (statusFilter === 'all') return stockRequests;
+        return stockRequests.filter((r) => r.status.toLowerCase().includes(statusFilter.toLowerCase()));
+      }, [stockRequests, statusFilter]);
+
+      const handleAddRow = () => {
+        const unused = items.find((i) => !rows.some((r) => r.itemId === i.id)) || items[0];
+        if (unused) {
+          setRows([...rows, { itemId: unused.id, requestedQty: 10 }]);
+        }
+      };
+
+      const handleRemoveRow = (idx) => {
+        setRows(rows.filter((_, i) => i !== idx));
+      };
+
+      const handleRowChange = (idx, field, value) => {
+        setRows(rows.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+      };
+
+      const handleCreateRequest = (e) => {
+        e.preventDefault();
+        if (!rows.length) {
+          showToast('Please add at least one item.', 'error');
+          return;
+        }
+
+        const newReq = {
+          id: 'sr-' + Date.now(),
+          requestNoteNumber: 'RN-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000)),
+          requestedDate: new Date().toISOString(),
+          siteId,
+          requestedBy: 'Marcus Kane (Site Supervisor)',
+          priority,
+          purpose: purpose.trim() || 'General branch requisition',
+          status: 'Pending Approval',
+          items: rows.map((r) => ({
+            itemId: r.itemId,
+            requestedQty: Number(r.requestedQty) || 1,
+            approvedQty: 0,
+            receivedQty: 0
+          }))
+        };
+
+        updateStockRequestsState([newReq, ...stockRequests]);
+        setShowCreateModal(false);
+        setPurpose('');
+        setRows([{ itemId: items[0]?.id || '', requestedQty: 10 }]);
+        showToast(`Created Stock Request: ${newReq.requestNoteNumber}`);
+      };
+
+      // Approval Workflow
+      const handleApprove = (reqId) => {
+        const updated = stockRequests.map((r) => {
+          if (r.id !== reqId) return r;
+          return {
+            ...r,
+            status: 'Approved / In-Transit',
+            items: r.items.map((i) => ({ ...i, approvedQty: i.requestedQty }))
+          };
+        });
+        updateStockRequestsState(updated);
+        showToast('Request approved & dispatched from Central Warehouse.');
+      };
+
+      const handleAccept = (reqId) => {
+        const updated = stockRequests.map((r) => {
+          if (r.id !== reqId) return r;
+          return {
+            ...r,
+            status: 'Accepted',
+            items: r.items.map((i) => ({ ...i, receivedQty: i.approvedQty }))
+          };
+        });
+        updateStockRequestsState(updated);
+        showToast('Stock received & accepted into site inventory!');
+      };
+
+      const handleDeleteRequest = (reqId) => {
+        if (confirm('Delete this stock request?')) {
+          updateStockRequestsState(stockRequests.filter((r) => r.id !== reqId));
+          showToast('Request deleted.');
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Site Requisitions &amp; Transfers</span>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">Site Stock Requests</h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">Branch sites request materials from Central Warehouse with full approval workflows and official Request Notes.</p>
+              </div>
+
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors self-start shadow-sm"
+              >
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                <span>+ New Stock Request Note</span>
+              </button>
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-1.5 mt-5 pt-4 border-t border-slate-100 overflow-x-auto text-xs">
+              {[
+                { id: 'all', label: 'All Requests' },
+                { id: 'pending', label: 'Pending Approval' },
+                { id: 'approved', label: 'In-Transit / Approved' },
+                { id: 'accepted', label: 'Accepted at Site' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setStatusFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+                    statusFilter === f.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Requests List Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Request #</th>
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Destination Site</th>
+                    <th className="py-3 px-3">Priority</th>
+                    <th className="py-3 px-4">Requested Items &amp; Quantities</th>
+                    <th className="py-3 px-3 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-12 text-center text-slate-400">
+                        No stock requests found. Click "+ New Stock Request Note" to create one.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRequests.map((req) => {
+                      const site = sites.find((s) => s.id === req.siteId);
+                      return (
+                        <tr key={req.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">{req.requestNoteNumber}</td>
+                          <td className="py-3 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">{formatDateTime(req.requestedDate)}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-900">{site?.name}</div>
+                            <div className="text-[10px] text-slate-500">{req.requestedBy}</div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              req.priority === 'Emergency' ? 'bg-rose-100 text-rose-800' : req.priority === 'Urgent' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {req.priority}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="space-y-1">
+                              {req.items.map((row, idx) => {
+                                const itm = items.find((i) => i.id === row.itemId);
+                                return (
+                                  <div key={idx} className="flex items-center gap-1.5 text-slate-700">
+                                    <span className="font-mono font-semibold text-slate-900">[{itm?.itemCode}]:</span>
+                                    <span>{row.requestedQty} {itm?.unit}</span>
+                                    {row.approvedQty > 0 && <span className="text-[10px] text-blue-700 font-semibold">(Approved: {row.approvedQty})</span>}
+                                    {row.receivedQty > 0 && <span className="text-[10px] text-emerald-700 font-bold">(Recv: {row.receivedQty})</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {req.purpose && <div className="text-[10px] text-slate-500 italic mt-1">Purpose: {req.purpose}</div>}
+                          </td>
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold inline-block ${
+                              req.status === 'Accepted'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : req.status === 'Approved / In-Transit'
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            }`}>
+                              {req.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {req.status === 'Pending Approval' && (
+                                <button
+                                  onClick={() => handleApprove(req.id)}
+                                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors"
+                                >
+                                  Approve &amp; Dispatch
+                                </button>
+                              )}
+                              {req.status === 'Approved / In-Transit' && (
+                                <button
+                                  onClick={() => handleAccept(req.id)}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
+                                >
+                                  Accept at Site
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteRequest(req.id)}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="Delete Request"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* CREATE REQUEST MODAL */}
+          {showCreateModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <h3 className="font-bold text-slate-900">Create Stock Requisition Note</h3>
+                  <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+                </div>
+
+                <form onSubmit={handleCreateRequest} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Destination Branch Site *</label>
+                      <select
+                        value={siteId}
+                        onChange={(e) => setSiteId(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      >
+                        {sites.filter((s) => !s.isMainWarehouse).map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Requisition Priority *</label>
+                      <select
+                        value={priority}
+                        onChange={(e) => setPriority(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      >
+                        <option value="Normal">Normal Operation</option>
+                        <option value="Urgent">Urgent Requisition</option>
+                        <option value="Emergency">Emergency Breakdown</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Requisition Purpose / Work Order</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Substation conduit ducting, transformer foundation pile caps"
+                      value={purpose}
+                      onChange={(e) => setPurpose(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Requested Items Dynamic Rows */}
+                  <div className="border border-slate-200 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <span className="font-bold text-slate-800">Requested Items &amp; Quantities</span>
+                      <button
+                        type="button"
+                        onClick={handleAddRow}
+                        className="text-xs text-emerald-700 font-semibold flex items-center gap-1 hover:underline"
+                      >
+                        + Add Item Line
+                      </button>
+                    </div>
+
+                    {rows.map((row, idx) => {
+                      const itm = items.find((i) => i.id === row.itemId);
+                      const stock = itm ? getMainWarehouseStock(itm.id) : null;
+                      return (
+                        <div key={idx} className="flex items-center gap-2 pt-1">
+                          <select
+                            value={row.itemId}
+                            onChange={(e) => handleRowChange(idx, 'itemId', e.target.value)}
+                            className="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
+                          >
+                            {items.map((i) => (
+                              <option key={i.id} value={i.id}>
+                                [{i.itemCode}] {i.itemName} ({i.unit})
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="text-[11px] text-slate-500 whitespace-nowrap">
+                            Avail: <strong>{formatNumber(stock?.availableBalance || 0)}</strong>
+                          </div>
+
+                          <input
+                            type="number"
+                            min="1"
+                            value={row.requestedQty}
+                            onChange={(e) => handleRowChange(idx, 'requestedQty', e.target.value)}
+                            className="w-20 px-2 py-1.5 border border-slate-300 rounded-lg font-mono font-bold text-right"
+                            required
+                          />
+
+                          {rows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRow(idx)}
+                              className="text-slate-400 hover:text-rose-600 p-1"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateModal(false)}
+                      className="px-4 py-2 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-sm"
+                    >
+                      Create Requisition
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 4. DASHBOARD & KPIS VIEW
+    // ==========================================
+    function DashboardView({ sites, items, stockRequests, mainStockEntries, getMainWarehouseStock, onNavigate }) {
+      const totalInventoryValuation = useMemo(() => {
+        return items.reduce((sum, item) => {
+          const stock = getMainWarehouseStock(item.id);
+          return sum + (stock.availableBalance * (item.unitPrice || 0));
+        }, 0);
+      }, [items, mainStockEntries, stockRequests]);
+
+      const lowStockCount = useMemo(() => {
+        return items.filter((item) => getMainWarehouseStock(item.id).isLowStock).length;
+      }, [items, mainStockEntries, stockRequests]);
+
+      const pendingReqCount = useMemo(() => {
+        return stockRequests.filter((r) => r.status === 'Pending Approval').length;
+      }, [stockRequests]);
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Executive Overview</span>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">Inventory &amp; Operations Dashboard</h2>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">Real-time status across central warehousing, site replenishment notes, and master catalog.</p>
+          </div>
+
+          {/* Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-xs font-medium text-slate-500">Master Catalog Items</span>
+              <div className="text-2xl font-black text-slate-900 font-mono mt-1">{items.length}</div>
+              <div className="text-[11px] text-emerald-600 mt-1 font-medium">Synchronized with Firebase</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-xs font-medium text-slate-500">Central Stock Valuation</span>
+              <div className="text-2xl font-black text-slate-900 font-mono mt-1">{formatCurrency(totalInventoryValuation)}</div>
+              <div className="text-[11px] text-slate-500 mt-1">Based on available balance</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-xs font-medium text-slate-500">Pending Site Requests</span>
+              <div className="text-2xl font-black text-slate-900 font-mono mt-1">{pendingReqCount}</div>
+              <button onClick={() => onNavigate('requests')} className="text-[11px] text-blue-600 hover:underline mt-1 font-medium">Review pending notes &rarr;</button>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-xs font-medium text-slate-500">Low Stock Alerts</span>
+              <div className="text-2xl font-black text-rose-600 font-mono mt-1">{lowStockCount}</div>
+              <button onClick={() => onNavigate('main-stock')} className="text-[11px] text-rose-600 hover:underline mt-1 font-medium">Check inventory balance &rarr;</button>
+            </div>
+          </div>
+
+          {/* Quick Access Tiles */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+              onClick={() => onNavigate('items')}
+              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-slate-900 transition-all cursor-pointer group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold mb-3">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors">Excel Import &amp; Catalog</h3>
+              <p className="text-xs text-slate-500 mt-1">Download templates, upload spreadsheets, and sync item specifications.</p>
+            </div>
+
+            <div
+              onClick={() => onNavigate('main-stock')}
+              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-slate-900 transition-all cursor-pointer group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center font-bold mb-3">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors">Main Stock &amp; Inbound</h3>
+              <p className="text-xs text-slate-500 mt-1">Log PO receipts, filter available stock, and maintain transaction logs.</p>
+            </div>
+
+            <div
+              onClick={() => onNavigate('requests')}
+              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-slate-900 transition-all cursor-pointer group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold mb-3">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors">Site Requisitions</h3>
+              <p className="text-xs text-slate-500 mt-1">Create transfer notes, approve dispatches, and track branch delivery receipts.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Mount to root DOM
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
