@@ -38,11 +38,12 @@ try {
     }
   }
 
-  // Write standalone single-file versions
-  fs.writeFileSync(indexPath, html, 'utf8');
+  // Write standalone single-file versions (preserves original clean dist/index.html for Vercel / web hosts)
   fs.writeFileSync(path.join(distDir, 'standalone.html'), html, 'utf8');
-  fs.writeFileSync(path.resolve('standalone-index.html'), html, 'utf8');
-  console.log('Successfully generated dist/index.html (inlined), standalone.html and standalone-index.html');
+  try {
+    fs.writeFileSync(path.resolve('standalone-index.html'), html, 'utf8');
+  } catch (_) {}
+  console.log('Successfully generated standalone.html');
 } catch (err) {
-  console.error('Error during inlining bundle:', err);
+  console.warn('Notice: inline bundle skipped:', err.message);
 }
