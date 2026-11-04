@@ -837,10 +837,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           </div>
 
             <div className="overflow-x-auto flex-1 max-h-[500px]">
-              <table className="w-full min-w-[650px] text-xs text-left">
+              <table className="w-full min-w-[720px] text-xs text-left table-fixed">
                 <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
                   <tr>
-                    <th className="py-2.5 px-3 w-8">
+                    <th className="py-2.5 px-3 w-[5%]">
                       <input
                         type="checkbox"
                         checked={activeItems.length > 0 && selectedItemIds.length === activeItems.length}
@@ -851,12 +851,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                       />
                     </th>
-                    <th className="py-2.5 px-3 w-28">Item Code</th>
-                    <th className="py-2.5 px-4 w-52">Item Name</th>
-                    <th className="py-2.5 px-3 w-40">Category</th>
-                    <th className="py-2.5 px-3 text-center w-16">Unit</th>
-                    <th className="py-2.5 px-3 text-right w-24">Main In-Stock</th>
-                    <th className="py-2.5 px-3 text-right w-20">Actions</th>
+                    <th className="py-2.5 px-3 w-[20%]">Item Code</th>
+                    <th className="py-2.5 px-4 w-[32%]">Item Name</th>
+                    <th className="py-2.5 px-3 w-[21%]">Category</th>
+                    <th className="py-2.5 px-3 text-center w-[7%]">Unit</th>
+                    <th className="py-2.5 px-3 text-right w-[9%]">Main Stock</th>
+                    <th className="py-2.5 px-3 text-right w-[6%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

@@ -558,15 +558,15 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
         </div>
 
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-xs text-left table-fixed">
+          <table className="w-full min-w-[950px] text-xs text-left table-fixed">
             <thead className="bg-slate-50/80 text-slate-700 font-semibold border-b border-slate-200">
               <tr>
                 <th className="py-2.5 px-1.5 w-[3%] text-center">#</th>
                 <th className="py-2.5 px-2 w-[18%]">Unit Designation (Code)</th>
-                <th className="py-2.5 px-2.5 w-[32%]">Description of Assembly Unit</th>
-                <th className="py-2.5 px-2 w-[19%]">Category</th>
+                <th className="py-2.5 px-2.5 w-[30%]">Description of Assembly Unit</th>
+                <th className="py-2.5 px-2 w-[20%]">Category</th>
                 <th className="py-2.5 px-1 text-center w-[5%]">Unit</th>
-                <th className="py-2.5 px-2 text-right w-[8%]">Standard Price</th>
+                <th className="py-2.5 px-2 text-right w-[9%]">Standard Price</th>
                 <th className="py-2.5 px-2 text-right w-[9%]">Central Balance</th>
                 <th className="py-2.5 px-2 text-center w-[6%]">Actions</th>
               </tr>

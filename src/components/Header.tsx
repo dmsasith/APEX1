@@ -31,6 +31,7 @@ import { ConfirmModal } from './common/ConfirmModal';
 import { SystemBackupModal } from './backup/SystemBackupModal';
 import { SubscriptionModal } from './subscription/SubscriptionModal';
 import { UserProfileModal } from './auth/UserProfileModal';
+import { EmailVerificationModal } from './auth/EmailVerificationModal';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
 
 interface HeaderProps {
@@ -87,6 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
 
   // Inline quick editing state
   const [isEditingNames, setIsEditingNames] = useState(false);
@@ -421,6 +423,29 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                   : 'Pro Workspace ($19.90/mo)'}
               </span>
             </button>
+          )}
+
+          {/* Email Verification Action Badge / Small Verified Badge */}
+          {currentTenant && (
+            !currentTenant.emailVerified ? (
+              <button
+                type="button"
+                onClick={() => setShowEmailVerifyModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition cursor-pointer active:scale-95 animate-pulse"
+                title="Click to Verify Admin Email Address"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Verify Email</span>
+              </button>
+            ) : (
+              <div
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-2xs"
+                title="Admin Email Address Verified ✓"
+              >
+                <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span>Verified ✓</span>
+              </div>
+            )
           )}
 
           {pendingRequestsCount > 0 && (
@@ -1098,6 +1123,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
       <UserProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
+      />
+
+      {/* Admin Email OTP Verification Modal */}
+      <EmailVerificationModal
+        isOpen={showEmailVerifyModal}
+        onClose={() => setShowEmailVerifyModal(false)}
       />
     </header>
   );

@@ -44,7 +44,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       q: 'What happens after the 7 days free trial?',
-      a: 'After 7 days, your workspace plan is just $19.90 per month for your entire organization. Your data, inventory records, and transfer history remain completely safe. You can activate your monthly subscription with one click.',
+      a: 'After 7 days, you can choose between our Pro Monthly plan ($19.90/mo) or our cost-saving Pro Annual plan ($189/yr). Your data, inventory records, and history remain completely safe. You can easily activate your chosen plan via Bank QR or direct wire transfer through your Master Admin dashboard.',
     },
     {
       q: 'How is our company data kept separate from other clients (Multi-Tenant)?',
@@ -226,7 +226,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded text-[11px] font-bold border border-amber-500/30">
-                    ⚡ Send Available Only (තිබෙන ප්‍රමාණය පමණක්)
+                    ⚡ Send Available Only
                   </span>
                   <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded text-[11px] font-bold border border-rose-500/30">
                     🗑️ Remove Out-of-Stock

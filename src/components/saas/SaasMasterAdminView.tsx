@@ -21,6 +21,10 @@ import {
   CreditCard,
   FileText,
   Trash2,
+  QrCode,
+  Upload,
+  Check,
+  X,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { Tenant } from '../../types';
@@ -29,7 +33,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { TenantWorkspaceInspectorModal } from './TenantWorkspaceInspectorModal';
 
 export const SaasMasterAdminView: React.FC = () => {
-  const { tenants, currentTenant, switchTenant, switchToMasterStock, updateTenantSubscription, deleteTenant } = useStock();
+  const { tenants, currentTenant, switchTenant, switchToMasterStock, updateTenantSubscription, deleteTenant, config, updateConfig } = useStock();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'trialing' | 'active' | 'expired'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -141,6 +145,139 @@ export const SaasMasterAdminView: React.FC = () => {
     );
   };
 
+  const pendingBankSlipsTenants = tenants.filter(
+    (t) => t.subscription.pendingBankPayment && t.subscription.pendingBankPayment.status === 'pending'
+  );
+
+  const handleApproveBankSlip = (tenant: Tenant) => {
+    const pending = tenant.subscription.pendingBankPayment;
+    if (!pending) return;
+
+    const isAnnual = pending.planRequested === 'pro_annual' || pending.billingCycle === 'annual';
+    const plan = isAnnual ? 'pro_annual' : 'pro_monthly';
+
+    updateTenantSubscription(tenant.id, {
+      plan,
+      status: 'active',
+      monthlyPrice: isAnnual ? 15.75 : 19.90,
+      annualPrice: isAnnual ? 189.00 : undefined,
+      billingCycle: isAnnual ? 'annual' : 'monthly',
+      paymentMethodStatus: 'active',
+      lastBillingDate: new Date().toISOString(),
+      nextBillingDate: new Date(
+        Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
+      ).toISOString(),
+      pendingBankPayment: {
+        ...pending,
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+      },
+    });
+
+    showNotification(
+      `Approved Bank Deposit Slip for ${tenant.companyName}! ${
+        isAnnual ? 'Pro Annual ($189.00/yr)' : 'Pro Monthly ($19.90/mo)'
+      } subscription activated.`
+    );
+  };
+
+  const handleRejectBankSlip = (tenant: Tenant) => {
+    updateTenantSubscription(tenant.id, {
+      pendingBankPayment: undefined,
+    });
+    showNotification(`Bank slip request rejected for ${tenant.companyName}.`);
+  };
+
+  const [showBankSetupModal, setShowBankSetupModal] = useState(false);
+
+  const masterBankConfig = (() => {
+    try {
+      const raw = localStorage.getItem('apex_master_bank_config_v1');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [bankName, setBankName] = useState(
+    config.bankName || masterBankConfig?.bankName || 'Commercial Bank PLC / Sampath Bank'
+  );
+  const [bankAccountName, setBankAccountName] = useState(
+    config.bankAccountName || masterBankConfig?.bankAccountName || 'Apex Developer (Pvt) Ltd'
+  );
+  const [bankAccountNumber, setBankAccountNumber] = useState(
+    config.bankAccountNumber || masterBankConfig?.bankAccountNumber || '1000 4829 5012'
+  );
+  const [bankBranchSwift, setBankBranchSwift] = useState(
+    config.bankBranchSwift || masterBankConfig?.bankBranchSwift || 'Mulleriyawa Branch / CCBLLKLX'
+  );
+  const [bankQrImage, setBankQrImage] = useState(
+    config.bankQrImage || masterBankConfig?.bankQrImage || ''
+  );
+  const [usdToLkrRate, setUsdToLkrRate] = useState<number>(
+    config.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64
+  );
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
+
+  const fetchLiveRate = async () => {
+    setIsFetchingRate(true);
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD');
+      const data = await res.json();
+      if (data?.result === 'success' && data?.rates?.LKR) {
+        const rate = parseFloat(data.rates.LKR.toFixed(2));
+        setUsdToLkrRate(rate);
+        showNotification(`Auto-fetched live exchange rate: $1 USD = Rs. ${rate}`);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch live rate:', err);
+    } finally {
+      setIsFetchingRate(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchLiveRate();
+  }, []);
+
+  const handleSaveBankSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    const bankData = {
+      bankName: bankName.trim(),
+      bankAccountName: bankAccountName.trim(),
+      bankAccountNumber: bankAccountNumber.trim(),
+      bankBranchSwift: bankBranchSwift.trim(),
+      bankQrImage: bankQrImage.trim(),
+      usdToLkrRate: Number(usdToLkrRate) || 332.64,
+    };
+
+    // Save to global key accessible by all tenant workspaces
+    try {
+      localStorage.setItem('apex_master_bank_config_v1', JSON.stringify(bankData));
+    } catch (err) {
+      console.warn('Failed to save master bank config globally:', err);
+    }
+
+    updateConfig(bankData);
+    setShowBankSetupModal(false);
+    showNotification('SaaS Payment QR & Bank Transfer Details updated and synced across all tenant workspaces!');
+  };
+
+  const handleQrFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Selected image exceeds 2MB limit.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) setBankQrImage(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-6">
       {/* Title Header */}
@@ -157,11 +294,21 @@ export const SaasMasterAdminView: React.FC = () => {
               SaaS Multi-Tenant Master Management
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Monitor registered company workspaces, manage 7-Day trials, activate $19.90/mo subscriptions, and track MRR.
+              Monitor registered company workspaces, verify bank payment slips, manage 7-Day trials, activate subscriptions, and track MRR.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowBankSetupModal(true)}
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-xl text-xs transition border border-amber-500/30 flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+              title="Configure Bank Account Details & Scan QR Image"
+            >
+              <QrCode className="w-3.5 h-3.5 text-amber-400" />
+              <span>Configure Bank & QR</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -240,6 +387,234 @@ export const SaasMasterAdminView: React.FC = () => {
           <p className="text-[11px] text-slate-400 mt-1">
             ARR: <strong className="text-white">${arr.toFixed(0)}/yr</strong> · Cashflow Optimized
           </p>
+        </div>
+      </div>
+
+      {/* PENDING BANK PAYMENT SLIPS APPROVAL QUEUE */}
+      {pendingBankSlipsTenants.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-50/80 to-amber-100/50 border-2 border-amber-400 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                  <span>Pending Bank Deposit Slip Verification Queue</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white animate-pulse">
+                    {pendingBankSlipsTenants.length} Action Required
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Tenants have deposited funds via Lankapay / Bank Transfer and uploaded slip references. Verify slip details to activate Pro subscriptions.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingBankSlipsTenants.map((t) => {
+              const p = t.subscription.pendingBankPayment!;
+              const isAnnual = p.planRequested === 'pro_annual' || p.billingCycle === 'annual';
+
+              return (
+                <div key={t.id} className="bg-white border border-amber-200 rounded-xl p-4 shadow-2xs space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-extrabold text-slate-900 text-sm">{t.companyName}</div>
+                      <div className="text-xs text-slate-500">{t.contactEmail}</div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {isAnnual ? 'Annual Pro ($189.00/yr)' : 'Monthly Pro ($19.90/mo)'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Bank Name:</span>
+                      <strong className="text-slate-800">{p.bankName || 'Commercial Bank / Sampath Bank'}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Deposit Slip Reference:</span>
+                      <strong className="text-slate-900 font-mono bg-amber-100 px-1.5 py-0.5 rounded">{p.referenceNo}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Receipt Image / File:</span>
+                      <strong className="text-indigo-700 font-semibold">{p.slipFileName || p.slipName || 'Deposit_Receipt.png'}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Submitted At:</span>
+                      <span className="text-slate-600 font-medium">{formatDateTime(p.submittedAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleApproveBankSlip(t)}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Approve & Activate Pro</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectBankSlip(t)}
+                      className="px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 hover:border-rose-300 rounded-lg text-xs font-semibold transition cursor-pointer"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* REVENUE & TENANT DISTRIBUTION CHARTS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Plan Revenue Breakdown */}
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-emerald-600" />
+              <span>Revenue Distribution & Plan Composition</span>
+            </h3>
+            <span className="text-xs text-slate-500 font-mono">Monthly Total: ${mrr.toFixed(2)}</span>
+          </div>
+
+          <div className="space-y-3">
+            {/* Pro Monthly Bar */}
+            <div>
+              <div className="flex justify-between text-xs mb-1 font-semibold">
+                <span className="text-slate-700 flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                  Pro Monthly ($19.90/mo)
+                </span>
+                <span className="text-slate-900 font-bold">
+                  {activeMonthlyTenants.length} clients (${(activeMonthlyTenants.length * 19.9).toFixed(2)}/mo)
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${
+                      totalTenants > 0 ? (activeMonthlyTenants.length / totalTenants) * 100 : 0
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Pro Annual Bar */}
+            <div>
+              <div className="flex justify-between text-xs mb-1 font-semibold">
+                <span className="text-slate-700 flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                  Pro Annual ($189.00/yr)
+                </span>
+                <span className="text-slate-900 font-bold">
+                  {activeAnnualTenants.length} clients (${(activeAnnualTenants.length * 15.75).toFixed(2)}/mo equiv)
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-amber-500 h-2.5 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${
+                      totalTenants > 0 ? (activeAnnualTenants.length / totalTenants) * 100 : 0
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Free Trial Bar */}
+            <div>
+              <div className="flex justify-between text-xs mb-1 font-semibold">
+                <span className="text-slate-700 flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                  Active 7-Day Free Trial
+                </span>
+                <span className="text-slate-900 font-bold">{activeTrialTenants.length} clients</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${
+                      totalTenants > 0 ? (activeTrialTenants.length / totalTenants) * 100 : 0
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Expired / Canceled Bar */}
+            <div>
+              <div className="flex justify-between text-xs mb-1 font-semibold">
+                <span className="text-slate-700 flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span>
+                  Expired Trials / Suspended
+                </span>
+                <span className="text-slate-900 font-bold">{expiredTenants.length} clients</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-rose-400 h-2.5 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${
+                      totalTenants > 0 ? (expiredTenants.length / totalTenants) * 100 : 0
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Subscription Quick Summary Box */}
+        <div className="lg:col-span-5 bg-slate-900 text-white border border-slate-800 rounded-2xl p-5 shadow-md flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                SaaS Revenue Metrics
+              </span>
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs">
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Monthly Recurring Revenue (MRR):</span>
+                <span className="text-lg font-black text-emerald-400">${mrr.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Annual Run Rate (ARR):</span>
+                <span className="text-lg font-black text-white">${arr.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Paid Conversion Rate:</span>
+                <span className="text-sm font-bold text-amber-400">
+                  {totalTenants > 0
+                    ? ((activePaidTenants.length / totalTenants) * 100).toFixed(1)
+                    : 0}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-slate-400">Bank Transfer Payment Slips:</span>
+                <span className="text-sm font-bold text-teal-300">
+                  {pendingBankSlipsTenants.length} pending
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Platform Developer Engine</span>
+            <strong className="text-emerald-400 font-mono">Apex Developer v3.5</strong>
+          </div>
         </div>
       </div>
 
@@ -498,6 +873,168 @@ export const SaasMasterAdminView: React.FC = () => {
           }}
           onClose={() => setConfirmDeleteTenant(null)}
         />
+      )}
+
+      {/* Configure Bank & QR Payment Modal */}
+      {showBankSetupModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden relative my-auto">
+            <div className="bg-slate-900 text-white p-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-amber-400" />
+                <h3 className="font-bold text-base text-white">
+                  Configure Master Owner Bank & QR Payment Details
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowBankSetupModal(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBankSettings} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Bank Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Commercial Bank PLC / Sampath Bank"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Account Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Apex Developer (Pvt) Ltd"
+                  value={bankAccountName}
+                  onChange={(e) => setBankAccountName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Account Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 1000 4829 5012"
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Branch / SWIFT Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Mulleriyawa / CCBLLKLX"
+                    value={bankBranchSwift}
+                    onChange={(e) => setBankBranchSwift(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-800">
+                    USD to LKR Exchange Rate (Rs. per $1.00 USD) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={fetchLiveRate}
+                    disabled={isFetchingRate}
+                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isFetchingRate ? 'animate-spin' : ''}`} />
+                    <span>Auto-Fetch Live Rate</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">$1 USD = Rs.</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="332.64"
+                    value={usdToLkrRate}
+                    onChange={(e) => setUsdToLkrRate(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Live market rate: <strong className="text-slate-800">Rs. {usdToLkrRate.toFixed(2)}</strong>. Pro Monthly ($19.90) ≈ <strong>Rs. {Math.round(19.90 * (usdToLkrRate || 332.64)).toLocaleString()}</strong> | Pro Annual ($189.00) ≈ <strong>Rs. {Math.round(189 * (usdToLkrRate || 332.64)).toLocaleString()}</strong>
+                </p>
+              </div>
+
+              {/* Upload QR Image */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-800">
+                    Upload Bank QR Image (LANKAPAY / Custom QR)
+                  </label>
+                  {bankQrImage && (
+                    <button
+                      type="button"
+                      onClick={() => setBankQrImage('')}
+                      className="text-[11px] text-rose-600 font-bold hover:underline cursor-pointer"
+                    >
+                      Clear QR Image
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQrFileChange}
+                  className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer"
+                />
+
+                {bankQrImage && (
+                  <div className="mt-2 text-center p-2 bg-white rounded-lg border border-slate-200">
+                    <img src={bankQrImage} alt="QR Preview" className="w-28 h-28 object-contain mx-auto" />
+                    <span className="text-[10px] text-emerald-700 font-bold mt-1 block">Custom Bank QR Loaded ✓</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowBankSetupModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Bank & QR Details</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

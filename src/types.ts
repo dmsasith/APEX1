@@ -19,6 +19,13 @@ export interface SystemConfig {
   logoColor?: string;
   themeId?: string;
   bgEffect?: string;
+  // SaaS Owner Bank & QR Payment Gateway Settings
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankBranchSwift?: string;
+  bankQrImage?: string;
+  usdToLkrRate?: number; // USD to LKR conversion rate (e.g. 332.64)
 }
 
 export interface Site {
@@ -582,12 +589,25 @@ export interface TenantSubscription {
   paymentMethodStatus?: 'pending_setup' | 'active';
   lastBillingDate?: string;
   nextBillingDate?: string;
+  pendingBankPayment?: {
+    submittedAt: string;
+    referenceNo: string;
+    amount: number;
+    billingCycle: 'monthly' | 'annual';
+    notes?: string;
+    slipName?: string;
+    slipFileName?: string;
+    bankName?: string;
+    planRequested?: 'pro_monthly' | 'pro_annual';
+    status: 'pending' | 'approved' | 'rejected';
+    approvedAt?: string;
+  };
 }
 
 export interface Tenant {
-  id: string; // e.g. "tenant-comtec-main", "tenant-apex-telecom"
+  id: string; // e.g. "tenant-apex-main", "tenant-apex-telecom"
   companyName: string;
-  slug: string; // "comtec", "apex-telecom"
+  slug: string; // "apex-developer", "apex-telecom"
   contactEmail: string;
   contactPhone?: string;
   currencySymbol: string; // "Rs.", "$", "€"
@@ -596,6 +616,8 @@ export interface Tenant {
   createdAt: string;
   ownerUserId: string;
   isActive: boolean;
+  emailVerified?: boolean;
+  emailVerificationCode?: string;
 }
 
 export interface TenantRegistrationForm {
