@@ -52,6 +52,7 @@ export interface Item {
   itemCode: string;
   itemName: string;
   category: string;
+  itemType?: 'Material' | 'Machinery'; // Dedicated classification: Material (consumable) vs Machinery/Equipment
   unit: string; // 'pcs' | 'm' | 'kg' | 'boxes' | 'bags' | 'sets' | 'coils' | 'drums' etc.
   unitPrice: number;
   lowStockThreshold: number;
@@ -67,6 +68,7 @@ export interface ExcelItemRow {
   itemCode: string;
   itemName: string;
   category?: string;
+  itemType?: 'Material' | 'Machinery';
   unit: string;
   description?: string;
   unitPrice?: number;
@@ -213,10 +215,15 @@ export type AuditAction =
   | 'PROJECT_MATERIAL_USED'
   | 'BRANCH_RETURN_TO_MAIN'
   | 'DAMAGED_STOCK_RESTORED'
+  | 'SUPPLIER_RETURN_CREATED'
+  | 'SUPPLIER_RETURN_DISPATCHED'
+  | 'SUPPLIER_RETURN_SETTLED'
+  | 'SUPPLIER_RETURN_DELETED'
   | 'SYSTEM_FLUSHED_WITH_BACKUP'
   | 'BACKUP_CREATED'
   | 'BACKUP_RESTORED'
   | 'TEMPLATE_UPDATED'
+  | 'TENANT_REGISTERED'
   | 'OTHER';
 
 export type RecycleEntityType = 'item' | 'site' | 'user' | 'team' | 'project';
@@ -399,5 +406,207 @@ export interface DigitalSignature {
   department: string;
   signatureDataUrl: string;
   createdAt: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  email: string;
+  phone: string;
+  address?: string;
+  businessRegNo?: string;
+  paymentTerms?: string;
+  category?: string;
+  notes?: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export interface GoodsReceiptRecord {
+  id: string;
+  grnNumber: string; // e.g. GRN-PO-2026-0001-1
+  receiptDate: string;
+  receivedBy: string;
+  deliveryNoteNo?: string;
+  notes?: string;
+  itemsReceived: Array<{
+    itemId: string;
+    itemCode: string;
+    itemName: string;
+    quantityReceived: number;
+    unit: string;
+  }>;
+}
+
+export interface PurchaseOrderItem {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  category?: string;
+  unit: string;
+  quantity: number;
+  receivedQuantity?: number; // total accumulated units received across all batches
+  unitPrice: number;
+  lineTotal: number;
+  notes?: string;
+}
+
+export type PurchaseOrderStatus =
+  | 'Draft'
+  | 'Order Sent'
+  | 'Partially Received'
+  | 'Received into Main Stock'
+  | 'Cancelled';
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  supplierName: string;
+  supplierEmail: string;
+  supplierPhone: string;
+  supplierAddress?: string;
+  supplierTaxNo?: string;
+  orderDate: string;
+  expectedDeliveryDate: string;
+  deliveryLocation: string;
+  paymentTerms: string;
+  status: PurchaseOrderStatus;
+  items: PurchaseOrderItem[];
+  subtotal: number;
+  taxRatePercent?: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  grandTotal: number;
+  notes?: string;
+  preparedBy: string;
+  approvedBy?: string;
+  receivedDate?: string;
+  receivedBy?: string;
+  receiptHistory?: GoodsReceiptRecord[];
+  closedNotes?: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export type ReturnReasonCategory =
+  | 'Damaged Goods / In Transit'
+  | 'Sub-standard / Quality Failure'
+  | 'Incorrect Specification / Wrong Grade'
+  | 'Excess Delivered'
+  | 'Expired / Hardened Material'
+  | 'Defective / Failed Lab Test'
+  | 'Other';
+
+export type SupplierReturnStatus =
+  | 'Draft'
+  | 'Dispatched to Supplier'
+  | 'Debit Note Settled'
+  | 'Replacement Stock Received'
+  | 'Cancelled';
+
+export type SettlementType = 'Debit Note / Refund Credit' | 'Replacement Material';
+
+export interface SupplierReturnItem {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  category?: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  reasonCategory: ReturnReasonCategory;
+  defectRemarks?: string;
+  batchNo?: string;
+}
+
+export interface SupplierReturn {
+  id: string;
+  rtvNumber: string; // e.g. RTV-2026-0001
+  supplierId: string;
+  supplierName: string;
+  supplierContactPerson?: string;
+  supplierEmail?: string;
+  supplierPhone?: string;
+  supplierAddress?: string;
+  supplierTaxNo?: string;
+  locationType: 'Main Stock' | 'Site Stock';
+  siteId?: string;
+  siteName?: string;
+  poReference?: string;
+  returnDate: string;
+  expectedSettlementDate?: string;
+  status: SupplierReturnStatus;
+  items: SupplierReturnItem[];
+  subtotal: number;
+  taxAmount?: number;
+  grandTotal: number; // Total debit note value
+  settlementType: SettlementType;
+  gatePassNo?: string;
+  transporterName?: string;
+  vehicleNo?: string;
+  driverContact?: string;
+  notes?: string;
+  preparedBy: string;
+  approvedBy?: string;
+  dispatchedDate?: string;
+  dispatchedBy?: string;
+  settledDate?: string;
+  settledBy?: string;
+  settlementRef?: string; // Credit note # or Replacement GRN #
+  settlementNotes?: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+// ------------------ SAAS MULTI-TENANT & SUBSCRIPTION TYPES ------------------
+export type TenantPlan = 'free_trial' | 'pro_monthly' | 'pro_annual';
+export type TenantSubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled';
+
+export interface TenantSubscription {
+  plan: TenantPlan;
+  status: TenantSubscriptionStatus;
+  trialStartedAt: string;
+  trialEndsAt: string;
+  monthlyPrice: number; // e.g. 19.90
+  annualPrice?: number; // e.g. 189.00
+  billingCycle?: 'monthly' | 'annual';
+  currency: string; // 'USD'
+  paymentMethodStatus?: 'pending_setup' | 'active';
+  lastBillingDate?: string;
+  nextBillingDate?: string;
+}
+
+export interface Tenant {
+  id: string; // e.g. "tenant-comtec-main", "tenant-apex-telecom"
+  companyName: string;
+  slug: string; // "comtec", "apex-telecom"
+  contactEmail: string;
+  contactPhone?: string;
+  currencySymbol: string; // "Rs.", "$", "€"
+  country?: string;
+  subscription: TenantSubscription;
+  createdAt: string;
+  ownerUserId: string;
+  isActive: boolean;
+}
+
+export interface TenantRegistrationForm {
+  companyName: string;
+  slug?: string;
+  adminFullName: string;
+  adminEmail: string;
+  adminPassword: string;
+  contactPhone?: string;
+  currencySymbol: string;
+  country?: string;
+  initialWarehouseName?: string;
 }
 

@@ -22,6 +22,12 @@ import {
 import { useStock } from '../../context/StockContext';
 import { UserRole, Item, Site, User, Team } from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
+import {
+  isMachineryItem,
+  getItemClassification,
+  STANDARD_MACHINERY_CATEGORIES,
+  STANDARD_MACHINERY_UNITS,
+} from '../../utils/itemTypeUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 
 interface MasterRegistrationsViewProps {
@@ -48,6 +54,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     softDeleteSite,
     softDeleteUser,
     softDeleteTeam,
+    permanentlyDeleteUser,
     bulkSoftDeleteItems,
     bulkSoftDeleteSites,
     bulkSoftDeleteUsers,
@@ -108,6 +115,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   // --- ITEM FORM STATE ---
+  const [itemClassification, setItemClassification] = useState<'Material' | 'Machinery'>('Material');
   const [itemCode, setItemCode] = useState('');
   const [itemName, setItemName] = useState('');
   const [itemCategory, setItemCategory] = useState('Electrical & Power');
@@ -134,6 +142,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         itemCode: upperCode,
         itemName: itemName.trim(),
         category: itemCategory.trim(),
+        itemType: itemClassification,
         unit: finalUnit,
         unitPrice: Number(itemPrice) || 0,
         lowStockThreshold: Number(itemThreshold) || config.defaultLowStockThreshold,
@@ -334,12 +343,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     }
     setConfirmState({
       isOpen: true,
-      title: `Move ${validIds.length} User(s) to Recycle Bin?`,
-      message: `Are you sure you want to move ${validIds.length} selected user account(s) to the Recycle Bin?`,
-      confirmLabel: `Move (${validIds.length}) to Recycle Bin`,
+      title: `Permanently Delete ${validIds.length} User(s)?`,
+      message: `Are you sure you want to permanently delete ${validIds.length} selected user account(s)?`,
+      confirmLabel: `Permanently Delete (${validIds.length})`,
       onConfirm: () => {
-        bulkSoftDeleteUsers(validIds);
-        showToast(`Moved ${validIds.length} user(s) to Recycle Bin.`);
+        validIds.forEach((id) => permanentlyDeleteUser(id));
+        showToast(`Permanently deleted ${validIds.length} user(s).`);
         setSelectedUserIds([]);
       },
     });
@@ -393,12 +402,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     }
     setConfirmState({
       isOpen: true,
-      title: `Move User "${u.fullName}" to Recycle Bin?`,
-      message: `Are you sure you want to move user account "${u.fullName}" (@${u.username}) to the Recycle Bin?`,
-      confirmLabel: 'Move to Recycle Bin',
+      title: `Permanently Delete User "${u.fullName}"?`,
+      message: `Are you sure you want to permanently delete user account "${u.fullName}" (@${u.username})?`,
+      confirmLabel: 'Permanently Delete',
       onConfirm: () => {
-        softDeleteUser(u.id);
-        showToast(`User ${u.username} moved to Recycle Bin.`);
+        permanentlyDeleteUser(u.id);
+        showToast(`User ${u.username} permanently deleted.`);
       },
     });
   };
@@ -554,11 +563,52 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
             <form onSubmit={handleCreateItem} className="space-y-3.5">
+              {/* Item Classification Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Item Classification *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setItemClassification('Material');
+                      if (STANDARD_MACHINERY_CATEGORIES.includes(itemCategory as any)) {
+                        setItemCategory('Electrical & Power');
+                      }
+                      setItemUnit('pcs');
+                    }}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      itemClassification === 'Material'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>🧱 Material / Consumable</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setItemClassification('Machinery');
+                      if (!STANDARD_MACHINERY_CATEGORIES.includes(itemCategory as any)) {
+                        setItemCategory('Excavator');
+                      }
+                      setItemUnit('Nos');
+                    }}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      itemClassification === 'Machinery'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>🚜 Machinery / Equipment</span>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Item Code *</label>
                 <input
                   type="text"
-                  placeholder="e.g. CBL-CU-500, ST-BAR-20"
+                  placeholder={itemClassification === 'Machinery' ? 'e.g. EXC-CAT-320, GEN-KUB-50, WELD-400' : 'e.g. CBL-CU-500, ST-BAR-20'}
                   value={itemCode}
                   onChange={(e) => setItemCode(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
@@ -570,7 +620,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Item Name *</label>
                 <input
                   type="text"
-                  placeholder="Full material specification"
+                  placeholder={itemClassification === 'Machinery' ? 'e.g. Caterpillar 320 Hydraulic Excavator' : 'Full material specification'}
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
@@ -578,9 +628,43 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              {/* Category */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">Category *</label>
+                  {itemClassification === 'Machinery' && (
+                    <span className="text-[10px] text-amber-700 font-bold">Standard Fleet Equipment</span>
+                  )}
+                </div>
+
+                {itemClassification === 'Machinery' ? (
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap gap-1">
+                      {STANDARD_MACHINERY_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setItemCategory(cat)}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-all cursor-pointer ${
+                            itemCategory === cat
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                              : 'bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Or specify custom category..."
+                      value={itemCategory}
+                      onChange={(e) => setItemCategory(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      required
+                    />
+                  </div>
+                ) : (
                   <select
                     value={itemCategory}
                     onChange={(e) => setItemCategory(e.target.value)}
@@ -594,27 +678,40 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     <option value="Telecom & Signal">Telecom & Signal</option>
                     <option value="Equipment & Tools">Equipment & Tools</option>
                   </select>
-                </div>
+                )}
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Unit of Measure *</label>
-                  <select
-                    value={itemUnit}
-                    onChange={(e) => setItemUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  >
-                    <option value="pcs">pcs (Pieces)</option>
-                    <option value="m">m (Meters)</option>
-                    <option value="kg">kg (Kilograms)</option>
-                    <option value="boxes">boxes (Boxes)</option>
-                    <option value="bags">bags (Bags)</option>
-                    <option value="sets">sets (Sets)</option>
-                    <option value="coils">coils (Coils)</option>
-                    <option value="drums">drums (Drums)</option>
-                    <option value="pairs">pairs (Pairs)</option>
-                    <option value="custom">Other / Custom</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Unit of Measure *</label>
+                <select
+                  value={itemUnit}
+                  onChange={(e) => setItemUnit(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                >
+                  {itemClassification === 'Machinery' ? (
+                    <>
+                      {STANDARD_MACHINERY_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u} ({u === 'Nos' ? 'Numbers' : u === 'Pcs' ? 'Pieces' : u === 'Units' ? 'Equipment Units' : u})
+                        </option>
+                      ))}
+                      <option value="custom">Other / Custom</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="pcs">pcs (Pieces)</option>
+                      <option value="m">m (Meters)</option>
+                      <option value="kg">kg (Kilograms)</option>
+                      <option value="boxes">boxes (Boxes)</option>
+                      <option value="bags">bags (Bags)</option>
+                      <option value="sets">sets (Sets)</option>
+                      <option value="coils">coils (Coils)</option>
+                      <option value="drums">drums (Drums)</option>
+                      <option value="pairs">pairs (Pairs)</option>
+                      <option value="custom">Other / Custom</option>
+                    </>
+                  )}
+                </select>
               </div>
 
               {itemUnit === 'custom' && (
@@ -740,7 +837,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           </div>
 
             <div className="overflow-x-auto flex-1 max-h-[500px]">
-              <table className="w-full text-xs text-left">
+              <table className="w-full min-w-[650px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
                   <tr>
                     <th className="py-2.5 px-3 w-8">
@@ -754,12 +851,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                       />
                     </th>
-                    <th className="py-2.5 px-3">Item Code</th>
-                    <th className="py-2.5 px-4">Item Name</th>
-                    <th className="py-2.5 px-3">Category</th>
-                    <th className="py-2.5 px-3 text-center">Unit</th>
-                    <th className="py-2.5 px-3 text-right">Main In-Stock</th>
-                    <th className="py-2.5 px-3 text-right">Actions</th>
+                    <th className="py-2.5 px-3 w-28">Item Code</th>
+                    <th className="py-2.5 px-4 w-52">Item Name</th>
+                    <th className="py-2.5 px-3 w-40">Category</th>
+                    <th className="py-2.5 px-3 text-center w-16">Unit</th>
+                    <th className="py-2.5 px-3 text-right w-24">Main In-Stock</th>
+                    <th className="py-2.5 px-3 text-right w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -791,10 +888,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           <td className="py-2.5 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
                             {i.itemCode}
                           </td>
-                          <td className="py-2.5 px-4 text-slate-800 font-medium max-w-[180px] truncate" title={i.itemName}>
+                          <td className="py-2.5 px-4 text-slate-800 font-medium whitespace-normal break-words" title={i.itemName}>
                             {i.itemName}
                           </td>
-                          <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{i.category}</td>
+                          <td className="py-2.5 px-3 text-slate-600 font-medium whitespace-normal break-words">{i.category}</td>
                           <td className="py-2.5 px-3 text-center text-slate-600">{i.unit}</td>
                           <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-900">
                             {formatNumber(mainStock.availableBalance)}

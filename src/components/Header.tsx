@@ -22,15 +22,21 @@ import {
   Cpu,
   Palette,
   ShieldAlert,
+  LogOut,
+  User as UserIcon,
+  Zap,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { ConfirmModal } from './common/ConfirmModal';
 import { SystemBackupModal } from './backup/SystemBackupModal';
+import { SubscriptionModal } from './subscription/SubscriptionModal';
+import { UserProfileModal } from './auth/UserProfileModal';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
 
 interface HeaderProps {
   onOpenPendingRequests?: () => void;
   onOpenRecycleBin?: () => void;
+  onReturnToGateway?: () => void;
 }
 
 const PRESET_ICONS = [
@@ -53,7 +59,7 @@ const MONOGRAM_COLORS = [
   { id: 'slate', bgClass: 'bg-slate-700', borderClass: 'border-slate-500', label: 'Slate' },
 ];
 
-export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRecycleBin }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRecycleBin, onReturnToGateway }) => {
   const {
     config,
     updateConfig,
@@ -62,6 +68,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
     restoreDemoData,
     currentUser,
     setCurrentUser,
+    authUser,
+    viewAsUser,
+    setViewAsUser,
+    exitViewAsMode,
+    logout,
     activeUsers,
     activeSites,
     pendingRequestsCount,
@@ -71,7 +82,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
     isFirebaseSyncing,
     syncWithFirebaseNow,
     firebaseDbUrl,
+    currentTenant,
   } = useStock();
+
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Inline quick editing state
   const [isEditingNames, setIsEditingNames] = useState(false);
@@ -134,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   const currentThemeId = config.themeId || config.logoColor || 'emerald';
   const currentTheme = getThemeConfig(currentThemeId);
-  const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = authUser?.role === 'Central Warehouse Admin';
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -372,8 +387,42 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
           )}
         </div>
 
-        {/* Zone 2: Status / Alerts Quick Badges (Low stock box removed per request) */}
+        {/* Zone 2: Status / Alerts Quick Badges */}
         <div className="hidden lg:flex items-center gap-3 text-xs">
+          {/* Master Developer Portal Gateway Quick Access */}
+          {onReturnToGateway && authUser.username === 'admin' && (
+            <button
+              type="button"
+              onClick={onReturnToGateway}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/40 transition cursor-pointer active:scale-95 shadow-2xs group"
+              title="Return to Developer Portal Gateway (Switch to SaaS Control or verify stock)"
+            >
+              <Zap className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span>Portal Gateway</span>
+            </button>
+          )}
+
+          {/* SaaS Plan / Trial Status Badge */}
+          {currentTenant && (
+            <button
+              type="button"
+              onClick={() => setShowSubscriptionModal(true)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer active:scale-95 shadow-2xs ${
+                currentTenant.subscription.status === 'trialing'
+                  ? 'bg-amber-500/15 border-amber-500/35 text-amber-300 hover:bg-amber-500/25'
+                  : 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/25'
+              }`}
+              title="Click to view SaaS Subscription & Plan Details ($19.90/month)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span>
+                {currentTenant.subscription.status === 'trialing'
+                  ? '7-Day Free Trial ($19.90/mo)'
+                  : 'Pro Workspace ($19.90/mo)'}
+              </span>
+            </button>
+          )}
+
           {pendingRequestsCount > 0 && (
             <button
               onClick={onOpenPendingRequests}
@@ -396,30 +445,75 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
           )}
         </div>
 
-        {/* Zone 3: Active User Role Switcher & Controls */}
-        <div className="flex items-center gap-3 shrink-0">
-          {/* Quick Role & Site Simulator (Login Button) */}
-          <div className="flex items-center gap-2 bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1 text-xs shadow-xs">
-            <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <div className="flex flex-col text-left">
-              <span className="text-[10px] text-slate-400 font-medium">Logged in Role:</span>
-              <select
-                value={currentUser.id}
-                onChange={(e) => {
-                  const selected = activeUsers.find((u) => u.id === e.target.value);
-                  if (selected) setCurrentUser(selected);
-                }}
-                className="bg-transparent text-slate-100 font-semibold text-xs focus:outline-none cursor-pointer pr-1"
-                title="Switch Active User / Role"
-              >
-                {activeUsers.map((u) => (
-                  <option key={u.id} value={u.id} className="bg-slate-900 text-white">
-                    {u.fullName} ({u.role})
-                  </option>
-                ))}
-              </select>
+        {/* Zone 3: Active User Role Switcher & Log Out Button */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Active User Pill with Switcher & Edit Profile Button */}
+          <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs shadow-xs">
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="w-7 h-7 rounded-md bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center justify-center shrink-0 cursor-pointer transition"
+              title="Click to Edit My Profile & Password"
+            >
+              {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+            </button>
+            <div className="flex flex-col text-left min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-400 font-medium leading-none">Active User:</span>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                  className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold leading-none cursor-pointer flex items-center gap-0.5"
+                  title="Edit Account Details & Password"
+                >
+                  <Edit3 className="w-2.5 h-2.5" />
+                  <span>Edit Profile</span>
+                </button>
+              </div>
+              {isCentralAdmin ? (
+                <select
+                  value={currentUser.id}
+                  onChange={(e) => {
+                    const selected = activeUsers.find((u) => u.id === e.target.value);
+                    if (selected) {
+                      setViewAsUser(selected);
+                      if (selected.id === authUser.id) {
+                        showStatus(`Returned to full Admin view: ${selected.fullName}`);
+                      } else {
+                        showStatus(`Admin View-As Preview Mode: Inspected as ${selected.fullName} (${selected.role})`);
+                      }
+                    }
+                  }}
+                  className="bg-transparent text-slate-100 font-semibold text-xs focus:outline-none cursor-pointer pr-1 truncate max-w-[140px] sm:max-w-[200px]"
+                  title="Switch Active User Scope (Admin Rights Retained)"
+                >
+                  {activeUsers.map((u) => (
+                    <option key={u.id} value={u.id} className="bg-slate-900 text-white">
+                      {u.id === authUser.id ? `★ ${u.fullName} (Admin)` : `${u.fullName} (${u.role})`}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="font-semibold text-white text-xs truncate max-w-[140px] sm:max-w-[200px]">
+                  {currentUser?.fullName} ({currentUser?.role})
+                </span>
+              )}
             </div>
           </div>
+
+          {/* Dedicated Log Out Button */}
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-md cursor-pointer group active:scale-95"
+            title="Log Out / Sign Out from system"
+            aria-label="Log Out"
+          >
+            <LogOut className="w-3.5 h-3.5 text-white" />
+            <span className="font-bold">Log Out</span>
+          </button>
 
           {/* Firebase RTDB Live Indicator */}
           <div
@@ -491,7 +585,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
           {/* Permanent Developer Credit Badge */}
           <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-md px-2.5 py-1 text-xs shadow-2xs shrink-0 select-none">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span className="font-bold text-amber-300 text-[11px] tracking-tight">System Developed By Sasith Dissanayake</span>
+            <span className="font-bold text-amber-300 text-[11px] tracking-tight">Apex Developer | System Developed By Sasith Dissanayake</span>
           </div>
 
           <span className="text-slate-600" aria-hidden="true">|</span>
@@ -992,6 +1086,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
       <SystemBackupModal
         isOpen={showBackupModal}
         onClose={() => setShowBackupModal(false)}
+      />
+
+      {/* SaaS Plan & Billing Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+      />
+
+      {/* Edit My Account / Profile Settings Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
       />
     </header>
   );

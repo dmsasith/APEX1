@@ -18,6 +18,10 @@ import {
   Layers,
   ArrowUpLeft,
   Award,
+  LogOut,
+  ShoppingCart,
+  Truck,
+  Sparkles,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { getThemeConfig } from '../utils/themeUtils';
@@ -28,9 +32,10 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
-  const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, config } = useStock();
+  const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout, config, currentTenant } = useStock();
   const currentTheme = getThemeConfig(config?.themeId || config?.logoColor || 'emerald');
   const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
   const navItems = [
     {
@@ -40,6 +45,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       badge: totalLowStockAlertsCount > 0 ? `${totalLowStockAlertsCount} Low` : undefined,
       badgeColor: 'bg-red-100 text-red-700',
     },
+    ...(isCentralAdmin
+      ? [
+          {
+            id: 'registrations',
+            label: 'Master Registrations',
+            icon: Database,
+            sublabel: 'Sites, Items, Teams (Admin Only)',
+            isHighlighted: true,
+          },
+        ]
+      : []),
     {
       id: 'items',
       label: 'Items (Excel Import)',
@@ -47,22 +63,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       sublabel: isCentralAdmin ? 'Import .xlsx, Catalog & Specs' : 'Catalog Specifications (Read-Only)',
     },
     {
+      id: 'machinery',
+      label: 'Machinery & Equipment',
+      icon: Truck,
+      sublabel: 'Plant Fleet, Heavy Tools & Equipment',
+    },
+    {
       id: 'main-stock',
       label: 'Main Stock (Central)',
       icon: Boxes,
       sublabel: isCentralAdmin ? 'Purchase & Manual Entry' : 'Central Balances (Read-Only)',
     },
+    ...(isCentralAdmin
+      ? [
+          {
+            id: 'procurement',
+            label: 'Supplier Orders (PO)',
+            icon: ShoppingCart,
+            sublabel: 'Main Stock Requisition & Suppliers',
+          },
+        ]
+      : []),
     {
       id: 'projects',
       label: 'Project Registry (CSV)',
       icon: FolderKanban,
       sublabel: 'Import CSV, District & Ref',
-    },
-    {
-      id: 'registrations',
-      label: 'Master Registrations',
-      icon: Database,
-      sublabel: isCentralAdmin ? 'Sites, Items, Teams' : 'Field Teams & Site Reference',
     },
     ...(isCentralAdmin
       ? [
@@ -159,6 +185,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
                 className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors group ${
                   isActive
                     ? `${currentTheme.navActiveBg}`
+                    : (item as any).isHighlighted
+                    ? 'bg-amber-500/10 border border-amber-500/40 text-amber-900 hover:bg-amber-500/20 shadow-2xs'
                     : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
@@ -195,6 +223,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
             );
           })}
         </nav>
+
+        {/* User Profile Card & Sign Out Button */}
+        <div className="mt-4 pt-3 border-t border-slate-200">
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div className="flex items-center gap-2.5 min-w-0 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+              </div>
+              <div className="truncate min-w-0">
+                <div className="text-xs font-bold text-slate-800 truncate">
+                  {currentUser?.fullName}
+                </div>
+                <div className="text-[10px] text-emerald-600 font-semibold truncate">
+                  {currentUser?.role}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+              }}
+              className="w-full py-2 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer group active:scale-95"
+            >
+              <LogOut className="w-3.5 h-3.5 text-white" />
+              <span>Log Out (ඉවත් වන්න)</span>
+            </button>
+          </div>
+        </div>
       </div>
     </aside>
   );

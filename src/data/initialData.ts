@@ -9,16 +9,43 @@ import {
   TeamIssue,
   TeamReturn,
   AuditLogEntry,
+  Supplier,
+  PurchaseOrder,
+  Tenant,
 } from '../types';
 
+export const DEFAULT_TENANT: Tenant = {
+  id: 'tenant-apex-main',
+  companyName: 'Apex Developer',
+  slug: 'apex-developer',
+  contactEmail: 'admin@apexdeveloper.lk',
+  contactPhone: '+94 77 123 4567',
+  currencySymbol: 'Rs.',
+  country: 'Sri Lanka',
+  subscription: {
+    plan: 'free_trial',
+    status: 'trialing',
+    trialStartedAt: '2026-11-01T00:00:00.000Z',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    monthlyPrice: 19.90,
+    currency: 'USD',
+    paymentMethodStatus: 'pending_setup',
+  },
+  createdAt: '2026-11-01T00:00:00.000Z',
+  ownerUserId: 'usr-admin-1',
+  isActive: true,
+};
+
+export const INITIAL_TENANTS: Tenant[] = [DEFAULT_TENANT];
+
 export const INITIAL_CONFIG: SystemConfig = {
-  companyName: 'Comtec Systems',
+  companyName: 'Apex Developer',
   systemName: 'Apex Stock & Site Management System',
   defaultLowStockThreshold: 15,
   currencySymbol: 'Rs.',
-  address: 'Central Logistics Yard & Operations Hub',
+  address: 'Apex Software Engineering & Logistics Hub',
   phone: '+94 77 123 4567',
-  email: 'admin@comtecsystems.com',
+  email: 'admin@apexdeveloper.lk',
 };
 
 export const INITIAL_SITES: Site[] = [
@@ -40,7 +67,7 @@ export const INITIAL_USERS: User[] = [
     fullName: 'System Super Admin',
     siteId: 'all',
     role: 'Central Warehouse Admin',
-    password: 'password123',
+    password: 'sasith@123',
     createdAt: new Date().toISOString(),
   },
 ];
@@ -57,27 +84,30 @@ export const INITIAL_PROJECTS: any[] = [];
 export const INITIAL_PROJECT_USAGES: any[] = [];
 export const INITIAL_BRANCH_RETURNS: any[] = [];
 export const INITIAL_BACKUPS: any[] = [];
+export const INITIAL_SUPPLIERS: Supplier[] = [];
+export const INITIAL_PURCHASE_ORDERS: PurchaseOrder[] = [];
+export const INITIAL_SUPPLIER_RETURNS: any[] = [];
 
 export const DEFAULT_LETTERHEAD_TEMPLATES = [
   {
-    id: 'tpl-comtec-default',
-    templateName: 'Comtec Systems (Pvt) Ltd (Default)',
-    companyName: 'COMTEC SYSTEMS (PVT) LTD.',
-    subtitle: 'Civil Contractors, Telecommunication Engineers and Transport Services, Building Maintenance, and Earth movers, Road Contractors, J.C.B.Backhoe Loader, Boom Truck, Drum Truck, Lories, Excavators, Forklift for Hire. Building Material suppliers.',
+    id: 'tpl-apex-developer-default',
+    templateName: 'Apex Developer (Software & Logistics Solutions)',
+    companyName: 'APEX DEVELOPER (PVT) LTD.',
+    subtitle: 'Software Engineering, Enterprise Stock Management Systems, Cloud Infrastructure Solutions, and Automated Supply Chain Logistics.',
     tel: '+94 11 2549590',
     fax: '+94 11 2549591',
-    email: 'comtecsystems@sltnet.lk',
-    address: 'No: 36, Udumulla, Malgama Road, Himbutana, Mulleriyawa.',
-    logoText: 'COMTEC',
-    designeePrepared: 'Site In-Charge / Store Keeper',
-    designeeApproved: 'Central Project Engineer',
-    departmentPrepared: 'Telecom & Civil Projects',
-    departmentApproved: 'Central Logistics & Procurement',
+    email: 'admin@apexdeveloper.lk',
+    address: 'Apex Software Tower, Colombo, Sri Lanka.',
+    logoText: 'APEX DEV',
+    designeePrepared: 'System Administrator',
+    designeeApproved: 'Lead Software Architect',
+    departmentPrepared: 'Software Engineering & R&D',
+    departmentApproved: 'Central Operations & Cloud Infrastructure',
     issueNo: '01',
     revisionNo: '00',
-    reviewedBy: 'Dissanayake',
+    reviewedBy: 'Sasith Dissanayake',
     approvedBy: 'Arthur Vance',
-    preparedBy: 'Dissanayake',
+    preparedBy: 'Sasith Dissanayake',
     paperSize: 'a4',
     orientation: 'portrait'
   },

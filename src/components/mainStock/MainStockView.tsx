@@ -23,10 +23,12 @@ import {
   CheckCheck,
   TrendingUp,
   History,
+  ShoppingCart,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { MainStockEntryType, Item, BranchReturn, DamagedStockRestoration } from '../../types';
 import { formatNumber, formatDateTime, exportToCsv } from '../../utils/exportUtils';
+import { isMachineryItem } from '../../utils/itemTypeUtils';
 import { StockBalanceCell } from '../common/LowStockIndicator';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { SearchableItemSelect } from '../common/SearchableItemSelect';
@@ -54,6 +56,7 @@ export const MainStockView: React.FC = () => {
   const [showLogModal, setShowLogModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [itemTypeFilter, setItemTypeFilter] = useState<'all' | 'Material' | 'Machinery'>('all');
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'in-stock' | 'low-stock' | 'out-of-stock'>('all');
   const [onlyAvailable, setOnlyAvailable] = useState<boolean>(false);
 
@@ -195,11 +198,38 @@ export const MainStockView: React.FC = () => {
     return activeItems.filter((item) => getMainWarehouseStock(item.id).availableBalance > 0).length;
   }, [activeItems, getMainWarehouseStock]);
 
+  const materialsCount = useMemo(() => {
+    return activeItems.filter((i) => !isMachineryItem(i)).length;
+  }, [activeItems]);
+
+  const machineryCount = useMemo(() => {
+    return activeItems.filter((i) => isMachineryItem(i)).length;
+  }, [activeItems]);
+
+  const lowStockCount = useMemo(() => {
+    return activeItems.filter((item) => {
+      const s = getMainWarehouseStock(item.id);
+      return s.isLowStock && s.availableBalance > 0;
+    }).length;
+  }, [activeItems, getMainWarehouseStock]);
+
+  const outOfStockCount = useMemo(() => {
+    return activeItems.filter((item) => getMainWarehouseStock(item.id).availableBalance <= 0).length;
+  }, [activeItems, getMainWarehouseStock]);
+
   const filteredItems = activeItems.filter((item) => {
     const matchesSearch =
       item.itemCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.itemName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+
+    // Filter by Item Type (Materials vs Machinery/Equipment)
+    if (itemTypeFilter === 'Material' && isMachineryItem(item)) {
+      return false;
+    }
+    if (itemTypeFilter === 'Machinery' && !isMachineryItem(item)) {
+      return false;
+    }
 
     // Filter to show only stock available items
     const stock = getMainWarehouseStock(item.id);
@@ -427,20 +457,33 @@ export const MainStockView: React.FC = () => {
         </div>
 
         {isCentralAdmin ? (
-          <button
-            onClick={() => {
-              const firstItem = items[0];
-              if (firstItem) {
-                setSelectedItemId(firstItem.id);
-                setUnitCost(firstItem.unitPrice);
-              }
-              setShowLogModal(true);
-            }}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs shrink-0 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4 text-emerald-400" />
-            <span>Log Incoming Stock (Purchase / Manual)</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('app-navigate', { detail: 'procurement' }));
+              }}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs shrink-0 cursor-pointer active:scale-95"
+              title="Create Material Requisition & Purchase Order to Suppliers"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span>Material Requisition (Supplier PO)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const firstItem = items[0];
+                if (firstItem) {
+                  setSelectedItemId(firstItem.id);
+                  setUnitCost(firstItem.unitPrice);
+                }
+                setShowLogModal(true);
+              }}
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs shrink-0 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4 text-emerald-400" />
+              <span>Log Manual / Spot Inbound</span>
+            </button>
+          </div>
         ) : (
           <div className="px-3.5 py-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2 shrink-0">
             <Lock className="w-3.5 h-3.5 text-slate-400" />
@@ -464,162 +507,216 @@ export const MainStockView: React.FC = () => {
         </div>
       )}
 
-      {/* Nav Tabs & Search Filter */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg">
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-              activeTab === 'inventory' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Central Stock Inventory
-          </button>
-          <button
-            onClick={() => setActiveTab('returned-sites')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'returned-sites' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>Returned From Sites</span>
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-              {goodReturns.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('damaged-returned')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'damaged-returned' ? 'bg-white text-amber-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>Damaged Returned From Site</span>
-            {totalDamagedUnitsInYard > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                {totalDamagedUnitsInYard}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-              activeTab === 'history' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Inbound Receipts History ({mainStockEntries.length})
-          </button>
-        </div>
+      {/* Nav Tabs & Mobile-Friendly Search Filter */}
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Main Section Mode Buttons with Dynamic Color Changes */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                activeTab === 'inventory'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Boxes className="w-4 h-4" />
+              <span>Central Stock Inventory</span>
+            </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 sm:w-96 md:w-[430px]">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-700/80" />
+            <button
+              onClick={() => setActiveTab('returned-sites')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                activeTab === 'returned-sites'
+                  ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Returned From Sites</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  activeTab === 'returned-sites'
+                    ? 'bg-teal-800 text-white'
+                    : 'bg-teal-100 text-teal-800'
+                }`}
+              >
+                {goodReturns.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('damaged-returned')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                activeTab === 'damaged-returned'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Damaged Returned From Site (Yard)</span>
+              {totalDamagedUnitsInYard > 0 && (
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    activeTab === 'damaged-returned'
+                      ? 'bg-amber-800 text-white'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {totalDamagedUnitsInYard}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                activeTab === 'history'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Inbound Receipts History ({mainStockEntries.length})</span>
+            </button>
+          </div>
+
+          {/* Search Box - 2-inch min width and full width on mobile */}
+          <div className="relative w-full sm:w-80 md:w-96 min-w-[220px]">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by Item Code, Name, Category, Supplier, Slip #..."
+              placeholder="Search by Item Code, Name, Category, Slip #..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-amber-50/60 hover:bg-amber-50/90 focus:bg-white border border-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200/50 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-500 transition-all shadow-2xs focus:outline-none"
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-amber-100 text-xs font-bold cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 text-xs font-bold cursor-pointer"
                 title="Clear Search"
               >
                 ✕
               </button>
             )}
           </div>
+        </div>
 
-          {activeTab === 'inventory' && (
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
+        {/* Central Stock Specific Filter Buttons & Machinery Tabs */}
+        {activeTab === 'inventory' && (
+          <div className="pt-2 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
+            {/* Machinery & Equipment vs Materials Button Switcher */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase text-slate-400 mr-1">Classification:</span>
+              <button
+                type="button"
+                onClick={() => setItemTypeFilter('all')}
+                className={`px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer ${
+                  itemTypeFilter === 'all'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
               >
-                <option value="all">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-
-              {/* Stock Availability Filter Dropdown */}
-              <select
-                value={availabilityFilter}
-                onChange={(e) => {
-                  const val = e.target.value as 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
-                  setAvailabilityFilter(val);
-                  setOnlyAvailable(val === 'in-stock');
-                }}
-                className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
+                All Items ({activeItems.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemTypeFilter('Material')}
+                className={`px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                  itemTypeFilter === 'Material'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                    : 'bg-white border-slate-200 text-indigo-700 hover:bg-indigo-50/50'
+                }`}
               >
-                <option value="all">All Inventory ({activeItems.length})</option>
-                <option value="in-stock">Available In Stock Only ({availableStockItemsCount})</option>
-                <option value="low-stock">Low Stock Alerts (≤ Threshold)</option>
-                <option value="out-of-stock">Zero / Out of Stock</option>
-              </select>
+                <span>🧱 Materials & Consumables</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${itemTypeFilter === 'Material' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 text-indigo-800'}`}>
+                  {materialsCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemTypeFilter('Machinery')}
+                className={`px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                  itemTypeFilter === 'Machinery'
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                    : 'bg-white border-slate-200 text-amber-700 hover:bg-amber-50/50'
+                }`}
+              >
+                <span>🚜 Machinery & Equipment</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${itemTypeFilter === 'Machinery' ? 'bg-amber-800 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                  {machineryCount}
+                </span>
+              </button>
+            </div>
 
-              {/* Quick 1-Click Toggle: Show Only Stock Available Items */}
+            {/* Stock Availability Pill Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase text-slate-400 mr-1">Stock Level:</span>
               <button
                 type="button"
                 onClick={() => {
-                  const next = !onlyAvailable;
-                  setOnlyAvailable(next);
-                  setAvailabilityFilter(next ? 'in-stock' : 'all');
+                  setAvailabilityFilter('all');
+                  setOnlyAvailable(false);
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shrink-0 ${
-                  onlyAvailable || availabilityFilter === 'in-stock'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer ${
+                  availabilityFilter === 'all' && !onlyAvailable
+                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
-                title="Filter to show only items with stock available (> 0 units)"
               >
-                <CheckCircle2
-                  className={`w-3.5 h-3.5 ${
-                    onlyAvailable || availabilityFilter === 'in-stock' ? 'text-white' : 'text-slate-400'
-                  }`}
-                />
-                <span>Stock Available Only ({availableStockItemsCount})</span>
+                All
               </button>
-            </div>
-          )}
-
-          {activeTab === 'returned-sites' && (
-            <div className="flex items-center gap-2">
-              <select
-                value={returnedSiteFilter}
-                onChange={(e) => setReturnedSiteFilter(e.target.value)}
-                className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
-              >
-                <option value="all">All Branch Sites</option>
-                {sites
-                  .filter((s) => !s.isMainWarehouse && !s.isDeleted)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-              </select>
               <button
                 type="button"
-                onClick={exportGoodReturnsCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                onClick={() => {
+                  setAvailabilityFilter('in-stock');
+                  setOnlyAvailable(true);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+                  availabilityFilter === 'in-stock' || onlyAvailable
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                    : 'bg-white border-slate-200 text-emerald-700 hover:bg-emerald-50/50'
+                }`}
               >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Export CSV</span>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>In Stock ({availableStockItemsCount})</span>
               </button>
-            </div>
-          )}
+              <button
+                type="button"
+                onClick={() => {
+                  setAvailabilityFilter('low-stock');
+                  setOnlyAvailable(false);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+                  availabilityFilter === 'low-stock'
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-2xs'
+                    : 'bg-white border-slate-200 text-amber-700 hover:bg-amber-50/50'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Low ({lowStockCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAvailabilityFilter('out-of-stock');
+                  setOnlyAvailable(false);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer ${
+                  availabilityFilter === 'out-of-stock'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                    : 'bg-white border-slate-200 text-rose-700 hover:bg-rose-50/50'
+                }`}
+              >
+                Out of Stock ({outOfStockCount})
+              </button>
 
-          {activeTab === 'damaged-returned' && (
-            <div className="flex items-center gap-2">
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
+                className="ml-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
               >
                 <option value="all">All Categories</option>
                 {categories.map((c) => (
@@ -628,57 +725,101 @@ export const MainStockView: React.FC = () => {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'returned-sites' && (
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+            <select
+              value={returnedSiteFilter}
+              onChange={(e) => setReturnedSiteFilter(e.target.value)}
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
+            >
+              <option value="all">All Branch Sites</option>
+              {sites
+                .filter((s) => !s.isMainWarehouse && !s.isDeleted)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              onClick={exportGoodReturnsCsv}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'damaged-returned' && (
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={exportDamagedStockCsv}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export Report</span>
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+            <button
+              onClick={exportHistoryCsv}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export CSV</span>
+            </button>
+            {mainStockEntries.length > 0 && (
               <button
                 type="button"
-                onClick={exportDamagedStockCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                onClick={handleClearInboundHistory}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold transition-colors"
+                title="Clear all inbound receipt records"
               >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Export Report</span>
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Clear All History</span>
               </button>
-            </div>
-          )}
-
-          {activeTab === 'history' && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={exportHistoryCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Export CSV</span>
-              </button>
-              {mainStockEntries.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearInboundHistory}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold transition-colors"
-                  title="Clear all inbound receipt records"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Clear All History</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tab 1: Current Main Warehouse Inventory */}
       {activeTab === 'inventory' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+            <table className="w-full min-w-[1150px] text-xs text-left">
               <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="py-3 px-3">Item Code</th>
-                  <th className="py-3 px-4">Item Name</th>
-                  <th className="py-3 px-3">Category</th>
-                  <th className="py-3 px-3 text-center">Unit</th>
-                  <th className="py-3 px-3 text-right">Total Received</th>
-                  <th className="py-3 px-3 text-right">Dispatched to Sites</th>
-                  <th className="py-3 px-4 text-right">Main In-Stock Balance</th>
-                  <th className="py-3 px-3 text-center">Action</th>
+                  <th className="py-3 px-3 w-40">Item Code</th>
+                  <th className="py-3 px-4 w-96">Item Name</th>
+                  <th className="py-3 px-3 w-64">Category</th>
+                  <th className="py-3 px-3 text-center w-24">Unit</th>
+                  <th className="py-3 px-3 text-right w-32">Total Received</th>
+                  <th className="py-3 px-3 text-right w-32">Dispatched to Sites</th>
+                  <th className="py-3 px-4 text-right w-40">Main In-Stock Balance</th>
+                  <th className="py-3 px-3 text-center w-28">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -713,10 +854,10 @@ export const MainStockView: React.FC = () => {
                         <td className="py-3 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
                           {item.itemCode}
                         </td>
-                        <td className="py-3 px-4 text-slate-800 font-medium max-w-xs">
+                        <td className="py-3 px-4 text-slate-800 font-medium whitespace-normal break-words">
                           {item.itemName}
                         </td>
-                        <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
+                        <td className="py-3 px-3 text-slate-600 whitespace-normal break-words font-medium">
                           {item.category}
                         </td>
                         <td className="py-3 px-3 text-center text-slate-600 font-medium">
@@ -1359,8 +1500,8 @@ export const MainStockView: React.FC = () => {
 
       {/* Log Incoming Stock Modal */}
       {showLogModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-7 border border-slate-200 my-auto min-h-[580px] max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-slate-800" />

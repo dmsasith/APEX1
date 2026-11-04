@@ -349,13 +349,13 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                     required
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="Enter system admin password (e.g. password123)"
+                    placeholder="Enter system admin password"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none pl-9"
                   />
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Admin pass: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">password123</code> or active user password.
+                  Enter authorized administrator password to confirm.
                 </p>
               </div>
 

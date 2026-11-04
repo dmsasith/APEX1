@@ -29,9 +29,20 @@ import {
   parseExcelItemsFile,
 } from '../../utils/excelItemUtils';
 import { formatNumber, formatDate } from '../../utils/exportUtils';
+import {
+  isMachineryItem,
+  getItemClassification,
+  STANDARD_MACHINERY_CATEGORIES,
+  STANDARD_MACHINERY_UNITS,
+  STANDARD_MATERIAL_UNITS,
+} from '../../utils/itemTypeUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 
-export const ItemsManagementView: React.FC = () => {
+interface ItemsManagementViewProps {
+  initialType?: 'all' | 'Material' | 'Machinery';
+}
+
+export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initialType = 'all' }) => {
   const {
     items,
     activeItems,
@@ -48,6 +59,14 @@ export const ItemsManagementView: React.FC = () => {
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedItemType, setSelectedItemType] = useState<'all' | 'Material' | 'Machinery'>(initialType);
+
+  // Sync if initialType prop changes
+  React.useEffect(() => {
+    if (initialType) {
+      setSelectedItemType(initialType);
+    }
+  }, [initialType]);
 
   // Excel Upload & Modal State
   const [isDragging, setIsDragging] = useState(false);
@@ -63,6 +82,7 @@ export const ItemsManagementView: React.FC = () => {
 
   // Manual Item Create Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newItemType, setNewItemType] = useState<'Material' | 'Machinery'>('Material');
   const [newItemCode, setNewItemCode] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('Assembly Units (Manholes & Handholes)');
@@ -98,6 +118,10 @@ export const ItemsManagementView: React.FC = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Counts for Materials vs Machinery
+  const materialsCount = activeItems.filter((i) => !isMachineryItem(i)).length;
+  const machineryCount = activeItems.filter((i) => isMachineryItem(i)).length;
+
   // Categories list
   const categories = Array.from(new Set(activeItems.map((i) => i.category || 'General Material')));
 
@@ -113,7 +137,14 @@ export const ItemsManagementView: React.FC = () => {
 
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
+    const matchesType =
+      selectedItemType === 'all'
+        ? true
+        : selectedItemType === 'Machinery'
+        ? isMachineryItem(item)
+        : !isMachineryItem(item);
+
+    return matchesSearch && matchesCategory && matchesType;
   });
 
   // Handle file selection and parsing
@@ -180,6 +211,7 @@ export const ItemsManagementView: React.FC = () => {
       itemCode: codeUpper,
       itemName: newItemName.trim(),
       category: newItemCategory.trim(),
+      itemType: newItemType,
       unit: newItemUnit.trim() || 'Pcs',
       unitPrice: Number(newItemPrice) || 0,
       lowStockThreshold: Number(newItemThreshold) || config.defaultLowStockThreshold,
@@ -389,55 +421,125 @@ export const ItemsManagementView: React.FC = () => {
         )}
       </div>
 
-      {/* Items Overview Stats & Search / Filter Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
-        <div className="flex items-center gap-3 text-xs text-slate-600 pl-1">
-          <div className="flex items-center gap-1.5">
-            <Package className="w-4 h-4 text-slate-500" />
-            <span>Active Master Items: <strong className="font-mono text-slate-900 font-bold">{activeItems.length}</strong></span>
-          </div>
-          <span>·</span>
-          <span>Categories: <strong className="text-slate-800 font-medium">{categories.length}</strong></span>
-        </div>
+      {/* Classification Switcher Buttons & Search Controls */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+        {/* Classification Segmented Buttons */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold uppercase text-slate-400 mr-1">Classification:</span>
+            
+            <button
+              type="button"
+              onClick={() => setSelectedItemType('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                selectedItemType === 'all'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span>All Items</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  selectedItemType === 'all' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                {activeItems.length}
+              </span>
+            </button>
 
-        <div className="flex items-center gap-2">
-          {/* Search Box */}
-          <div className="relative flex-1 sm:w-72">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search code (e.g. MH-HH-1), assembly description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-900 focus:outline-none"
-            />
-          </div>
+            <button
+              type="button"
+              onClick={() => setSelectedItemType('Material')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                selectedItemType === 'Material'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span>🧱 Materials & Consumables</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  selectedItemType === 'Material' ? 'bg-emerald-800 text-white' : 'bg-emerald-100 text-emerald-800'
+                }`}
+              >
+                {materialsCount}
+              </span>
+            </button>
 
-          {/* Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none max-w-xs"
-          >
-            <option value="all">All Categories ({activeItems.length})</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            <button
+              type="button"
+              onClick={() => setSelectedItemType('Machinery')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                selectedItemType === 'Machinery'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span>🚜 Machinery & Equipment</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  selectedItemType === 'Machinery' ? 'bg-amber-800 text-white' : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {machineryCount}
+              </span>
+            </button>
+          </div>
 
           {/* Clear All Items Button (Central Admin Only) */}
           {currentUser.role === 'Central Warehouse Admin' && activeItems.length > 0 && (
             <button
               onClick={handleClearAll}
-              className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+              className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               title="Move all active items to Recycle Bin"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
               <span>Clear All</span>
             </button>
           )}
+        </div>
+
+        {/* Search Box and Category Filter Row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          {/* Search Box - 2-inch min width and full width on mobile */}
+          <div className="relative w-full sm:w-80 md:w-96 min-w-[220px]">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by Item Code, Name, Specs, Category..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 text-xs font-bold cursor-pointer"
+                title="Clear Search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 hidden sm:inline">Category:</span>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 bg-white focus:outline-none shadow-2xs w-full sm:w-auto"
+            >
+              <option value="all">All Categories ({activeItems.length})</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -455,18 +557,18 @@ export const ItemsManagementView: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-xs text-left table-fixed">
             <thead className="bg-slate-50/80 text-slate-700 font-semibold border-b border-slate-200">
               <tr>
-                <th className="py-3 px-3 w-16 text-center">#</th>
-                <th className="py-3 px-3">Unit Designation (Code)</th>
-                <th className="py-3 px-4">Description of Assembly Unit</th>
-                <th className="py-3 px-3">Category</th>
-                <th className="py-3 px-3 text-center">Unit</th>
-                <th className="py-3 px-3 text-right">Standard Price</th>
-                <th className="py-3 px-3 text-right">Central Balance</th>
-                <th className="py-3 px-3 text-right">Actions</th>
+                <th className="py-2.5 px-1.5 w-[3%] text-center">#</th>
+                <th className="py-2.5 px-2 w-[18%]">Unit Designation (Code)</th>
+                <th className="py-2.5 px-2.5 w-[32%]">Description of Assembly Unit</th>
+                <th className="py-2.5 px-2 w-[19%]">Category</th>
+                <th className="py-2.5 px-1 text-center w-[5%]">Unit</th>
+                <th className="py-2.5 px-2 text-right w-[8%]">Standard Price</th>
+                <th className="py-2.5 px-2 text-right w-[9%]">Central Balance</th>
+                <th className="py-2.5 px-2 text-center w-[6%]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -486,36 +588,53 @@ export const ItemsManagementView: React.FC = () => {
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center font-mono text-slate-400 text-[11px]">
+                      <td className="py-2.5 px-1.5 text-center font-mono text-slate-400 text-[11px]">
                         {index + 1}
                       </td>
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-200">
-                          {item.itemCode}
-                        </span>
+                      <td className="py-2.5 px-2 font-mono text-slate-900">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 font-bold text-slate-900 border border-slate-200 text-[11px]">
+                            {item.itemCode}
+                          </span>
+                          {isMachineryItem(item) ? (
+                            <span
+                              className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-200 shrink-0"
+                              title="Plant, Machinery, Fleet or Heavy Tool"
+                            >
+                              🚜 Machinery
+                            </span>
+                          ) : (
+                            <span
+                              className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0"
+                              title="Consumable Raw Material"
+                            >
+                              🧱 Material
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="py-3 px-4 text-slate-800 font-medium max-w-md">
+                      <td className="py-2.5 px-2.5 text-slate-800 font-medium whitespace-normal break-words leading-tight">
                         <div>{item.itemName}</div>
                         {item.description && item.description !== item.itemName && (
-                          <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          <div className="text-[10px] text-slate-500 mt-0.5 whitespace-normal break-words">
                             {item.description}
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700">
+                      <td className="py-2.5 px-2 text-slate-600 font-medium whitespace-normal break-words leading-tight">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700 whitespace-normal break-words">
                           {item.category}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-center font-semibold text-slate-700">
+                      <td className="py-2.5 px-1 text-center font-semibold text-slate-700">
                         {item.unit}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-700">
+                      <td className="py-2.5 px-2 text-right font-mono text-slate-700 whitespace-nowrap">
                         {config.currencySymbol}{formatNumber(item.unitPrice)}
                       </td>
-                      <td className="py-3 px-3 text-right">
+                      <td className="py-2.5 px-2 text-right whitespace-nowrap">
                         <span
-                          className={`font-mono px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          className={`font-mono px-1.5 py-0.5 rounded text-[11px] font-semibold inline-block ${
                             stock.availableBalance === 0
                               ? 'bg-red-50 text-red-700 border border-red-200'
                               : stock.isLowStock
@@ -526,9 +645,9 @@ export const ItemsManagementView: React.FC = () => {
                           {formatNumber(stock.availableBalance)} {item.unit}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                      <td className="py-2.5 px-2 text-center whitespace-nowrap">
                         {currentUser.role === 'Central Warehouse Admin' ? (
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => setEditingItem({ ...item })}
                               className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
@@ -764,11 +883,54 @@ export const ItemsManagementView: React.FC = () => {
             <form onSubmit={handleCreateSingleItem} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Item Classification *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewItemType('Material');
+                      if (STANDARD_MACHINERY_CATEGORIES.includes(newItemCategory as any)) {
+                        setNewItemCategory('Assembly Units (Manholes & Handholes)');
+                      }
+                      setNewItemUnit('Pcs');
+                    }}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      newItemType === 'Material'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>🧱 Material / Consumable</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewItemType('Machinery');
+                      if (!STANDARD_MACHINERY_CATEGORIES.includes(newItemCategory as any)) {
+                        setNewItemCategory('Excavator');
+                      }
+                      setNewItemUnit('Nos');
+                      if (newItemPrice === 150) setNewItemPrice('');
+                    }}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      newItemType === 'Machinery'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>🚜 Machinery / Equipment</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Unit Designation / Item Code *
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. MH-HH-1, MH-S-1-IS"
+                  placeholder={newItemType === 'Machinery' ? 'e.g. EXC-CAT-320, GEN-KUB-50, WELD-MILL-400' : 'e.g. MH-HH-1, MH-S-1-IS'}
                   value={newItemCode}
                   onChange={(e) => setNewItemCode(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
@@ -778,11 +940,11 @@ export const ItemsManagementView: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Description of Assembly Unit / Item Name *
+                  Description / Item Name *
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Construction of new hand holes type HH-1"
+                  placeholder={newItemType === 'Machinery' ? 'e.g. Caterpillar 320 Hydraulic Excavator 20-Ton' : 'e.g. Construction of new hand holes type HH-1'}
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
@@ -790,58 +952,113 @@ export const ItemsManagementView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              {/* Category Selection with Standard Presets */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Category *
+                  </label>
+                  {newItemType === 'Machinery' && (
+                    <span className="text-[10px] text-amber-700 font-bold">Standard Fleet Equipment</span>
+                  )}
+                </div>
+
+                {/* Preset Chips */}
+                {newItemType === 'Machinery' ? (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {STANDARD_MACHINERY_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setNewItemCategory(cat)}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
+                            newItemCategory === cat
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                              : 'bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Or specify custom category..."
+                      value={newItemCategory}
+                      onChange={(e) => setNewItemCategory(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      required
+                    />
+                  </div>
+                ) : (
                   <input
                     type="text"
+                    placeholder="e.g. Assembly Units (Manholes & Handholes), Cables, Pipes..."
                     value={newItemCategory}
                     onChange={(e) => setNewItemCategory(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    required
                   />
-                </div>
+                )}
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Unit of Measure *</label>
                   <select
                     value={newItemUnit}
                     onChange={(e) => setNewItemUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
                   >
-                    <option value="Pcs">Pcs (Pieces)</option>
-                    <option value="m">m (Meters)</option>
-                    <option value="m3">m3 (Cubic Meters)</option>
-                    <option value="kg">kg (Kilograms)</option>
-                    <option value="boxes">boxes (Boxes)</option>
-                    <option value="sets">sets (Sets)</option>
-                    <option value="bags">bags (Bags)</option>
+                    {newItemType === 'Machinery' ? (
+                      <>
+                        {STANDARD_MACHINERY_UNITS.map((u) => (
+                          <option key={u} value={u}>
+                            {u} ({u === 'Nos' ? 'Numbers' : u === 'Pcs' ? 'Pieces' : u === 'Units' ? 'Equipment Units' : u})
+                          </option>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {STANDARD_MATERIAL_UNITS.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </>
+                    )}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Standard Unit Cost ({config.currencySymbol})</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    {newItemType === 'Machinery' ? 'Asset Valuation / Rate (Optional)' : `Standard Unit Cost (${config.currencySymbol})`}
+                  </label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
+                    placeholder="0.00"
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
+                  {newItemType === 'Machinery' && (
+                    <span className="text-[10px] text-slate-400">Leave blank or 0 if owned asset.</span>
+                  )}
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Low Stock Threshold</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newItemThreshold}
-                    onChange={(e) => setNewItemThreshold(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Low Stock Threshold</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={newItemThreshold}
+                  onChange={(e) => setNewItemThreshold(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                />
               </div>
 
               <div>
@@ -893,6 +1110,36 @@ export const ItemsManagementView: React.FC = () => {
 
             <form onSubmit={handleSaveEditItem} className="space-y-3.5">
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Item Classification
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem({ ...editingItem, itemType: 'Material' })}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      !isMachineryItem(editingItem)
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>🧱 Material / Consumable</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem({ ...editingItem, itemType: 'Machinery' })}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      isMachineryItem(editingItem)
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>🚜 Machinery / Equipment</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Unit Designation / Code</label>
                 <input
                   type="text"
@@ -914,31 +1161,76 @@ export const ItemsManagementView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              {/* Category Selection with Presets */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                {isMachineryItem(editingItem) ? (
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      {STANDARD_MACHINERY_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setEditingItem({ ...editingItem, category: cat })}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-all cursor-pointer ${
+                            editingItem.category === cat
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                              : 'bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={editingItem.category}
+                      onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    />
+                  </div>
+                ) : (
                   <input
                     type="text"
                     value={editingItem.category}
                     onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Unit</label>
-                  <input
-                    type="text"
-                    value={editingItem.unit}
-                    onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  />
-                </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Standard Cost ({config.currencySymbol})</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Unit</label>
+                  <select
+                    value={editingItem.unit}
+                    onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                  >
+                    {isMachineryItem(editingItem) ? (
+                      <>
+                        {STANDARD_MACHINERY_UNITS.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {STANDARD_MATERIAL_UNITS.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    {isMachineryItem(editingItem) ? `Asset Rate (${config.currencySymbol}) - Optional` : `Standard Cost (${config.currencySymbol})`}
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -948,17 +1240,17 @@ export const ItemsManagementView: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Low Stock Threshold</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={editingItem.lowStockThreshold}
-                    onChange={(e) => setEditingItem({ ...editingItem, lowStockThreshold: Number(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Low Stock Threshold</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editingItem.lowStockThreshold}
+                  onChange={(e) => setEditingItem({ ...editingItem, lowStockThreshold: Number(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                />
               </div>
 
               <div>

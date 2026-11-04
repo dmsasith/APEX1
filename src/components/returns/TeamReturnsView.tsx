@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   RotateCcw,
   CheckCircle2,
@@ -9,6 +9,7 @@ import {
   Package,
   FileCheck,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { ReturnCondition, TeamReturn } from '../../types';
@@ -50,11 +51,31 @@ export const TeamReturnsView: React.FC = () => {
     onConfirm: () => {},
   });
 
+  const isSiteRestricted = currentUser.siteId !== 'all';
+  const userAssignedSite = sites.find((s) => s.id === currentUser.siteId);
+
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
-  const initialSiteId =
-    currentUser.siteId !== 'all' ? currentUser.siteId : (branchSites[0]?.id || activeSites[0]?.id || '');
+  const allowedSites = isSiteRestricted
+    ? (activeSites.filter((s) => s.id === currentUser.siteId).length > 0
+        ? activeSites.filter((s) => s.id === currentUser.siteId)
+        : sites.filter((s) => s.id === currentUser.siteId))
+    : branchSites;
+
+  const initialSiteId = isSiteRestricted
+    ? currentUser.siteId
+    : (allowedSites[0]?.id || activeSites[0]?.id || '');
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
+
+  // Keep site locked if currentUser changes or is restricted
+  useEffect(() => {
+    if (isSiteRestricted && selectedSiteId !== currentUser.siteId) {
+      setSelectedSiteId(currentUser.siteId);
+      const newTeams = teams.filter((t) => t.assignedSiteId === currentUser.siteId);
+      if (newTeams[0]) handleTeamChange(newTeams[0].id);
+    }
+  }, [currentUser.siteId, isSiteRestricted]);
+
   const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
 
   const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
@@ -193,22 +214,41 @@ export const TeamReturnsView: React.FC = () => {
           <form onSubmit={handleProcessReturn} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Receiving Site Branch *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">Receiving Site Branch *</label>
+                  {isSiteRestricted && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5 text-amber-700" />
+                      <span>Assigned Site Only</span>
+                    </span>
+                  )}
+                </div>
                 <select
                   value={selectedSiteId}
+                  disabled={isSiteRestricted}
                   onChange={(e) => {
+                    if (isSiteRestricted) return;
                     setSelectedSiteId(e.target.value);
                     const newTeams = teams.filter((t) => t.assignedSiteId === e.target.value);
                     if (newTeams[0]) handleTeamChange(newTeams[0].id);
                   }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className={`w-full px-3 py-2 border rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none transition-colors ${
+                    isSiteRestricted
+                      ? 'bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none opacity-95'
+                      : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400'
+                  }`}
                 >
-                  {branchSites.map((s) => (
+                  {allowedSites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}
+                      {s.name} {isSiteRestricted ? '(Your Assigned Site)' : ''}
                     </option>
                   ))}
                 </select>
+                {isSiteRestricted && (
+                  <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                    <span>🔒 Only teams and stock under <strong>{userAssignedSite?.name || 'your assigned site'}</strong> are accessible.</span>
+                  </p>
+                )}
               </div>
 
               <div>

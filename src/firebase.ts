@@ -25,17 +25,21 @@ import {
   StockBackup,
   LetterheadTemplate,
   DigitalSignature,
+  Supplier,
+  PurchaseOrder,
+  SupplierReturn,
+  Tenant,
 } from './types';
 
 // Web app's Firebase configuration provided by the user
 export const firebaseConfig = {
-  apiKey: "AIzaSyApU0FcmTmk4qEwc235f11ZZRrjMt-P1gM",
-  authDomain: "stock-management-system-61c6f.firebaseapp.com",
-  databaseURL: "https://stock-management-system-61c6f-default-rtdb.firebaseio.com",
-  projectId: "stock-management-system-61c6f",
-  storageBucket: "stock-management-system-61c6f.firebasestorage.app",
-  messagingSenderId: "576165978947",
-  appId: "1:576165978947:web:d79ebf390256ecd244c5f6"
+  apiKey: "AIzaSyC3Fs18NG5AQBq1wUzMRaAGHy62MdHVNjA",
+  authDomain: "apexdevoloper-31068.firebaseapp.com",
+  databaseURL: "https://apexdevoloper-31068-default-rtdb.firebaseio.com",
+  projectId: "apexdevoloper-31068",
+  storageBucket: "apexdevoloper-31068.firebasestorage.app",
+  messagingSenderId: "933348046008",
+  appId: "1:933348046008:web:c15a9cf34610c727a1304d"
 };
 
 // Initialize Firebase App safely (singleton)
@@ -636,6 +640,111 @@ export async function writeDigitalSignaturesToFirebase(
 }
 
 /**
+ * Realtime sync listeners and writers for Suppliers
+ */
+export function subscribeToFirebaseSuppliers(
+  onData: (suppliers: Supplier[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const suppliersRef = ref(rtdb, 'suppliers');
+  const unsubscribe = onValue(
+    suppliersRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val !== null && val !== undefined) {
+        const normalized = normalizeFirebaseList<Supplier>(val);
+        onData(normalized);
+      }
+    },
+    (error) => {
+      console.warn('Firebase suppliers subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
+}
+
+export async function writeSuppliersToFirebase(suppliers: Supplier[]): Promise<void> {
+  try {
+    const suppliersRef = ref(rtdb, 'suppliers');
+    await set(suppliersRef, sanitizeData(suppliers));
+  } catch (err) {
+    console.error('Failed to write suppliers to Firebase:', err);
+    throw err;
+  }
+}
+
+/**
+ * Realtime sync listeners and writers for Purchase Orders / Material Requests
+ */
+export function subscribeToFirebasePurchaseOrders(
+  onData: (orders: PurchaseOrder[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const poRef = ref(rtdb, 'purchaseOrders');
+  const unsubscribe = onValue(
+    poRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val !== null && val !== undefined) {
+        const normalized = normalizeFirebaseList<PurchaseOrder>(val);
+        onData(normalized);
+      }
+    },
+    (error) => {
+      console.warn('Firebase purchase orders subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
+}
+
+export async function writePurchaseOrdersToFirebase(orders: PurchaseOrder[]): Promise<void> {
+  try {
+    const poRef = ref(rtdb, 'purchaseOrders');
+    await set(poRef, sanitizeData(orders));
+  } catch (err) {
+    console.error('Failed to write purchaseOrders to Firebase:', err);
+    throw err;
+  }
+}
+
+/**
+ * Realtime sync listeners for Supplier Returns (RTV & Debit Notes)
+ */
+export function subscribeToFirebaseSupplierReturns(
+  onData: (returns: SupplierReturn[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const rtvRef = ref(rtdb, 'supplierReturns');
+  const unsubscribe = onValue(
+    rtvRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val !== null && val !== undefined) {
+        const normalized = normalizeFirebaseList<SupplierReturn>(val);
+        onData(normalized);
+      }
+    },
+    (error) => {
+      console.warn('Firebase supplier returns subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
+}
+
+export async function writeSupplierReturnsToFirebase(returns: SupplierReturn[]): Promise<void> {
+  try {
+    const rtvRef = ref(rtdb, 'supplierReturns');
+    await set(rtvRef, sanitizeData(returns));
+  } catch (err) {
+    console.error('Failed to write supplierReturns to Firebase:', err);
+    throw err;
+  }
+}
+
+/**
  * Check if a path in Firebase has data
  */
 export async function checkFirebaseHasData(path: string): Promise<boolean> {
@@ -668,6 +777,9 @@ export async function clearAllFirebaseData(
       set(ref(rtdb, 'branchReturns'), []),
       set(ref(rtdb, 'projects'), []),
       set(ref(rtdb, 'teams'), []),
+      set(ref(rtdb, 'suppliers'), []),
+      set(ref(rtdb, 'purchaseOrders'), []),
+      set(ref(rtdb, 'supplierReturns'), []),
       set(ref(rtdb, 'sites'), [sanitizeData(cleanSite)]),
       set(ref(rtdb, 'users'), [sanitizeData(cleanUser)]),
       set(ref(rtdb, 'config'), sanitizeData(cleanConfig)),
@@ -675,6 +787,41 @@ export async function clearAllFirebaseData(
     ]);
   } catch (err) {
     console.error('Failed to clear Firebase data:', err);
+    throw err;
+  }
+}
+
+/**
+ * Realtime sync listeners for Multi-Tenant Accounts
+ */
+export function subscribeToFirebaseTenants(
+  onData: (tenants: Tenant[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const tenantsRef = ref(rtdb, 'saasTenants');
+  const unsubscribe = onValue(
+    tenantsRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val !== null && val !== undefined) {
+        const normalized = normalizeFirebaseList<Tenant>(val);
+        onData(normalized);
+      }
+    },
+    (error) => {
+      console.warn('Firebase saasTenants subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
+}
+
+export async function writeTenantsToFirebase(tenants: Tenant[]): Promise<void> {
+  try {
+    const tenantsRef = ref(rtdb, 'saasTenants');
+    await set(tenantsRef, sanitizeData(tenants));
+  } catch (err) {
+    console.error('Failed to write saasTenants to Firebase:', err);
     throw err;
   }
 }

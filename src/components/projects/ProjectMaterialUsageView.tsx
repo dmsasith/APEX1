@@ -65,9 +65,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
   });
 
   // Site selection
+  const isSiteRestricted = currentUser.siteId !== 'all';
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const allowedSites = isSiteRestricted
+    ? (activeSites.filter((s) => s.id === currentUser.siteId).length > 0
+        ? activeSites.filter((s) => s.id === currentUser.siteId)
+        : sites.filter((s) => s.id === currentUser.siteId))
+    : branchSites;
   const initialSiteId =
-    currentUser.siteId !== 'all' ? currentUser.siteId : (branchSites[0]?.id || activeSites[0]?.id || '');
+    currentUser.siteId !== 'all' ? currentUser.siteId : (allowedSites[0]?.id || activeSites[0]?.id || '');
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
 
   // Teams for selected site
@@ -351,7 +357,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   disabled={currentUser.siteId !== 'all'}
                   className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-75"
                 >
-                  {branchSites.map((s) => (
+                  {allowedSites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.location})
                     </option>
@@ -626,15 +632,25 @@ export const ProjectMaterialUsageView: React.FC = () => {
             </select>
 
             {/* Search */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <div className="relative w-full sm:w-80 md:w-96 min-w-[220px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search voucher, project, lead..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="text-xs pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
               />
+              {searchFilter && (
+                <button
+                  type="button"
+                  onClick={() => setSearchFilter('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 text-xs font-bold cursor-pointer"
+                  title="Clear Search"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             {currentUser.role === 'Central Warehouse Admin' && projectUsages.length > 0 && (

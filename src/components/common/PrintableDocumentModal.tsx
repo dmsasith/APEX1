@@ -15,6 +15,7 @@ import { useStock } from '../../context/StockContext';
 import { formatDateTime, formatDate, formatNumber } from '../../utils/exportUtils';
 import { StockTransferRequest, TeamIssue, TeamReturn, TeamInHandSummary, LetterheadTemplate } from '../../types';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
+import { isMachineryItem } from '../../utils/itemTypeUtils';
 
 type DocType =
   | { type: 'REQUEST_NOTE'; data: StockTransferRequest }
@@ -395,6 +396,11 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                         <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
                         <td className="py-1 px-2 text-left border-r border-black font-medium">
                           <span className="font-mono font-bold mr-1.5">{itm?.itemCode}</span>
+                          {itm && isMachineryItem(itm) && (
+                            <span className="text-[9px] font-bold bg-slate-200 px-1 py-0.2 rounded mr-1">
+                              [Machinery]
+                            </span>
+                          )}
                           <span>{itm?.itemName}</span>
                         </td>
                         <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>

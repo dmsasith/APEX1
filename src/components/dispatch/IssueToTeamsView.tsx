@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Send,
   Plus,
@@ -12,6 +12,7 @@ import {
   FileText,
   Clock,
   Briefcase,
+  Lock,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { TeamIssue, Item } from '../../types';
@@ -52,12 +53,35 @@ export const IssueToTeamsView: React.FC = () => {
     onConfirm: () => {},
   });
 
-  // Filter sites for dispatch (excluding Main Central Warehouse unless chosen)
+  // Check if current user is restricted to a specific site
+  const isSiteRestricted = currentUser.siteId !== 'all';
+  const userAssignedSite = sites.find((s) => s.id === currentUser.siteId);
+
+  // Filter sites for dispatch: If restricted, ONLY their assigned site is available.
+  // Otherwise, all active branch sites are available.
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
-  const initialSiteId =
-    currentUser.siteId !== 'all' ? currentUser.siteId : (branchSites[0]?.id || activeSites[0]?.id || '');
+  const allowedSites = isSiteRestricted
+    ? (activeSites.filter((s) => s.id === currentUser.siteId).length > 0
+        ? activeSites.filter((s) => s.id === currentUser.siteId)
+        : sites.filter((s) => s.id === currentUser.siteId))
+    : branchSites;
+
+  const initialSiteId = isSiteRestricted
+    ? currentUser.siteId
+    : (allowedSites[0]?.id || activeSites[0]?.id || '');
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
+
+  // Keep site locked if currentUser changes or is restricted
+  useEffect(() => {
+    if (isSiteRestricted && selectedSiteId !== currentUser.siteId) {
+      setSelectedSiteId(currentUser.siteId);
+      const newTeams = activeTeams.filter((t) => t.assignedSiteId === currentUser.siteId);
+      setSelectedTeamId(newTeams[0]?.id || '');
+      setDispatchItemsList([]);
+    }
+  }, [currentUser.siteId, isSiteRestricted]);
+
   const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
 
   const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
@@ -74,6 +98,7 @@ export const IssueToTeamsView: React.FC = () => {
 
   // Whenever selected site changes, update available teams
   const handleSiteChange = (newSiteId: string) => {
+    if (isSiteRestricted) return; // Prevent changing if user is locked to an assigned site
     setSelectedSiteId(newSiteId);
     const newTeams = activeTeams.filter((t) => t.assignedSiteId === newSiteId);
     setSelectedTeamId(newTeams[0]?.id || '');
@@ -130,6 +155,11 @@ export const IssueToTeamsView: React.FC = () => {
   const handleProcessDispatch = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (isSiteRestricted && selectedSiteId !== currentUser.siteId) {
+      setErrorMessage(`Access restricted: You are assigned to ${userAssignedSite?.name || 'your site'} and can only issue stock to teams within your assigned site.`);
+      return;
+    }
 
     if (!selectedTeamId) {
       setErrorMessage('Please select a field team.');
@@ -233,18 +263,38 @@ export const IssueToTeamsView: React.FC = () => {
           {/* Site and Team Pickers */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Site Branch *</label>
-              <select
-                value={selectedSiteId}
-                onChange={(e) => handleSiteChange(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
-              >
-                {branchSites.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">Site Branch *</label>
+                {isSiteRestricted && (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
+                    <Lock className="w-2.5 h-2.5 text-amber-700" />
+                    <span>Assigned Site Only</span>
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <select
+                  value={selectedSiteId}
+                  disabled={isSiteRestricted}
+                  onChange={(e) => handleSiteChange(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none transition-colors ${
+                    isSiteRestricted
+                      ? 'bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none opacity-95'
+                      : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  {allowedSites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {isSiteRestricted ? '(Your Assigned Site)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {isSiteRestricted && (
+                <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                  <span>🔒 You can only issue materials to teams operating under <strong>{userAssignedSite?.name || 'your assigned site'}</strong>.</span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -255,7 +305,7 @@ export const IssueToTeamsView: React.FC = () => {
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
               >
                 {availableTeams.length === 0 ? (
-                  <option value="">No teams registered at this site</option>
+                  <option value="">No teams registered at {selectedSite?.name || 'this site'}</option>
                 ) : (
                   availableTeams.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -264,6 +314,11 @@ export const IssueToTeamsView: React.FC = () => {
                   ))
                 )}
               </select>
+              {availableTeams.length === 0 && (
+                <p className="text-[10px] text-amber-700 mt-1">
+                  ⚠️ No field teams are currently registered under this site branch. Register a team under Settings / Teams first.
+                </p>
+              )}
             </div>
           </div>
 
@@ -308,15 +363,25 @@ export const IssueToTeamsView: React.FC = () => {
             <label className="block text-xs font-semibold text-slate-800 mb-1.5">
               Search Site Inventory (Click <span className="text-emerald-700 font-bold">+</span> to Add to Dispatch):
             </label>
-            <div className="relative mb-2">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="relative mb-2 w-full min-w-[220px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search by code (e.g. CBL, ST) or item description..."
                 value={searchItemQuery}
                 onChange={(e) => setSearchItemQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                className="w-full pl-9 pr-8 py-2.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
               />
+              {searchItemQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchItemQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 text-xs font-bold cursor-pointer"
+                  title="Clear Search"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             {/* Live Search Results List */}
