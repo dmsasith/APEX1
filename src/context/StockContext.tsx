@@ -34,6 +34,8 @@ import {
   Tenant,
   TenantSubscription,
   TenantRegistrationForm,
+  ProjectType,
+  ProjectTypeTemplateItem,
 } from '../types';
 import {
   INITIAL_CONFIG,
@@ -47,6 +49,7 @@ import {
   INITIAL_TEAM_RETURNS,
   INITIAL_AUDIT_LOGS,
   INITIAL_PROJECTS,
+  INITIAL_PROJECT_TYPES,
   INITIAL_PROJECT_USAGES,
   INITIAL_BRANCH_RETURNS,
   INITIAL_BACKUPS,
@@ -135,6 +138,8 @@ interface StockContextType {
   activeTeams: Team[];
   projects: Project[];
   activeProjects: Project[];
+  projectTypes: ProjectType[];
+  activeProjectTypes: ProjectType[];
   mainStockEntries: MainStockEntry[];
   stockRequests: StockTransferRequest[];
   teamIssues: TeamIssue[];
@@ -273,10 +278,17 @@ interface StockContextType {
     data: Omit<TeamReturn, 'id' | 'returnVoucherNumber' | 'returnDate' | 'returnedBy'>
   ) => TeamReturn;
 
+  // Project Types / Sections & Templates
+  addProjectType: (data: Omit<ProjectType, 'id' | 'createdAt' | 'isDeleted'>) => ProjectType;
+  updateProjectType: (id: string, updates: Partial<ProjectType>) => void;
+  deleteProjectType: (id: string) => void;
+  saveProjectTypeTemplate: (projectTypeId: string, templateItems: ProjectTypeTemplateItem[]) => void;
+
   // Project Material Usages
   logProjectMaterialUsage: (
     data: Omit<ProjectMaterialUsage, 'id' | 'usageVoucherNumber' | 'loggedBy'>
   ) => ProjectMaterialUsage;
+  updateProjectUsage: (id: string, updates: Partial<ProjectMaterialUsage>) => void;
   deleteProjectUsage: (id: string) => void;
   clearProjectUsages: () => void;
 
@@ -773,6 +785,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [projects, setProjects] = useState<Project[]>(() =>
     loadTenantData(currentTenantId, 'projects', isDefaultTenant ? INITIAL_PROJECTS : [])
   );
+  const [projectTypes, setProjectTypes] = useState<ProjectType[]>(() =>
+    loadTenantData(currentTenantId, 'projectTypes', INITIAL_PROJECT_TYPES)
+  );
   const [projectUsages, setProjectUsages] = useState<ProjectMaterialUsage[]>(() =>
     loadTenantData(currentTenantId, 'projectUsages', isDefaultTenant ? INITIAL_PROJECT_USAGES : [])
   );
@@ -890,6 +905,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const loadedIssues = loadTenantData<TeamIssue[]>(tenantId, 'teamIssues', isDefault ? INITIAL_TEAM_ISSUES : []);
     const loadedReturns = loadTenantData<TeamReturn[]>(tenantId, 'teamReturns', isDefault ? INITIAL_TEAM_RETURNS : []);
     const loadedProjects = loadTenantData<Project[]>(tenantId, 'projects', isDefault ? INITIAL_PROJECTS : []);
+    const loadedProjectTypes = loadTenantData<ProjectType[]>(tenantId, 'projectTypes', INITIAL_PROJECT_TYPES);
     const loadedUsages = loadTenantData<ProjectMaterialUsage[]>(tenantId, 'projectUsages', isDefault ? INITIAL_PROJECT_USAGES : []);
     const loadedBranchReturns = loadTenantData<BranchReturn[]>(tenantId, 'branchReturns', isDefault ? INITIAL_BRANCH_RETURNS : []);
     const loadedRestorations = loadTenantData<DamagedStockRestoration[]>(tenantId, 'damagedRestorations', []);
@@ -911,6 +927,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setTeamIssues(loadedIssues);
     setTeamReturns(loadedReturns);
     setProjects(loadedProjects);
+    setProjectTypes(loadedProjectTypes);
     setProjectUsages(loadedUsages);
     setBranchReturns(loadedBranchReturns);
     setDamagedRestorations(loadedRestorations);
@@ -1953,6 +1970,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [projects]);
 
   useEffect(() => {
+    saveToStorage('projectTypes', projectTypes);
+  }, [projectTypes]);
+
+  useEffect(() => {
     saveToStorage('projectUsages', projectUsages);
     if (!isIncomingFirebaseProjectUsages.current && hasLoadedProjectUsagesFromFirebase.current) {
       writeProjectUsagesToFirebase(projectUsages).catch((err) => console.warn('Sync projectUsages to Firebase error:', err));
@@ -2078,6 +2099,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const activeItems = useMemo(() => items.filter((i) => !i.isDeleted), [items]);
   const activeTeams = useMemo(() => teams.filter((t) => !t.isDeleted), [teams]);
   const activeProjects = useMemo(() => projects.filter((p) => !p.isDeleted), [projects]);
+  const activeProjectTypes = useMemo(() => projectTypes.filter((pt) => !pt.isDeleted), [projectTypes]);
   const activeSuppliers = useMemo(() => suppliers.filter((s) => !s.isDeleted), [suppliers]);
   const activePurchaseOrders = useMemo(() => purchaseOrders.filter((po) => !po.isDeleted), [purchaseOrders]);
   const activeSupplierReturns = useMemo(() => supplierReturns.filter((r) => !r.isDeleted), [supplierReturns]);
@@ -2997,12 +3019,94 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
     );
+    // If project section/type or name is changed, update existing usages cleanly without any data loss
+    if (updates.projectTypeId !== undefined || updates.projectTypeName !== undefined || updates.projectName !== undefined) {
+      setProjectUsages((prev) =>
+        prev.map((pu) =>
+          pu.projectId === id
+            ? {
+                ...pu,
+                projectTypeId: updates.projectTypeId !== undefined ? updates.projectTypeId : pu.projectTypeId,
+                projectTypeName: updates.projectTypeName !== undefined ? updates.projectTypeName : pu.projectTypeName,
+                projectName: updates.projectName !== undefined ? updates.projectName : pu.projectName,
+              }
+            : pu
+        )
+      );
+    }
     const proj = projects.find((p) => p.id === id);
     addAuditLog(
       'PROJECT_CREATED',
       updates.projectId || proj?.projectId || id,
       'Project Office',
       `Updated project profile: ${updates.projectName || proj?.projectName} (${updates.projectId || proj?.projectId})`
+    );
+  };
+
+  // Project Types / Sections CRUD & Templates
+  const addProjectType = (
+    data: Omit<ProjectType, 'id' | 'createdAt' | 'isDeleted'>
+  ): ProjectType => {
+    const newPt: ProjectType = {
+      ...data,
+      id: `pt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      templateItems: data.templateItems || [],
+      createdAt: new Date().toISOString(),
+      isDeleted: false,
+    };
+    setProjectTypes((prev) => [...prev, newPt]);
+    addAuditLog(
+      'PROJECT_CREATED',
+      newPt.id,
+      'Project Office',
+      `Created Project Section: "${newPt.name}"`
+    );
+    return newPt;
+  };
+
+  const updateProjectType = (id: string, updates: Partial<ProjectType>) => {
+    setProjectTypes((prev) =>
+      prev.map((pt) => (pt.id === id ? { ...pt, ...updates } : pt))
+    );
+    if (updates.name) {
+      setProjects((prev) =>
+        prev.map((p) => (p.projectTypeId === id ? { ...p, projectTypeName: updates.name } : p))
+      );
+      setProjectUsages((prev) =>
+        prev.map((pu) => (pu.projectTypeId === id ? { ...pu, projectTypeName: updates.name } : pu))
+      );
+    }
+    addAuditLog(
+      'PROJECT_UPDATED',
+      id,
+      'Project Office',
+      `Updated Project Section: "${updates.name || id}"`
+    );
+  };
+
+  const deleteProjectType = (id: string) => {
+    setProjectTypes((prev) => prev.filter((pt) => pt.id !== id));
+    addAuditLog(
+      'PROJECT_DELETED',
+      id,
+      'Project Office',
+      `Deleted Project Section ID: ${id}`
+    );
+  };
+
+  const saveProjectTypeTemplate = (
+    projectTypeId: string,
+    templateItems: ProjectTypeTemplateItem[]
+  ) => {
+    setProjectTypes((prev) =>
+      prev.map((pt) => (pt.id === projectTypeId ? { ...pt, templateItems } : pt))
+    );
+    const pt = projectTypes.find((p) => p.id === projectTypeId);
+    addAuditLog(
+      'TEMPLATE_UPDATED',
+      projectTypeId,
+      'Project Office',
+      `Updated Material Template for Section "${pt?.name || projectTypeId}" (${templateItems.length} items)`
     );
   };
 
@@ -3773,6 +3877,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       usageVoucherNumber,
       teamName,
       projectName: projName,
+      customerName: data.customerName || proj?.customerName || '',
+      customerPhone: data.customerPhone || proj?.customerPhone || '',
+      siteIdentifier: data.siteIdentifier || proj?.siteIdentifier || '',
+      projectTypeId: data.projectTypeId || proj?.projectTypeId || '',
+      projectTypeName: data.projectTypeName || proj?.projectTypeName || '',
       supervisorOrLeader: leaderName,
       supervisorOrLeaderName: leaderName,
       loggedBy: currentUser?.fullName || 'Field Supervisor',
@@ -3787,6 +3896,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       `Logged usage of ${totalQty} unit(s) across ${newUsage.items.length} item(s) on Project "${projName}" by ${teamName} (Lead: ${leaderName})`
     );
     return newUsage;
+  };
+
+  const updateProjectUsage = (id: string, updates: Partial<ProjectMaterialUsage>) => {
+    setProjectUsages((prev) =>
+      prev.map((pu) => (pu.id === id ? { ...pu, ...updates } : pu))
+    );
+    const pu = projectUsages.find((u) => u.id === id);
+    if (pu) {
+      addAuditLog(
+        'PROJECT_UPDATED',
+        pu.usageVoucherNumber,
+        'Project Office',
+        `Updated project material usage voucher ${pu.usageVoucherNumber} for ${updates.projectName || pu.projectName}`
+      );
+    }
   };
 
   const deleteProjectUsage = (id: string) => {
@@ -3958,6 +4082,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         items,
         teams,
         projects,
+        projectTypes,
         mainStockEntries,
         stockRequests,
         teamIssues,
@@ -4013,6 +4138,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (snap.projects) {
       setProjects(snap.projects);
       saveToStorage('projects', snap.projects);
+    }
+    if (snap.projectTypes) {
+      setProjectTypes(snap.projectTypes);
+      saveToStorage('projectTypes', snap.projectTypes);
     }
     if (snap.mainStockEntries) {
       setMainStockEntries(snap.mainStockEntries);
@@ -4484,6 +4613,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         activeTeams,
         projects,
         activeProjects,
+        projectTypes,
+        activeProjectTypes,
         mainStockEntries,
         stockRequests,
         teamIssues,
@@ -4536,7 +4667,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         acceptStockRequest,
         issueStockToTeam,
         returnStockFromTeam,
+        addProjectType,
+        updateProjectType,
+        deleteProjectType,
+        saveProjectTypeTemplate,
         logProjectMaterialUsage,
+        updateProjectUsage,
         deleteProjectUsage,
         clearProjectUsages,
         returnStockFromBranchToMain,

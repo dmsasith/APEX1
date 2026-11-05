@@ -12,6 +12,7 @@ import {
   Supplier,
   PurchaseOrder,
   Tenant,
+  ProjectType,
 } from '../types';
 
 export const DEFAULT_TENANT: Tenant = {
@@ -81,6 +82,35 @@ export const INITIAL_TEAM_ISSUES: TeamIssue[] = [];
 export const INITIAL_TEAM_RETURNS: TeamReturn[] = [];
 export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [];
 export const INITIAL_PROJECTS: any[] = [];
+export const INITIAL_PROJECT_TYPES: ProjectType[] = [
+  {
+    id: 'pt-tnc',
+    name: 'Telecom New Connection',
+    code: 'TNC',
+    description: 'FTTH, copper & customer subscriber installations',
+    color: 'emerald',
+    templateItems: [],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'pt-tcd',
+    name: 'Telecom Cable Development',
+    code: 'TCD',
+    description: 'Main backbone fiber, feeder route & cable development',
+    color: 'blue',
+    templateItems: [],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'pt-mfr',
+    name: 'Maintenance & Fault Rectification',
+    code: 'MFR',
+    description: 'Cable breakdown restoration & routine field maintenance',
+    color: 'amber',
+    templateItems: [],
+    createdAt: new Date().toISOString(),
+  },
+];
 export const INITIAL_PROJECT_USAGES: any[] = [];
 export const INITIAL_BRANCH_RETURNS: any[] = [];
 export const INITIAL_BACKUPS: any[] = [];

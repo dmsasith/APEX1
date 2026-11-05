@@ -235,10 +235,31 @@ export type AuditAction =
 
 export type RecycleEntityType = 'item' | 'site' | 'user' | 'team' | 'project';
 
+export interface ProjectTypeTemplateItem {
+  itemId: string;
+  suggestedQty?: number;
+}
+
+export interface ProjectType {
+  id: string;
+  name: string; // e.g. "Telecom New Connection", "Telecom Cable Development"
+  code?: string; // e.g. "TNC", "TCD"
+  description?: string;
+  color?: string; // 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'teal' | 'indigo'
+  templateItems: ProjectTypeTemplateItem[];
+  createdAt: string;
+  isDeleted?: boolean;
+}
+
 export interface Project {
   id: string;
-  projectId: string; // e.g. PRJ-2026-001
+  projectId: string; // e.g. PRJ-2026-001 or Site ID / Order No
   projectName: string;
+  customerName?: string;
+  customerPhone?: string;
+  siteIdentifier?: string; // Physical Site ID, Connection ID, Work Order No
+  projectTypeId?: string; // Link to ProjectType
+  projectTypeName?: string; // Display name
   referenceNo: string;
   district: string;
   subArea: string;
@@ -260,6 +281,11 @@ export interface ProjectMaterialUsage {
   usageVoucherNumber: string; // UV-2026-XXXX
   projectId: string;
   projectName: string;
+  customerName?: string;
+  customerPhone?: string;
+  siteIdentifier?: string;
+  projectTypeId?: string;
+  projectTypeName?: string;
   siteId: string;
   teamId: string;
   teamName?: string;
@@ -331,6 +357,7 @@ export interface StockBackup {
     branchReturns: BranchReturn[];
     damagedRestorations?: DamagedStockRestoration[];
     projects: Project[];
+    projectTypes?: ProjectType[];
     sites: Site[];
     teams: Team[];
     users: User[];
