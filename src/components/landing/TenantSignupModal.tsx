@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { TenantRegistrationForm } from '../../types';
+import { TermsConditionsModal } from './TermsConditionsModal';
 
 interface TenantSignupModalProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   if (!isOpen) return null;
 
@@ -64,6 +67,11 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (!agreedToTerms) {
+      setErrorMsg('You must agree to the Terms & Conditions to proceed.');
+      return;
+    }
 
     if (!formData.companyName.trim()) {
       setErrorMsg('Please enter your company or business name.');
@@ -98,6 +106,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Top Header */}
@@ -320,11 +329,26 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
               </div>
             </div>
 
-            {/* Trial Guarantee Callout */}
-            <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
-              <div className="text-[11px] text-slate-400 leading-relaxed">
-                <span className="font-bold text-slate-200">100% Risk Free:</span> No credit card required to start. Your 7-day free trial gives full access to all features. Continue for $19.90/month thereafter.
+            {/* Trial Guarantee Callout & Terms Checkbox */}
+            <div className="space-y-3">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div className="text-[11px] text-slate-400 leading-relaxed">
+                  <span className="font-bold text-slate-200">100% Risk Free:</span> No credit card required to start. Your 7-day free trial gives full access to all features. Continue for $19.90/month thereafter.
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-950 checked:bg-emerald-500 focus:ring-emerald-500"
+                />
+                <label htmlFor="terms" className="text-xs text-slate-400">
+                  I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-emerald-400 hover:underline font-bold">Terms & Conditions</button>
+                </label>
               </div>
             </div>
 
@@ -356,5 +380,8 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
         </div>
       </div>
     </div>
+    
+    <TermsConditionsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
+    </>
   );
 };

@@ -141,53 +141,53 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
         <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
           {/* Header */}
-          <div className="relative bg-slate-900 text-white p-5 pb-6 border-b border-slate-800 shrink-0">
+          <div className="relative bg-slate-900 text-white p-4 pb-4 border-b border-slate-800 shrink-0">
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              className="absolute top-3 right-3 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 uppercase tracking-wider">
-                <Zap className="w-3 h-3 text-emerald-400" />
-                <span>SaaS Pro Subscription & Bank Transfer</span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 uppercase tracking-wider">
+                <Zap className="w-2.5 h-2.5 text-emerald-400" />
+                <span>SaaS Pro</span>
               </span>
-              <span className="text-xs text-slate-400">Workspace: {currentTenant.companyName}</span>
+              <span className="text-[10px] text-slate-400">Workspace: {currentTenant.companyName}</span>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-              {isTrial ? '7-Day Free Trial Active' : 'Pro Multi-Site Subscription'}
-            </h2>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <div className="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2.5 py-1">
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
-                <span>
-                  {isTrial ? (
-                    <>
-                      <strong className="text-amber-300">{daysRemaining} Day(s) Left</strong> in trial
-                    </>
-                  ) : (
-                    <>Status: <strong className="text-emerald-400">Active Pro Plan</strong></>
-                  )}
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-black tracking-tight text-white">
+                {isTrial ? 'Pro Trial Active' : 'Pro Multi-Site'}
+              </h2>
+              
+              {currentTenant.emailVerified ? (
+                <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-300 border border-emerald-700/50 rounded-lg font-bold flex items-center gap-1 text-[10px]">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  Verified ✓
                 </span>
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowEmailVerifyModal(true)}
+                  className="px-2 py-0.5 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 border border-emerald-700/60 rounded-lg font-bold flex items-center gap-1 transition cursor-pointer text-[10px]"
+                >
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  Verify Email
+                </button>
+              )}
+            </div>
 
-              <div className="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2.5 py-1 text-slate-300">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Renews: <strong>{formatDateTime(sub.trialEndsAt)}</strong></span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowEmailVerifyModal(true)}
-                className="px-2.5 py-1 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 border border-emerald-700/60 rounded-lg font-bold flex items-center gap-1 transition cursor-pointer ml-auto text-[11px]"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{currentTenant.emailVerified ? 'Email Verified ✓' : 'Verify Email OTP'}</span>
-              </button>
+            <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+              {isTrial && (
+                <span className="bg-slate-800 rounded px-1.5 py-0.5">
+                  <strong className="text-amber-400">{daysRemaining}d</strong> trial remaining
+                </span>
+              )}
+              <span className="bg-slate-800 rounded px-1.5 py-0.5">
+                Renews: {formatDateTime(sub.trialEndsAt)}
+              </span>
             </div>
           </div>
 
@@ -411,6 +411,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
               </form>
             </div>
           </div>
+
 
           {/* Action Footer */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">

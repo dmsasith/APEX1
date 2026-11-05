@@ -709,9 +709,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                 <input
                   type="text"
                   value={modalSystemName}
-                  onChange={(e) => setModalSystemName(e.target.value)}
+                  onChange={(e) => currentTenant?.id === 'tenant-apex-main' && setModalSystemName(e.target.value)}
+                  readOnly={currentTenant?.id !== 'tenant-apex-main'}
                   placeholder="e.g. Apex Stock & Site Management System"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className={`w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none ${currentTenant?.id !== 'tenant-apex-main' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
                 />
               </div>
 
