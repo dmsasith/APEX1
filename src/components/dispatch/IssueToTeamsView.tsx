@@ -243,6 +243,33 @@ export const IssueToTeamsView: React.FC = () => {
           </p>
         </div>
       </div>
+      {/* Official Head Office Team Registration Notice Banner */}
+      <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-amber-500/15 border-2 border-amber-500/40 rounded-xl p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs font-bold">
+            <AlertTriangle className="w-5 h-5 text-amber-950" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-amber-950 bg-amber-200/80 px-2 py-0.5 rounded border border-amber-300">
+                Official Head Office Notice
+              </span>
+            </div>
+            <h2 className="text-xs sm:text-sm font-black text-amber-950 mt-1">
+              All field teams must be registered at the Head Office with an official Team Number.
+            </h2>
+            <p className="text-[11px] text-amber-900 font-semibold mt-0.5">
+              Please ensure executing teams are assigned valid Head Office Team Numbers under Master Registrations before material issuance.
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 self-end sm:self-center">
+          <span className="text-[10px] font-extrabold text-amber-900 bg-white border border-amber-300 px-3 py-1.5 rounded-lg shadow-2xs block">
+            Head Office Mandatory Requirement
+          </span>
+        </div>
+      </div>
 
       {/* Main Dispatch Creation Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -298,7 +325,12 @@ export const IssueToTeamsView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Select Field Team *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700">Select Field Team *</label>
+                <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded shadow-2xs">
+                  HO Registered Team No.
+                </span>
+              </div>
               <select
                 value={selectedTeamId}
                 onChange={(e) => setSelectedTeamId(e.target.value)}
