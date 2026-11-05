@@ -633,7 +633,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
               </div>
 
               {/* Visual Section Buttons */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                 {activeProjectTypes.map((pt) => {
                   const isSelected = selectedSectionId === pt.id;
                   const bomCount = (pt.templateItems || []).length;
@@ -642,19 +642,19 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       key={pt.id}
                       type="button"
                       onClick={() => handleSelectSection(pt.id)}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2.5 ${
                         isSelected
                           ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-emerald-500/50'
                           : 'bg-white hover:bg-emerald-100/50 text-slate-800 border-emerald-200/80 shadow-2xs'
                       }`}
                     >
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-bold uppercase opacity-75">{pt.code || 'SEC'}</div>
-                        <div className="text-xs font-bold truncate">{pt.name}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider opacity-75 mb-0.5">{pt.code || 'SEC'}</div>
+                        <div className="text-xs font-bold leading-snug whitespace-normal break-words">{pt.name}</div>
                       </div>
                       <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                          isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-100 text-slate-600'
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 mt-0.5 ${
+                          isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-100 text-slate-700'
                         }`}
                       >
                         {bomCount} BOM
