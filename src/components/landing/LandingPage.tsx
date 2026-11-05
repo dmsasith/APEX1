@@ -25,6 +25,7 @@ import {
   Award,
   Layers,
   CheckCheck,
+  Crown,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 
@@ -437,7 +438,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           </div>
 
           {/* 3 Pricing Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch pt-6">
             {/* Card 1: 7-Day Free Trial */}
             <div className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-3xl p-8 flex flex-col relative transition-all duration-300 hover:shadow-2xl hover:shadow-slate-900/50 backdrop-blur-md">
               <div className="mb-6">
@@ -560,71 +561,102 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </button>
             </div>
 
-            {/* Card 3: Pro Annual Plan (Best Value / Most Popular) */}
-            <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-amber-500/70 hover:border-amber-400 rounded-3xl p-8 flex flex-col relative shadow-2xl shadow-amber-500/15 backdrop-blur-md">
-              {/* Highlight Best Value Top Pill */}
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 font-sans">
-                  <Award className="w-3.5 h-3.5" />
-                  <span>Best Value · Save 21%</span>
+            {/* Card 3: Pro Annual Plan (VIVID COLOR LUXURY LOOK - BALANCED & ALIGNED) */}
+            <div className="relative group flex flex-col transition-all duration-300">
+              {/* Vivid Multi-Color Radiant Iridescent Glow Outer Ring */}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 via-rose-500 via-purple-600 to-emerald-400 rounded-[32px] blur-sm opacity-85 group-hover:opacity-100 transition duration-500 group-hover:blur-md" />
+
+              {/* Highlight Best Value Top Pill - Placed on outer wrapper so it never gets clipped */}
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30">
+                <span className="text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 via-rose-500 to-amber-300 text-slate-950 px-5 py-1.5 rounded-full shadow-xl shadow-rose-500/40 flex items-center gap-1.5 border border-amber-200/80 font-sans whitespace-nowrap">
+                  <Crown className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+                  <span>Luxury VIP · Save 21%</span>
                 </span>
               </div>
 
-              <div className="mb-6 pt-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-950/60 px-3 py-1 rounded-full border border-amber-800">
-                  Annual Commitment
-                </span>
-                <h3 className="text-2xl font-black text-white mt-4">Pro Annual</h3>
-                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                  Best value for growing companies. Pay once for 12 months with maximum cost savings.
-                </p>
-              </div>
+              {/* Main Card Container */}
+              <div className="relative h-full bg-gradient-to-b from-slate-900/98 via-slate-950/98 to-slate-950 rounded-[30px] p-8 flex flex-col border border-amber-400/40 shadow-2xl shadow-amber-500/20 backdrop-blur-2xl">
+                {/* Internal Luxury Ambient Glow Spheres (contained safely in an inner overflow-hidden layer) */}
+                <div className="absolute inset-0 rounded-[30px] overflow-hidden pointer-events-none">
+                  <div className="absolute -top-20 -right-20 w-56 h-56 bg-gradient-to-br from-amber-400/30 via-rose-500/25 to-purple-600/20 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-700" />
+                  <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-gradient-to-tr from-emerald-500/20 via-teal-500/20 to-indigo-600/25 rounded-full blur-3xl" />
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
+                </div>
 
-              <div className="mb-8">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-black text-amber-400">$189.00</span>
-                  <span className="text-xs font-semibold text-slate-400">/ year</span>
+                <div className="mb-6 pt-3 relative z-10">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 bg-gradient-to-r from-amber-500/25 via-rose-500/25 to-purple-500/25 px-3.5 py-1 rounded-full border border-amber-500/40 inline-flex items-center gap-1.5 shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Flagship Enterprise</span>
+                  </span>
+                  <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-100 to-amber-300 mt-4 tracking-tight">
+                    Pro Annual
+                  </h3>
+                  <p className="text-xs text-slate-300/90 mt-2 leading-relaxed">
+                    The ultimate high-performance suite. Pay once for 12 months with maximum cost savings & VIP engineering privileges.
+                  </p>
                 </div>
-                <div className="text-[11px] text-amber-300 font-semibold mt-1">
-                  Equivalent to only ~$15.75/month (Save $49.80/yr)
-                </div>
-              </div>
 
-              <div className="space-y-3.5 mb-8 flex-1 text-xs text-slate-300">
-                <div className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="font-semibold text-white">All Pro Monthly features included</span>
+                <div className="mb-8 relative z-10">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 drop-shadow-[0_2px_20px_rgba(245,158,11,0.6)]">
+                      $189.00
+                    </span>
+                    <span className="text-xs font-bold text-amber-200/80">/ year</span>
+                  </div>
+                  <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 via-rose-500/15 to-emerald-500/20 border border-amber-500/40 text-amber-200 text-[11px] font-bold shadow-sm">
+                    <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                    <span>Only ~$15.75/month · Save $49.80 every year</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Save 21% compared to monthly billing</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>VIP Priority Support & direct assistance</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Free catalog data onboarding help</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Bank QR / Wire Transfer Slip instant renewal</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Locked-in discounted rate for renewal</span>
-                </div>
-              </div>
 
-              <button
-                onClick={() => setIsSignupOpen(true)}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 transition cursor-pointer active:scale-95"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Select Pro Annual (Save 21%)</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+                <div className="space-y-3.5 mb-8 flex-1 text-xs text-slate-200 relative z-10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 via-rose-500 to-indigo-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md shadow-rose-500/30">
+                      <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />
+                    </div>
+                    <span className="font-bold text-white">All Pro Monthly features included</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 via-rose-500 to-indigo-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md shadow-rose-500/30">
+                      <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />
+                    </div>
+                    <span className="text-amber-200 font-semibold">Save 21% instantly compared to monthly billing</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 via-rose-500 to-indigo-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md shadow-rose-500/30">
+                      <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />
+                    </div>
+                    <span>👑 VIP Dedicated Engineering & Priority Setup</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 via-rose-500 to-indigo-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md shadow-rose-500/30">
+                      <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />
+                    </div>
+                    <span>Free white-glove Excel/CSV catalog migration</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 via-rose-500 to-indigo-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md shadow-rose-500/30">
+                      <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />
+                    </div>
+                    <span>Bank QR / Wire Transfer Slip instant approval</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 via-rose-500 to-indigo-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md shadow-rose-500/30">
+                      <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />
+                    </div>
+                    <span>Custom corporate branding & locked-in renewal rate</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsSignupOpen(true)}
+                  className="w-full py-4 bg-gradient-to-r from-amber-400 via-rose-500 to-amber-300 hover:from-amber-300 hover:via-rose-400 hover:to-yellow-200 text-slate-950 font-black rounded-2xl text-xs flex items-center justify-center gap-2 shadow-2xl shadow-rose-500/30 hover:shadow-amber-400/50 transition-all duration-300 hover:scale-[1.02] cursor-pointer active:scale-95 uppercase tracking-wider relative z-10"
+                >
+                  <Crown className="w-4 h-4 fill-slate-950" />
+                  <span>Select Pro Annual (Save 21%)</span>
+                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                </button>
+              </div>
             </div>
           </div>
 
