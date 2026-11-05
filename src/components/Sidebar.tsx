@@ -38,12 +38,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
   // Grouped Navigation Items in Logical Operations Workflow Flow
-  const navSections: Array<{ title?: string; items: any[] }> = [
+  const navSections: Array<{ title?: string; titleClass?: string; items: any[] }> = [
     {
       items: [
         {
           id: 'dashboard',
-          label: 'Dashboard',
+          label: 'Dashboard Overview',
           icon: LayoutDashboard,
           badge: totalLowStockAlertsCount > 0 ? `${totalLowStockAlertsCount} Low` : undefined,
           badgeColor: 'bg-red-100 text-red-700',
@@ -63,6 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       title: 'Central Yard & Procurement',
+      titleClass: 'text-emerald-900 bg-emerald-100/80 border border-emerald-300/80',
       items: [
         {
           id: 'main-stock',
@@ -90,13 +91,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       title: 'Branch Requisition & Yard',
+      titleClass: 'text-amber-900 bg-amber-100/80 border border-amber-300/80',
       items: [
         {
           id: 'requests',
           label: 'Request Stock to Site',
           icon: ArrowRightLeft,
           badge: pendingRequestsCount > 0 ? `${pendingRequestsCount}` : undefined,
-          badgeColor: 'bg-amber-100 text-amber-800',
+          badgeColor: 'bg-amber-200 text-amber-900',
           sublabel: 'Requisitions & Request Note (Gate Pass)',
         },
         {
@@ -109,6 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       title: 'Field Teams & Custody',
+      titleClass: 'text-blue-900 bg-blue-100/80 border border-blue-300/80',
       items: [
         {
           id: 'dispatch',
@@ -126,6 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       title: 'Projects & Material Usage',
+      titleClass: 'text-teal-900 bg-teal-100/80 border border-teal-300/80',
       items: [
         {
           id: 'projects',
@@ -143,6 +147,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       title: 'Field Returns & Transfers',
+      titleClass: 'text-rose-900 bg-rose-100/80 border border-rose-300/80',
       items: [
         {
           id: 'returns',
@@ -160,6 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       title: 'Plant & Fleet',
+      titleClass: 'text-purple-900 bg-purple-100/80 border border-purple-300/80',
       items: [
         {
           id: 'machinery',
@@ -171,6 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       title: 'Governance & Setup',
+      titleClass: 'text-slate-900 bg-slate-200/90 border border-slate-300',
       items: [
         ...(isCentralAdmin
           ? [
@@ -209,21 +216,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   return (
     <aside className="w-full lg:w-64 bg-white border-r border-slate-200 shrink-0 flex flex-col h-full">
       <div className="p-3 flex-1 overflow-y-auto scrollbar-thin">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2 flex items-center justify-between">
+        <div className="text-xs font-black uppercase tracking-wider text-slate-700 px-2.5 mb-2.5 flex items-center justify-between">
           <span>Operations Navigation</span>
-          <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-            Workflow Order
+          <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
+            Workflow
           </span>
         </div>
 
-        <nav className="space-y-3">
+        <nav className="space-y-3.5">
           {navSections.map((section, sIdx) => {
             if (!section.items || section.items.length === 0) return null;
             return (
-              <div key={sIdx} className={sIdx > 0 ? 'pt-2 border-t border-slate-100' : ''}>
+              <div key={sIdx} className={sIdx > 0 ? 'pt-1.5' : ''}>
                 {section.title && (
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-1">
-                    {section.title}
+                  <div
+                    className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md mb-1.5 flex items-center justify-between shadow-2xs ${
+                      section.titleClass || 'text-slate-800 bg-slate-100'
+                    }`}
+                  >
+                    <span>{section.title}</span>
                   </div>
                 )}
                 <div className="space-y-1">
@@ -235,25 +246,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
                       <button
                         key={item.id}
                         onClick={() => onSelectTab(item.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors group ${
+                        className={`w-full text-left px-3 py-2.5 rounded-xl text-[13px] font-bold flex items-center justify-between transition-all group ${
                           isActive
-                            ? `${currentTheme.navActiveBg}`
+                            ? `${currentTheme.navActiveBg} shadow-xs`
                             : (item as any).isHighlighted
-                            ? 'bg-amber-500/10 border border-amber-500/40 text-amber-900 hover:bg-amber-500/20 shadow-2xs'
-                            : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                            ? 'bg-amber-500/15 border border-amber-500/50 text-amber-950 hover:bg-amber-500/25 shadow-2xs'
+                            : 'text-slate-800 hover:bg-slate-100/90 hover:text-slate-900'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Icon
-                            className={`w-4 h-4 shrink-0 ${
-                              isActive ? currentTheme.navActiveIcon : 'text-slate-400 group-hover:text-slate-700'
+                            className={`w-4.5 h-4.5 shrink-0 ${
+                              isActive ? currentTheme.navActiveIcon : 'text-slate-500 group-hover:text-slate-800'
                             }`}
                           />
                           <div className="truncate text-left">
-                            <div className="truncate">{item.label}</div>
+                            <div className="truncate text-[13px] font-bold leading-snug">{item.label}</div>
                             {item.sublabel && (
                               <div
-                                className={`text-[10px] font-normal truncate ${
+                                className={`text-[11px] font-medium truncate mt-0.5 ${
                                   isActive ? 'text-slate-200' : 'text-slate-500'
                                 }`}
                               >
@@ -265,8 +276,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
 
                         {item.badge && (
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1.5 ${
-                              isActive ? 'bg-black/30 text-white' : item.badgeColor
+                            className={`px-2 py-0.5 rounded-md text-[11px] font-black shrink-0 ml-1.5 shadow-2xs ${
+                              isActive ? 'bg-black/40 text-white' : item.badgeColor
                             }`}
                           >
                             {item.badge}

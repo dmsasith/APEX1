@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   Users2,
   Building,
+  Building2,
+  Boxes,
   AlertTriangle,
   FileText,
   Clock,
@@ -587,38 +589,45 @@ export const ProjectMaterialUsageView: React.FC = () => {
       {activeTab === 'log' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form Card (2 Cols) */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <FileText className="w-4 h-4 text-teal-600" />
-                <span>Enter Used Materials to Project</span>
-              </h2>
+          <div className="lg:col-span-2 bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-sm">
+            {/* Header Banner */}
+            <div className="bg-gradient-to-r from-teal-900 via-slate-800 to-slate-900 text-white rounded-xl p-4 shadow-sm mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-teal-300">
+                  <FileText className="w-4.5 h-4.5 text-teal-400" />
+                  <span>Enter Used Materials to Project</span>
+                </h2>
+                <p className="text-[11px] text-slate-300 mt-0.5">
+                  Record materials consumed on-site, assign executing teams, and auto-deduct in-hand balances.
+                </p>
+              </div>
 
               {targetSection && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                  Section: {targetSection.name}
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-500/20 text-teal-200 border border-teal-500/40 shrink-0 self-start sm:self-auto flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-300" />
+                  <span>Section: {targetSection.name}</span>
                 </span>
               )}
             </div>
 
             {errorMsg && (
-              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs font-medium flex items-center gap-2">
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center gap-2 shadow-2xs">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
-            {/* Step 1: Select Project Section / Type */}
-            <div className="mb-5 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            {/* Step 1 Card: Select Project Section / Type */}
+            <div className="mb-4 p-4 bg-emerald-50/70 border border-emerald-200/90 rounded-xl shadow-2xs">
               <div className="flex items-center justify-between mb-2.5">
-                <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-emerald-600" />
                   <span>1. Select Project Section / Type *</span>
                 </label>
                 {targetSection && (
-                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[11px] font-bold text-emerald-800 bg-white border border-emerald-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
                     <Sparkles className="w-3 h-3 text-emerald-600" />
-                    <span>{(targetSection.templateItems || []).length} BOM Template item(s) pre-loaded</span>
+                    <span>{(targetSection.templateItems || []).length} BOM Template item(s)</span>
                   </span>
                 )}
               </div>
@@ -635,8 +644,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       onClick={() => handleSelectSection(pt.id)}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
                         isSelected
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-emerald-500/40'
-                          : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-emerald-500/50'
+                          : 'bg-white hover:bg-emerald-100/50 text-slate-800 border-emerald-200/80 shadow-2xs'
                       }`}
                     >
                       <div className="min-w-0">
@@ -657,23 +666,23 @@ export const ProjectMaterialUsageView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmitUsage} className="space-y-4">
-              {/* Step 2: Project / Customer Details */}
-              <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              {/* Step 2 Card: Project & Customer Details */}
+              <div className="p-4 bg-teal-50/70 border border-teal-200/90 rounded-xl shadow-2xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-200/60 pb-2.5">
+                  <span className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
                     <FolderPlus className="w-4 h-4 text-teal-600" />
                     <span>2. Project & Customer Identification</span>
                   </span>
 
                   {/* Mode Switcher */}
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold self-start sm:self-auto">
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-teal-200 text-[11px] font-semibold self-start sm:self-auto shadow-2xs">
                     <button
                       type="button"
                       onClick={() => setProjectEntryMode('new')}
                       className={`px-3 py-1 rounded-md transition cursor-pointer ${
                         projectEntryMode === 'new'
-                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-teal-700 text-white shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
                       + Enter Customer / New Site
@@ -683,8 +692,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       onClick={() => setProjectEntryMode('existing')}
                       className={`px-3 py-1 rounded-md transition cursor-pointer ${
                         projectEntryMode === 'existing'
-                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-teal-700 text-white shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
                       Select Registered Project ({sectionProjects.length})
@@ -693,10 +702,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 </div>
 
                 {projectEntryMode === 'new' ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3 pt-1">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
                           Customer / Project Name *
                         </label>
                         <input
@@ -704,13 +713,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           value={entryCustomerName}
                           onChange={(e) => setEntryCustomerName(e.target.value)}
                           placeholder="e.g. SLT Fibre Conn - Sunil Fernando"
-                          className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
                           Customer Phone Number
                         </label>
                         <div className="relative">
@@ -720,7 +729,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             value={entryCustomerPhone}
                             onChange={(e) => setEntryCustomerPhone(e.target.value)}
                             placeholder="e.g. 0771234567 / 071xxxxxxx"
-                            className="w-full pl-8 pr-3 py-2 text-xs font-mono border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            className="w-full pl-8 pr-3 py-2 text-xs font-mono border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                           />
                         </div>
                       </div>
@@ -728,7 +737,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
                           Site ID / Work Order / Ref No
                         </label>
                         <div className="relative">
@@ -738,13 +747,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             value={entrySiteId}
                             onChange={(e) => setEntrySiteId(e.target.value)}
                             placeholder="e.g. SITE-0891, SO-4421"
-                            className="w-full pl-8 pr-3 py-2 text-xs font-mono uppercase border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            className="w-full pl-8 pr-3 py-2 text-xs font-mono uppercase border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
                           District
                         </label>
                         <input
@@ -752,12 +761,12 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           value={entryDistrict}
                           onChange={(e) => setEntryDistrict(e.target.value)}
                           placeholder="e.g. Colombo, Kandy"
-                          className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
                           Sub Area / Location
                         </label>
                         <input
@@ -765,14 +774,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           value={entrySubArea}
                           onChange={(e) => setEntrySubArea(e.target.value)}
                           placeholder="e.g. Maharagama, Sector 4"
-                          className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                         />
                       </div>
                     </div>
 
                     {/* Duplicate Detection Alert Banner */}
                     {duplicateMatches.length > 0 && (
-                      <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
                         <div className="flex items-start gap-2">
                           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                           <div>
@@ -803,14 +812,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <div className="pt-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Choose Project in Section "{targetSection?.name || 'Current'}" *
                     </label>
                     <select
                       value={selectedProjectId}
                       onChange={(e) => setSelectedProjectId(e.target.value)}
-                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                       required
                     >
                       {sectionProjects.length === 0 ? (
@@ -825,7 +834,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     </select>
 
                     {targetProject && (
-                      <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 flex flex-wrap items-center gap-3">
+                      <div className="mt-2 p-2.5 bg-white border border-teal-200 rounded-lg text-[11px] text-slate-700 flex flex-wrap items-center gap-3 shadow-2xs">
                         <span><strong>Site ID:</strong> {targetProject.siteIdentifier || targetProject.projectId}</span>
                         <span><strong>Phone:</strong> {targetProject.customerPhone || 'N/A'}</span>
                         <span><strong>District:</strong> {targetProject.district || 'General'}</span>
@@ -836,120 +845,130 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 )}
               </div>
 
-              {/* Step 3: Site, Field Team & Execution Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Site Branch */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Site Branch *
-                  </label>
-                  <select
-                    value={selectedSiteId}
-                    onChange={(e) => handleSiteChange(e.target.value)}
-                    disabled={currentUser.siteId !== 'all'}
-                    className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-75"
-                  >
-                    {allowedSites.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.location})
-                      </option>
-                    ))}
-                  </select>
+              {/* Step 3 Card: Site Branch, Field Team & Execution Details */}
+              <div className="p-4 bg-sky-50/70 border border-sky-200/90 rounded-xl shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-sky-200/60 pb-2">
+                  <span className="text-xs font-bold text-sky-950 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-sky-600" />
+                    <span>3. Site Branch & Field Team Execution</span>
+                  </span>
                 </div>
 
-                {/* Executing Field Team */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Executing Field Team * (Stock Deducted from this Team)
-                  </label>
-                  <select
-                    value={selectedTeamId}
-                    onChange={(e) => handleTeamChange(e.target.value)}
-                    className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    required
-                  >
-                    {availableTeams.length === 0 ? (
-                      <option value="">No Teams Assigned to this Site</option>
-                    ) : (
-                      availableTeams.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.teamName} (Lead: {t.teamLeaderName})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-
-                {/* Supervisor / Team Leader */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Supervisor or Team Leader *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={supervisorName}
-                      onChange={(e) => setSupervisorName(e.target.value)}
-                      placeholder="e.g. John Doe / Team Leader"
-                      list="supervisor-presets"
-                      className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    />
-                    <datalist id="supervisor-presets">
-                      {currentTeam && <option value={currentTeam.teamLeaderName} />}
-                      {activeUsers.map((u) => (
-                        <option key={u.id} value={u.fullName}>
-                          {u.fullName} ({u.role})
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Site Branch */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Site Branch *
+                    </label>
+                    <select
+                      value={selectedSiteId}
+                      onChange={(e) => handleSiteChange(e.target.value)}
+                      disabled={currentUser.siteId !== 'all'}
+                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:opacity-75"
+                    >
+                      {allowedSites.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.location})
                         </option>
                       ))}
-                    </datalist>
+                    </select>
+                  </div>
+
+                  {/* Executing Field Team */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Executing Field Team * (Stock Deducted)
+                    </label>
+                    <select
+                      value={selectedTeamId}
+                      onChange={(e) => handleTeamChange(e.target.value)}
+                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                      required
+                    >
+                      {availableTeams.length === 0 ? (
+                        <option value="">No Teams Assigned to this Site</option>
+                      ) : (
+                        availableTeams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.teamName} (Lead: {t.teamLeaderName})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Supervisor / Team Leader */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Supervisor or Team Leader *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={supervisorName}
+                        onChange={(e) => setSupervisorName(e.target.value)}
+                        placeholder="e.g. John Doe / Team Leader"
+                        list="supervisor-presets"
+                        className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                        required
+                      />
+                      <datalist id="supervisor-presets">
+                        {currentTeam && <option value={currentTeam.teamLeaderName} />}
+                        {activeUsers.map((u) => (
+                          <option key={u.id} value={u.fullName}>
+                            {u.fullName} ({u.role})
+                          </option>
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Usage Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={usageDate}
+                      onChange={(e) => setUsageDate(e.target.value)}
+                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                      required
+                    />
                   </div>
                 </div>
 
-                {/* Date */}
+                {/* Work Details / Scope */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Usage Date *
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Work Details / Scope of Installation
                   </label>
                   <input
-                    type="date"
-                    value={usageDate}
-                    onChange={(e) => setUsageDate(e.target.value)}
-                    className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    required
+                    type="text"
+                    value={workDetails}
+                    onChange={(e) => setWorkDetails(e.target.value)}
+                    placeholder="e.g. Fibre Drop Installation, Rosette termination & testing"
+                    className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                   />
                 </div>
               </div>
 
-              {/* Work Details / Scope */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Work Details / Scope
-                </label>
-                <input
-                  type="text"
-                  value={workDetails}
-                  onChange={(e) => setWorkDetails(e.target.value)}
-                  placeholder="e.g. Fibre Drop Installation, Rosette termination & test"
-                  className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-
-              {/* Dynamic Items Table with Pre-loaded Section Template */}
-              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 mt-4">
-                <div className="flex items-center justify-between mb-3">
+              {/* Step 4 Card: Materials Consumed Table */}
+              <div className="p-4 bg-indigo-50/70 border border-indigo-200/90 rounded-xl shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-200/60 pb-2.5 mb-3">
                   <div>
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                      3. Materials Consumed (Deducted from {currentTeam?.teamName || 'Team'} Custody)
+                    <span className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                      <Boxes className="w-4 h-4 text-indigo-600" />
+                      <span>4. Materials Consumed (Deducted from {currentTeam?.teamName || 'Team'} Custody)</span>
                     </span>
-                    <span className="text-[11px] text-slate-500">
-                      Standard section template items auto-loaded below. Enter actual quantities used or add extra items.
+                    <span className="text-[11px] text-slate-600 block mt-0.5">
+                      Standard section template items pre-loaded below. Enter actual quantities used or add extra items.
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddItemRow}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 transition cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>+ Add Extra Item</span>
@@ -957,7 +976,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 </div>
 
                 {eligibleItems.length === 0 && (
-                  <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium flex items-center gap-2">
+                  <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium flex items-center gap-2 shadow-2xs">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>
                       Notice: <strong>{currentTeam?.teamName || 'Selected team'}</strong> currently holds 0 units in custody. Items can be entered, but ensure materials are issued to this team via <em>Issue to Teams</em> to permit deduction.
@@ -975,19 +994,19 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     return (
                       <div
                         key={idx}
-                        className={`bg-white border rounded-xl p-3 flex flex-col sm:flex-row items-center gap-3 transition-colors ${
-                          isOverLimit ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200'
+                        className={`bg-white border rounded-xl p-3 flex flex-col sm:flex-row items-center gap-3 transition-colors shadow-2xs ${
+                          isOverLimit ? 'border-rose-300 bg-rose-50/40' : 'border-indigo-100/90 hover:border-indigo-300'
                         }`}
                       >
                         {/* Item select */}
                         <div className="flex-1 w-full">
-                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                            Item #{idx + 1}
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                            Material Item #{idx + 1} *
                           </label>
                           <select
                             value={row.itemId}
                             onChange={(e) => handleRowChange(idx, 'itemId', e.target.value)}
-                            className="w-full text-xs font-semibold px-2.5 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none"
+                            className="w-full text-xs font-semibold px-2.5 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             required
                           >
                             <option value="">-- Select Material Item --</option>
@@ -1005,13 +1024,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                         {/* Available In-Hand Display */}
                         <div className="w-full sm:w-32 text-center sm:text-left">
-                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                             Team In-Hand
                           </label>
                           <div
-                            className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border ${
+                            className={`text-xs font-bold px-2.5 py-2 rounded-lg border text-center ${
                               inHandBalance > 0
-                                ? 'text-teal-700 bg-teal-50 border-teal-200'
+                                ? 'text-teal-800 bg-teal-50 border-teal-200'
                                 : 'text-slate-500 bg-slate-100 border-slate-200'
                             }`}
                           >
@@ -1021,8 +1040,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                         {/* Quantity input */}
                         <div className="w-full sm:w-32">
-                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                            Quantity Used *
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                            Qty Used *
                           </label>
                           <input
                             type="number"
@@ -1033,20 +1052,20 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               handleRowChange(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))
                             }
                             placeholder="Qty"
-                            className={`w-full text-xs font-semibold px-2.5 py-1.5 border rounded-lg bg-slate-50 focus:bg-white focus:outline-none text-center font-mono ${
-                              isOverLimit ? 'border-rose-400 ring-2 ring-rose-200' : 'border-slate-200'
+                            className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-white focus:outline-none text-center font-mono ${
+                              isOverLimit ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900' : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
                             }`}
                             required
                           />
                         </div>
 
                         {/* Remove Row Button */}
-                        <div className="pt-2 sm:pt-4">
+                        <div className="pt-2 sm:pt-5">
                           <button
                             type="button"
                             onClick={() => handleRemoveItemRow(idx)}
                             disabled={itemRows.length <= 1}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg disabled:opacity-30 cursor-pointer"
+                            className="p-2 text-slate-400 hover:text-rose-600 rounded-lg disabled:opacity-30 cursor-pointer transition-colors"
                             title="Remove Row"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1058,13 +1077,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end">
+              {/* Form Action Submit Button */}
+              <div className="pt-3 flex justify-end">
                 <button
                   type="submit"
                   disabled={eligibleItems.length === 0}
-                  className="px-6 py-2.5 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 transition-colors shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  className="px-6 py-3 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-800 hover:to-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
                 >
-                  <FolderKanban className="w-4 h-4" />
+                  <FolderKanban className="w-4 h-4 text-emerald-300" />
                   <span>Record Material Usage & Deduct In-Hand Stock</span>
                 </button>
               </div>
