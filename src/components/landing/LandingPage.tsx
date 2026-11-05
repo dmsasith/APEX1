@@ -729,10 +729,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             <h4 className="text-sm font-bold text-white mb-1">Still have questions?</h4>
             <p className="text-xs text-slate-400 mb-4">Our engineering support team is ready to assist your company setup.</p>
             <a
-              href="mailto:support@apexstock.com"
+              href="mailto:apexdevinfo@gmail.com"
               className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300"
             >
-              <span>Contact Apex Support: support@apexstock.com</span>
+              <span>Contact Apex Support: apexdevinfo@gmail.com</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </a>
           </div>
