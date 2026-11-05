@@ -13,7 +13,6 @@ import {
   ArrowRight,
   Database,
   Cloud,
-  FileText,
   FileSpreadsheet,
   Coins,
   ChevronDown,
@@ -24,6 +23,8 @@ import {
   Zap,
   Globe,
   Award,
+  Layers,
+  CheckCheck,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 
@@ -35,7 +36,7 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
 
   const faqs = [
     {
@@ -61,7 +62,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 overflow-x-hidden">
       {/* SaaS Navigation Bar */}
       <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -75,7 +76,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-black text-base text-white tracking-tight">Apex Stock</span>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">
                   SaaS
                 </span>
               </div>
@@ -112,11 +113,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section with High-End Lighting Effects */}
       <section className="relative pt-12 pb-20 sm:pt-20 sm:pb-28 overflow-hidden">
         {/* Glow Effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[250px] bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-emerald-500/15 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-1/3 left-1/4 w-[350px] h-[300px] bg-teal-500/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/3 right-1/4 w-[350px] h-[300px] bg-amber-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           {/* Badge */}
@@ -178,8 +180,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           </div>
 
           {/* Interactive Mockup Graphic */}
-          <div className="mt-12 sm:mt-16 rounded-2xl bg-slate-900 border border-slate-800 p-2 sm:p-3 shadow-2xl relative overflow-hidden">
-            <div className="bg-slate-950 rounded-xl border border-slate-800 p-4 sm:p-6 text-left">
+          <div className="mt-12 sm:mt-16 rounded-2xl bg-slate-900/90 border border-slate-800 p-2 sm:p-3 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+            <div className="bg-slate-950 rounded-xl border border-slate-800/80 p-4 sm:p-6 text-left">
               {/* Top window bar */}
               <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-4">
                 <div className="flex items-center gap-2">
@@ -239,7 +241,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       </section>
 
       {/* Core SaaS Features Grid */}
-      <section id="features" className="py-16 sm:py-24 border-t border-slate-800/80 bg-slate-950">
+      <section id="features" className="py-16 sm:py-24 border-t border-slate-800/80 bg-slate-950 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
@@ -254,8 +256,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4">
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/40 hover:bg-slate-900 transition duration-300 group">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-110 transition">
                 <Send className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-base text-white">Inter-Branch Requisitions & Shortage Review</h3>
@@ -264,8 +266,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </p>
             </div>
 
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4">
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-blue-500/40 hover:bg-slate-900 transition duration-300 group">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4 group-hover:scale-110 transition">
                 <Truck className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-base text-white">Issue to Field Teams (Daily Dispatch)</h3>
@@ -274,8 +276,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </p>
             </div>
 
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-purple-500/40 hover:bg-slate-900 transition duration-300 group">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-110 transition">
                 <Users2 className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-base text-white">Team In-Hand Stock & Consumption</h3>
@@ -283,12 +285,458 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 Always know what tools and materials each field crew holds on-site. Log project usage per installation ref number.
               </p>
             </div>
+
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-amber-500/40 hover:bg-slate-900 transition duration-300 group">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4 group-hover:scale-110 transition">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-base text-white">Procurement POs & Supplier GRN Receipts</h3>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                Issue vendor purchase orders, receive bulk goods with delivery note numbers, and track pending vs delivered quantities seamlessly.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-teal-500/40 hover:bg-slate-900 transition duration-300 group">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 mb-4 group-hover:scale-110 transition">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-base text-white">Excel & CSV Catalog Migration</h3>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                Instantly import your existing item directory, codes, categories, units, and initial stock quantities using flexible spreadsheet columns.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 hover:border-rose-500/40 hover:bg-slate-900 transition duration-300 group">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-4 group-hover:scale-110 transition">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-base text-white">Tamper-Proof Audit Security</h3>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                Every dispatch, GRN receipt, transfer, and consumption is logged with the user identity, timestamp, and site location.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Tenant Self-Registration Modal */}
-      <TenantSignupModal isOpen={isSignupOpen} onClose={() => setIsSignupOpen(false)} />
+      {/* Multi-Tenant Cloud Architecture Section */}
+      <section id="architecture" className="py-16 sm:py-24 border-t border-slate-800/80 bg-slate-950/70 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold mb-4">
+                <Database className="w-3.5 h-3.5" />
+                <span>Enterprise Multi-Tenancy</span>
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                Complete Isolation for Your Company Data
+              </h2>
+              <p className="text-slate-400 text-xs sm:text-sm mt-4 leading-relaxed">
+                Each company operates in a dedicated, isolated workspace partition. Your stock records, confidential pricing, supplier rates, and field teams are strictly separated by cryptographic tenant guards on Firebase.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-white">Zero Cross-Tenant Leakage</h4>
+                    <p className="text-[11px] sm:text-xs text-slate-400">Strict database security rules guarantee Company A can never view or modify Company B data.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-white">Branch-Level Site Locks</h4>
+                    <p className="text-[11px] sm:text-xs text-slate-400">Branch supervisors are restricted to their assigned operational site with zero access to other branches.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-white">Central Master Admin Control</h4>
+                    <p className="text-[11px] sm:text-xs text-slate-400">Master Company Admin manages users, warehouses, sites, teams, and subscription renewals with bank transfer verification.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Architecture Graphic Box */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 relative shadow-2xl overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
+                <span className="text-xs font-mono text-emerald-400 font-bold flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  <span>Tenant Data Isolation Model</span>
+                </span>
+                <span className="text-[11px] font-mono text-slate-500">Firebase Cloud RTDB</span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-slate-950 border border-emerald-500/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-xs font-bold text-white">Your Company Tenant Partition</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">ISOLATED</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] text-slate-400 font-mono">
+                    <div className="bg-slate-900 p-2 rounded text-center">/items</div>
+                    <div className="bg-slate-900 p-2 rounded text-center">/warehouses</div>
+                    <div className="bg-slate-900 p-2 rounded text-center">/dispatches</div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 opacity-60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-slate-600" />
+                      <span className="text-xs font-bold text-slate-400">Other Enterprise Client Partition</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">ENCRYPTED</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Role-Based Access Control (RBAC)</span>
+                </span>
+                <span className="text-emerald-400 font-bold">100% Protected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3 High-End Pricing Plan Cards Section */}
+      <section id="pricing" className="py-20 sm:py-28 border-t border-slate-800/80 bg-slate-950 relative">
+        {/* Glow Lighting under pricing */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-gradient-to-r from-emerald-500/10 via-amber-500/10 to-teal-500/10 rounded-full blur-[160px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+              Clear & Transparent Pricing
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-2">
+              Choose the Plan That Fits Your Business
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-3 max-w-xl mx-auto">
+              Start with our full-featured 7-day free trial. Then continue with our flexible monthly or discounted annual plan. Bank QR and wire transfer supported.
+            </p>
+          </div>
+
+          {/* 3 Pricing Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+            {/* Card 1: 7-Day Free Trial */}
+            <div className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-3xl p-8 flex flex-col relative transition-all duration-300 hover:shadow-2xl hover:shadow-slate-900/50 backdrop-blur-md">
+              <div className="mb-6">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                  Risk Free
+                </span>
+                <h3 className="text-2xl font-black text-white mt-4">7-Day Free Trial</h3>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                  Full unrestricted access to evaluate our multi-site system with your team.
+                </p>
+              </div>
+
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-black text-white">$0</span>
+                  <span className="text-xs font-semibold text-slate-400">/ 7 days free</span>
+                </div>
+                <div className="text-[11px] text-emerald-400 font-semibold mt-1">
+                  No credit card required to start
+                </div>
+              </div>
+
+              <div className="space-y-3.5 mb-8 flex-1 text-xs text-slate-300">
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Full access to all SaaS features</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Unlimited sites & branch yards</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Unlimited field teams & crew dispatch</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Excel & CSV bulk catalog import</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Official PDF Issue & Requisition Notes</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Isolated private tenant database</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsSignupOpen(true)}
+                className="w-full py-3.5 bg-slate-800 hover:bg-slate-750 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 transition cursor-pointer active:scale-95"
+              >
+                <span>Start 7-Day Free Trial</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Card 2: Pro Monthly Plan */}
+            <div className="bg-slate-900/90 border border-emerald-500/40 hover:border-emerald-500/70 rounded-3xl p-8 flex flex-col relative transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/10 backdrop-blur-md">
+              <div className="absolute -top-3.5 right-6">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-slate-950 px-3 py-1 rounded-full shadow-md font-sans">
+                  Monthly Flexibility
+                </span>
+              </div>
+
+              <div className="mb-6">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800">
+                  Standard Plan
+                </span>
+                <h3 className="text-2xl font-black text-white mt-4">Pro Monthly</h3>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                  Ideal for contractors requiring monthly flexibility and ongoing operations.
+                </p>
+              </div>
+
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-black text-white">$19.90</span>
+                  <span className="text-xs font-semibold text-slate-400">/ month</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  Bank QR / Wire transfer with live USD/LKR rate
+                </div>
+              </div>
+
+              <div className="space-y-3.5 mb-8 flex-1 text-xs text-slate-300">
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="font-semibold text-white">All Free Trial features included</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Unlimited site requisitions & transfers</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Real-time material deduction & audits</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Purchase Orders & Supplier Receipts</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Priority technical email support</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Cancel or pause subscription anytime</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsSignupOpen(true)}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition cursor-pointer active:scale-95"
+              >
+                <span>Select Pro Monthly</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Card 3: Pro Annual Plan (Best Value / Most Popular) */}
+            <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-amber-500/70 hover:border-amber-400 rounded-3xl p-8 flex flex-col relative shadow-2xl shadow-amber-500/15 backdrop-blur-md">
+              {/* Highlight Best Value Top Pill */}
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <span className="text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 font-sans">
+                  <Award className="w-3.5 h-3.5" />
+                  <span>Best Value · Save 21%</span>
+                </span>
+              </div>
+
+              <div className="mb-6 pt-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-950/60 px-3 py-1 rounded-full border border-amber-800">
+                  Annual Commitment
+                </span>
+                <h3 className="text-2xl font-black text-white mt-4">Pro Annual</h3>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                  Best value for growing companies. Pay once for 12 months with maximum cost savings.
+                </p>
+              </div>
+
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-black text-amber-400">$189.00</span>
+                  <span className="text-xs font-semibold text-slate-400">/ year</span>
+                </div>
+                <div className="text-[11px] text-amber-300 font-semibold mt-1">
+                  Equivalent to only ~$15.75/month (Save $49.80/yr)
+                </div>
+              </div>
+
+              <div className="space-y-3.5 mb-8 flex-1 text-xs text-slate-300">
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="font-semibold text-white">All Pro Monthly features included</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Save 21% compared to monthly billing</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>VIP Priority Support & direct assistance</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Free catalog data onboarding help</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Bank QR / Wire Transfer Slip instant renewal</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Check className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Locked-in discounted rate for renewal</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsSignupOpen(true)}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 transition cursor-pointer active:scale-95"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Select Pro Annual (Save 21%)</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Payment Method Notice */}
+          <div className="mt-14 max-w-2xl mx-auto bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 text-center sm:text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-emerald-400 shrink-0">
+                <QrCode className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="font-bold text-white block">Easy Bank Payments & QR Wire Transfer</span>
+                <span>Commercial Bank, Sampath Bank, or any local/international bank wire supported.</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsSignupOpen(true)}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs shrink-0 transition"
+            >
+              Start Free Trial First
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Comprehensive FAQ Section */}
+      <section id="faq" className="py-20 sm:py-28 border-t border-slate-800/80 bg-slate-950 relative">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+              Frequently Asked Questions
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-2">
+              Everything You Need to Know
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-2">
+              Have questions about trials, billing, or multi-tenancy? Here are the answers.
+            </p>
+          </div>
+
+          <div className="space-y-3.5">
+            {faqs.map((faq, idx) => (
+              <div
+                key={idx}
+                className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden transition"
+              >
+                <button
+                  onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                  className="w-full px-6 py-4 text-left font-bold text-xs sm:text-sm text-white flex justify-between items-center gap-4 cursor-pointer hover:text-emerald-400 transition"
+                >
+                  <span>{faq.q}</span>
+                  <div className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+                    {activeFaq === idx ? (
+                      <ChevronUp className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    )}
+                  </div>
+                </button>
+                {activeFaq === idx && (
+                  <div className="px-6 pb-5 text-xs text-slate-400 leading-relaxed border-t border-slate-800/60 pt-3">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Help Box */}
+          <div className="mt-12 text-center p-6 bg-slate-900/40 border border-slate-800 rounded-2xl">
+            <h4 className="text-sm font-bold text-white mb-1">Still have questions?</h4>
+            <p className="text-xs text-slate-400 mb-4">Our engineering support team is ready to assist your company setup.</p>
+            <a
+              href="mailto:support@apexstock.com"
+              className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+            >
+              <span>Contact Apex Support: support@apexstock.com</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* High-End Footer with Developer Attribution */}
+      <footer className="mt-auto border-t border-slate-800/80 bg-slate-950 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+              <Boxes className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <span className="font-black text-sm text-white">Apex Stock SaaS</span>
+              <span className="text-[11px] text-slate-500 block">Centralized Multi-Site Inventory & Dispatch</span>
+            </div>
+          </div>
+
+          <div className="text-center md:text-right">
+            <div className="text-xs font-semibold text-slate-400">
+              Apex Stock SaaS © {new Date().getFullYear()} · All Rights Reserved
+            </div>
+            <div className="text-[11px] text-emerald-400/80 font-medium mt-1">
+              Apex Developer | System Developed By Sasith Dissanayake
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Tenant Registration Modal */}
+      <TenantSignupModal
+        isOpen={isSignupOpen}
+        onClose={() => setIsSignupOpen(false)}
+        onSuccessLogin={onOpenLogin}
+      />
     </div>
   );
 };
