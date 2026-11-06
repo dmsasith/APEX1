@@ -770,7 +770,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1.5 transition cursor-pointer underline decoration-emerald-500/50"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Offline Backup Viewer & Excel Converter (දත්ත බැලීමේ මෙවලම)</span>
+              <span>Offline Backup Viewer & Excel Converter (Emergency Data Tool)</span>
             </button>
             <div className="text-xs font-semibold text-slate-400">
               Apex Stock SaaS © {new Date().getFullYear()} · All Rights Reserved

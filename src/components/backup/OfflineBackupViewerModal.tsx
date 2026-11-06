@@ -229,7 +229,7 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              <strong>Zero Vendor Lock-in:</strong> මේ මෙවලම පාවිච්චි කර ඔබ සතු <strong>.json Backup</strong> ගොනුව ක්ෂණිකව විවෘත කර සියලුම Items, Receipts, Issues සහ Project විස්තර කියවා Excel (.xlsx) වලට සුරැකිය හැක.
+              <strong>Zero Vendor Lock-in:</strong> Use this offline tool to instantly open your <strong>.json backup</strong> file or local browser cache, inspect all stock inventory, transactions, and dispatches, and export everything directly to multi-sheet Excel (.xlsx) spreadsheets.
             </span>
           </div>
           <span className="text-[11px] text-emerald-800 font-mono hidden md:inline">

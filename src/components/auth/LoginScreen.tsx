@@ -259,7 +259,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
             className="text-xs text-slate-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1.5 transition cursor-pointer underline decoration-slate-700 hover:decoration-emerald-400"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Server Down / Offline? View Your Backup File or Local Data (දත්ත බැලීමේ මෙවලම)</span>
+            <span>Server Down / Offline? View Your Backup File or Local Data (Emergency Offline Tool)</span>
           </button>
         </div>
       </div>

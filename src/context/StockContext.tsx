@@ -4206,8 +4206,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       localStorage.setItem(`apex_daily_auto_snapshot_${currentTenantIdRef.current}`, JSON.stringify(autoBackup));
       localStorage.setItem(`apex_last_daily_backup_date_${currentTenantIdRef.current}`, todayStr);
       localStorage.setItem(`apex_last_daily_backup_time_${currentTenantIdRef.current}`, nowIso);
+
+      // If user enabled automatic file download to PC Hard Drive / Downloads folder
+      const autoDownloadKey = `apex_auto_download_daily_pc_${currentTenantIdRef.current}`;
+      if (typeof window !== 'undefined' && localStorage.getItem(autoDownloadKey) === 'true') {
+        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(autoBackup, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute('href', dataStr);
+        downloadAnchor.setAttribute('download', `Apex_Daily_AutoBackup_${todayStr}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      }
     } catch (e) {
-      console.warn('Auto-backup local storage quota notice:', e);
+      console.warn('Auto-backup local storage quota or auto-download notice:', e);
     }
 
     setBackups((prev) => {

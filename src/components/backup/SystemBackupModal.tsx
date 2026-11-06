@@ -20,6 +20,9 @@ import {
   Eye,
   HardDrive,
   Sparkles,
+  Laptop,
+  FolderDown,
+  FolderCheck,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { StockBackup } from '../../types';
@@ -79,6 +82,31 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
   // Selected backup for preview/restore
   const [restoreConfirmBackup, setRestoreConfirmBackup] = useState<StockBackup | null>(null);
   const [restoreSuccessMsg, setRestoreSuccessMsg] = useState<string | null>(null);
+
+  // Auto-download to PC Hard Drive toggle state
+  const [autoDownloadToPc, setAutoDownloadToPc] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`apex_auto_download_daily_pc_${currentTenant.id}`) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleAutoDownloadToPc = () => {
+    const nextVal = !autoDownloadToPc;
+    setAutoDownloadToPc(nextVal);
+    try {
+      localStorage.setItem(`apex_auto_download_daily_pc_${currentTenant.id}`, String(nextVal));
+      if (nextVal) {
+        setRestoreSuccessMsg('Auto-download to PC Hard Drive enabled! Daily auto-backups will download directly to your computer.');
+      } else {
+        setRestoreSuccessMsg('Auto-download to PC Hard Drive disabled.');
+      }
+      setTimeout(() => setRestoreSuccessMsg(null), 4000);
+    } catch (e) {
+      console.warn('Could not save auto download setting:', e);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -236,6 +264,74 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+  };
+
+  const handleSaveDirectToPcHardDrive = async () => {
+    try {
+      const liveSnapshot = {
+        id: `manual-export-${Date.now()}`,
+        backupNumber: backups.length + 1,
+        name: `Live: ${currentTenant.companyName} Database`,
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser?.fullName || 'Central Admin',
+        reason: 'Direct PC Hard Drive Backup Export',
+        itemCount: items.length,
+        transactionCount:
+          mainStockEntries.length +
+          stockRequests.length +
+          teamIssues.length +
+          teamReturns.length +
+          projectUsages.length +
+          branchReturns.length,
+        snapshot: {
+          config,
+          items,
+          sites,
+          teams,
+          users,
+          projects,
+          projectTypes,
+          mainStockEntries,
+          stockRequests,
+          teamIssues,
+          teamReturns,
+          projectUsages,
+          branchReturns,
+          suppliers,
+          purchaseOrders,
+          supplierReturns,
+          letterheadTemplates,
+          digitalSignatures,
+        },
+      };
+
+      const jsonStr = JSON.stringify(liveSnapshot, null, 2);
+      const filename = `${currentTenant.slug.toUpperCase()}_HardDrive_Backup_${new Date().toISOString().split('T')[0]}.json`;
+
+      // Check if modern File System Access API is supported
+      if ('showSaveFilePicker' in window) {
+        const fileHandle = await (window as any).showSaveFilePicker({
+          suggestedName: filename,
+          types: [
+            {
+              description: 'JSON Database Backup File (.json)',
+              accept: { 'application/json': ['.json'] },
+            },
+          ],
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(jsonStr);
+        await writable.close();
+        setRestoreSuccessMsg(`Saved directly to PC Hard Drive: ${fileHandle.name}!`);
+        setTimeout(() => setRestoreSuccessMsg(null), 4000);
+      } else {
+        handleExportLiveTenantSnapshotJson();
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error('File save error:', err);
+      }
+    }
   };
 
   const handleImportJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -520,6 +616,65 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                       className="hidden"
                     />
                   </label>
+                </div>
+              </div>
+
+              {/* PC Hard Drive Direct Backup & Sync Card */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-4 rounded-xl border border-slate-800 shadow-sm space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                      <Laptop className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-white flex items-center gap-2 flex-wrap">
+                        <span>Admin PC Hard Drive Auto-Backup & Storage</span>
+                        {autoDownloadToPc ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Auto-Download to PC: Active
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-400 border border-slate-700">
+                            Auto-Download to PC: Off
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Save complete offline database files directly to your computer's local storage or a synced Google Drive / OneDrive folder.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleSaveDirectToPcHardDrive}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                      title="Choose exact folder on your PC Hard Drive to save backup using File System Access"
+                    >
+                      <FolderDown className="w-3.5 h-3.5" />
+                      <span>Select Folder & Save to PC</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={autoDownloadToPc}
+                      onChange={toggleAutoDownloadToPc}
+                      className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-700 bg-slate-800 cursor-pointer"
+                    />
+                    <span className="text-slate-300 text-[11px]">
+                      <strong>Auto-Download Copy to PC:</strong> Automatically download a <code className="text-emerald-300">.json</code> backup file into your PC Downloads folder every 24 hours when system loads.
+                    </span>
+                  </label>
+
+                  <div className="text-[10px] text-amber-300 font-medium shrink-0 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md">
+                    💡 <strong>Pro Tip:</strong> Select your local <strong>Google Drive</strong> or <strong>OneDrive</strong> folder for automatic cloud backup!
+                  </div>
                 </div>
               </div>
 
