@@ -26,6 +26,7 @@ import {
   Layers,
   CheckCheck,
   Crown,
+  CreditCard,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 import { OfflineBackupViewerModal } from '../backup/OfflineBackupViewerModal';
@@ -136,7 +137,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold mb-6 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Next-Gen Multi-Site Stock Management SaaS</span>
+            <span>Next-Gen Multi-Site Stock Management System</span>
             <span className="text-slate-600">·</span>
             <span className="text-emerald-400 font-bold">7-Day Free Test Period</span>
           </div>
@@ -172,14 +173,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           </div>
 
           {/* Guarantees */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-slate-400">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-slate-400">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               <span>Instant setup in 60s</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>No credit card required for trial</span>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold shadow-xs">
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>No Credit Card Required for Trial</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -467,8 +468,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <span className="text-5xl font-black text-white">$0</span>
                   <span className="text-xs font-semibold text-slate-400">/ 7 days free</span>
                 </div>
-                <div className="text-[11px] text-emerald-400 font-semibold mt-1">
-                  No credit card required to start
+                <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 bg-emerald-500/15 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold mt-2 shadow-2xs">
+                  <CreditCard className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span>No credit card required to start</span>
                 </div>
               </div>
 
