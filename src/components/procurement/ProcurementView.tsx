@@ -1599,7 +1599,7 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
       {/* ------------------ MODAL: CREATE PURCHASE ORDER ------------------ */}
       {showOrderModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-4xl w-full p-3.5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 my-2 sm:my-8 max-h-[94vh] sm:max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl max-w-6xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 my-2 sm:my-6 max-h-[94vh] sm:max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -1809,7 +1809,7 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
                             min="1"
                             value={item.quantity || ''}
                             onChange={(e) => handleItemQuantityChange(idx, parseFloat(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900"
+                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 text-center"
                           />
                         </div>
                         <div>
@@ -1821,7 +1821,7 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
                             value={item.unit}
                             onChange={(e) => handleItemUnitChange(idx, e.target.value)}
                             placeholder="pcs"
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700"
+                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 text-center"
                           />
                         </div>
                         <div>
@@ -1834,7 +1834,7 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
                             step="0.01"
                             value={item.unitPrice || ''}
                             onChange={(e) => handleItemPriceChange(idx, parseFloat(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800"
+                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 text-right"
                           />
                         </div>
                       </div>
@@ -1851,25 +1851,25 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
 
                 {/* 2. Desktop Table Layout (Shown on md+ screens with proper horizontal scroll protection & deep dropdown area) */}
                 <div className="hidden md:block border border-slate-200 rounded-xl overflow-x-auto shadow-2xs min-h-[300px] pb-44">
-                  <table className="w-full text-left text-xs min-w-[620px]">
-                    <thead className="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
+                  <table className="w-full text-left text-xs min-w-[880px]">
+                    <thead className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200">
                       <tr>
-                        <th className="py-2.5 px-3">#</th>
-                        <th className="py-2.5 px-3 min-w-[280px]">Material / Catalog Item</th>
-                        <th className="py-2.5 px-3 w-24">Qty</th>
-                        <th className="py-2.5 px-3 w-24">Unit</th>
-                        <th className="py-2.5 px-3 w-32">Unit Price ({config.currencySymbol})</th>
-                        <th className="py-2.5 px-3 w-32 text-right">Line Total</th>
-                        <th className="py-2.5 px-2 w-10 text-center"></th>
+                        <th className="py-2.5 px-3 w-10 text-center">#</th>
+                        <th className="py-2.5 px-3 min-w-[320px] lg:min-w-[400px]">Material / Catalog Item</th>
+                        <th className="py-2.5 px-3 w-32 min-w-[110px]">Qty *</th>
+                        <th className="py-2.5 px-3 w-28 min-w-[90px]">Unit</th>
+                        <th className="py-2.5 px-3 w-40 min-w-[140px]">Unit Price ({config.currencySymbol})</th>
+                        <th className="py-2.5 px-3 w-36 min-w-[130px] text-right">Line Total</th>
+                        <th className="py-2.5 px-2 w-12 text-center"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {orderItems.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50" style={{ zIndex: 40 - idx }}>
-                          <td className="py-2 px-3 text-slate-400 font-bold">{idx + 1}</td>
+                        <tr key={idx} className="hover:bg-slate-50/70" style={{ zIndex: 40 - idx }}>
+                          <td className="py-2.5 px-3 text-slate-400 font-bold text-center">{idx + 1}</td>
 
                           {/* Item Selector with Search Bar / Custom input */}
-                          <td className="py-2 px-3 min-w-[280px]">
+                          <td className="py-2.5 px-3 min-w-[320px] lg:min-w-[400px]">
                             {activeItems.length > 0 ? (
                               <div className="space-y-1 relative" style={{ zIndex: 40 - idx }}>
                                 <SearchableItemSelect
@@ -1883,7 +1883,7 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
                                   placeholder="Or enter custom item description"
                                   value={item.itemName}
                                   onChange={(e) => handleItemCustomNameChange(idx, e.target.value)}
-                                  className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-700"
+                                  className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-700 focus:bg-white focus:outline-none"
                                 />
                               </div>
                             ) : (
@@ -1892,52 +1892,54 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
                                 placeholder="Material Description"
                                 value={item.itemName}
                                 onChange={(e) => handleItemCustomNameChange(idx, e.target.value)}
-                                className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
+                                className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
                               />
                             )}
                           </td>
 
                           {/* Quantity */}
-                          <td className="py-2 px-3">
+                          <td className="py-2.5 px-3 w-32 min-w-[110px]">
                             <input
                               type="number"
                               min="1"
                               value={item.quantity || ''}
                               onChange={(e) => handleItemQuantityChange(idx, parseFloat(e.target.value) || 0)}
-                              className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900"
+                              className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-emerald-500 rounded-lg text-xs font-bold text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-center"
+                              placeholder="0"
                             />
                           </td>
 
                           {/* Unit */}
-                          <td className="py-2 px-3">
+                          <td className="py-2.5 px-3 w-28 min-w-[90px]">
                             <input
                               type="text"
                               value={item.unit}
                               onChange={(e) => handleItemUnitChange(idx, e.target.value)}
-                              placeholder="pcs"
-                              className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700"
+                              placeholder="Pcs"
+                              className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-emerald-500 rounded-lg text-xs font-semibold text-slate-800 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-center"
                             />
                           </td>
 
                           {/* Unit Price */}
-                          <td className="py-2 px-3">
+                          <td className="py-2.5 px-3 w-40 min-w-[140px]">
                             <input
                               type="number"
                               min="0"
                               step="0.01"
                               value={item.unitPrice || ''}
                               onChange={(e) => handleItemPriceChange(idx, parseFloat(e.target.value) || 0)}
-                              className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800"
+                              className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-emerald-500 rounded-lg text-xs font-mono font-bold text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-right"
+                              placeholder="0.00"
                             />
                           </td>
 
                           {/* Line Total */}
-                          <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
+                          <td className="py-2.5 px-3 w-36 min-w-[130px] text-right font-mono font-black text-slate-900 text-sm">
                             {formatNumber(item.lineTotal)}
                           </td>
 
                           {/* Delete */}
-                          <td className="py-2 px-2 text-center">
+                          <td className="py-2.5 px-2 w-12 text-center">
                             <button
                               type="button"
                               onClick={() => handleRemoveItemRow(idx)}

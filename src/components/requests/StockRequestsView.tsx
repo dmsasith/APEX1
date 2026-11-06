@@ -110,6 +110,13 @@ export const StockRequestsView: React.FC = () => {
       ? machineryRowsWithIndex
       : rows.map((r, index) => ({ row: r, index, item: items.find((i) => i.id === r.itemId) }));
 
+  // Role access helpers
+  const isCentralAdmin =
+    currentUser.role === 'Central Warehouse Admin' ||
+    currentUser.role === 'Auditor' ||
+    currentUser.siteId === 'all' ||
+    activeSites.find((s) => s.id === currentUser.siteId)?.isMainWarehouse === true;
+
   const handleClearFormFields = () => {
     setPurpose('');
     setPriority('Normal');
@@ -119,6 +126,7 @@ export const StockRequestsView: React.FC = () => {
   };
 
   const handleClearAllRequests = () => {
+    if (!isCentralAdmin) return;
     setConfirmState({
       isOpen: true,
       title: 'Clear All Stock Requisitions?',
@@ -131,6 +139,7 @@ export const StockRequestsView: React.FC = () => {
   };
 
   const handleDeleteRequest = (req: StockTransferRequest) => {
+    if (!isCentralAdmin) return;
     setConfirmState({
       isOpen: true,
       title: `Delete Requisition "${req.requestNoteNumber}"?`,
@@ -324,13 +333,6 @@ export const StockRequestsView: React.FC = () => {
     setAcceptingRequest(null);
   };
 
-  // Role access helpers
-  const isCentralAdmin =
-    currentUser.role === 'Central Warehouse Admin' ||
-    currentUser.role === 'Auditor' ||
-    currentUser.siteId === 'all' ||
-    activeSites.find((s) => s.id === currentUser.siteId)?.isMainWarehouse === true;
-
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
 
   // Filter requests based on user role, branch filter, and search query
@@ -389,7 +391,7 @@ export const StockRequestsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {stockRequests.length > 0 && (
+          {isCentralAdmin && stockRequests.length > 0 && (
             <button
               onClick={handleClearAllRequests}
               className="px-3 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
@@ -695,14 +697,16 @@ export const StockRequestsView: React.FC = () => {
                             <Printer className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Delete Requisition Note */}
-                          <button
-                            onClick={() => handleDeleteRequest(req)}
-                            className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
-                            title="Delete / cancel this requisition note"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Delete Requisition Note (Main Admin only) */}
+                          {isCentralAdmin && (
+                            <button
+                              onClick={() => handleDeleteRequest(req)}
+                              className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                              title="Delete / cancel this requisition note"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {/* 2. Central Admin Review & Approve or Reject */}
                           {req.status === 'Pending Approval' && isCentralAdmin && (
