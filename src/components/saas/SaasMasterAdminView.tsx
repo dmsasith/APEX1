@@ -27,10 +27,11 @@ import {
   X,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { Tenant } from '../../types';
+import { Tenant, TenantSubscription } from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { TenantWorkspaceInspectorModal } from './TenantWorkspaceInspectorModal';
+import { TenantPackageEditModal } from './TenantPackageEditModal';
 
 export const SaasMasterAdminView: React.FC = () => {
   const { tenants, currentTenant, switchTenant, switchToMasterStock, updateTenantSubscription, deleteTenant, config, updateConfig } = useStock();
@@ -39,10 +40,63 @@ export const SaasMasterAdminView: React.FC = () => {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [confirmDeleteTenant, setConfirmDeleteTenant] = useState<Tenant | null>(null);
   const [inspectingTenant, setInspectingTenant] = useState<Tenant | null>(null);
+  const [editingPackageTenant, setEditingPackageTenant] = useState<Tenant | null>(null);
+  const [showBankSetupModal, setShowBankSetupModal] = useState(false);
+
+  const masterBankConfig = (() => {
+    try {
+      const raw = localStorage.getItem('apex_master_bank_config_v1');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [bankName, setBankName] = useState(
+    config.bankName || masterBankConfig?.bankName || 'Commercial Bank PLC / Sampath Bank'
+  );
+  const [bankAccountName, setBankAccountName] = useState(
+    config.bankAccountName || masterBankConfig?.bankAccountName || 'Apex Developer (Pvt) Ltd'
+  );
+  const [bankAccountNumber, setBankAccountNumber] = useState(
+    config.bankAccountNumber || masterBankConfig?.bankAccountNumber || '1000 4829 5012'
+  );
+  const [bankBranchSwift, setBankBranchSwift] = useState(
+    config.bankBranchSwift || masterBankConfig?.bankBranchSwift || 'Mulleriyawa Branch / CCBLLKLX'
+  );
+  const [bankQrImage, setBankQrImage] = useState(
+    config.bankQrImage || masterBankConfig?.bankQrImage || ''
+  );
+  const [usdToLkrRate, setUsdToLkrRate] = useState<number>(
+    config.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64
+  );
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
 
   const showNotification = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleSaveSubscription = (
+    tenantId: string,
+    updates: Partial<TenantSubscription>,
+    isQueued: boolean
+  ) => {
+    const targetTenant = tenants.find((t) => t.id === tenantId);
+    updateTenantSubscription(tenantId, updates);
+    if (isQueued) {
+      showNotification(
+        `Scheduled upcoming package for ${targetTenant?.companyName || 'tenant'}. Will activate automatically when current plan finishes!`
+      );
+    } else {
+      showNotification(`Subscription package updated and locked for ${targetTenant?.companyName || 'tenant'}!`);
+    }
+  };
+
+  const handleClearQueuedSubscription = (tenantId: string) => {
+    const targetTenant = tenants.find((t) => t.id === tenantId);
+    updateTenantSubscription(tenantId, { queuedSubscription: undefined });
+    showNotification(`Cancelled scheduled queued package for ${targetTenant?.companyName || 'tenant'}.`);
   };
 
   // KPI Calculations
@@ -187,37 +241,6 @@ export const SaasMasterAdminView: React.FC = () => {
     });
     showNotification(`Bank slip request rejected for ${tenant.companyName}.`);
   };
-
-  const [showBankSetupModal, setShowBankSetupModal] = useState(false);
-
-  const masterBankConfig = (() => {
-    try {
-      const raw = localStorage.getItem('apex_master_bank_config_v1');
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  })();
-
-  const [bankName, setBankName] = useState(
-    config.bankName || masterBankConfig?.bankName || 'Commercial Bank PLC / Sampath Bank'
-  );
-  const [bankAccountName, setBankAccountName] = useState(
-    config.bankAccountName || masterBankConfig?.bankAccountName || 'Apex Developer (Pvt) Ltd'
-  );
-  const [bankAccountNumber, setBankAccountNumber] = useState(
-    config.bankAccountNumber || masterBankConfig?.bankAccountNumber || '1000 4829 5012'
-  );
-  const [bankBranchSwift, setBankBranchSwift] = useState(
-    config.bankBranchSwift || masterBankConfig?.bankBranchSwift || 'Mulleriyawa Branch / CCBLLKLX'
-  );
-  const [bankQrImage, setBankQrImage] = useState(
-    config.bankQrImage || masterBankConfig?.bankQrImage || ''
-  );
-  const [usdToLkrRate, setUsdToLkrRate] = useState<number>(
-    config.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64
-  );
-  const [isFetchingRate, setIsFetchingRate] = useState(false);
 
   const fetchLiveRate = async () => {
     setIsFetchingRate(true);
@@ -784,34 +807,21 @@ export const SaasMasterAdminView: React.FC = () => {
                       {/* Actions */}
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {/* Extend Trial */}
+                          {/* Locked Package Edit Button */}
                           <button
-                            onClick={() => handleExtendTrial(tenant)}
-                            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-                            title="Add 7 days free trial extension"
+                            type="button"
+                            onClick={() => setEditingPackageTenant(tenant)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                              tenant.subscription.queuedSubscription
+                                ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border border-amber-400 animate-pulse'
+                                : 'bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700'
+                            }`}
+                            title="Package locked to prevent accidental single-click changes. Click to edit or schedule package."
                           >
-                            <Plus className="w-3 h-3" />
-                            <span>+7 Days</span>
-                          </button>
-
-                          {/* Activate Pro Monthly */}
-                          <button
-                            onClick={() => handleActivatePro(tenant)}
-                            className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                            title="Set Monthly Pro ($19.90/month)"
-                          >
-                            <Zap className="w-3 h-3" />
-                            <span>Pro ($19.90)</span>
-                          </button>
-
-                          {/* Activate Pro Annual ($189/yr) */}
-                          <button
-                            onClick={() => handleActivateAnnual(tenant)}
-                            className="px-2 py-1 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                            title="Set Annual Pro Plan ($189/year — Save 21%)"
-                          >
-                            <Sparkles className="w-3 h-3" />
-                            <span>Annual ($189)</span>
+                            <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                            <span>
+                              {tenant.subscription.queuedSubscription ? '✨ Queued (Edit)' : 'Edit Package'}
+                            </span>
                           </button>
 
                           {/* Inspect Client Workspace Modal */}
@@ -1036,6 +1046,15 @@ export const SaasMasterAdminView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Tenant Package Lock & Edit Modal */}
+      <TenantPackageEditModal
+        tenant={editingPackageTenant}
+        isOpen={!!editingPackageTenant}
+        onClose={() => setEditingPackageTenant(null)}
+        onSaveSubscription={handleSaveSubscription}
+        onClearQueuedSubscription={handleClearQueuedSubscription}
+      />
     </div>
   );
 };

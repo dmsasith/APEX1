@@ -22,7 +22,7 @@ import { formatNumber, formatDate, formatDateTime } from '../../utils/exportUtil
 import { exportElementToPdf, printHtmlElement } from '../../utils/printUtils';
 
 interface DebitNoteModalProps {
-  supplierReturn: SupplierReturn;
+  supplierReturn: SupplierReturn | null;
   isOpen: boolean;
   onClose: () => void;
 }

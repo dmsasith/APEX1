@@ -14,10 +14,13 @@ import {
   CheckCircle2,
   Copy,
   RefreshCw,
+  Printer,
+  FileText,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { formatDateTime } from '../../utils/exportUtils';
+import { formatDateTime, formatDate } from '../../utils/exportUtils';
 import { EmailVerificationModal } from '../auth/EmailVerificationModal';
+import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -86,6 +89,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     currentTenant?.subscription?.billingCycle || 'annual'
   );
   const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
+  const [showPrintableInvoice, setShowPrintableInvoice] = useState(false);
 
   // Bank Transfer Form State
   const [txnRef, setTxnRef] = useState('');
@@ -162,21 +166,33 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                 {isTrial ? 'Pro Trial Active' : 'Pro Multi-Site'}
               </h2>
               
-              {currentTenant.emailVerified ? (
-                <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-300 border border-emerald-700/50 rounded-lg font-bold flex items-center gap-1 text-[10px]">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  Verified ✓
-                </span>
-              ) : (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowEmailVerifyModal(true)}
-                  className="px-2 py-0.5 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 border border-emerald-700/60 rounded-lg font-bold flex items-center gap-1 transition cursor-pointer text-[10px]"
+                  onClick={() => setShowPrintableInvoice(true)}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 rounded-lg font-bold flex items-center gap-1.5 transition cursor-pointer text-[10px]"
+                  title="Print Official SaaS Subscription Invoice & Tax Receipt"
                 >
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  Verify Email
+                  <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Invoice & Receipt</span>
                 </button>
-              )}
+
+                {currentTenant.emailVerified ? (
+                  <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-300 border border-emerald-700/50 rounded-lg font-bold flex items-center gap-1 text-[10px]">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    Verified ✓
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailVerifyModal(true)}
+                    className="px-2 py-0.5 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 border border-emerald-700/60 rounded-lg font-bold flex items-center gap-1 transition cursor-pointer text-[10px]"
+                  >
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    Verify Email
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
@@ -193,6 +209,55 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
           {/* Body Container */}
           <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+            {/* Active Subscription Status Card & Queued Package Banner */}
+            <div className="p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-400">ACTIVE SUBSCRIPTION STATUS</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 uppercase">
+                  <Zap className="w-3 h-3 text-emerald-400" />
+                  <span>{sub.status === 'active' ? 'ACTIVE PRO' : 'TRIAL ACTIVE'}</span>
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-800">
+                <div>
+                  <div className="text-base font-black text-white">
+                    {sub.plan === 'pro_annual'
+                      ? 'Pro Annual Plan ($189.00/yr)'
+                      : sub.plan === 'pro_monthly'
+                      ? 'Pro Monthly Plan ($19.90/mo)'
+                      : '7-Day Free Trial'}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    Tenant Workspace: <span className="font-mono text-emerald-400 font-bold">{currentTenant.companyName} ({currentTenant.slug.toUpperCase()})</span>
+                  </div>
+                </div>
+
+                <div className="sm:text-right">
+                  <div className="text-sm font-black text-amber-400 flex items-center sm:justify-end gap-1">
+                    <Clock className="w-4 h-4 text-amber-400" />
+                    <span>{daysRemaining} Days Remaining</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Plan Expiry Date: {formatDate(sub.trialEndsAt || sub.nextBillingDate || '')}
+                  </div>
+                </div>
+              </div>
+
+              {sub.queuedSubscription && (
+                <div className="mt-3 p-3 bg-slate-800/90 border border-amber-500/40 rounded-xl flex items-center gap-2 text-xs text-amber-200 animate-in fade-in">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div>
+                    <strong className="text-amber-300 font-bold">Upcoming Package Queued:</strong>{' '}
+                    <strong className="text-white">
+                      {sub.queuedSubscription.plan === 'pro_annual' ? 'Pro Annual Plan ($189.00/yr)' : 'Pro Monthly Plan ($19.90/mo)'}
+                    </strong>{' '}
+                    will automatically activate on{' '}
+                    <strong className="text-emerald-300">{formatDate(sub.queuedSubscription.scheduledStartDate)}</strong> when current package finishes.
+                  </div>
+                </div>
+              )}
+            </div>
             {submittedBankSlip && (
               <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center gap-2 animate-in fade-in">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -419,13 +484,24 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
               Need assistance? Email support: <a href="mailto:apexdevinfo@gmail.com" className="font-bold text-slate-800 underline hover:text-emerald-700">apexdevinfo@gmail.com</a>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-white transition cursor-pointer"
-            >
-              Close
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPrintableInvoice(true)}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>View & Print Official Invoice</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-white transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -436,6 +512,30 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
         onClose={() => setShowEmailVerifyModal(false)}
         emailToVerify={currentTenant.contactEmail}
       />
+
+      {/* Printable Invoice Modal */}
+      {showPrintableInvoice && (
+        <PrintableDocumentModal
+          isOpen={showPrintableInvoice}
+          onClose={() => setShowPrintableInvoice(false)}
+          title="OFFICIAL SAAS SUBSCRIPTION INVOICE & TAX RECEIPT"
+          documentNumber={`INV-2026-${currentTenant.slug.toUpperCase().slice(0, 8)}-${currentTenant.id.slice(-4).toUpperCase()}`}
+          documentDate={currentTenant.subscription.trialStartedAt || new Date().toISOString()}
+          recipientLabel="BILLED TENANT ACCOUNT"
+          recipientName={currentTenant.companyName}
+          recipientSubDetails={`Registered Contact: ${currentTenant.contactEmail} | Tel: ${currentTenant.contactPhone} | Country: ${currentTenant.country} | Tenant Ref: ${currentTenant.slug.toUpperCase()}`}
+          notes={`Official SaaS Software Subscription Tax Invoice & Payment Receipt. Billing dispatched to registered email (${currentTenant.contactEmail}). Subscription Status: ${(sub.status || 'trialing').toUpperCase()} | Billing Cycle: ${(sub.billingCycle || 'annual').toUpperCase()}`}
+          items={[
+            {
+              itemCode: 'SAAS-PRO-SUB',
+              itemName: `Apex Stock & Site Management System - Pro Plan (${sub.billingCycle === 'annual' ? 'Annual Subscription $189.00/yr' : 'Monthly Subscription $19.90/mo'})`,
+              category: 'Software License & Cloud Infrastructure',
+              quantity: 1,
+              unit: 'License',
+            },
+          ]}
+        />
+      )}
     </>
   );
 };

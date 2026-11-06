@@ -16,9 +16,11 @@ import {
   AlertCircle,
   LogIn,
   ChevronLeft,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { TenantSignupModal } from '../landing/TenantSignupModal';
+import { OfflineBackupViewerModal } from '../backup/OfflineBackupViewerModal';
 
 const PRESET_ICONS = [
   { id: 'building', icon: Building2 },
@@ -43,6 +45,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [showOfflineViewer, setShowOfflineViewer] = useState(false);
 
   // Render the Company Logo (matches Header)
   const renderLogo = () => {
@@ -107,9 +110,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
             <span className="font-semibold text-slate-300 hidden sm:inline">Live Cloud Sync Active</span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-full px-3.5 py-1 shadow-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-          <span className="font-bold text-amber-300 text-[11px] tracking-tight">Apex Developer | System Developed By Sasith Dissanayake</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowOfflineViewer(true)}
+            className="flex items-center gap-1.5 text-emerald-300 hover:text-white font-bold py-1 px-3 rounded-lg bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900 transition cursor-pointer text-[11px]"
+            title="Open emergency offline reader to view and convert .json backup files to Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Emergency Offline Data Viewer</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-full px-3.5 py-1 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span className="font-bold text-amber-300 text-[11px] tracking-tight">Apex Developer | System Developed By Sasith Dissanayake</span>
+          </div>
         </div>
       </div>
 
@@ -235,6 +250,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
             <span>Multi-User Session Protected with Firebase RTDB</span>
           </div>
         </div>
+
+        {/* Emergency offline data access callout */}
+        <div className="text-center mt-3">
+          <button
+            type="button"
+            onClick={() => setShowOfflineViewer(true)}
+            className="text-xs text-slate-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1.5 transition cursor-pointer underline decoration-slate-700 hover:decoration-emerald-400"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Server Down / Offline? View Your Backup File or Local Data (දත්ත බැලීමේ මෙවලම)</span>
+          </button>
+        </div>
       </div>
 
       {/* Bottom Footer Details */}
@@ -246,6 +273,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
       <TenantSignupModal
         isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
+      />
+
+      {/* Emergency Offline Backup Data Viewer Modal */}
+      <OfflineBackupViewerModal
+        isOpen={showOfflineViewer}
+        onClose={() => setShowOfflineViewer(false)}
       />
     </div>
   );

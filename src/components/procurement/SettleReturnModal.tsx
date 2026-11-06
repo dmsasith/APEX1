@@ -13,7 +13,7 @@ import { useStock } from '../../context/StockContext';
 import { formatNumber, formatDate } from '../../utils/exportUtils';
 
 interface SettleReturnModalProps {
-  supplierReturn: SupplierReturn;
+  supplierReturn: SupplierReturn | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (msg: string) => void;
@@ -28,7 +28,7 @@ export const SettleReturnModal: React.FC<SettleReturnModalProps> = ({
   const { config, settleSupplierReturn, currentUser } = useStock();
 
   const [settlementType, setSettlementType] = useState<SettlementType>(
-    supplierReturn.settlementType || 'Debit Note / Refund Credit'
+    supplierReturn?.settlementType || 'Debit Note / Refund Credit'
   );
   const [settlementRef, setSettlementRef] = useState(
     `CN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`

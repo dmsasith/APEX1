@@ -358,6 +358,7 @@ export interface StockBackup {
     damagedRestorations?: DamagedStockRestoration[];
     projects: Project[];
     projectTypes?: ProjectType[];
+    purchaseOrders?: any[];
     sites: Site[];
     teams: Team[];
     users: User[];
@@ -604,6 +605,14 @@ export interface SupplierReturn {
 export type TenantPlan = 'free_trial' | 'pro_monthly' | 'pro_annual';
 export type TenantSubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled';
 
+export interface QueuedSubscription {
+  plan: TenantPlan;
+  billingCycle: 'monthly' | 'annual';
+  scheduledStartDate: string;
+  notes?: string;
+  queuedAt: string;
+}
+
 export interface TenantSubscription {
   plan: TenantPlan;
   status: TenantSubscriptionStatus;
@@ -629,6 +638,7 @@ export interface TenantSubscription {
     status: 'pending' | 'approved' | 'rejected';
     approvedAt?: string;
   };
+  queuedSubscription?: QueuedSubscription;
 }
 
 export interface Tenant {

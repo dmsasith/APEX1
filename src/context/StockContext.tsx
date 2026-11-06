@@ -32,6 +32,7 @@ import {
   SupplierReturnStatus,
   SettlementType,
   Tenant,
+  TenantPlan,
   TenantSubscription,
   TenantRegistrationForm,
   ProjectType,
@@ -317,6 +318,8 @@ interface StockContextType {
   restoreBackup: (backupId: string) => void;
   deleteBackup: (backupId: string) => void;
   flushSystemWithBackup: (adminPassword: string, backupName: string) => { success: boolean; message: string; backupNumber?: number };
+  lastAutoBackupTime: string | null;
+  triggerDailyBackupNow: () => StockBackup;
 
   // Inventory Calculations
   getMainWarehouseStock: (itemId: string) => {
@@ -736,6 +739,47 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     currentTenantIdRef.current = currentTenantId;
   }, [currentTenantId]);
 
+  // Auto-check and promote queued subscriptions when current plan period expires
+  useEffect(() => {
+    let hasChanges = false;
+    const now = new Date();
+    const updatedTenants = tenants.map((t) => {
+      const sub = t.subscription;
+      if (sub.queuedSubscription) {
+        const expiryDate = new Date(sub.trialEndsAt || sub.nextBillingDate || 0);
+        if (expiryDate <= now) {
+          hasChanges = true;
+          const q = sub.queuedSubscription;
+          const isAnnual = q.billingCycle === 'annual' || q.plan === 'pro_annual';
+          const nextBilling = new Date(now.getTime() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString();
+          return {
+            ...t,
+            subscription: {
+              ...sub,
+              plan: (isAnnual ? 'pro_annual' : 'pro_monthly') as TenantPlan,
+              status: 'active' as const,
+              monthlyPrice: isAnnual ? 15.75 : 19.90,
+              annualPrice: isAnnual ? 189.00 : undefined,
+              billingCycle: isAnnual ? ('annual' as const) : ('monthly' as const),
+              paymentMethodStatus: 'active' as const,
+              lastBillingDate: now.toISOString(),
+              nextBillingDate: nextBilling,
+              trialEndsAt: nextBilling,
+              queuedSubscription: undefined,
+            },
+          };
+        }
+      }
+      return t;
+    });
+
+    if (hasChanges) {
+      setTenants(updatedTenants);
+      saveTenantData(DEFAULT_TENANT.id, 'tenants', updatedTenants);
+      writeTenantsToFirebase(updatedTenants).catch(console.warn);
+    }
+  }, [tenants]);
+
   const saveToStorage = <T,>(key: string, data: T) => {
     saveTenantData(currentTenantIdRef.current, key, data);
   };
@@ -800,6 +844,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [backups, setBackups] = useState<StockBackup[]>(() =>
     loadTenantData(currentTenantId, 'backups', isDefaultTenant ? INITIAL_BACKUPS : [])
   );
+  const [lastAutoBackupTime, setLastAutoBackupTime] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`apex_last_daily_backup_time_${currentTenantId}`) || null;
+    } catch {
+      return null;
+    }
+  });
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() =>
     loadTenantData(currentTenantId, 'auditLogs', isDefaultTenant ? INITIAL_AUDIT_LOGS : [])
   );
@@ -1318,6 +1369,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return t;
       });
       saveTenantData(DEFAULT_TENANT.id, 'tenants', updated);
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Failed to write tenants to root storage key:', e);
+      }
       writeTenantsToFirebase(updated).catch(console.warn);
       return updated;
     });
@@ -4106,6 +4162,83 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return newBackup;
   };
 
+  const triggerDailyBackupNow = (): StockBackup => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nowIso = new Date().toISOString();
+    const backupNumber = backups.length + 1;
+    const finalName = `[Daily Auto-Backup] ${todayStr}`;
+    const autoBackup: StockBackup = {
+      id: `auto-backup-${Date.now()}`,
+      backupNumber,
+      name: finalName,
+      createdAt: nowIso,
+      createdBy: currentUser?.fullName || 'System (Daily Auto-Persistence)',
+      itemCount: items.length,
+      transactionCount:
+        mainStockEntries.length +
+        stockRequests.length +
+        teamIssues.length +
+        teamReturns.length +
+        projectUsages.length +
+        branchReturns.length +
+        damagedRestorations.length,
+      reason: 'Daily automated background snapshot for disaster recovery and offline access',
+      snapshot: {
+        config,
+        sites,
+        users,
+        items,
+        teams,
+        projects,
+        projectTypes,
+        mainStockEntries,
+        stockRequests,
+        teamIssues,
+        teamReturns,
+        projectUsages,
+        branchReturns,
+        damagedRestorations,
+        auditLogs,
+      },
+    };
+
+    try {
+      localStorage.setItem(`apex_daily_auto_snapshot_${currentTenantIdRef.current}`, JSON.stringify(autoBackup));
+      localStorage.setItem(`apex_last_daily_backup_date_${currentTenantIdRef.current}`, todayStr);
+      localStorage.setItem(`apex_last_daily_backup_time_${currentTenantIdRef.current}`, nowIso);
+    } catch (e) {
+      console.warn('Auto-backup local storage quota notice:', e);
+    }
+
+    setBackups((prev) => {
+      const filtered = prev.filter((b) => !b.name.includes(`[Daily Auto-Backup] ${todayStr}`));
+      const updated = [autoBackup, ...filtered];
+      saveToStorage('backups', updated);
+      return updated;
+    });
+
+    setLastAutoBackupTime(nowIso);
+    return autoBackup;
+  };
+
+  // Automated Daily Backup background trigger (runs when stock data exists)
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    let lastBackupDate: string | null = null;
+    try {
+      lastBackupDate = localStorage.getItem(`apex_last_daily_backup_date_${currentTenantId}`);
+    } catch {
+      // ignore
+    }
+
+    if (lastBackupDate !== todayStr && (items.length > 0 || mainStockEntries.length > 0 || sites.length > 0)) {
+      const timer = setTimeout(() => {
+        triggerDailyBackupNow();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentTenantId, items.length, mainStockEntries.length, sites.length]);
+
   const restoreBackup = (backupId: string) => {
     if (currentUser?.role !== 'Central Warehouse Admin') {
       throw new Error('Access Denied: Restoring backups is strictly restricted to Central Warehouse Admin.');
@@ -4685,6 +4818,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         restoreBackup,
         deleteBackup,
         flushSystemWithBackup,
+        lastAutoBackupTime,
+        triggerDailyBackupNow,
         getMainWarehouseStock,
         getSiteItemStock,
         getTeamInHandStock,

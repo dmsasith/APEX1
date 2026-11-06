@@ -16,9 +16,14 @@ import {
   Layers,
   ArrowDownCircle,
   PlusCircle,
+  FileSpreadsheet,
+  Eye,
+  HardDrive,
+  Sparkles,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { StockBackup } from '../../types';
+import { OfflineBackupViewerModal } from './OfflineBackupViewerModal';
 
 interface SystemBackupModalProps {
   isOpen: boolean;
@@ -27,25 +32,38 @@ interface SystemBackupModalProps {
 
 export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, onClose }) => {
   const {
+    currentTenant,
+    config,
     currentUser,
     backups,
     createBackup,
     restoreBackup,
     deleteBackup,
     flushSystemWithBackup,
+    lastAutoBackupTime,
+    triggerDailyBackupNow,
     items,
     sites,
     teams,
+    users,
     projects,
+    projectTypes,
     mainStockEntries,
     stockRequests,
     teamIssues,
     teamReturns,
     projectUsages,
     branchReturns,
+    suppliers,
+    purchaseOrders,
+    supplierReturns,
+    letterheadTemplates,
+    digitalSignatures,
   } = useStock();
 
-  const [activeTab, setActiveTab] = useState<'flush' | 'backups' | 'manual'>('flush');
+  const [activeTab, setActiveTab] = useState<'flush' | 'backups' | 'manual'>('backups');
+  const [showOfflineViewer, setShowOfflineViewer] = useState(false);
+  const [viewerBackupData, setViewerBackupData] = useState<StockBackup | null>(null);
 
   // Flush states
   const [adminPassword, setAdminPassword] = useState('');
@@ -179,6 +197,47 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
     downloadAnchor.remove();
   };
 
+  const handleExportLiveTenantSnapshotJson = () => {
+    const liveSnapshot = {
+      id: `backup-live-${Date.now()}`,
+      backupNumber: backups.length + 1,
+      name: `${currentTenant.companyName} Full System Backup`,
+      createdAt: new Date().toISOString(),
+      createdBy: currentUser?.fullName || 'Tenant Admin',
+      reason: 'Direct offline tenant safety download',
+      itemCount: items.length,
+      transactionCount: mainStockEntries.length + stockRequests.length + teamIssues.length + teamReturns.length + projectUsages.length + branchReturns.length,
+      snapshot: {
+        config,
+        items,
+        sites,
+        teams,
+        users,
+        projects,
+        projectTypes,
+        mainStockEntries,
+        stockRequests,
+        teamIssues,
+        teamReturns,
+        projectUsages,
+        branchReturns,
+        suppliers,
+        purchaseOrders,
+        supplierReturns,
+        letterheadTemplates,
+        digitalSignatures,
+      },
+    };
+
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(liveSnapshot, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `${currentTenant.slug.toUpperCase()}_Full_Offline_Backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
   const handleImportJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -231,18 +290,6 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 bg-slate-100 p-1.5 border-b border-slate-200 shrink-0 px-6">
           <button
-            onClick={() => setActiveTab('flush')}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'flush'
-                ? 'bg-rose-600 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4" />
-            <span>Admin System Flush</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('backups')}
             className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
               activeTab === 'backups'
@@ -265,6 +312,58 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
             <PlusCircle className="w-4 h-4" />
             <span>Snapshot Current</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('flush')}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'flush'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" />
+            <span>Admin System Flush</span>
+          </button>
+        </div>
+
+        {/* Daily Auto-Backup Status Bar */}
+        <div className="bg-slate-900 text-white px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+            <span className="font-bold text-emerald-400">LocalStorage Daily Auto-Backup: Active</span>
+            <span className="text-slate-400 text-[11px] hidden sm:inline">
+              {lastAutoBackupTime ? `· Last auto-saved: ${new Date(lastAutoBackupTime).toLocaleString()}` : '· Automatically snapshots every 24h'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                triggerDailyBackupNow();
+                setRestoreSuccessMsg('Daily Local Storage snapshot updated successfully!');
+                setTimeout(() => setRestoreSuccessMsg(null), 3500);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold transition cursor-pointer flex items-center gap-1"
+              title="Force an immediate automated snapshot into LocalStorage"
+            >
+              <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Snapshot to LocalStorage</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setViewerBackupData(null);
+                setShowOfflineViewer(true);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-sm"
+              title="Open Offline Backup Data Viewer to inspect tables and convert to Excel (.xlsx)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Offline Viewer & Excel</span>
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -400,7 +499,17 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                     Unlimited versioned archives. Click restore anytime to revert data state.
                   </p>
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportLiveTenantSnapshotJson}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition"
+                    title="Download complete JSON snapshot of your current database directly to your local PC"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Live Backup (.json)</span>
+                  </button>
+
                   <label className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer">
                     <Upload className="w-3.5 h-3.5 text-slate-600" />
                     <span>Import JSON</span>
@@ -447,9 +556,22 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"
+                            onClick={() => {
+                              setViewerBackupData(b);
+                              setShowOfflineViewer(true);
+                            }}
+                            title="Inspect table records & Convert to Excel (.xlsx)"
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-300 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>View / Excel</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleExportBackupJson(b)}
                             title="Download JSON Snapshot file"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -457,7 +579,7 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                             type="button"
                             onClick={() => deleteBackup(b.id)}
                             title="Delete this backup archive"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -605,6 +727,16 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
           </div>
         </div>
       )}
+
+      {/* Offline Backup Viewer Modal */}
+      <OfflineBackupViewerModal
+        isOpen={showOfflineViewer}
+        onClose={() => {
+          setShowOfflineViewer(false);
+          setViewerBackupData(null);
+        }}
+        initialBackupData={viewerBackupData}
+      />
     </div>
   );
 };

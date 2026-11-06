@@ -21,10 +21,12 @@ import {
   ShieldAlert,
   LogOut,
   Zap,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { ConfirmModal } from './common/ConfirmModal';
 import { SystemBackupModal } from './backup/SystemBackupModal';
+import { OfflineBackupViewerModal } from './backup/OfflineBackupViewerModal';
 import { SubscriptionModal } from './subscription/SubscriptionModal';
 import { UserProfileModal } from './auth/UserProfileModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';
@@ -100,6 +102,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showOfflineViewer, setShowOfflineViewer] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -307,12 +310,28 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
               <span>Portal Gateway</span>
             </button>
           )}
-          {currentTenant && (
-            <button type="button" onClick={() => setShowSubscriptionModal(true)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer shadow-2xs ${currentTenant.subscription.status === 'trialing' ? 'bg-amber-500/15 border-amber-500/35 text-amber-300' : 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300'}`} title="View Subscription Details">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-              <span>{currentTenant.subscription.status === 'trialing' ? '7-Day Free Trial' : 'Pro Workspace'}</span>
-            </button>
-          )}
+          {currentTenant && (() => {
+            const sub = currentTenant.subscription;
+            const expiry = new Date(sub.trialEndsAt || sub.nextBillingDate || Date.now());
+            const daysLeft = Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+            const planLabel = sub.plan === 'pro_annual' ? 'Pro Annual' : sub.plan === 'pro_monthly' ? 'Pro Monthly' : 'Free Trial';
+
+            return (
+              <button
+                type="button"
+                onClick={() => setShowSubscriptionModal(true)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer shadow-2xs ${
+                  sub.status === 'trialing'
+                    ? 'bg-amber-500/15 border-amber-500/35 text-amber-300'
+                    : 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300'
+                }`}
+                title={`Subscription: ${planLabel} (${daysLeft} days remaining). Click to view details.`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                <span>{planLabel} ({daysLeft}d left)</span>
+              </button>
+            );
+          })()}
           {currentTenant && (
             !currentTenant.emailVerified ? (
               <button type="button" onClick={() => setShowEmailVerifyModal(true)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 border border-amber-500/40 text-amber-300 transition cursor-pointer animate-pulse" title="Verify Email">
@@ -338,6 +357,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
               <span>{recycleBinCount} in Bin</span>
             </button>
           )}
+
+          {/* Offline Data Viewer & Excel */}
+          <button
+            type="button"
+            onClick={() => setShowOfflineViewer(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 text-xs font-semibold cursor-pointer transition shadow-2xs"
+            title="Emergency Offline Data Viewer & Excel Exporter"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden xl:inline">Offline Viewer & Excel</span>
+            <span className="xl:hidden">Offline Data</span>
+          </button>
 
           {/* Backup/Flush & Settings - Moved here to clear Top Row space */}
           {isCentralAdmin && (
@@ -438,6 +469,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
         </div>
       )}
       <SystemBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
+      <OfflineBackupViewerModal isOpen={showOfflineViewer} onClose={() => setShowOfflineViewer(false)} />
       <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
       <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <EmailVerificationModal isOpen={showEmailVerifyModal} onClose={() => setShowEmailVerifyModal(false)} />
