@@ -513,7 +513,7 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
     if (isForeignUser(u)) return;
     if (seenUsernames.has(norm)) return;
     seenUsernames.add(norm);
-    const isCoreAdmin = norm === 'admin' || norm === 'arthur';
+    const isCoreAdmin = norm === 'admin';
     recovered.push({
       ...u,
       isDeleted: isCoreAdmin ? false : (u.isDeleted ?? false),
@@ -533,159 +533,10 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
   };
   addUserIfValid(adminUser);
 
-  // 2. Filter existing candidates
+  // 2. Filter existing candidates passed to function
   if (Array.isArray(existingUsers)) {
     for (const u of existingUsers) {
       addUserIfValid(u);
-    }
-  }
-
-  // 3. Check legacy Comtec user storage (created before rename to Apex Developer)
-  try {
-    const comtecRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}tenant-comtec-main_users`);
-    if (comtecRaw) {
-      const parsed = JSON.parse(comtecRaw);
-      if (Array.isArray(parsed)) {
-        for (const u of parsed) {
-          addUserIfValid(u);
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Error reading comtec users:', e);
-  }
-
-  // 4. Check root users storage
-  try {
-    const rootRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}users`);
-    if (rootRaw) {
-      const parsed = JSON.parse(rootRaw);
-      if (Array.isArray(parsed)) {
-        for (const u of parsed) {
-          addUserIfValid(u);
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Error reading root users:', e);
-  }
-
-  // 5. Check backups in localStorage for any user records
-  try {
-    const backupKeys = [
-      `${STORAGE_KEY_PREFIX}backups`,
-      `${STORAGE_KEY_PREFIX}tenant-comtec-main_backups`,
-      `${STORAGE_KEY_PREFIX}tenant-apex-main_backups`,
-    ];
-    for (const bKey of backupKeys) {
-      const bRaw = localStorage.getItem(bKey);
-      if (bRaw) {
-        const bList = JSON.parse(bRaw);
-        if (Array.isArray(bList)) {
-          for (const b of bList) {
-            const bUsers = b?.data?.users || b?.users;
-            if (Array.isArray(bUsers)) {
-              for (const u of bUsers) {
-                addUserIfValid(u);
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Error reading backups for users:', e);
-  }
-
-  // 6. Check audit logs for MASTER_USER_CREATED
-  try {
-    const auditKeys = [
-      `${STORAGE_KEY_PREFIX}tenant-apex-main_auditLogs`,
-      `${STORAGE_KEY_PREFIX}tenant-comtec-main_auditLogs`,
-      `${STORAGE_KEY_PREFIX}auditLogs`,
-    ];
-    for (const aKey of auditKeys) {
-      const aRaw = localStorage.getItem(aKey);
-      if (aRaw) {
-        const aList = JSON.parse(aRaw);
-        if (Array.isArray(aList)) {
-          for (const log of aList) {
-            if (log.action === 'MASTER_USER_CREATED' && log.referenceNo) {
-              const uName = log.referenceNo.trim().toLowerCase();
-              if (!seenUsernames.has(uName) && !uName.includes('civilect') && !uName.includes('glow')) {
-                const match = log.details?.match(/New user created:\s*([^\[]+)\s*\[([^\]]+)\]/i);
-                const fullName = match ? match[1].trim() : log.referenceNo;
-                const rawRole = match ? match[2].trim() : 'Field Logistics Officer';
-                const role: UserRole =
-                  rawRole === 'Central Warehouse Admin' || rawRole === 'Site Admin' || rawRole === 'Auditor'
-                    ? rawRole
-                    : 'Field Logistics Officer';
-                addUserIfValid({
-                  id: `usr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-                  username: uName,
-                  fullName,
-                  siteId: 'all',
-                  role,
-                  password: 'password123',
-                  createdAt: log.timestamp || new Date().toISOString(),
-                  isDeleted: false,
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Error reconstructing from audit logs:', e);
-  }
-
-  // 7. If only admin exists (no extra team members found in any storage/logs), add standard Apex team members
-  if (recovered.length <= 1) {
-    const standardStaff: User[] = [
-      {
-        id: 'usr-arthur-vance',
-        username: 'arthur',
-        fullName: 'Arthur Vance',
-        siteId: 'all',
-        role: 'Central Warehouse Admin',
-        password: 'password123',
-        createdAt: '2026-11-01T00:00:00.000Z',
-        isDeleted: false,
-      },
-      {
-        id: 'usr-dissanayake-site',
-        username: 'dissanayake',
-        fullName: 'Dissanayake',
-        siteId: 'site-main',
-        role: 'Site Admin',
-        password: 'password123',
-        createdAt: '2026-11-01T00:00:00.000Z',
-        isDeleted: false,
-      },
-      {
-        id: 'usr-sunil-perera',
-        username: 'sunil',
-        fullName: 'Sunil Perera',
-        siteId: 'site-main',
-        role: 'Field Logistics Officer',
-        password: 'password123',
-        createdAt: '2026-11-01T00:00:00.000Z',
-        isDeleted: false,
-      },
-      {
-        id: 'usr-k-perera',
-        username: 'kperera',
-        fullName: 'K. Perera',
-        siteId: 'all',
-        role: 'Auditor',
-        password: 'password123',
-        createdAt: '2026-11-01T00:00:00.000Z',
-        isDeleted: false,
-      },
-    ];
-    for (const staff of standardStaff) {
-      addUserIfValid(staff);
     }
   }
 
@@ -3441,7 +3292,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const permanentlyDeleteUser = (id: string) => {
     const user = users.find((u) => u.id === id);
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    setUsers((prev) => {
+      const updated = prev.filter((u) => u.id !== id);
+      saveToStorage('users', updated);
+      saveTenantData(currentTenantIdRef.current, 'users', updated);
+      const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     addAuditLog(
       'MASTER_USER_PERMANENTLY_DELETED',
       user?.username || id,
@@ -3575,14 +3435,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const clearAllUsers = () => {
-    const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
     setUsers((prev) => {
-      const updated = prev.map((u) => (u.id === currentUser.id || u.role === 'Central Warehouse Admin' ? u : { ...u, isDeleted: true, deletedAt: timestamp, deletedBy }));
+      const updated = prev.filter((u) => u.username === 'admin' || u.role === 'Central Warehouse Admin');
       saveToStorage('users', updated);
+      saveTenantData(currentTenantIdRef.current, 'users', updated);
+      const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(updated).catch(console.warn);
+      }
       return updated;
     });
-    addAuditLog('MASTER_USER_SOFT_DELETED', 'CLEAR-USERS', 'All Sites', 'Moved all non-admin users to Recycle Bin.');
+    addAuditLog('MASTER_USER_PERMANENTLY_DELETED', 'CLEAR-USERS', 'All Sites', 'Cleared all non-admin users from system.');
   };
 
   // Single Record Deletion Handlers
@@ -4271,54 +4134,71 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (snap.users) {
       setUsers(snap.users);
       saveToStorage('users', snap.users);
+      saveTenantData(currentTenantIdRef.current, 'users', snap.users);
+      const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(snap.users).catch(console.warn);
+      }
     }
     if (snap.items) {
       setItems(snap.items);
       saveToStorage('items', snap.items);
+      saveTenantData(currentTenantIdRef.current, 'items', snap.items);
     }
     if (snap.teams) {
       setTeams(snap.teams);
       saveToStorage('teams', snap.teams);
+      saveTenantData(currentTenantIdRef.current, 'teams', snap.teams);
     }
     if (snap.projects) {
       setProjects(snap.projects);
       saveToStorage('projects', snap.projects);
+      saveTenantData(currentTenantIdRef.current, 'projects', snap.projects);
     }
     if (snap.projectTypes) {
       setProjectTypes(snap.projectTypes);
       saveToStorage('projectTypes', snap.projectTypes);
+      saveTenantData(currentTenantIdRef.current, 'projectTypes', snap.projectTypes);
     }
     if (snap.mainStockEntries) {
       setMainStockEntries(snap.mainStockEntries);
       saveToStorage('mainStockEntries', snap.mainStockEntries);
+      saveTenantData(currentTenantIdRef.current, 'mainStockEntries', snap.mainStockEntries);
     }
     if (snap.stockRequests) {
       setStockRequests(snap.stockRequests);
       saveToStorage('stockRequests', snap.stockRequests);
+      saveTenantData(currentTenantIdRef.current, 'stockRequests', snap.stockRequests);
     }
     if (snap.teamIssues) {
       setTeamIssues(snap.teamIssues);
       saveToStorage('teamIssues', snap.teamIssues);
+      saveTenantData(currentTenantIdRef.current, 'teamIssues', snap.teamIssues);
     }
     if (snap.teamReturns) {
       setTeamReturns(snap.teamReturns);
       saveToStorage('teamReturns', snap.teamReturns);
+      saveTenantData(currentTenantIdRef.current, 'teamReturns', snap.teamReturns);
     }
     if (snap.projectUsages) {
       setProjectUsages(snap.projectUsages);
       saveToStorage('projectUsages', snap.projectUsages);
+      saveTenantData(currentTenantIdRef.current, 'projectUsages', snap.projectUsages);
     }
     if (snap.branchReturns) {
       setBranchReturns(snap.branchReturns);
       saveToStorage('branchReturns', snap.branchReturns);
+      saveTenantData(currentTenantIdRef.current, 'branchReturns', snap.branchReturns);
     }
     if (snap.damagedRestorations) {
       setDamagedRestorations(snap.damagedRestorations);
       saveToStorage('damagedRestorations', snap.damagedRestorations);
+      saveTenantData(currentTenantIdRef.current, 'damagedRestorations', snap.damagedRestorations);
     }
     if (snap.auditLogs) {
       setAuditLogs(snap.auditLogs);
       saveToStorage('auditLogs', snap.auditLogs);
+      saveTenantData(currentTenantIdRef.current, 'auditLogs', snap.auditLogs);
     }
 
     addAuditLog(
@@ -4454,9 +4334,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setAuditLogs([flushLog]);
 
+    try {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}tenant-comtec-main_users`);
+    } catch {}
+
     // Save to storage
     saveToStorage('sites', [cleanMainSite]);
     saveToStorage('users', [cleanAdminUser]);
+    saveTenantData(currentTenantIdRef.current, 'users', [cleanAdminUser]);
+    saveTenantData(currentTenantIdRef.current, 'sites', [cleanMainSite]);
     saveToStorage('items', []);
     saveToStorage('teams', []);
     saveToStorage('projects', []);
@@ -4472,6 +4358,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Force clear Firebase Realtime Database
     writeBackupsToFirebase(newBackups).catch(() => {});
     clearAllFirebaseData(cleanMainSite, cleanAdminUser, config, flushLog).catch(() => {});
+    writeUsersToFirebase([cleanAdminUser]).catch(() => {});
 
     return {
       success: true,

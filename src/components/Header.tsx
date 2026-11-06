@@ -30,6 +30,7 @@ import { OfflineBackupViewerModal } from './backup/OfflineBackupViewerModal';
 import { SubscriptionModal } from './subscription/SubscriptionModal';
 import { UserProfileModal } from './auth/UserProfileModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';
+import { SystemConfigModal } from './common/SystemConfigModal';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
 
 interface HeaderProps {
@@ -370,16 +371,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
             <span className="xl:hidden">Offline Data</span>
           </button>
 
-          {/* Backup/Flush & Settings - Moved here to clear Top Row space */}
+          {/* Backup/Flush & Settings - Restricted to Central Admin */}
           {isCentralAdmin && (
-            <button onClick={() => setShowBackupModal(true)} className="px-2.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer" title="Backup & Flush">
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline">Backup & Flush</span>
-            </button>
+            <>
+              <button onClick={() => setShowBackupModal(true)} className="px-2.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer" title="Backup & Flush">
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden sm:inline">Backup & Flush</span>
+              </button>
+              <button onClick={() => setShowConfigModal(true)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer" title="System Settings (Main Admin Only)">
+                <Sliders className="w-4 h-4 text-emerald-400" />
+              </button>
+            </>
           )}
-          <button onClick={() => setShowConfigModal(true)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer" title="System Settings">
-            <Sliders className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -388,13 +391,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
         {/* Active User Controls */}
         <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs shadow-xs">
-            <button type="button" onClick={() => setShowProfileModal(true)} className="w-7 h-7 rounded-md bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center justify-center shrink-0 cursor-pointer transition">
+            <div className="w-7 h-7 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center justify-center shrink-0">
               {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
-            </button>
+            </div>
             <div className="flex flex-col text-left min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-400 font-medium">Active:</span>
-                <button type="button" onClick={() => setShowProfileModal(true)} className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer">Edit</button>
               </div>
               {isCentralAdmin ? (
                 <select value={currentUser.id} onChange={(e) => setViewAsUser(activeUsers.find(u => u.id === e.target.value)!)} className="bg-transparent text-slate-100 font-semibold text-xs focus:outline-none cursor-pointer truncate max-w-[140px]">
@@ -468,6 +470,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
           </div>
         </div>
       )}
+      <SystemConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} />
       <SystemBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
       <OfflineBackupViewerModal isOpen={showOfflineViewer} onClose={() => setShowOfflineViewer(false)} />
       <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
