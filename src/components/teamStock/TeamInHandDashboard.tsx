@@ -139,40 +139,49 @@ export const TeamInHandDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Aggregate KPI Grid */}
+      {/* Aggregate KPI Grid with Outer Glow Effects */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Total Stock Assigned to Field</span>
-            <Package className="w-4 h-4 text-slate-400" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50/50 to-slate-100/40 rounded-2xl border border-slate-200/90 shadow-md shadow-slate-900/5 hover:shadow-xl hover:shadow-slate-900/10 transition-all duration-300 p-4 sm:p-5">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between text-slate-500 mb-1 relative z-10">
+            <span className="text-xs font-bold text-slate-700">Total Stock Assigned to Field</span>
+            <div className="w-8 h-8 rounded-xl bg-slate-900/10 border border-slate-900/20 text-slate-700 flex items-center justify-center shadow-xs">
+              <Package className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
+          <div className="text-3xl font-extrabold font-mono text-slate-900 tabular-nums relative z-10">
             {formatNumber(totalAssignedAll)}
           </div>
-          <div className="text-xs text-slate-500 mt-1">Cumulative dispatched across all work orders</div>
+          <div className="text-xs text-slate-500 mt-1 relative z-10">Cumulative dispatched across all work orders</div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Total Items Returned & Restocked</span>
-            <Users2 className="w-4 h-4 text-emerald-600" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50/50 to-emerald-50/40 rounded-2xl border border-slate-200/90 shadow-md shadow-emerald-500/5 hover:shadow-xl hover:shadow-emerald-500/15 transition-all duration-300 p-4 sm:p-5">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between text-slate-500 mb-1 relative z-10">
+            <span className="text-xs font-bold text-slate-700">Total Items Returned & Restocked</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 flex items-center justify-center shadow-xs">
+              <Users2 className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-700 tabular-nums">
+          <div className="text-3xl font-extrabold font-mono text-emerald-700 tabular-nums relative z-10">
             {formatNumber(totalReturnedAll)}
           </div>
-          <div className="text-xs text-slate-500 mt-1">Recovered via official Return Vouchers</div>
+          <div className="text-xs text-slate-500 mt-1 relative z-10">Recovered via official Return Vouchers</div>
         </div>
 
-        <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-4 shadow-xs">
-          <div className="flex items-center justify-between text-blue-700 mb-1">
-            <span className="text-xs font-bold">Current Active In-Hand Balance</span>
-            <Layers className="w-4 h-4 text-blue-600" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-white via-blue-50/30 to-blue-100/30 rounded-2xl border border-blue-300/80 shadow-md shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 p-4 sm:p-5">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between text-blue-800 mb-1 relative z-10">
+            <span className="text-xs font-black uppercase tracking-wider">Current Active In-Hand Balance</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-600 flex items-center justify-center shadow-xs">
+              <Layers className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold font-mono text-blue-700 tabular-nums">
+          <div className="text-3xl font-black font-mono text-blue-700 tabular-nums relative z-10">
             {formatNumber(totalInHandAll)}
           </div>
-          <div className="text-xs text-slate-600 mt-1">
-            Active units currently held by <strong className="text-slate-900 font-mono">{teams.length}</strong> field crews
+          <div className="text-xs text-slate-600 mt-1 relative z-10">
+            Active units currently held by <strong className="text-slate-900 font-mono font-bold">{teams.length}</strong> field crews
           </div>
         </div>
       </div>
