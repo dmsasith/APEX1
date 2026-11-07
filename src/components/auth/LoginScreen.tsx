@@ -174,7 +174,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
               <div className="mb-4 p-3.5 bg-indigo-950/80 border border-indigo-500/50 rounded-xl space-y-2.5 animate-fadeIn">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
                   <Building2 className="w-4 h-4 text-amber-400" />
-                  <span>Choose Your Company Workspace (ඔබේ සමාගම තෝරන්න):</span>
+                  <span>Choose Your Company Workspace:</span>
                 </div>
                 <div className="space-y-1.5">
                   {collisionCompanies.map((comp) => (
@@ -236,7 +236,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
               {/* Username / Email Input */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Username or Work Email / පරිශීලක නාමය හෝ Email
+                  Username or Work Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -256,7 +256,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
               {/* Password Input */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Password / මුරපදය
+                  Password
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -284,7 +284,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-slate-300">
-                    Company Workspace Code / සමාගම් කේතය (Optional)
+                    Company Workspace Code (Optional)
                   </label>
                   {workspaceCode && (
                     <button
@@ -309,7 +309,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  වෙනත් සමාගම් සමග එකම Username ගැටුමක් ඇත්නම් සමාගමේ කේතය (Workspace Slug) හෝ සෘජු Link එක භාවිත කරන්න.
+                  If your username exists in multiple companies, specify your Workspace Code or use your company's direct login link.
                 </p>
               </div>
 
@@ -320,7 +320,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                 className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer disabled:opacity-50 active:scale-98"
               >
                 <LogIn className="w-4 h-4" />
-                <span>Log In to Workspace (ප්‍රවේශ වන්න)</span>
+                <span>Log In to Workspace</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

@@ -105,7 +105,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             {/* Full Name */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                Full Name / ඔබගේ නම *
+                Full Name *
               </label>
               <div className="relative">
                 <UserIcon className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -123,7 +123,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             {/* Username / Email */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                Username or Work Email / පරිශීලක නාමය හෝ Email *
+                Username or Work Email *
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -141,7 +141,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             {/* Password */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                Account Password / මුරපදය
+                Account Password
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
