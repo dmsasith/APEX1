@@ -622,9 +622,9 @@ Best regards,
 
 ${po.preparedBy || currentUser?.fullName || 'Procurement Team'}
 Central Logistics & Warehouse Operations
-${config.companyName || 'Comtec Systems (Pvt) Ltd'}
+${config.companyName || 'Apex Developer'}
 Contact: ${config.phone || '+94 11 2549590'}
-Email: ${config.email || 'procurement@comtecsystems.com'}`;
+Email: ${config.email || 'apexdevinfo@gmail.com'}`;
   };
 
   const handleOpenEmailClient = (po: PurchaseOrder) => {
@@ -2648,13 +2648,13 @@ Email: ${config.email || 'procurement@comtecsystems.com'}`;
             <div className="flex justify-between items-start border-b-2 border-slate-900 pb-5 mb-6">
               <div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                  {config.companyName || 'COMTEC SYSTEMS (PVT) LTD'}
+                  {config.companyName || 'APEX DEVELOPER (PVT) LTD'}
                 </h1>
                 <p className="text-xs text-slate-600 mt-1 max-w-md">
-                  {config.address || 'Central Logistics Yard & Operations Hub, Himbutana, Mulleriyawa.'}
+                  {config.address || 'Apex Software Engineering & Logistics Hub, Colombo, Sri Lanka.'}
                 </p>
                 <p className="text-xs text-slate-600 mt-0.5">
-                  Tel: {config.phone || '+94 11 2549590'} • Email: {config.email || 'procurement@comtecsystems.com'}
+                  Tel: {config.phone || '+94 11 2549590'} • Email: {config.email || 'apexdevinfo@gmail.com'}
                 </p>
               </div>
 

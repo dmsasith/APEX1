@@ -865,7 +865,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     Fax: <span className="font-mono">{activeTemplate.fax || '+94 11 2549591'}</span>
                   </div>
                   <div>
-                    E-mail: <span className="font-mono underline">{activeTemplate.email || 'comtecsystems@sltnet.lk'}</span>
+                    E-mail: <span className="font-mono underline">{activeTemplate.email || 'apexdevinfo@gmail.com'}</span>
                   </div>
                 </div>
                 <div className="text-right space-y-0.5">

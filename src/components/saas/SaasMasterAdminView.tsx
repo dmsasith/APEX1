@@ -25,6 +25,8 @@ import {
   Upload,
   Check,
   X,
+  Edit3,
+  Link2,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { Tenant, TenantSubscription } from '../../types';
@@ -32,15 +34,27 @@ import { formatDateTime } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { TenantWorkspaceInspectorModal } from './TenantWorkspaceInspectorModal';
 import { TenantPackageEditModal } from './TenantPackageEditModal';
+import { TenantWorkspaceEditModal } from './TenantWorkspaceEditModal';
 
 export const SaasMasterAdminView: React.FC = () => {
-  const { tenants, currentTenant, switchTenant, switchToMasterStock, updateTenantSubscription, deleteTenant, config, updateConfig } = useStock();
+  const {
+    tenants,
+    currentTenant,
+    switchTenant,
+    switchToMasterStock,
+    updateTenantSubscription,
+    updateTenantDetails,
+    deleteTenant,
+    config,
+    updateConfig,
+  } = useStock();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'trialing' | 'active' | 'expired'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [confirmDeleteTenant, setConfirmDeleteTenant] = useState<Tenant | null>(null);
   const [inspectingTenant, setInspectingTenant] = useState<Tenant | null>(null);
   const [editingPackageTenant, setEditingPackageTenant] = useState<Tenant | null>(null);
+  const [editingWorkspaceTenant, setEditingWorkspaceTenant] = useState<Tenant | null>(null);
   const [showBankSetupModal, setShowBankSetupModal] = useState(false);
 
   const masterBankConfig = (() => {
@@ -824,6 +838,32 @@ export const SaasMasterAdminView: React.FC = () => {
                             </span>
                           </button>
 
+                          {/* Edit Workspace Details (Name, Admin Email, Phone, Currency) */}
+                          <button
+                            type="button"
+                            onClick={() => setEditingWorkspaceTenant(tenant)}
+                            className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title="Edit workspace profile, contact email, phone, currency and slug"
+                          >
+                            <Edit3 className="w-3 h-3 text-teal-600" />
+                            <span>Edit Details</span>
+                          </button>
+
+                          {/* Copy Workspace Direct Login Link */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${window.location.origin}${window.location.pathname}?workspace=${tenant.slug}`;
+                              navigator.clipboard.writeText(url);
+                              showNotification(`Copied direct staff login link for "${tenant.companyName}"!`);
+                            }}
+                            className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title="Copy direct workspace login link for staff members"
+                          >
+                            <Link2 className="w-3 h-3 text-indigo-600" />
+                            <span>Login Link</span>
+                          </button>
+
                           {/* Inspect Client Workspace Modal */}
                           <button
                             onClick={() => setInspectingTenant(tenant)}
@@ -1054,6 +1094,17 @@ export const SaasMasterAdminView: React.FC = () => {
         onClose={() => setEditingPackageTenant(null)}
         onSaveSubscription={handleSaveSubscription}
         onClearQueuedSubscription={handleClearQueuedSubscription}
+      />
+
+      {/* Tenant Workspace Details Edit Modal */}
+      <TenantWorkspaceEditModal
+        tenant={editingWorkspaceTenant}
+        isOpen={!!editingWorkspaceTenant}
+        onClose={() => setEditingWorkspaceTenant(null)}
+        onSave={(tenantId, updates) => {
+          updateTenantDetails(tenantId, updates);
+          showNotification('Workspace profile details & admin email updated successfully!');
+        }}
       />
     </div>
   );

@@ -182,7 +182,7 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
                   </p>
                   <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 mt-0.5">
                     <span><strong>Tel:</strong> {activeTemplate?.tel || config.phone || '+94 11 2549590'}</span>
-                    <span><strong>Email:</strong> {activeTemplate?.email || config.email || 'procurement@comtecsystems.lk'}</span>
+                    <span><strong>Email:</strong> {activeTemplate?.email || config.email || 'apexdevinfo@gmail.com'}</span>
                   </div>
                 </div>
 

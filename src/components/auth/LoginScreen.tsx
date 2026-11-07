@@ -37,12 +37,21 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => {
-  const { config, login } = useStock();
+  const { config, currentTenant, tenants, login } = useStock();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [workspaceCode, setWorkspaceCode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      const urlWs = p.get('workspace');
+      if (urlWs) return urlWs;
+    }
+    return currentTenant.id !== 'tenant-apex-main' ? currentTenant.slug : '';
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [collisionCompanies, setCollisionCompanies] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showOfflineViewer, setShowOfflineViewer] = useState(false);
@@ -83,10 +92,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
     }
 
     setIsSubmitting(true);
-    const res = login(inputUser, inputPass);
+    const res = login(inputUser, inputPass, workspaceCode.trim() || undefined);
     if (!res.success) {
       setErrorMessage(res.message);
+      if (res.collisionCompanies && res.collisionCompanies.length > 0) {
+        setCollisionCompanies(res.collisionCompanies);
+      } else {
+        setCollisionCompanies([]);
+      }
       setIsSubmitting(false);
+    } else {
+      setCollisionCompanies([]);
     }
   };
 
@@ -153,6 +169,68 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
               </div>
             )}
 
+            {/* Interactive Workspace Chooser on Collision */}
+            {collisionCompanies.length > 0 && (
+              <div className="mb-4 p-3.5 bg-indigo-950/80 border border-indigo-500/50 rounded-xl space-y-2.5 animate-fadeIn">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                  <Building2 className="w-4 h-4 text-amber-400" />
+                  <span>Choose Your Company Workspace (ඔබේ සමාගම තෝරන්න):</span>
+                </div>
+                <div className="space-y-1.5">
+                  {collisionCompanies.map((comp) => (
+                    <button
+                      key={comp.id}
+                      type="button"
+                      onClick={() => {
+                        setWorkspaceCode(comp.slug);
+                        setCollisionCompanies([]);
+                        setErrorMessage(null);
+                        setIsSubmitting(true);
+                        const res = login(username.trim(), password, comp.slug);
+                        if (!res.success) {
+                          setErrorMessage(res.message);
+                          setIsSubmitting(false);
+                        }
+                      }}
+                      className="w-full p-2.5 rounded-lg bg-slate-900 hover:bg-emerald-950/80 border border-slate-700 hover:border-emerald-500/60 flex items-center justify-between text-left transition cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
+                          {comp.name.charAt(0)}
+                        </div>
+                        <span className="text-xs font-bold text-white group-hover:text-emerald-300 transition">
+                          {comp.name}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                        {comp.slug}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Active Company Workspace Badge */}
+            {(workspaceCode || currentTenant.id !== 'tenant-apex-main') && (
+              <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 to-slate-900 border border-emerald-500/40 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Logging in to Workspace</div>
+                    <div className="text-xs font-black text-white">
+                      {tenants.find(t => t.slug.toLowerCase() === workspaceCode.toLowerCase() || t.id === workspaceCode)?.companyName || currentTenant.companyName}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  {workspaceCode || currentTenant.slug}
+                </span>
+              </div>
+            )}
+
             {/* Secure Sign In Form */}
             <form onSubmit={handleFormLogin} className="space-y-4">
               {/* Username / Email Input */}
@@ -200,6 +278,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
+
+              {/* Company Workspace Code (Optional) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Company Workspace Code / සමාගම් කේතය (Optional)
+                  </label>
+                  {workspaceCode && (
+                    <button
+                      type="button"
+                      onClick={() => setWorkspaceCode('')}
+                      className="text-[10px] text-slate-400 hover:text-slate-200 underline cursor-pointer"
+                    >
+                      Clear Code
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={workspaceCode}
+                    onChange={(e) => setWorkspaceCode(e.target.value)}
+                    placeholder="e.g. apex-telecom (or leave blank)"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-950/70 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono transition-all"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  වෙනත් සමාගම් සමග එකම Username ගැටුමක් ඇත්නම් සමාගමේ කේතය (Workspace Slug) හෝ සෘජු Link එක භාවිත කරන්න.
+                </p>
               </div>
 
               {/* Submit Button */}

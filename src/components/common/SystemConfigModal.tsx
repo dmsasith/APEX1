@@ -125,7 +125,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     required
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="e.g. Apex Construction & Logistics"
                   />
                 </div>
@@ -137,7 +137,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     required
                     value={systemName}
                     onChange={(e) => setSystemName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="e.g. Stock & Site Management System"
                   />
                 </div>
@@ -152,7 +152,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium bg-white text-slate-900"
                     placeholder="Colombo 03, Sri Lanka"
                   />
                 </div>
@@ -165,7 +165,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium bg-white text-slate-900"
                     placeholder="+94 11 2345678"
                   />
                 </div>
@@ -178,7 +178,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium bg-white text-slate-900"
                     placeholder="info@company.com"
                   />
                 </div>
@@ -200,7 +200,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     min={1}
                     value={defaultLowStockThreshold}
                     onChange={(e) => setDefaultLowStockThreshold(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900"
                   />
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Default minimum quantity for alert</span>
                 </div>
@@ -213,7 +213,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     type="text"
                     value={currencySymbol}
                     onChange={(e) => setCurrencySymbol(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900"
                     placeholder="Rs. or LKR"
                   />
                 </div>
@@ -225,7 +225,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                   <select
                     value={themeId}
                     onChange={(e) => setThemeId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900"
                   >
                     {Object.entries(APP_THEMES).map(([key, t]) => (
                       <option key={key} value={key}>
@@ -246,7 +246,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                   min={100}
                   value={usdToLkrRate}
                   onChange={(e) => setUsdToLkrRate(Number(e.target.value))}
-                  className="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold font-mono"
+                  className="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold font-mono bg-white text-slate-900"
                 />
               </div>
             </div>

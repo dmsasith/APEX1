@@ -124,7 +124,12 @@ interface StockContextType {
   setViewAsUser: (user: User | null) => void;
   exitViewAsMode: () => void;
   isAuthenticated: boolean;
-  login: (usernameOrUser: string | User, password?: string) => { success: boolean; message: string };
+  getWorkspaceLoginUrl: (slugOrTenantId?: string) => string;
+  login: (
+    usernameOrUser: string | User,
+    password?: string,
+    workspaceSlugOrId?: string
+  ) => { success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] };
   logout: () => void;
   activeSite: Site | null; // null if Main or All Sites
 
@@ -387,6 +392,10 @@ interface StockContextType {
   setPreviewTenant: (tenant: Tenant | null) => void;
   exitTenantPreview: () => void;
   updateTenantSubscription: (tenantId: string, subscriptionUpdates: Partial<TenantSubscription>) => void;
+  updateTenantDetails: (
+    tenantId: string,
+    updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug'>>
+  ) => void;
   deleteTenant: (tenantId: string) => void;
 
   // Firebase Realtime Database
@@ -465,11 +474,90 @@ function saveTenantData<T>(tenantId: string, key: string, data: T) {
   try {
     const tenantKey = getTenantStorageKey(tenantId, key);
     localStorage.setItem(tenantKey, JSON.stringify(data));
-    if (tenantId === DEFAULT_TENANT.id && key !== 'tenants' && key !== 'current_tenant_id') {
+    if (tenantId === DEFAULT_TENANT.id && key !== 'current_tenant_id') {
       localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(data));
     }
   } catch (err) {
     console.error(`Failed to save ${key} for tenant ${tenantId}:`, err);
+  }
+}
+
+export function getAllSavedTenants(): Tenant[] {
+  try {
+    const rawRoot = localStorage.getItem(STORAGE_KEY_PREFIX + 'tenants');
+    const rawApex = localStorage.getItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`);
+    const parsedRoot: Tenant[] = rawRoot ? JSON.parse(rawRoot) : [];
+    const parsedApex: Tenant[] = rawApex ? JSON.parse(rawApex) : [];
+
+    const map = new Map<string, Tenant>();
+
+    // Initial defaults
+    INITIAL_TENANTS.forEach((t) => map.set(t.id, t));
+    parsedApex.forEach((t) => map.set(t.id, t));
+    parsedRoot.forEach((t) => map.set(t.id, t));
+
+    // Dynamic Discovery: Scan all localStorage keys for any created tenant workspaces
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(STORAGE_KEY_PREFIX + 'tenant-') && k.endsWith('_config')) {
+        const tenantId = k.replace(STORAGE_KEY_PREFIX, '').replace('_config', '');
+        if (!map.has(tenantId)) {
+          try {
+            const rawCfg = localStorage.getItem(k);
+            if (rawCfg) {
+              const cfg = JSON.parse(rawCfg);
+              const parts = tenantId.replace('tenant-', '').split('-');
+              const slug = parts.length > 1 && !isNaN(Number(parts[parts.length - 1]))
+                ? parts.slice(0, -1).join('-')
+                : parts.join('-');
+
+              map.set(tenantId, {
+                id: tenantId,
+                companyName: cfg.companyName || slug,
+                slug: slug || 'company',
+                contactEmail: cfg.email || '',
+                contactPhone: cfg.phone || '',
+                currencySymbol: cfg.currencySymbol || 'Rs.',
+                country: 'Sri Lanka',
+                subscription: {
+                  plan: 'free_trial',
+                  status: 'trialing',
+                  trialStartedAt: new Date().toISOString(),
+                  trialEndsAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+                  monthlyPrice: 19.90,
+                  currency: 'USD',
+                  paymentMethodStatus: 'pending_setup',
+                },
+                createdAt: new Date().toISOString(),
+                ownerUserId: `usr-${slug}-admin`,
+                isActive: true,
+              });
+            }
+          } catch (e) {
+            console.warn('Could not reconstruct tenant from config:', e);
+          }
+        }
+      }
+    }
+
+    // Enforce master tenant brand & email
+    const apexMain = map.get(DEFAULT_TENANT.id) || DEFAULT_TENANT;
+    map.set(DEFAULT_TENANT.id, {
+      ...apexMain,
+      id: DEFAULT_TENANT.id,
+      companyName: 'Apex Developer',
+      slug: 'apex-developer',
+      contactEmail: 'apexdevinfo@gmail.com',
+    });
+
+    const combined = Array.from(map.values());
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(combined));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`, JSON.stringify(combined));
+    } catch {}
+    return combined;
+  } catch {
+    return INITIAL_TENANTS;
   }
 }
 
@@ -545,30 +633,23 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
 
 export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [tenants, setTenants] = useState<Tenant[]>(() => {
-    const loaded = loadFromStorage('tenants', INITIAL_TENANTS);
-    // Ensure we migrate any old Comtec IDs to Apex Developer
-    let migrated = loaded.map(t => {
-      if (t.id === 'tenant-comtec-main') {
-        return { ...t, id: 'tenant-apex-main', companyName: 'Apex Developer', slug: 'apex-developer' };
-      }
-      return t;
-    });
-
-    // CRITICAL: Always ensure the Master Developer tenant is in the list
-    if (!migrated.find(t => t.id === 'tenant-apex-main')) {
-      migrated = [DEFAULT_TENANT, ...migrated];
-    }
-    
-    return migrated;
+    return getAllSavedTenants();
   });
 
   const [currentTenantId, setCurrentTenantId] = useState<string>(() => {
     try {
-      const loadedTenants = loadFromStorage('tenants', INITIAL_TENANTS);
+      const loadedTenants = getAllSavedTenants();
       const urlParams = new URLSearchParams(window.location.search);
       const wsSlug = urlParams.get('workspace');
       if (wsSlug) {
-        const foundBySlug = loadedTenants.find((t) => t.slug === wsSlug);
+        const clean = wsSlug.trim().toLowerCase();
+        const foundBySlug = loadedTenants.find(
+          (t) =>
+            t.slug?.toLowerCase() === clean ||
+            t.id?.toLowerCase() === clean ||
+            t.companyName?.toLowerCase() === clean ||
+            t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, '')
+        );
         if (foundBySlug) {
           localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', foundBySlug.id);
           return foundBySlug.id;
@@ -589,6 +670,48 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     currentTenantIdRef.current = currentTenantId;
   }, [currentTenantId]);
+
+  // Auto-switch workspace if ?workspace=slug is present in URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const wsSlug = urlParams.get('workspace');
+      if (wsSlug) {
+        const clean = wsSlug.trim().toLowerCase();
+        const allList = tenants.length > 0 ? tenants : getAllSavedTenants();
+        let found = allList.find(
+          (t) =>
+            t.slug?.toLowerCase() === clean ||
+            t.id?.toLowerCase() === clean ||
+            t.companyName?.toLowerCase() === clean ||
+            t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, '')
+        );
+
+        if (!found) {
+          const fresh = getAllSavedTenants();
+          found = fresh.find(
+            (t) =>
+              t.slug?.toLowerCase() === clean ||
+              t.id?.toLowerCase() === clean ||
+              t.companyName?.toLowerCase() === clean ||
+              t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, '')
+          );
+          if (found) {
+            setTenants(fresh);
+          }
+        }
+
+        if (found && found.id !== currentTenantIdRef.current) {
+          setCurrentTenantId(found.id);
+          currentTenantIdRef.current = found.id;
+          try {
+            localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', found.id);
+          } catch {}
+          loadTenantStateIntoMemory(found.id);
+        }
+      }
+    }
+  }, [tenants]);
 
   // Auto-check and promote queued subscriptions when current plan period expires
   useEffect(() => {
@@ -628,6 +751,42 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setTenants(updatedTenants);
       saveTenantData(DEFAULT_TENANT.id, 'tenants', updatedTenants);
       writeTenantsToFirebase(updatedTenants).catch(console.warn);
+    }
+  }, [tenants]);
+
+  // Enforce apexdevinfo@gmail.com on master tenant and sanitize any lingering comtec emails
+  useEffect(() => {
+    let modified = false;
+    const sanitized = tenants.map((t) => {
+      if (t.id === 'tenant-apex-main' || t.id === 'tenant-comtec-main' || t.id === DEFAULT_TENANT.id) {
+        if (t.contactEmail !== 'apexdevinfo@gmail.com' || t.companyName !== 'Apex Developer') {
+          modified = true;
+          return {
+            ...t,
+            id: 'tenant-apex-main',
+            companyName: 'Apex Developer',
+            slug: 'apex-developer',
+            contactEmail: 'apexdevinfo@gmail.com',
+          };
+        }
+      }
+      if (t.contactEmail && (t.contactEmail.includes('comtec') || t.contactEmail === 'admin@apexdeveloper.lk' || t.contactEmail === 'admin@apexdeveloper.com')) {
+        modified = true;
+        return {
+          ...t,
+          contactEmail: 'apexdevinfo@gmail.com',
+        };
+      }
+      return t;
+    });
+
+    if (modified) {
+      setTenants(sanitized);
+      saveTenantData(DEFAULT_TENANT.id, 'tenants', sanitized);
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(sanitized));
+      } catch {}
+      writeTenantsToFirebase(sanitized).catch(console.warn);
     }
   }, [tenants]);
 
@@ -854,49 +1013,143 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const login = (usernameOrUser: string | User, password?: string): { success: boolean; message: string } => {
+  const getWorkspaceLoginUrl = (slugOrTenantId?: string): string => {
+    const target = slugOrTenantId
+      ? (tenants.find((t) => t.slug === slugOrTenantId || t.id === slugOrTenantId) || currentTenant)
+      : currentTenant;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    return `${origin}${pathname}?workspace=${target.slug}`;
+  };
+
+  const login = (
+    usernameOrUser: string | User,
+    password?: string,
+    workspaceSlugOrId?: string
+  ): { success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] } => {
     let matchedTenant: Tenant | undefined;
     let matchedUser: User | undefined;
 
     if (typeof usernameOrUser === 'string') {
       const term = usernameOrUser.trim().toLowerCase();
-      
-      // 1. PRIORITIZE: If username is 'admin', lock strictly to the Master Developer Tenant (Apex Developer)
-      if (term === 'admin') {
-        matchedTenant = DEFAULT_TENANT;
-        matchedUser = INITIAL_USERS[0];
-        // Instantly force tenant context to master tenant
-        setCurrentTenantId(DEFAULT_TENANT.id);
-        currentTenantIdRef.current = DEFAULT_TENANT.id;
-        try {
-          localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', DEFAULT_TENANT.id);
-        } catch (e) {
-          console.warn('Could not save current_tenant_id:', e);
+      const inputPass = (password || '').trim();
+
+      // Check if target workspace was explicitly provided
+      const explicitSlug = workspaceSlugOrId?.trim().toLowerCase();
+      let targetTenant: Tenant | undefined;
+
+      if (explicitSlug) {
+        const cleanSlug = explicitSlug.trim().toLowerCase();
+        targetTenant = tenants.find(
+          (t) =>
+            t.slug?.toLowerCase() === cleanSlug ||
+            t.id?.toLowerCase() === cleanSlug ||
+            t.companyName?.toLowerCase() === cleanSlug ||
+            t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanSlug.replace(/[^a-z0-9]/g, '')
+        );
+
+        if (!targetTenant) {
+          const freshTenants = getAllSavedTenants();
+          targetTenant = freshTenants.find(
+            (t) =>
+              t.slug?.toLowerCase() === cleanSlug ||
+              t.id?.toLowerCase() === cleanSlug ||
+              t.companyName?.toLowerCase() === cleanSlug ||
+              t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanSlug.replace(/[^a-z0-9]/g, '')
+          );
+          if (targetTenant) {
+            setTenants(freshTenants);
+          }
         }
-        loadTenantStateIntoMemory(DEFAULT_TENANT.id);
+
+        if (!targetTenant) {
+          return {
+            success: false,
+            message: `Company workspace "${workspaceSlugOrId}" not found. Please verify your company workspace code.`,
+          };
+        }
       }
 
-      // 2. SEARCH ALL: If not found in primary check, search across all tenants
-      if (!matchedUser) {
+      // If a specific workspace was designated:
+      if (targetTenant) {
+        const tUsers = loadTenantData<User[]>(
+          targetTenant.id,
+          'users',
+          targetTenant.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+        );
+        matchedUser = tUsers.find(
+          (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
+        );
+        if (!matchedUser) {
+          return {
+            success: false,
+            message: `User account "${usernameOrUser}" not found in ${targetTenant.companyName} workspace.`,
+          };
+        }
+        matchedTenant = targetTenant;
+      } else {
+        // Collect candidate users across tenants that match the username
+        const candidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
+
         for (const t of tenants) {
-          const tUsers = loadTenantData<User[]>(t.id, 'users', t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []);
+          const tUsers = loadTenantData<User[]>(
+            t.id,
+            'users',
+            t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+          );
           const found = tUsers.find(
             (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
           );
           if (found) {
-            matchedTenant = t;
-            matchedUser = found;
-            break;
+            const isMaster = t.id === DEFAULT_TENANT.id && (found.username === 'admin' || found.id === 'usr-admin-1');
+            const expected = isMaster ? 'sasith@123' : (found.password || 'password123').trim();
+            candidates.push({ tenant: t, user: found, expectedPass: expected });
           }
         }
-      }
 
-      // 3. EMERGENCY FALLBACK: Final check in INITIAL_USERS
-      if (!matchedUser && term === 'admin') {
-        const adminFromInitial = INITIAL_USERS.find(u => u.username === 'admin');
-        if (adminFromInitial) {
-          matchedUser = adminFromInitial;
-          matchedTenant = DEFAULT_TENANT;
+        if (candidates.length === 0) {
+          return { success: false, message: 'User account not found. Please verify your username.' };
+        }
+
+        if (candidates.length === 1) {
+          matchedTenant = candidates[0].tenant;
+          matchedUser = candidates[0].user;
+        } else {
+          // Multiple companies have a user with this username (Multi-tenant collision resolution!)
+          // 1. Check if user's entered password matches exactly one candidate
+          const passwordMatched = inputPass
+            ? candidates.filter((c) => c.expectedPass === inputPass)
+            : [];
+
+          if (passwordMatched.length === 1) {
+            matchedTenant = passwordMatched[0].tenant;
+            matchedUser = passwordMatched[0].user;
+          } else if (passwordMatched.length > 1) {
+            // Collision on both username AND password
+            const matchedCompanies = passwordMatched.map((c) => `"${c.tenant.companyName}" (${c.tenant.slug})`).join(', ');
+            return {
+              success: false,
+              message: `The username "${usernameOrUser}" with this password exists in multiple companies (${matchedCompanies}). Please choose your company workspace below or specify your workspace code:`,
+              collisionCompanies: passwordMatched.map((c) => ({
+                id: c.tenant.id,
+                name: c.tenant.companyName,
+                slug: c.tenant.slug,
+              })),
+            };
+          } else {
+            // Multiple candidates, but none matched password - check current active tenant in session
+            const currentTenantCandidate = candidates.find((c) => c.tenant.id === currentTenantIdRef.current);
+            if (currentTenantCandidate) {
+              matchedTenant = currentTenantCandidate.tenant;
+              matchedUser = currentTenantCandidate.user;
+            } else {
+              const companyNames = candidates.map((c) => c.tenant.companyName).join(', ');
+              return {
+                success: false,
+                message: `Invalid password for "${usernameOrUser}". (Matching accounts exist in: ${companyNames}. If this is for another company, enter your Company Workspace Code or use your direct company login link).`,
+              };
+            }
+          }
         }
       }
     } else {
@@ -922,17 +1175,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Password verification
     if (password !== undefined) {
       const inputPass = password.trim();
-      const expectedPass = (matchedUser.password || 'password123').trim();
-      
-      // Special protection for Master Developer Account (admin / usr-admin-1)
-      const isMasterAdminTarget = matchedTenant.id === 'tenant-apex-main' && (matchedUser.username === 'admin' || matchedUser.id === 'usr-admin-1');
+      const isMasterAdminTarget =
+        matchedTenant.id === 'tenant-apex-main' &&
+        (matchedUser.username === 'admin' || matchedUser.id === 'usr-admin-1');
+
       if (isMasterAdminTarget) {
-        // Enforce secure developer password
         const secureDeveloperPassword = 'sasith@123';
         if (inputPass !== secureDeveloperPassword) {
           return { success: false, message: 'Invalid master administrator credentials. Access restricted.' };
         }
       } else {
+        const expectedPass = (matchedUser.password || 'password123').trim();
         if (inputPass !== expectedPass) {
           return { success: false, message: 'Invalid password. Please check your credentials.' };
         }
@@ -960,7 +1213,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.warn('Could not save auth state:', e);
     }
 
-    return { success: true, message: `Welcome back, ${matchedUser.fullName}!` };
+    return { success: true, message: `Welcome back, ${matchedUser.fullName} (${matchedTenant.companyName})!` };
   };
 
   const logout = () => {
@@ -1165,9 +1418,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       saveTenantData(tenantId, 'digitalSignatures', DEFAULT_DIGITAL_SIGNATURES);
 
       // Save tenant to global tenants registry
-      const updatedTenants = [...tenants, newTenant];
+      const updatedTenants = [...tenants.filter((t) => t.id !== newTenant.id), newTenant];
       setTenants(updatedTenants);
       saveTenantData(DEFAULT_TENANT.id, 'tenants', updatedTenants);
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(updatedTenants));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`, JSON.stringify(updatedTenants));
+      } catch (e) {
+        console.warn('Could not write tenants to localStorage:', e);
+      }
       writeTenantsToFirebase(updatedTenants).catch(console.warn);
 
       // Switch context to new tenant
@@ -1228,6 +1487,46 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       writeTenantsToFirebase(updated).catch(console.warn);
       return updated;
     });
+  };
+
+  const updateTenantDetails = (
+    tenantId: string,
+    updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug'>>
+  ) => {
+    setTenants((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === tenantId) {
+          return {
+            ...t,
+            ...updates,
+          };
+        }
+        return t;
+      });
+      saveTenantData(DEFAULT_TENANT.id, 'tenants', updated);
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Failed to write tenants to root storage key:', e);
+      }
+      writeTenantsToFirebase(updated).catch(console.warn);
+      return updated;
+    });
+
+    // If updating current active tenant, also sync config companyName/email/phone
+    if (tenantId === currentTenantIdRef.current) {
+      setConfig((prev) => {
+        const merged: SystemConfig = {
+          ...prev,
+          ...(updates.companyName ? { companyName: updates.companyName } : {}),
+          ...(updates.contactEmail ? { email: updates.contactEmail } : {}),
+          ...(updates.contactPhone !== undefined ? { phone: updates.contactPhone } : {}),
+          ...(updates.currencySymbol ? { currencySymbol: updates.currencySymbol } : {}),
+        };
+        saveToStorage('config', merged);
+        return merged;
+      });
+    }
   };
 
   const deleteTenant = (tenantId: string) => {
@@ -1376,8 +1675,40 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let unsubSuppliers: (() => void) | undefined;
     let unsubPurchaseOrders: (() => void) | undefined;
     let unsubSupplierReturns: (() => void) | undefined;
+    let unsubTenants: (() => void) | undefined;
 
     try {
+      unsubTenants = subscribeToFirebaseTenants(
+        (remoteTenants) => {
+          if (remoteTenants && remoteTenants.length > 0) {
+            setTenants((prev) => {
+              const map = new Map<string, Tenant>();
+              prev.forEach((t) => map.set(t.id, t));
+              remoteTenants.forEach((t) => {
+                if (t.id === DEFAULT_TENANT.id || t.id === 'tenant-apex-main') {
+                  map.set(DEFAULT_TENANT.id, {
+                    ...t,
+                    id: DEFAULT_TENANT.id,
+                    companyName: 'Apex Developer',
+                    slug: 'apex-developer',
+                    contactEmail: 'apexdevinfo@gmail.com',
+                  });
+                } else {
+                  map.set(t.id, t);
+                }
+              });
+              const combined = Array.from(map.values());
+              try {
+                localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(combined));
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`, JSON.stringify(combined));
+              } catch {}
+              return combined;
+            });
+          }
+        },
+        (err) => console.warn('Firebase tenants sync notice:', err)
+      );
+
       unsubItems = subscribeToFirebaseItems(
         (remoteItems) => {
           setFirebaseConnected(true);
@@ -1805,6 +2136,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (unsubSuppliers) unsubSuppliers();
       if (unsubPurchaseOrders) unsubPurchaseOrders();
       if (unsubSupplierReturns) unsubSupplierReturns();
+      if (unsubTenants) unsubTenants();
     };
   }, []);
 
@@ -2407,7 +2739,35 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [currentUser, activeSites]);
 
   const updateConfig = (newConfig: Partial<SystemConfig>) => {
-    setConfig((prev) => ({ ...prev, ...newConfig }));
+    setConfig((prev) => {
+      const merged = { ...prev, ...newConfig };
+      saveToStorage('config', merged);
+      return merged;
+    });
+
+    // Automatically sync updated company details to tenant record
+    if (newConfig.email || newConfig.companyName || newConfig.phone || newConfig.currencySymbol) {
+      setTenants((prev) => {
+        const updated = prev.map((t) => {
+          if (t.id === currentTenantIdRef.current) {
+            return {
+              ...t,
+              companyName: newConfig.companyName ? newConfig.companyName.trim() : t.companyName,
+              contactEmail: newConfig.email ? newConfig.email.trim() : t.contactEmail,
+              contactPhone: newConfig.phone !== undefined ? newConfig.phone.trim() : t.contactPhone,
+              currencySymbol: newConfig.currencySymbol ? newConfig.currencySymbol.trim() : t.currencySymbol,
+            };
+          }
+          return t;
+        });
+        saveTenantData(DEFAULT_TENANT.id, 'tenants', updated);
+        try {
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(updated));
+        } catch {}
+        writeTenantsToFirebase(updated).catch(console.warn);
+        return updated;
+      });
+    }
   };
 
   const addAuditLog = (
@@ -4786,7 +5146,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setPreviewTenant,
         exitTenantPreview,
         updateTenantSubscription,
+        updateTenantDetails,
         deleteTenant,
+        getWorkspaceLoginUrl,
       }}
     >
       {children}

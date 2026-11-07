@@ -18,6 +18,8 @@ import {
   Trash2,
   X,
   RotateCcw,
+  Link2,
+  Copy,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { UserRole, Item, Site, User, Team } from '../../types';
@@ -65,6 +67,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     clearAllTeams,
     getMainWarehouseStock,
     setCurrentUser,
+    currentTenant,
+    getWorkspaceLoginUrl,
   } = useStock();
 
   const isCentralAdmin = currentUser.role === 'Central Warehouse Admin';
@@ -1159,7 +1163,54 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
           </div>
         ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-5">
+          {/* Company Staff Direct Login Link Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 border border-indigo-800/60 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-400">
+                    <Link2 className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                    <span>Company Staff Direct Login Link</span>
+                    <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                      Workspace: {currentTenant.slug}
+                    </span>
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-300">
+                  ඔබේ සමාගමේ කාර්ය මණ්ඩලයට (Staff Users) ලොග් වීම සඳහා මෙම සෘජු සබැඳිය ලබාදෙන්න. එමගින් ඔවුන්ගේ ගිණුම් සෘජුවම <strong>{currentTenant.companyName}</strong> වෙත පිවිසෙන බැවින් වෙනත් සමාගම් සමග පරිශීලක නාම (Username) කිසිවිටෙකත් නොපැටලේ.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const loginUrl = getWorkspaceLoginUrl(currentTenant.slug);
+                    navigator.clipboard.writeText(loginUrl);
+                    setSuccessToast(`Company login link copied to clipboard! Share this URL with your staff.`);
+                    setTimeout(() => setSuccessToast(null), 3500);
+                  }}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition cursor-pointer active:scale-95"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy Login Link (ලින්ක් එක පිටපත් කරන්න)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Link Preview box */}
+            <div className="mt-3.5 p-2.5 bg-black/40 rounded-xl border border-indigo-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-indigo-200">
+              <span className="truncate">{getWorkspaceLoginUrl(currentTenant.slug)}</span>
+              <span className="text-[10px] text-slate-400 font-sans shrink-0">
+                Workspace Code: <strong className="text-amber-300 font-mono">{currentTenant.slug}</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* User Form */}
           <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
@@ -1385,6 +1436,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </table>
             </div>
           </div>
+        </div>
         </div>
         )
       )}

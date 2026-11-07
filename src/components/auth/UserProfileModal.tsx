@@ -28,6 +28,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [showPassword, setShowPassword] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setFullName(currentUser.fullName);
+      setUsername(currentUser.username);
+      setPassword(currentUser.password || 'password123');
+      setStatusMsg(null);
+    }
+  }, [isOpen, currentUser]);
+
   if (!isOpen) return null;
 
   const handleSaveProfile = (e: React.FormEvent) => {

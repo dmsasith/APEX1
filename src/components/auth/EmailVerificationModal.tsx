@@ -26,7 +26,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   onSuccess,
 }) => {
   const { currentTenant, updateTenantSubscription, currentUser, tenants } = useStock();
-  const targetEmail = emailToVerify || currentTenant?.contactEmail || currentUser?.username || 'admin@apexdeveloper.com';
+  const targetEmail = emailToVerify || currentTenant?.contactEmail || currentUser?.username || 'apexdevinfo@gmail.com';
 
   const [otpCode, setOtpCode] = useState('');
   const [generatedCode, setGeneratedCode] = useState(() =>

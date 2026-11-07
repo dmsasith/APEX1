@@ -391,12 +391,24 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
         {/* Active User Controls */}
         <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs shadow-xs">
-            <div className="w-7 h-7 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center justify-center shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="w-7 h-7 rounded-md bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center justify-center shrink-0 cursor-pointer transition"
+              title="Click to edit account profile & email"
+            >
               {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
-            </div>
+            </button>
             <div className="flex flex-col text-left min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-400 font-medium">Active:</span>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                  className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer underline"
+                >
+                  Edit Profile
+                </button>
               </div>
               {isCentralAdmin ? (
                 <select value={currentUser.id} onChange={(e) => setViewAsUser(activeUsers.find(u => u.id === e.target.value)!)} className="bg-transparent text-slate-100 font-semibold text-xs focus:outline-none cursor-pointer truncate max-w-[140px]">

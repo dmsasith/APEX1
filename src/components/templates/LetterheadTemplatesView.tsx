@@ -650,7 +650,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                         type="text"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="operations@comtec.lk"
+                        placeholder="apexdevinfo@gmail.com"
                         className="w-full text-xs px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
@@ -1010,7 +1010,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                     <div className="text-left space-y-0.5">
                       <div>Tel: <span className="font-mono">{tel || '+94 11 2549590'}</span></div>
                       <div>Fax: <span className="font-mono">{fax || '+94 11 2549591'}</span></div>
-                      <div>Email: <span className="font-mono">{email || 'comtec@sltnet.lk'}</span></div>
+                      <div>Email: <span className="font-mono">{email || 'apexdevinfo@gmail.com'}</span></div>
                     </div>
                     <div className="text-right space-y-0.5">
                       <div>{address || 'No: 36, Udumulla, Malgama Road, Himbutana, Mulleriyawa.'}</div>

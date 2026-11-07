@@ -19,7 +19,7 @@ export const DEFAULT_TENANT: Tenant = {
   id: 'tenant-apex-main',
   companyName: 'Apex Developer',
   slug: 'apex-developer',
-  contactEmail: 'admin@apexdeveloper.lk',
+  contactEmail: 'apexdevinfo@gmail.com',
   contactPhone: '+94 77 123 4567',
   currencySymbol: 'Rs.',
   country: 'Sri Lanka',
@@ -46,7 +46,7 @@ export const INITIAL_CONFIG: SystemConfig = {
   currencySymbol: 'Rs.',
   address: 'Apex Software Engineering & Logistics Hub',
   phone: '+94 77 123 4567',
-  email: 'admin@apexdeveloper.lk',
+  email: 'apexdevinfo@gmail.com',
 };
 
 export const INITIAL_SITES: Site[] = [
@@ -126,7 +126,7 @@ export const DEFAULT_LETTERHEAD_TEMPLATES = [
     subtitle: 'Software Engineering, Enterprise Stock Management Systems, Cloud Infrastructure Solutions, and Automated Supply Chain Logistics.',
     tel: '+94 11 2549590',
     fax: '+94 11 2549591',
-    email: 'admin@apexdeveloper.lk',
+    email: 'apexdevinfo@gmail.com',
     address: 'Apex Software Tower, Colombo, Sri Lanka.',
     logoText: 'APEX DEV',
     designeePrepared: 'System Administrator',
