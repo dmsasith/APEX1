@@ -44,10 +44,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   const [workspaceCode, setWorkspaceCode] = useState(() => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
-      const urlWs = p.get('workspace');
+      const urlWs = p.get('workspace')?.trim();
       if (urlWs) return urlWs;
     }
-    return currentTenant.id !== 'tenant-apex-main' ? currentTenant.slug : '';
+    return '';
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -211,8 +211,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
               </div>
             )}
 
-            {/* Active Company Workspace Badge */}
-            {(workspaceCode || currentTenant.id !== 'tenant-apex-main') && (
+            {/* Active Company Workspace Badge (Only shown when accessing via company link or explicit workspace code) */}
+            {Boolean(workspaceCode) && (
               <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 to-slate-900 border border-emerald-500/40 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
@@ -221,12 +221,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                   <div>
                     <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Logging in to Workspace</div>
                     <div className="text-xs font-black text-white">
-                      {tenants.find(t => t.slug.toLowerCase() === workspaceCode.toLowerCase() || t.id === workspaceCode)?.companyName || currentTenant.companyName}
+                      {tenants.find(t => t.slug.toLowerCase() === workspaceCode.toLowerCase() || t.id === workspaceCode)?.companyName || workspaceCode}
                     </div>
                   </div>
                 </div>
                 <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  {workspaceCode || currentTenant.slug}
+                  {workspaceCode}
                 </span>
               </div>
             )}
