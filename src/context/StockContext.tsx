@@ -65,6 +65,9 @@ import {
 import {
   subscribeToFirebaseTenants,
   writeTenantsToFirebase,
+  subscribeToFirebaseTenantData,
+  writeTenantDataToFirebase,
+  fetchTenantDataFromFirebase,
   subscribeToFirebaseItems,
   writeItemsToFirebase,
   subscribeToFirebaseStockRequests,
@@ -129,7 +132,7 @@ interface StockContextType {
     usernameOrUser: string | User,
     password?: string,
     workspaceSlugOrId?: string
-  ) => { success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] };
+  ) => Promise<{ success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] }>;
   logout: () => void;
   activeSite: Site | null; // null if Main or All Sites
 
@@ -477,6 +480,8 @@ function saveTenantData<T>(tenantId: string, key: string, data: T) {
     if (tenantId === DEFAULT_TENANT.id && key !== 'current_tenant_id') {
       localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(data));
     }
+    // Realtime sync to Firebase for all tenants (users, sites, config, items, teams, etc.)
+    writeTenantDataToFirebase(tenantId, key, data).catch(() => {});
   } catch (err) {
     console.error(`Failed to save ${key} for tenant ${tenantId}:`, err);
   }
@@ -712,6 +717,75 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
   }, [tenants]);
+
+  // Realtime Cloud Data Sync for current active tenant (multi-device / Vercel deployment support)
+  useEffect(() => {
+    if (!currentTenantId) return;
+
+    // 1. Instantly catch up with Firebase RTDB for currentTenantId
+    fetchTenantDataFromFirebase<User[]>(currentTenantId, 'users').then((remoteUsers) => {
+      if (remoteUsers && remoteUsers.length > 0) {
+        setUsers((prev) => {
+          const userMap = new Map<string, User>();
+          prev.forEach((u) => userMap.set(u.id, u));
+          remoteUsers.forEach((u) => userMap.set(u.id, u));
+          const merged = Array.from(userMap.values());
+          saveTenantData(currentTenantId, 'users', merged);
+          return merged;
+        });
+      }
+    });
+
+    fetchTenantDataFromFirebase<Site[]>(currentTenantId, 'sites').then((remoteSites) => {
+      if (remoteSites && remoteSites.length > 0) {
+        setSites(remoteSites);
+        saveTenantData(currentTenantId, 'sites', remoteSites);
+      }
+    });
+
+    fetchTenantDataFromFirebase<SystemConfig>(currentTenantId, 'config').then((remoteConfig) => {
+      if (remoteConfig) {
+        setConfig(remoteConfig);
+        saveTenantData(currentTenantId, 'config', remoteConfig);
+      }
+    });
+
+    fetchTenantDataFromFirebase<Item[]>(currentTenantId, 'items').then((remoteItems) => {
+      if (remoteItems) {
+        setItems(remoteItems);
+        saveTenantData(currentTenantId, 'items', remoteItems);
+      }
+    });
+
+    fetchTenantDataFromFirebase<Team[]>(currentTenantId, 'teams').then((remoteTeams) => {
+      if (remoteTeams) {
+        setTeams(remoteTeams);
+        saveTenantData(currentTenantId, 'teams', remoteTeams);
+      }
+    });
+
+    // 2. Realtime listener for tenant users
+    const unsubUsers = subscribeToFirebaseTenantData<User[]>(
+      currentTenantId,
+      'users',
+      (remoteUsers) => {
+        if (remoteUsers && remoteUsers.length > 0) {
+          setUsers((prev) => {
+            const map = new Map<string, User>();
+            prev.forEach((u) => map.set(u.id, u));
+            remoteUsers.forEach((u) => map.set(u.id, u));
+            const merged = Array.from(map.values());
+            saveTenantData(currentTenantId, 'users', merged);
+            return merged;
+          });
+        }
+      }
+    );
+
+    return () => {
+      if (unsubUsers) unsubUsers();
+    };
+  }, [currentTenantId]);
 
   // Auto-check and promote queued subscriptions when current plan period expires
   useEffect(() => {
@@ -1022,11 +1096,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return `${origin}${pathname}?workspace=${target.slug}`;
   };
 
-  const login = (
+  const login = async (
     usernameOrUser: string | User,
     password?: string,
     workspaceSlugOrId?: string
-  ): { success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] } => {
+  ): Promise<{ success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] }> => {
     let matchedTenant: Tenant | undefined;
     let matchedUser: User | undefined;
 
@@ -1072,7 +1146,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       // If a specific workspace was designated:
       if (targetTenant) {
-        const tUsers = loadTenantData<User[]>(
+        let tUsers = loadTenantData<User[]>(
           targetTenant.id,
           'users',
           targetTenant.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
@@ -1080,6 +1154,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         matchedUser = tUsers.find(
           (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
         );
+
+        // Multi-device / Vercel deployment fallback: Fetch tenant users from Firebase RTDB if not in local storage
+        if (!matchedUser) {
+          const remoteUsers = await fetchTenantDataFromFirebase<User[]>(targetTenant.id, 'users');
+          if (remoteUsers && remoteUsers.length > 0) {
+            saveTenantData(targetTenant.id, 'users', remoteUsers);
+            matchedUser = remoteUsers.find(
+              (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
+            );
+          }
+        }
+
         if (!matchedUser) {
           return {
             success: false,
@@ -1092,14 +1178,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const candidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
 
         for (const t of tenants) {
-          const tUsers = loadTenantData<User[]>(
+          let tUsers = loadTenantData<User[]>(
             t.id,
             'users',
             t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
           );
-          const found = tUsers.find(
+          let found = tUsers.find(
             (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
           );
+
+          if (!found) {
+            const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
+            if (remoteUsers && remoteUsers.length > 0) {
+              saveTenantData(t.id, 'users', remoteUsers);
+              found = remoteUsers.find(
+                (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
+              );
+            }
+          }
+
           if (found) {
             const isMaster = t.id === DEFAULT_TENANT.id && (found.username === 'admin' || found.id === 'usr-admin-1');
             const expected = isMaster ? 'sasith@123' : (found.password || 'password123').trim();

@@ -825,3 +825,70 @@ export async function writeTenantsToFirebase(tenants: Tenant[]): Promise<void> {
     throw err;
   }
 }
+
+/**
+ * Realtime sync functions for Tenant-specific Data (Users, Sites, Items, Teams, Config, etc.)
+ */
+export function subscribeToFirebaseTenantData<T>(
+  tenantId: string,
+  key: string,
+  onData: (data: T) => void,
+  onError?: (err: Error) => void
+): () => void {
+  if (!tenantId) return () => {};
+  const dataRef = ref(rtdb, `tenantsData/${tenantId}/${key}`);
+  const unsubscribe = onValue(
+    dataRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val !== null && val !== undefined) {
+        if (Array.isArray(val) || (typeof val === 'object' && val !== null && !('companyName' in val))) {
+          onData(normalizeFirebaseList<any>(val) as T);
+        } else {
+          onData(val as T);
+        }
+      }
+    },
+    (error) => {
+      console.warn(`Firebase tenant ${tenantId}/${key} subscription error:`, error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
+}
+
+export async function writeTenantDataToFirebase<T>(
+  tenantId: string,
+  key: string,
+  data: T
+): Promise<void> {
+  try {
+    if (!tenantId) return;
+    const dataRef = ref(rtdb, `tenantsData/${tenantId}/${key}`);
+    await set(dataRef, sanitizeData(data));
+  } catch (err) {
+    console.error(`Failed to write ${key} for tenant ${tenantId} to Firebase:`, err);
+  }
+}
+
+export async function fetchTenantDataFromFirebase<T>(
+  tenantId: string,
+  key: string
+): Promise<T | null> {
+  try {
+    if (!tenantId) return null;
+    const dataRef = ref(rtdb, `tenantsData/${tenantId}/${key}`);
+    const snapshot = await get(dataRef);
+    if (snapshot.exists()) {
+      const val = snapshot.val();
+      if (Array.isArray(val) || (typeof val === 'object' && val !== null && !('companyName' in val))) {
+        return normalizeFirebaseList<any>(val) as T;
+      }
+      return val as T;
+    }
+    return null;
+  } catch (err) {
+    console.warn(`Failed to fetch ${key} for tenant ${tenantId} from Firebase:`, err);
+    return null;
+  }
+}

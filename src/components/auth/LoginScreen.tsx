@@ -79,7 +79,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
     return <IconComp className="w-8 h-8 text-emerald-400" />;
   };
 
-  const handleFormLogin = (e: React.FormEvent) => {
+  const handleFormLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -92,7 +92,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
     }
 
     setIsSubmitting(true);
-    const res = login(inputUser, inputPass, workspaceCode.trim() || undefined);
+    const res = await login(inputUser, inputPass, workspaceCode.trim() || undefined);
     if (!res.success) {
       setErrorMessage(res.message);
       if (res.collisionCompanies && res.collisionCompanies.length > 0) {
@@ -181,12 +181,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                     <button
                       key={comp.id}
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setWorkspaceCode(comp.slug);
                         setCollisionCompanies([]);
                         setErrorMessage(null);
                         setIsSubmitting(true);
-                        const res = login(username.trim(), password, comp.slug);
+                        const res = await login(username.trim(), password, comp.slug);
                         if (!res.success) {
                           setErrorMessage(res.message);
                           setIsSubmitting(false);
