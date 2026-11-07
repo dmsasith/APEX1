@@ -52,6 +52,7 @@ export interface User {
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  tenantId?: string;
 }
 
 export interface Item {

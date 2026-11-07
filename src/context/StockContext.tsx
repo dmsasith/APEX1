@@ -636,6 +636,50 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
   return recovered;
 }
 
+export function sanitizeTenantUsers(tenantId: string, rawUsers: User[], allTenants: Tenant[]): User[] {
+  if (!Array.isArray(rawUsers)) return [];
+  const isMaster = tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main';
+  
+  if (isMaster) {
+    return sanitizeAndRecoverApexUsers(rawUsers);
+  }
+
+  const currentTenant = allTenants.find((t) => t.id === tenantId);
+  const otherTenants = allTenants.filter((t) => t.id !== tenantId && t.id !== DEFAULT_TENANT.id && t.id !== 'tenant-apex-main');
+
+  return rawUsers.filter((u) => {
+    if (!u || !u.username) return false;
+    const uName = (u.username || '').toLowerCase();
+    const uFull = (u.fullName || '').toLowerCase();
+    const uId = (u.id || '').toLowerCase();
+
+    // 1. Exclude Master Developer Super Admin ('admin') from client workspace lists
+    if (uName === 'admin' || uId === 'usr-admin-1') {
+      return false;
+    }
+
+    // 2. If user explicitly specifies a tenantId, enforce it
+    if (u.tenantId && u.tenantId !== tenantId) {
+      return false;
+    }
+
+    // 3. Exclude users that match another tenant's slug or contact email
+    for (const other of otherTenants) {
+      const otherSlug = (other.slug || '').toLowerCase();
+      const otherEmail = (other.contactEmail || '').toLowerCase();
+
+      if (otherSlug && (uId.includes(otherSlug) || uName.includes(otherSlug) || uFull.includes(otherSlug))) {
+        return false;
+      }
+      if (otherEmail && (uName === otherEmail || uId.includes(otherEmail))) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
 export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [tenants, setTenants] = useState<Tenant[]>(() => {
     return getAllSavedTenants();
@@ -672,6 +716,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   const currentTenantIdRef = useRef<string>(currentTenantId);
+  const loadedTenantIdRef = useRef<string>(currentTenantId);
   useEffect(() => {
     currentTenantIdRef.current = currentTenantId;
   }, [currentTenantId]);
@@ -859,6 +904,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [tenants]);
 
   const saveToStorage = <T,>(key: string, data: T) => {
+    if (loadedTenantIdRef.current !== currentTenantIdRef.current) return;
     saveTenantData(currentTenantIdRef.current, key, data);
   };
 
@@ -884,7 +930,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   );
   const [users, setUsers] = useState<User[]>(() => {
     const rawUsers = loadTenantData(currentTenantId, 'users', isDefaultTenant ? INITIAL_USERS : []);
-    return isDefaultTenant || currentTenantId === 'tenant-apex-main' ? sanitizeAndRecoverApexUsers(rawUsers) : rawUsers;
+    return sanitizeTenantUsers(currentTenantId, rawUsers, tenants);
   });
   const [items, setItems] = useState<Item[]>(() =>
     loadTenantData(currentTenantId, 'items', isDefaultTenant ? INITIAL_ITEMS : [])
@@ -995,6 +1041,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Switch memory state when tenant changes
   const loadTenantStateIntoMemory = (tenantId: string) => {
+    currentTenantIdRef.current = tenantId;
+    loadedTenantIdRef.current = tenantId;
     const isDefault = tenantId === DEFAULT_TENANT.id;
     const tObj = tenants.find((t) => t.id === tenantId) || DEFAULT_TENANT;
 
@@ -1021,7 +1069,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const loadedUsers = loadTenantData<User[]>(tenantId, 'users', isDefault ? INITIAL_USERS : []);
 
     const isMaster = isDefault || tenantId === 'tenant-apex-main';
-    const finalUsers = isMaster ? sanitizeAndRecoverApexUsers(loadedUsers) : loadedUsers;
+    const finalUsers = sanitizeTenantUsers(tenantId, loadedUsers, tenants);
+    saveTenantData(tenantId, 'users', finalUsers);
+
     const cleanSites = isMaster
       ? loadedSites.filter((s) => !s.id.includes('civilect') && !s.name.toLowerCase().includes('civilect'))
       : loadedSites;
@@ -1145,7 +1195,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           'users',
           targetTenant.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
         );
-        matchedUser = tUsers.find(
+        let cleanTUsers = sanitizeTenantUsers(targetTenant.id, tUsers, tenants);
+        matchedUser = cleanTUsers.find(
           (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
         );
 
@@ -1153,8 +1204,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (!matchedUser) {
           const remoteUsers = await fetchTenantDataFromFirebase<User[]>(targetTenant.id, 'users');
           if (remoteUsers && remoteUsers.length > 0) {
-            saveTenantData(targetTenant.id, 'users', remoteUsers);
-            matchedUser = remoteUsers.find(
+            const cleanRemote = sanitizeTenantUsers(targetTenant.id, remoteUsers, tenants);
+            saveTenantData(targetTenant.id, 'users', cleanRemote);
+            matchedUser = cleanRemote.find(
               (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
             );
           }
@@ -1177,15 +1229,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             'users',
             t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
           );
-          let found = tUsers.find(
+          let cleanTUsers = sanitizeTenantUsers(t.id, tUsers, tenants);
+          let found = cleanTUsers.find(
             (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
           );
 
           if (!found) {
             const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
             if (remoteUsers && remoteUsers.length > 0) {
-              saveTenantData(t.id, 'users', remoteUsers);
-              found = remoteUsers.find(
+              const cleanRemote = sanitizeTenantUsers(t.id, remoteUsers, tenants);
+              saveTenantData(t.id, 'users', cleanRemote);
+              found = cleanRemote.find(
                 (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
               );
             }
@@ -3049,13 +3103,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const addUser = (userData: Omit<User, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>): User => {
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const newUser: User = {
       ...userData,
       id: `usr-${Date.now()}`,
       createdAt: new Date().toISOString(),
       isDeleted: false,
+      tenantId: activeTenantId,
     };
-    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setUsers((prev) => {
       const updated = [...prev, newUser];
       saveTenantData(activeTenantId, 'users', updated);
