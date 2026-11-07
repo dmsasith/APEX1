@@ -724,15 +724,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // 1. Instantly catch up with Firebase RTDB for currentTenantId
     fetchTenantDataFromFirebase<User[]>(currentTenantId, 'users').then((remoteUsers) => {
-      if (remoteUsers && remoteUsers.length > 0) {
-        setUsers((prev) => {
-          const userMap = new Map<string, User>();
-          prev.forEach((u) => userMap.set(u.id, u));
-          remoteUsers.forEach((u) => userMap.set(u.id, u));
-          const merged = Array.from(userMap.values());
-          saveTenantData(currentTenantId, 'users', merged);
-          return merged;
-        });
+      if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+        setUsers(remoteUsers);
+        try {
+          const tenantKey = getTenantStorageKey(currentTenantId, 'users');
+          localStorage.setItem(tenantKey, JSON.stringify(remoteUsers));
+        } catch {}
       }
     });
 
@@ -769,15 +766,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       currentTenantId,
       'users',
       (remoteUsers) => {
-        if (remoteUsers && remoteUsers.length > 0) {
-          setUsers((prev) => {
-            const map = new Map<string, User>();
-            prev.forEach((u) => map.set(u.id, u));
-            remoteUsers.forEach((u) => map.set(u.id, u));
-            const merged = Array.from(map.values());
-            saveTenantData(currentTenantId, 'users', merged);
-            return merged;
-          });
+        if (remoteUsers && Array.isArray(remoteUsers)) {
+          setUsers(remoteUsers);
+          try {
+            const tenantKey = getTenantStorageKey(currentTenantId, 'users');
+            localStorage.setItem(tenantKey, JSON.stringify(remoteUsers));
+          } catch {}
         }
       }
     );
@@ -3061,7 +3055,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: new Date().toISOString(),
       isDeleted: false,
     };
-    setUsers((prev) => [...prev, newUser]);
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    setUsers((prev) => {
+      const updated = [...prev, newUser];
+      saveTenantData(activeTenantId, 'users', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     const siteName = sites.find((s) => s.id === newUser.siteId)?.name || 'All Sites';
     addAuditLog('MASTER_USER_CREATED', newUser.username, siteName, `New user created: ${newUser.fullName} [${newUser.role}]`);
     return newUser;
@@ -3351,9 +3354,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateUser = (id: string, updates: Partial<User>) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
-    );
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    setUsers((prev) => {
+      const updated = prev.map((u) => (u.id === id ? { ...u, ...updates } : u));
+      saveTenantData(activeTenantId, 'users', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     const user = users.find((u) => u.id === id);
     addAuditLog(
       'MASTER_USER_UPDATED',
@@ -3509,9 +3519,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const softDeleteUser = (id: string) => {
     const timestamp = new Date().toISOString();
     const deletedBy = currentUser?.fullName || 'Administrator';
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, isDeleted: true, deletedAt: timestamp, deletedBy } : u))
-    );
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    setUsers((prev) => {
+      const updated = prev.map((u) => (u.id === id ? { ...u, isDeleted: true, deletedAt: timestamp, deletedBy } : u));
+      saveTenantData(activeTenantId, 'users', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     const user = users.find((u) => u.id === id);
     addAuditLog(
       'MASTER_USER_SOFT_DELETED',
@@ -3675,9 +3692,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const restoreUser = (id: string) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : u))
-    );
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    setUsers((prev) => {
+      const updated = prev.map((u) => (u.id === id ? { ...u, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : u));
+      saveTenantData(activeTenantId, 'users', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     const user = users.find((u) => u.id === id);
     addAuditLog(
       'MASTER_USER_RESTORED',
@@ -3749,11 +3773,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const permanentlyDeleteUser = (id: string) => {
     const user = users.find((u) => u.id === id);
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setUsers((prev) => {
       const updated = prev.filter((u) => u.id !== id);
-      saveToStorage('users', updated);
-      saveTenantData(currentTenantIdRef.current, 'users', updated);
-      const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
+      saveTenantData(activeTenantId, 'users', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeUsersToFirebase(updated).catch(console.warn);
       }
@@ -3801,9 +3825,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const emptyRecycleBin = () => {
     const count = recycleBinItems.length;
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setItems((prev) => prev.filter((i) => !i.isDeleted));
     setSites((prev) => prev.filter((s) => !s.isDeleted));
-    setUsers((prev) => prev.filter((u) => !u.isDeleted));
+    setUsers((prev) => {
+      const updated = prev.filter((u) => !u.isDeleted);
+      saveTenantData(activeTenantId, 'users', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeUsersToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     setTeams((prev) => prev.filter((t) => !t.isDeleted));
     setProjects((prev) => prev.filter((p) => !p.isDeleted));
 
