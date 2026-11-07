@@ -82,6 +82,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
 
+  const isAdmin = currentUser?.role === 'Central Warehouse Admin' || currentUser?.username === 'admin' || authUser?.username === 'admin';
+
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [tempCompanyName, setTempCompanyName] = useState(config.companyName);
   const [tempSystemName, setTempSystemName] = useState(config.systemName);
@@ -311,7 +313,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
               <span>Portal Gateway</span>
             </button>
           )}
-          {currentTenant && (() => {
+
+          {/* Subscription Trial Badge & Verify Email Badge (Admin Only) */}
+          {isAdmin && currentTenant && (() => {
             const sub = currentTenant.subscription;
             const expiry = new Date(sub.trialEndsAt || sub.nextBillingDate || Date.now());
             const daysLeft = Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -333,7 +337,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
               </button>
             );
           })()}
-          {currentTenant && (
+          {isAdmin && currentTenant && (
             !currentTenant.emailVerified ? (
               <button type="button" onClick={() => setShowEmailVerifyModal(true)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 border border-amber-500/40 text-amber-300 transition cursor-pointer animate-pulse" title="Verify Email">
                 <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
