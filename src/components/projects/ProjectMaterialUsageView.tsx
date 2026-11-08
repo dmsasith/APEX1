@@ -28,6 +28,9 @@ import {
   Phone,
   Hash,
   FolderPlus,
+  Target,
+  Lock,
+  Shield,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { ProjectMaterialUsage, ProjectUsageItemRow, ProjectType, isSuperAdmin } from '../../types';
@@ -61,7 +64,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
     clearProjectUsages,
     activeUsers,
     addProject,
+    addAuditLog,
+    crossProjectRequests,
+    createCrossProjectOverrideRequest,
+    acceptCrossProjectOverrideRequest,
+    rejectCrossProjectOverrideRequest,
   } = useStock();
+
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
+  const [adminCrossProjectOverride, setAdminCrossProjectOverride] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'log' | 'history' | 'reconciliation'>('log');
   const [selectedUsageForPrint, setSelectedUsageForPrint] = useState<ProjectMaterialUsage | null>(null);
@@ -243,6 +254,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
       next[idx] = { ...next[idx], [field]: value };
       return next;
     });
+
+    if (field === 'itemId' && typeof value === 'string' && value) {
+      const selectedItem = items.find((i) => i.id === value);
+      if (selectedItem && selectedItem.isProjectReserved && selectedItem.reservedProjectId) {
+        setProjectEntryMode('existing');
+        setSelectedProjectId(selectedItem.reservedProjectId);
+        setSuccessToast(`🎯 Auto-selected project "${selectedItem.reservedProjectName || 'Reserved Project'}" because item "${selectedItem.itemName}" is reserved for it.`);
+      }
+    }
   };
 
   // Submission
@@ -348,6 +368,43 @@ export const ProjectMaterialUsageView: React.FC = () => {
         finalCustomerName = registeredProject.customerName || '';
       }
 
+      // Check project reservation restrictions
+      const reservedConflicts: { item: typeof items[0]; reservedFor: string }[] = [];
+      for (const row of validRows) {
+        const itm = items.find((i) => i.id === row.itemId);
+        if (itm && itm.isProjectReserved && itm.reservedProjectId) {
+          if (projectEntryMode === 'existing' && itm.reservedProjectId === finalProjectId) {
+            // Valid reserved item usage for its assigned project
+            continue;
+          } else {
+            reservedConflicts.push({
+              item: itm,
+              reservedFor: itm.reservedProjectName || 'another project',
+            });
+          }
+        }
+      }
+
+      if (reservedConflicts.length > 0) {
+        const conflictNames = reservedConflicts
+          .map((c) => `"${c.item.itemName}" (${c.item.itemCode} - Reserved for: ${c.reservedFor})`)
+          .join(', ');
+
+        if (!isCentralAdmin) {
+          setErrorMsg(
+            `Access Denied: The following item(s) are strictly reserved for specific projects: ${conflictNames}. Non-admin users cannot log reserved items to a different project.`
+          );
+          return;
+        }
+
+        if (!adminCrossProjectOverride) {
+          setErrorMsg(
+            `Warning: The following item(s) are reserved for other projects: ${conflictNames}. Super Admin authorization required! Please check "Authorize Admin Cross-Project Stock Override" in section 4.`
+          );
+          return;
+        }
+      }
+
       // Log material consumption under the team's custody
       const newUsage = logProjectMaterialUsage({
         projectId: finalProjectId,
@@ -366,6 +423,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
         workDetails: workDetails.trim() || `Installed materials on project ${finalProjectName}`,
         items: validRows,
       });
+
+      // Audit Log for Admin Cross-Project Stock Override
+      if (reservedConflicts.length > 0 && adminCrossProjectOverride) {
+        const conflictDetails = reservedConflicts
+          .map((c) => `${c.item.itemCode} (${c.item.itemName} reserved for ${c.reservedFor})`)
+          .join('; ');
+
+        addAuditLog(
+          'RESERVED_ITEM_CROSS_PROJECT_OVERRIDE',
+          newUsage.usageVoucherNumber,
+          sites.find((s) => s.id === selectedSiteId)?.name || 'Main Base',
+          `Admin Cross-Project Stock Override Authorized by ${currentUser?.fullName} (@${currentUser?.username}): Issued project-reserved item(s) to project "${finalProjectName}". Override details: [${conflictDetails}]`
+        );
+      }
+
+      setAdminCrossProjectOverride(false);
 
       if (projectEntryMode === 'new') {
         setSuccessToast(
@@ -530,6 +603,77 @@ export const ProjectMaterialUsageView: React.FC = () => {
           <span>Logged Usages: <strong>{projectUsages.length}</strong></span>
         </div>
       </div>
+
+      {/* Central Admin Pending Cross-Project Override Review Banner */}
+      {isCentralAdmin && crossProjectRequests.filter((r) => r.status === 'Pending Admin Review').length > 0 && (
+        <div className="bg-gradient-to-r from-amber-900 via-amber-950 to-slate-900 border border-amber-600/50 rounded-2xl p-5 text-white shadow-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-amber-800/60 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-white tracking-tight">
+                  Pending Cross-Project Override Requests ({crossProjectRequests.filter((r) => r.status === 'Pending Admin Review').length})
+                </h3>
+                <p className="text-[11px] text-amber-200">
+                  Field teams have requested to use project-reserved stock on different projects. Review & Accept to approve and post usage.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {crossProjectRequests
+              .filter((r) => r.status === 'Pending Admin Review')
+              .map((req) => (
+                <div key={req.id} className="bg-slate-900/90 border border-amber-800/60 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-amber-400">{req.requestNumber}</span>
+                      <span className="text-slate-400">·</span>
+                      <span className="font-semibold text-white">Project: {req.projectName}</span>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-slate-300">Team: {req.teamName}</span>
+                    </div>
+                    <div className="text-[11px] text-amber-200">
+                      Requested by: <strong>{req.requestedBy}</strong> ({new Date(req.requestedDate).toLocaleString()})
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      Items: {req.items.map((i) => {
+                        const itm = items.find((x) => x.id === i.itemId);
+                        return `${i.quantity}x ${itm?.itemCode || itm?.itemName || 'Item'}`;
+                      }).join(', ')}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        acceptCrossProjectOverrideRequest(req.id, 'Approved via Admin Review Panel');
+                        setSuccessToast(`Cross-Project Override Request ${req.requestNumber} accepted and material usage logged!`);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                    >
+                      ✓ Review & Accept
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        rejectCrossProjectOverrideRequest(req.id, 'Rejected by Central Admin');
+                        setSuccessToast(`Cross-Project Override Request ${req.requestNumber} rejected.`);
+                      }}
+                      className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
@@ -1013,9 +1157,18 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             {activeItems.map((itm) => {
                               const custody = teamInHand?.items.find((x) => x.itemId === itm.id);
                               const balance = custody?.currentInHand || 0;
+                              const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
+                              let resTag = '';
+                              if (itm.isProjectReserved && itm.reservedProjectId) {
+                                if (itm.reservedProjectId === currentTargetProjId) {
+                                  resTag = ` [🎯 Reserved for THIS Project]`;
+                                } else {
+                                  resTag = ` [🔒 Reserved for: ${itm.reservedProjectName || 'Project'}]`;
+                                }
+                              }
                               return (
                                 <option key={itm.id} value={itm.id}>
-                                  [{itm.itemCode}] {itm.itemName} ({balance > 0 ? `Holds: ${balance} ${itm.unit}` : '0 in custody'})
+                                  [{itm.itemCode}] {itm.itemName}{resTag} ({balance > 0 ? `Holds: ${balance} ${itm.unit}` : '0 in custody'})
                                 </option>
                               );
                             })}
@@ -1075,6 +1228,103 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     );
                   })}
                 </div>
+
+                {/* Admin Cross-Project Reserved Stock Override Section */}
+                {itemRows.some((row) => {
+                  if (!row.itemId) return false;
+                  const itm = items.find((i) => i.id === row.itemId);
+                  if (!itm || !itm.isProjectReserved || !itm.reservedProjectId) return false;
+                  const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
+                  return itm.reservedProjectId !== currentTargetProjId;
+                }) && (
+                  <div className="mt-3 p-3.5 bg-amber-50/90 border border-amber-300 rounded-xl space-y-2 animate-in fade-in">
+                    <div className="flex items-center gap-2 font-extrabold text-xs text-amber-950">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Project-Reserved Stock Warning</span>
+                    </div>
+                    <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
+                      One or more selected items are marked as <strong>Project Reserved</strong> for a different project. Standard field users cannot log reserved items onto other projects.
+                    </p>
+                    {isCentralAdmin ? (
+                      <label className="flex items-center gap-2 font-bold text-xs text-amber-950 bg-white p-2.5 rounded-lg border border-amber-300 cursor-pointer shadow-2xs hover:bg-amber-100/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={adminCrossProjectOverride}
+                          onChange={(e) => setAdminCrossProjectOverride(e.target.checked)}
+                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                        <span className="flex items-center gap-1.5">
+                          <Shield className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Authorize Admin Cross-Project Stock Override (Will record system audit log)</span>
+                        </span>
+                      </label>
+                    ) : (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-800 font-bold flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span>Non-Admin User: You are restricted from using stock reserved for other projects.</span>
+                      </div>
+                    )}
+
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const validRowsToSubmit = itemRows.filter((r) => r.itemId && Number(r.quantity) > 0);
+                          if (validRowsToSubmit.length === 0) {
+                            setErrorMsg('Please select items and valid quantities first.');
+                            return;
+                          }
+                          const targetTeam = teams.find((t) => t.id === selectedTeamId) || activeTeams.find((t) => t.id === selectedTeamId);
+                          const activeSec = activeProjectTypes.find((pt) => pt.id === selectedSectionId);
+
+                          let finalProjId = selectedProjectId;
+                          let finalProjName = targetProject?.projectName || 'Project';
+                          if (projectEntryMode === 'new') {
+                            if (!entryCustomerName.trim()) {
+                              setErrorMsg('Please enter Customer/Project Name before submitting review request.');
+                              return;
+                            }
+                            finalProjName = entryCustomerName.trim();
+                            finalProjId = `PRJ-TEMP-${Math.floor(100 + Math.random() * 900)}`;
+                          }
+
+                          createCrossProjectOverrideRequest({
+                            projectId: finalProjId,
+                            projectName: finalProjName,
+                            teamId: selectedTeamId,
+                            teamName: targetTeam?.teamName || 'Field Team',
+                            siteId: selectedSiteId,
+                            items: validRowsToSubmit.map((r) => ({ itemId: r.itemId, quantity: Number(r.quantity) })),
+                            reason: workDetails || 'Cross-project reserved item usage request',
+                            usagePayload: {
+                              projectId: finalProjId,
+                              projectName: finalProjName,
+                              customerName: targetProject?.customerName || entryCustomerName.trim(),
+                              customerPhone: targetProject?.customerPhone || entryCustomerPhone.trim(),
+                              siteIdentifier: targetProject?.siteIdentifier || entrySiteId.trim(),
+                              projectTypeId: selectedSectionId,
+                              projectTypeName: activeSec?.name,
+                              siteId: selectedSiteId,
+                              teamId: selectedTeamId,
+                              teamName: targetTeam?.teamName || 'Field Team',
+                              supervisorOrLeader: supervisorName.trim(),
+                              supervisorOrLeaderName: supervisorName.trim(),
+                              date: usageDate,
+                              workDetails: workDetails.trim() || `Installed materials on project ${finalProjName}`,
+                              items: validRowsToSubmit.map((r) => ({ itemId: r.itemId, quantity: Number(r.quantity) })),
+                            },
+                          });
+
+                          setSuccessToast('📤 Review & Acceptance Request sent to Central Admin successfully!');
+                          setWorkDetails('');
+                        }}
+                        className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <span>📤 Send Review & Acceptance Request to Central Admin</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Form Action Submit Button */}

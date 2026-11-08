@@ -26,6 +26,7 @@ import {
   Layers,
   ChevronRight,
   Warehouse,
+  Target,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { UserRole, Item, Site, User as UserType, Team, TeamMember, isSuperAdmin, isCentralOrAllSiteAdmin, normalizeRole } from '../../types';
@@ -50,6 +51,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     activeUsers,
     activeItems,
     activeTeams,
+    activeProjects,
+    projects,
     addSite,
     addUser,
     addItem,
@@ -134,6 +137,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [itemPrice, setItemPrice] = useState<number | ''>(25.0);
   const [itemThreshold, setItemThreshold] = useState<number | ''>(config.defaultLowStockThreshold);
   const [initialReceivedQty, setInitialReceivedQty] = useState<number | ''>('');
+  const [reservedProjectId, setReservedProjectId] = useState<string>('none');
+  const [projectSearchQuery, setProjectSearchQuery] = useState('');
+  const [editProjectSearchQuery, setEditProjectSearchQuery] = useState('');
+  const [itemReservationFilter, setItemReservationFilter] = useState<'all' | 'general' | 'reserved'>('all');
 
   // --- DYNAMIC MACHINERY CATEGORIES STATE (ADMIN) ---
   const [customMachineryCategories, setCustomMachineryCategories] = useState<string[]>(() => {
@@ -209,6 +216,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     }
 
     const finalUnit = itemUnit === 'custom' ? customUnit.trim() || 'units' : itemUnit;
+    const targetProject = activeProjects.find((p) => p.id === reservedProjectId);
+    const isReserved = reservedProjectId !== 'none' && !!targetProject;
 
     addItem(
       {
@@ -219,14 +228,22 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         unit: finalUnit,
         unitPrice: Number(itemPrice) || 0,
         lowStockThreshold: Number(itemThreshold) || config.defaultLowStockThreshold,
+        reservedProjectId: isReserved ? targetProject?.id : undefined,
+        reservedProjectName: isReserved ? (targetProject?.projectName || targetProject?.projectId) : undefined,
+        isProjectReserved: isReserved,
       },
       initialReceivedQty ? Number(initialReceivedQty) : 0
     );
 
-    showToast(`Master Item ${upperCode} registered successfully!`);
+    showToast(
+      `Master Item ${upperCode} registered successfully!${
+        isReserved ? ` (Reserved for ${targetProject?.projectName})` : ''
+      }`
+    );
     setItemCode('');
     setItemName('');
     setInitialReceivedQty('');
+    setReservedProjectId('none');
   };
 
   // --- SITE FORM STATE ---
@@ -1011,6 +1028,101 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
               </div>
 
+              {/* Reserved Project Allocation */}
+              <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Project Reservation (Optional)</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
+                    Restricted Stock
+                  </span>
+                </div>
+
+                {reservedProjectId === 'none' ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-amber-300 dark:border-amber-800 text-xs">
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">📦 Unrestricted General Stock (Available to All)</span>
+                      <button
+                        type="button"
+                        onClick={() => setReservedProjectId('')}
+                        className="text-[11px] font-bold text-amber-800 dark:text-amber-400 hover:underline cursor-pointer"
+                      >
+                        🔍 Search & Assign Project...
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(() => {
+                      const selProj = activeProjects.find((p) => p.id === reservedProjectId);
+                      return (
+                        <div className="flex items-center justify-between p-2.5 bg-amber-100/80 dark:bg-amber-900/50 rounded-lg border border-amber-300 dark:border-amber-700 text-xs">
+                          <span className="font-bold text-amber-950 dark:text-amber-200 truncate">
+                            🎯 Reserved: {selProj?.projectName || reservedProjectId} ({selProj?.projectId})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setReservedProjectId('none')}
+                            className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:underline cursor-pointer shrink-0 ml-2"
+                          >
+                            Clear / General
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {reservedProjectId === '' && (
+                  <div className="space-y-1.5 pt-1 animate-in fade-in">
+                    <input
+                      type="text"
+                      placeholder="Type project name, ID, or customer to search..."
+                      value={projectSearchQuery}
+                      onChange={(e) => setProjectSearchQuery(e.target.value)}
+                      className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg text-xs bg-white dark:bg-slate-900 dark:text-white focus:outline-none font-medium"
+                      autoFocus
+                    />
+                    <div className="max-h-36 overflow-y-auto space-y-1 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 rounded-lg p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReservedProjectId('none');
+                          setProjectSearchQuery('');
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-xs font-semibold text-slate-700 dark:text-slate-300"
+                      >
+                        📦 Unrestricted General Stock
+                      </button>
+                      {activeProjects
+                        .filter((p) => {
+                          const q = projectSearchQuery.toLowerCase();
+                          return !q || p.projectName.toLowerCase().includes(q) || p.projectId.toLowerCase().includes(q) || (p.customerName || '').toLowerCase().includes(q);
+                        })
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setReservedProjectId(p.id);
+                              setProjectSearchQuery('');
+                            }}
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-amber-50 dark:hover:bg-amber-950/60 rounded text-xs font-medium text-slate-900 dark:text-white flex items-center justify-between"
+                          >
+                            <span className="truncate pr-2">🎯 {p.projectName}</span>
+                            <span className="font-mono text-[10px] text-amber-700 dark:text-amber-400 font-bold shrink-0">{p.projectId}</span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80 italic">
+                  When set, this item can only be consumed for the selected project unless authorized by Central Admin.
+                </p>
+              </div>
+
               <div className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 rounded-xl">
                 <label className="block text-xs font-bold text-emerald-950 dark:text-emerald-300 mb-1.5">
                   Initial Received Quantity (Auto-posted to Main Stock)
@@ -1063,12 +1175,49 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
         {/* Master Item List with Edit, Delete, Bulk Clear */}
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-sm text-slate-900 dark:text-white">Active Master Catalog</h2>
               <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                 {activeItems.length} active
               </span>
+            </div>
+
+            {/* Reservation Filter Pills */}
+            <div className="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setItemReservationFilter('all')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  itemReservationFilter === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                All ({activeItems.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemReservationFilter('general')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  itemReservationFilter === 'general'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                📦 General ({activeItems.filter((i) => !i.isProjectReserved && (!i.reservedProjectId || i.reservedProjectId === 'none')).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemReservationFilter('reserved')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  itemReservationFilter === 'reserved'
+                    ? 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 font-bold shadow-2xs'
+                    : 'text-amber-800/80 dark:text-amber-400/80 hover:text-amber-900'
+                }`}
+              >
+                🎯 Reserved ({activeItems.filter((i) => i.isProjectReserved || (i.reservedProjectId && i.reservedProjectId !== 'none')).length})
+              </button>
             </div>
 
             {isCentralAdmin && (
@@ -1127,7 +1276,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       </td>
                     </tr>
                   ) : (
-                    activeItems.map((i) => {
+                    activeItems
+                      .filter((i) => {
+                        if (itemReservationFilter === 'general') return !i.isProjectReserved && (!i.reservedProjectId || i.reservedProjectId === 'none');
+                        if (itemReservationFilter === 'reserved') return i.isProjectReserved || (i.reservedProjectId && i.reservedProjectId !== 'none');
+                        return true;
+                      })
+                      .map((i) => {
                       const mainStock = getMainWarehouseStock(i.id);
                       const isChecked = selectedItemIds.includes(i.id);
 
@@ -1149,7 +1304,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             {i.itemCode}
                           </td>
                           <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-semibold whitespace-normal break-words" title={i.itemName}>
-                            {i.itemName}
+                            <div>{i.itemName}</div>
+                            {i.isProjectReserved && (
+                              <div className="mt-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800/80 px-2 py-0.5 rounded-md">
+                                  <Target className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                  <span>Reserved: {i.reservedProjectName || i.reservedProjectId}</span>
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium whitespace-normal break-words">{i.category}</td>
                           <td className="py-3 px-3 text-center text-slate-600 dark:text-slate-400">{i.unit}</td>
@@ -2186,6 +2349,107 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  🎯 Project Reservation Status
+                </label>
+                {!editingItem.reservedProjectId ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">📦 Unrestricted General Stock (Available to All)</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({ ...editingItem, reservedProjectId: '' })}
+                        className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        🔍 Search & Assign Project...
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(() => {
+                      const selProj = activeProjects.find((p) => p.id === editingItem.reservedProjectId);
+                      return (
+                        <div className="flex items-center justify-between p-2.5 bg-amber-50 dark:bg-amber-950/50 rounded-xl border border-amber-300 dark:border-amber-700 text-xs">
+                          <span className="font-bold text-amber-950 dark:text-amber-200 truncate">
+                            🎯 Reserved: {selProj?.projectName || editingItem.reservedProjectName || editingItem.reservedProjectId}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingItem({
+                                ...editingItem,
+                                reservedProjectId: undefined,
+                                reservedProjectName: undefined,
+                                isProjectReserved: false,
+                              })
+                            }
+                            className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:underline cursor-pointer shrink-0 ml-2"
+                          >
+                            Clear / General
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {editingItem.reservedProjectId === '' && (
+                  <div className="space-y-1.5 pt-2 animate-in fade-in">
+                    <input
+                      type="text"
+                      placeholder="Type project name, ID, or customer to search..."
+                      value={editProjectSearchQuery}
+                      onChange={(e) => setEditProjectSearchQuery(e.target.value)}
+                      className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-xl text-xs bg-white dark:bg-slate-900 dark:text-white focus:outline-none font-medium"
+                      autoFocus
+                    />
+                    <div className="max-h-36 overflow-y-auto space-y-1 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 rounded-xl p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingItem({
+                            ...editingItem,
+                            reservedProjectId: undefined,
+                            reservedProjectName: undefined,
+                            isProjectReserved: false,
+                          });
+                          setEditProjectSearchQuery('');
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300"
+                      >
+                        📦 Unrestricted General Stock
+                      </button>
+                      {activeProjects
+                        .filter((p) => {
+                          const q = editProjectSearchQuery.toLowerCase();
+                          return !q || p.projectName.toLowerCase().includes(q) || p.projectId.toLowerCase().includes(q) || (p.customerName || '').toLowerCase().includes(q);
+                        })
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setEditingItem({
+                                ...editingItem,
+                                reservedProjectId: p.id,
+                                reservedProjectName: p.projectName || p.projectId,
+                                isProjectReserved: true,
+                              });
+                              setEditProjectSearchQuery('');
+                            }}
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-amber-50 dark:hover:bg-amber-950/60 rounded-lg text-xs font-medium text-slate-900 dark:text-white flex items-center justify-between"
+                          >
+                            <span className="truncate pr-2">🎯 {p.projectName}</span>
+                            <span className="font-mono text-[10px] text-amber-700 dark:text-amber-400 font-bold shrink-0">{p.projectId}</span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">

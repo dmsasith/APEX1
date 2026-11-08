@@ -93,6 +93,9 @@ export interface Item {
   unitPrice: number;
   lowStockThreshold: number;
   description?: string;
+  reservedProjectId?: string; // Optional: ID of project this item is strictly reserved for ('none' or project.id)
+  reservedProjectName?: string; // Optional: Display name of assigned project
+  isProjectReserved?: boolean; // Optional: Flag indicating item is restricted to assigned project
   createdAt: string;
   isDeleted?: boolean;
   deletedAt?: string;
@@ -110,6 +113,9 @@ export interface ExcelItemRow {
   unitPrice?: number;
   lowStockThreshold?: number;
   initialStock?: number;
+  reservedProjectId?: string;
+  reservedProjectName?: string;
+  isProjectReserved?: boolean;
 }
 
 export interface ImportResult {
@@ -191,6 +197,28 @@ export interface StockTransferRequest {
   acceptanceNotes?: string;
 }
 
+export interface CrossProjectOverrideItemRow {
+  itemId: string;
+  quantity: number;
+}
+
+export interface CrossProjectOverrideRequest {
+  id: string;
+  requestNumber: string; // OVR-2026-0001
+  projectId: string;
+  projectName: string;
+  teamId: string;
+  teamName: string;
+  siteId: string;
+  requestedBy: string;
+  requestedDate: string;
+  status: 'Pending Admin Review' | 'Accepted' | 'Rejected';
+  items: CrossProjectOverrideItemRow[];
+  reason: string;
+  adminNotes?: string;
+  usagePayload?: any;
+}
+
 export interface IssueItemRow {
   itemId: string;
   quantity: number;
@@ -259,6 +287,7 @@ export type AuditAction =
   | 'PROJECT_UPDATED'
   | 'PROJECT_DELETED'
   | 'PROJECT_MATERIAL_USED'
+  | 'RESERVED_ITEM_CROSS_PROJECT_OVERRIDE'
   | 'BRANCH_RETURN_TO_MAIN'
   | 'DAMAGED_STOCK_RESTORED'
   | 'SUPPLIER_RETURN_CREATED'

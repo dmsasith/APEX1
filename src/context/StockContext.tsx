@@ -37,6 +37,8 @@ import {
   TenantRegistrationForm,
   ProjectType,
   ProjectTypeTemplateItem,
+  CrossProjectOverrideRequest,
+  AuditAction,
   isSuperAdmin,
   normalizeRole,
 } from '../types';
@@ -295,6 +297,16 @@ interface StockContextType {
   deleteProjectType: (id: string) => void;
   saveProjectTypeTemplate: (projectTypeId: string, templateItems: ProjectTypeTemplateItem[]) => void;
 
+  // Audit Logging
+  addAuditLog: (
+    action: AuditAction,
+    referenceNo: string,
+    siteName: string,
+    details: string,
+    itemCode?: string,
+    quantityChanged?: number
+  ) => void;
+
   // Project Material Usages
   logProjectMaterialUsage: (
     data: Omit<ProjectMaterialUsage, 'id' | 'usageVoucherNumber' | 'loggedBy'>
@@ -302,6 +314,14 @@ interface StockContextType {
   updateProjectUsage: (id: string, updates: Partial<ProjectMaterialUsage>) => void;
   deleteProjectUsage: (id: string) => void;
   clearProjectUsages: () => void;
+
+  // Cross Project Override Requests
+  crossProjectRequests: CrossProjectOverrideRequest[];
+  createCrossProjectOverrideRequest: (
+    data: Omit<CrossProjectOverrideRequest, 'id' | 'requestNumber' | 'status' | 'requestedDate' | 'requestedBy'>
+  ) => CrossProjectOverrideRequest;
+  acceptCrossProjectOverrideRequest: (requestId: string, adminNotes?: string) => void;
+  rejectCrossProjectOverrideRequest: (requestId: string, adminNotes?: string) => void;
 
   // Branch Stock Return (To Main Yard)
   returnStockFromBranchToMain: (
@@ -962,6 +982,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [projectUsages, setProjectUsages] = useState<ProjectMaterialUsage[]>(() =>
     loadTenantData(currentTenantId, 'projectUsages', isDefaultTenant ? INITIAL_PROJECT_USAGES : [])
   );
+  const [crossProjectRequests, setCrossProjectRequests] = useState<CrossProjectOverrideRequest[]>(() =>
+    loadTenantData(currentTenantId, 'crossProjectRequests', [])
+  );
   const [branchReturns, setBranchReturns] = useState<BranchReturn[]>(() =>
     loadTenantData(currentTenantId, 'branchReturns', isDefaultTenant ? INITIAL_BRANCH_RETURNS : [])
   );
@@ -1089,6 +1112,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const loadedProjects = loadTenantData<Project[]>(tenantId, 'projects', isDefault ? INITIAL_PROJECTS : []);
     const loadedProjectTypes = loadTenantData<ProjectType[]>(tenantId, 'projectTypes', INITIAL_PROJECT_TYPES);
     const loadedUsages = loadTenantData<ProjectMaterialUsage[]>(tenantId, 'projectUsages', isDefault ? INITIAL_PROJECT_USAGES : []);
+    const loadedOvr = loadTenantData<CrossProjectOverrideRequest[]>(tenantId, 'crossProjectRequests', []);
     const loadedBranchReturns = loadTenantData<BranchReturn[]>(tenantId, 'branchReturns', isDefault ? INITIAL_BRANCH_RETURNS : []);
     const loadedRestorations = loadTenantData<DamagedStockRestoration[]>(tenantId, 'damagedRestorations', []);
     const loadedBackups = loadTenantData<StockBackup[]>(tenantId, 'backups', isDefault ? INITIAL_BACKUPS : []);
@@ -1111,6 +1135,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setProjects(loadedProjects);
     setProjectTypes(loadedProjectTypes);
     setProjectUsages(loadedUsages);
+    setCrossProjectRequests(loadedOvr);
     setBranchReturns(loadedBranchReturns);
     setDamagedRestorations(loadedRestorations);
     setBackups(loadedBackups);
@@ -4365,6 +4390,77 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return newUsage;
   };
 
+  const createCrossProjectOverrideRequest = (
+    data: Omit<CrossProjectOverrideRequest, 'id' | 'requestNumber' | 'status' | 'requestedDate' | 'requestedBy'>
+  ): CrossProjectOverrideRequest => {
+    const nextNum = crossProjectRequests.length + 1;
+    const requestNumber = `OVR-2026-${String(nextNum).padStart(4, '0')}`;
+    const newReq: CrossProjectOverrideRequest = {
+      ...data,
+      id: `ovr-${Date.now()}`,
+      requestNumber,
+      status: 'Pending Admin Review',
+      requestedDate: new Date().toISOString(),
+      requestedBy: currentUser?.fullName || 'Field Supervisor',
+    };
+    setCrossProjectRequests((prev) => {
+      const next = [newReq, ...prev];
+      saveToStorage('crossProjectRequests', next);
+      saveTenantData(currentTenantIdRef.current, 'crossProjectRequests', next);
+      return next;
+    });
+
+    addAuditLog(
+      'RESERVED_ITEM_CROSS_PROJECT_OVERRIDE',
+      requestNumber,
+      sites.find((s) => s.id === data.siteId)?.name || 'Site',
+      `Submitted Cross-Project Stock Override Review Request ${requestNumber} for project "${data.projectName}" by ${newReq.requestedBy}`
+    );
+    return newReq;
+  };
+
+  const acceptCrossProjectOverrideRequest = (requestId: string, adminNotes?: string) => {
+    const req = crossProjectRequests.find((r) => r.id === requestId);
+    if (!req) return;
+
+    if (req.usagePayload) {
+      logProjectMaterialUsage(req.usagePayload);
+    }
+
+    setCrossProjectRequests((prev) => {
+      const next = prev.map((r) => (r.id === requestId ? { ...r, status: 'Accepted' as const, adminNotes } : r));
+      saveToStorage('crossProjectRequests', next);
+      saveTenantData(currentTenantIdRef.current, 'crossProjectRequests', next);
+      return next;
+    });
+
+    addAuditLog(
+      'RESERVED_ITEM_CROSS_PROJECT_OVERRIDE',
+      req.requestNumber,
+      'Central HQ',
+      `Admin ACCEPTED Cross-Project Stock Override Request ${req.requestNumber} for project "${req.projectName}". Material usage successfully logged and stock deducted.`
+    );
+  };
+
+  const rejectCrossProjectOverrideRequest = (requestId: string, adminNotes?: string) => {
+    const req = crossProjectRequests.find((r) => r.id === requestId);
+    if (!req) return;
+
+    setCrossProjectRequests((prev) => {
+      const next = prev.map((r) => (r.id === requestId ? { ...r, status: 'Rejected' as const, adminNotes } : r));
+      saveToStorage('crossProjectRequests', next);
+      saveTenantData(currentTenantIdRef.current, 'crossProjectRequests', next);
+      return next;
+    });
+
+    addAuditLog(
+      'RESERVED_ITEM_CROSS_PROJECT_OVERRIDE',
+      req.requestNumber,
+      'Central HQ',
+      `Admin REJECTED Cross-Project Stock Override Request ${req.requestNumber} for project "${req.projectName}". Reason: ${adminNotes || 'Not specified'}`
+    );
+  };
+
   const updateProjectUsage = (id: string, updates: Partial<ProjectMaterialUsage>) => {
     setProjectUsages((prev) =>
       prev.map((pu) => (pu.id === id ? { ...pu, ...updates } : pu))
@@ -5255,6 +5351,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateProjectUsage,
         deleteProjectUsage,
         clearProjectUsages,
+        crossProjectRequests,
+        createCrossProjectOverrideRequest,
+        acceptCrossProjectOverrideRequest,
+        rejectCrossProjectOverrideRequest,
         returnStockFromBranchToMain,
         deleteBranchReturn,
         clearBranchReturns,
@@ -5278,6 +5378,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         clearTeamIssues,
         clearTeamReturns,
         clearAuditLogs,
+        addAuditLog,
         clearAllItems,
         clearAllSites,
         clearAllTeams,
