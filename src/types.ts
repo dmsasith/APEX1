@@ -1,8 +1,36 @@
 export type UserRole = 
-  | 'Central Warehouse Admin' 
-  | 'Site Admin' 
-  | 'Field Logistics Officer' 
-  | 'Auditor';
+  | 'Super Admin Central'
+  | 'All Site Branch Admin'
+  | 'Branch Admin'
+  | 'Branch System User';
+
+export function isSuperAdmin(role?: string): boolean {
+  return role === 'Super Admin Central';
+}
+
+export function isAllSiteBranchAdmin(role?: string): boolean {
+  return role === 'All Site Branch Admin';
+}
+
+export function isBranchAdmin(role?: string): boolean {
+  return role === 'Branch Admin';
+}
+
+export function isBranchSystemUser(role?: string): boolean {
+  return role === 'Branch System User';
+}
+
+export function isCentralOrAllSiteAdmin(role?: string): boolean {
+  return isSuperAdmin(role) || isAllSiteBranchAdmin(role);
+}
+
+export function normalizeRole(role?: string): 'Super Admin Central' | 'All Site Branch Admin' | 'Branch Admin' | 'Branch System User' {
+  if (!role) return 'Branch System User';
+  if (role === 'Super Admin Central') return 'Super Admin Central';
+  if (role === 'All Site Branch Admin') return 'All Site Branch Admin';
+  if (role === 'Branch Admin') return 'Branch Admin';
+  return 'Branch System User';
+}
 
 export interface SystemConfig {
   companyName: string;
@@ -92,13 +120,23 @@ export interface ImportResult {
   errors: string[];
 }
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  idNumber: string; // NIC / Employee ID Number / Worker ID
+  role?: string; // e.g. Technician, Helper, Driver, Fitter
+  phone?: string;
+}
+
 export interface Team {
   id: string;
   teamName: string;
   teamLeaderName: string;
+  teamLeaderIdNumber?: string; // Leader NIC or Worker ID Number
   assignedSiteId: string;
   contactPhone: string;
   crewSize: number;
+  members?: TeamMember[];
   createdAt: string;
   isDeleted?: boolean;
   deletedAt?: string;

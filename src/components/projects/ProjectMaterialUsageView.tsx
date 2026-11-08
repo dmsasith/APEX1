@@ -30,7 +30,7 @@ import {
   FolderPlus,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { ProjectMaterialUsage, ProjectUsageItemRow, ProjectType } from '../../types';
+import { ProjectMaterialUsage, ProjectUsageItemRow, ProjectType, isSuperAdmin } from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -1201,7 +1201,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 />
               </div>
 
-              {currentUser.role === 'Central Warehouse Admin' && projectUsages.length > 0 && (
+              {(isSuperAdmin(currentUser.role) || currentUser.username === 'admin') && projectUsages.length > 0 && (
                 <button
                   onClick={() =>
                     setConfirmState({
@@ -1310,7 +1310,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
 
-                            {currentUser.role === 'Central Warehouse Admin' && (
+                            {(isSuperAdmin(currentUser.role) || currentUser.username === 'admin') && (
                               <button
                                 onClick={() =>
                                   setConfirmState({

@@ -14,7 +14,7 @@ import {
   Boxes,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { BranchReturn, ReturnCondition } from '../../types';
+import { BranchReturn, ReturnCondition, isSuperAdmin } from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -33,7 +33,7 @@ export const BranchStockReturnView: React.FC = () => {
     deleteBranchReturn,
   } = useStock();
 
-  const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   const [selectedReturnForPrint, setSelectedReturnForPrint] = useState<BranchReturn | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);

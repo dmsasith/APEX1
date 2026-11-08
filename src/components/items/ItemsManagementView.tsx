@@ -22,7 +22,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { Item, ExcelItemRow, ImportResult } from '../../types';
+import { Item, ExcelItemRow, ImportResult, isSuperAdmin } from '../../types';
 import {
   downloadSampleExcelTemplate,
   exportItemsToExcel,
@@ -55,6 +55,8 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
     config,
     currentUser,
   } = useStock();
+
+  const isCentralAdmin = isSuperAdmin(currentUser.role) || currentUser.username === 'admin';
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -327,7 +329,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
             </button>
 
             {/* Manual Add Item (Central Admin Only) */}
-            {currentUser.role === 'Central Warehouse Admin' ? (
+            {isCentralAdmin ? (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
@@ -345,7 +347,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
         </div>
 
         {/* Drag and Drop Excel Uploader Zone (Central Admin Only) */}
-        {currentUser.role === 'Central Warehouse Admin' ? (
+        {isCentralAdmin ? (
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -411,7 +413,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
             <div className="flex items-center gap-2.5">
               <Package className="w-4 h-4 text-slate-500 shrink-0" />
               <span>
-                <strong>Central Catalog Information:</strong> Master material items and specifications are managed by Central Warehouse Admin. Site branch users can search items, verify unit dimensions, and export the official catalog.
+                <strong>Central Catalog Information:</strong> Master material items and specifications are managed by Super Admin Central. Site branch users can search items, verify unit dimensions, and export the official catalog.
               </span>
             </div>
             <span className="text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-md shrink-0">
@@ -488,7 +490,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
           </div>
 
           {/* Clear All Items Button (Central Admin Only) */}
-          {currentUser.role === 'Central Warehouse Admin' && activeItems.length > 0 && (
+          {isCentralAdmin && activeItems.length > 0 && (
             <button
               onClick={handleClearAll}
               className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
@@ -646,7 +648,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                         </span>
                       </td>
                       <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        {currentUser.role === 'Central Warehouse Admin' ? (
+                        {isCentralAdmin ? (
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => setEditingItem({ ...item })}

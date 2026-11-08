@@ -20,9 +20,11 @@ import {
   RotateCcw,
   Link2,
   Copy,
+  IdCard,
+  UserCheck,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { UserRole, Item, Site, User, Team } from '../../types';
+import { UserRole, Item, Site, User, Team, TeamMember, isSuperAdmin, isCentralOrAllSiteAdmin, normalizeRole } from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
 import {
   isMachineryItem,
@@ -71,7 +73,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     getWorkspaceLoginUrl,
   } = useStock();
 
-  const isCentralAdmin = currentUser.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser.role) || currentUser.username === 'admin';
 
   const [activeTab, setActiveTab] = useState<'items' | 'sites' | 'users' | 'teams'>(initialTab);
 
@@ -189,7 +191,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [userSiteId, setUserSiteId] = useState(activeSites[0]?.id || 'all');
-  const [userRole, setUserRole] = useState<UserRole>('Site Admin');
+  const [userRole, setUserRole] = useState<UserRole>('Branch Admin');
   const [password, setPassword] = useState('pass123');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -220,26 +222,105 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   // --- TEAM FORM STATE ---
   const [teamName, setTeamName] = useState('');
   const [teamLeaderName, setTeamLeaderName] = useState('');
+  const [teamLeaderIdNumber, setTeamLeaderIdNumber] = useState('');
   const [assignedSiteId, setAssignedSiteId] = useState(activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id);
   const [contactPhone, setContactPhone] = useState('');
   const [crewSize, setCrewSize] = useState<number | ''>(8);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  // Team Member scratchpad inputs
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberIdNumber, setNewMemberIdNumber] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState('Technician');
+  const [newMemberPhone, setNewMemberPhone] = useState('');
+
+  const handleAddTeamMember = () => {
+    if (!newMemberName.trim() || !newMemberIdNumber.trim()) {
+      showToast('Please provide both Member Name and ID/NIC Number.');
+      return;
+    }
+    const newMember: TeamMember = {
+      id: `tm-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: newMemberName.trim(),
+      idNumber: newMemberIdNumber.trim(),
+      role: newMemberRole.trim() || 'Technician',
+      phone: newMemberPhone.trim() || undefined,
+    };
+    const updated = [...teamMembers, newMember];
+    setTeamMembers(updated);
+    setCrewSize(updated.length + 1); // Team Leader + Members
+    setNewMemberName('');
+    setNewMemberIdNumber('');
+    setNewMemberPhone('');
+  };
+
+  const handleRemoveTeamMember = (memberId: string) => {
+    const updated = teamMembers.filter((m) => m.id !== memberId);
+    setTeamMembers(updated);
+    setCrewSize(updated.length + 1);
+  };
+
+  // Edit Team modal member scratchpad
+  const [editMemberName, setEditMemberName] = useState('');
+  const [editMemberIdNumber, setEditMemberIdNumber] = useState('');
+  const [editMemberRole, setEditMemberRole] = useState('Technician');
+
+  const handleAddEditTeamMember = () => {
+    if (!editingTeam || !editMemberName.trim() || !editMemberIdNumber.trim()) {
+      showToast('Please provide both Member Name and ID/NIC Number.');
+      return;
+    }
+    const newMember: TeamMember = {
+      id: `tm-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: editMemberName.trim(),
+      idNumber: editMemberIdNumber.trim(),
+      role: editMemberRole.trim() || 'Technician',
+    };
+    const currentMembers = editingTeam.members || [];
+    const updated = [...currentMembers, newMember];
+    setEditingTeam({
+      ...editingTeam,
+      members: updated,
+      crewSize: updated.length + 1,
+    });
+    setEditMemberName('');
+    setEditMemberIdNumber('');
+  };
+
+  const handleRemoveEditTeamMember = (memberId: string) => {
+    if (!editingTeam) return;
+    const currentMembers = editingTeam.members || [];
+    const updated = currentMembers.filter((m) => m.id !== memberId);
+    setEditingTeam({
+      ...editingTeam,
+      members: updated,
+      crewSize: updated.length + 1,
+    });
+  };
 
   const handleCreateTeam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!teamName.trim() || !teamLeaderName.trim()) return;
 
+    const totalCrew = teamMembers.length > 0 ? teamMembers.length + 1 : (Number(crewSize) || 1);
+
     addTeam({
       teamName: teamName.trim(),
       teamLeaderName: teamLeaderName.trim(),
+      teamLeaderIdNumber: teamLeaderIdNumber.trim() || undefined,
       assignedSiteId: assignedSiteId || activeSites[0]?.id,
       contactPhone: contactPhone.trim() || '+1 (555) 789-0000',
-      crewSize: Number(crewSize) || 1,
+      crewSize: totalCrew,
+      members: teamMembers,
     });
 
-    showToast(`Field Team "${teamName}" registered!`);
+    showToast(`Field Team "${teamName}" registered with ${teamMembers.length} member(s)!`);
     setTeamName('');
     setTeamLeaderName('');
+    setTeamLeaderIdNumber('');
     setContactPhone('');
+    setCrewSize(8);
+    setTeamMembers([]);
   };
 
   // --- FORM FIELD CLEAR HANDLERS ---
@@ -265,16 +346,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     setUsername('');
     setFullName('');
     setUserSiteId(activeSites[0]?.id || 'all');
-    setUserRole('Site Admin');
+    setUserRole('Branch Admin');
     setPassword('pass123');
   };
 
   const handleClearTeamForm = () => {
     setTeamName('');
     setTeamLeaderName('');
+    setTeamLeaderIdNumber('');
     setAssignedSiteId(activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id);
     setContactPhone('');
     setCrewSize(8);
+    setTeamMembers([]);
+    setNewMemberName('');
+    setNewMemberIdNumber('');
+    setNewMemberPhone('');
   };
 
   // --- EDIT HANDLERS ---
@@ -799,7 +885,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
             <h3 className="font-bold text-sm text-slate-900">Master Item Catalog (Read-Only)</h3>
             <p className="text-xs text-slate-600 mt-1.5 max-w-sm leading-relaxed">
-              Site branch personnel can view items, units, and codes. Adding or modifying master item specifications is managed by <strong>Central Warehouse Admin</strong>.
+              Site branch personnel can view items, units, and codes. Adding or modifying master item specifications is managed by <strong>Super Admin Central</strong>.
             </p>
             <div className="mt-4 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
               Role: <strong className="text-slate-800">{currentUser.fullName}</strong> ({currentUser.role})
@@ -1019,7 +1105,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
               <h3 className="font-bold text-sm text-slate-900">Site Branch Setup (Read-Only)</h3>
               <p className="text-xs text-slate-600 mt-1.5 max-w-sm leading-relaxed">
-                Branch creation, supervisor assignment, and location configurations are managed exclusively by <strong>Central Warehouse Admin</strong>.
+                Branch creation, supervisor assignment, and location configurations are managed exclusively by <strong>Super Admin Central</strong>.
               </p>
               <div className="mt-4 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
                 Logged in as: <strong className="text-slate-800">{currentUser.fullName}</strong> ({currentUser.role})
@@ -1156,7 +1242,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
             <h3 className="font-bold text-base text-slate-900">User & Role Management Restricted</h3>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Adding new user accounts, modifying credentials, and configuring permissions is restricted to <strong>Central Warehouse Admin</strong>.
+              Adding new user accounts, modifying credentials, and configuring permissions is restricted to <strong>Super Admin Central</strong>.
             </p>
             <div className="mt-4 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500 inline-block">
               Logged in as: <strong className="text-slate-800">{currentUser.fullName}</strong> ({currentUser.role})
@@ -1180,7 +1266,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   </h3>
                 </div>
                 <p className="text-xs text-slate-300">
-                  ඔබේ සමාගමේ කාර්ය මණ්ඩලයට (Staff Users) ලොග් වීම සඳහා මෙම සෘජු සබැඳිය ලබාදෙන්න. එමගින් ඔවුන්ගේ ගිණුම් සෘජුවම <strong>{currentTenant.companyName}</strong> වෙත පිවිසෙන බැවින් වෙනත් සමාගම් සමග පරිශීලක නාම (Username) කිසිවිටෙකත් නොපැටලේ.
+                  Provide this direct link to your company staff members for logging in. It logs them directly into <strong>{currentTenant.companyName}</strong> workspace, ensuring user accounts never overlap with other companies.
                 </p>
               </div>
 
@@ -1196,7 +1282,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition cursor-pointer active:scale-95"
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Login Link (ලින්ක් එක පිටපත් කරන්න)</span>
+                  <span>Copy Login Link</span>
                 </button>
               </div>
             </div>
@@ -1264,12 +1350,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 <select
                   value={userRole}
                   onChange={(e) => setUserRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
                 >
-                  <option value="Site Admin">Site Admin (Receives & Dispatches)</option>
-                  <option value="Central Warehouse Admin">Central Warehouse Admin (Approves & Inbound)</option>
-                  <option value="Field Logistics Officer">Field Logistics Officer</option>
-                  <option value="Auditor">Auditor (View & Reports)</option>
+                  <option value="Super Admin Central">1. Super Admin Central (Full System & HQ Control)</option>
+                  <option value="All Site Branch Admin">2. All Site Branch Admin (All Branch Supervision)</option>
+                  <option value="Branch Admin">3. Branch Admin (Branch Inbound, Outbound & Teams)</option>
+                  <option value="Branch System User">4. Branch System User (Standard Site Operations)</option>
                 </select>
               </div>
 
@@ -1331,7 +1417,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     <span>Delete Selected ({selectedUserIds.length})</span>
                   </button>
                 )}
-                {activeUsers.filter((u) => u.id !== currentUser.id && u.role !== 'Central Warehouse Admin').length > 0 && (
+                {activeUsers.filter((u) => u.id !== currentUser.id && !isSuperAdmin(u.role)).length > 0 && (
                   <button
                     onClick={handleClearAllUsers}
                     className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
@@ -1377,6 +1463,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     const s = activeSites.find((site) => site.id === u.siteId);
                     const isChecked = selectedUserIds.includes(u.id);
 
+                    const norm = normalizeRole(u.role);
+                    const badgeStyles = {
+                      'Super Admin Central': 'bg-purple-100 text-purple-900 border-purple-200',
+                      'All Site Branch Admin': 'bg-blue-100 text-blue-900 border-blue-200',
+                      'Branch Admin': 'bg-emerald-100 text-emerald-900 border-emerald-200',
+                      'Branch System User': 'bg-slate-100 text-slate-800 border-slate-200',
+                    }[norm] || 'bg-slate-100 text-slate-800 border-slate-200';
+
                     return (
                       <tr key={u.id} className={`hover:bg-slate-50 ${isChecked ? 'bg-slate-50' : ''}`}>
                         <td className="py-2.5 px-3">
@@ -1397,7 +1491,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           <div className="text-[10px] text-slate-500">{u.siteId === 'all' ? 'All Sites / HQ' : s?.name}</div>
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-800">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${badgeStyles}`}>
                             {u.role}
                           </span>
                         </td>
@@ -1464,16 +1558,28 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Team Leader Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sarah Connor"
-                  value={teamLeaderName}
-                  onChange={(e) => setTeamLeaderName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  required
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Team Leader Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Sarah Connor"
+                    value={teamLeaderName}
+                    onChange={(e) => setTeamLeaderName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Leader NIC / Worker ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 198845123V / EMP-010"
+                    value={teamLeaderIdNumber}
+                    onChange={(e) => setTeamLeaderIdNumber(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1491,16 +1597,115 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </select>
               </div>
 
+              {/* Dynamic Team Members Roster with Individual Names and ID Numbers */}
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Users2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Team Members & ID Roster ({teamMembers.length})</span>
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-medium">Add names & ID numbers</span>
+                </div>
+
+                {/* Input row for adding a member */}
+                <div className="space-y-1.5 bg-white p-2.5 rounded-md border border-slate-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Member Full Name *"
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-slate-800"
+                    />
+                    <input
+                      type="text"
+                      placeholder="ID / NIC Number *"
+                      value={newMemberIdNumber}
+                      onChange={(e) => setNewMemberIdNumber(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs font-mono uppercase focus:outline-none focus:border-slate-800"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                    <div className="sm:col-span-5">
+                      <input
+                        type="text"
+                        placeholder="Role / Skill (e.g. Technician)"
+                        value={newMemberRole}
+                        onChange={(e) => setNewMemberRole(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-slate-800"
+                      />
+                    </div>
+                    <div className="sm:col-span-4">
+                      <input
+                        type="text"
+                        placeholder="Phone (Optional)"
+                        value={newMemberPhone}
+                        onChange={(e) => setNewMemberPhone(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-slate-800"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <button
+                        type="button"
+                        onClick={handleAddTeamMember}
+                        className="w-full py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Member</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Added members list */}
+                {teamMembers.length > 0 ? (
+                  <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 bg-white rounded border border-slate-200 p-1">
+                    {teamMembers.map((m, idx) => (
+                      <div key={m.id} className="flex items-center justify-between px-2 py-1 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}.</span>
+                          <div className="truncate">
+                            <span className="font-semibold text-slate-900">{m.name}</span>
+                            <span className="ml-1.5 font-mono text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                              {m.idNumber}
+                            </span>
+                            {m.role && <span className="ml-1 text-[10px] text-slate-500">({m.role})</span>}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTeamMember(m.id)}
+                          className="text-slate-400 hover:text-rose-600 p-0.5 ml-2 cursor-pointer"
+                          title="Remove member"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic text-center py-1">
+                    No members added yet. Add individual team member names & ID numbers above.
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Crew Size (Persons)</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Crew Size ({teamMembers.length > 0 ? 'Auto-Calculated' : 'Persons'})
+                  </label>
                   <input
                     type="number"
                     min="1"
-                    value={crewSize}
+                    value={teamMembers.length > 0 ? teamMembers.length + 1 : crewSize}
                     onChange={(e) => setCrewSize(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    disabled={teamMembers.length > 0}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none disabled:bg-slate-100 disabled:text-slate-600"
                   />
+                  {teamMembers.length > 0 && (
+                    <span className="text-[10px] text-emerald-600 font-medium">1 Leader + {teamMembers.length} Members</span>
+                  )}
                 </div>
 
                 <div>
@@ -1567,6 +1772,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               {activeTeams.map((t) => {
                 const s = activeSites.find((site) => site.id === t.assignedSiteId);
                 const isChecked = selectedTeamIds.includes(t.id);
+                const hasMembers = t.members && t.members.length > 0;
 
                 return (
                   <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col justify-between">
@@ -1604,14 +1810,52 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         </div>
                       </div>
 
-                      <div className="text-xs text-emerald-700 font-semibold">
-                        Base: {s?.name}
+                      <div className="text-xs text-emerald-700 font-semibold flex items-center justify-between">
+                        <span>Base: {s?.name}</span>
+                        <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
+                          {t.crewSize} Persons
+                        </span>
                       </div>
 
-                      <div className="mt-3 space-y-1 text-xs text-slate-600">
-                        <div>Leader: <strong className="text-slate-900">{t.teamLeaderName}</strong></div>
-                        <div>Crew Size: <span className="font-mono">{t.crewSize} members</span></div>
-                        <div>Phone: <span className="font-mono">{t.contactPhone}</span></div>
+                      <div className="mt-3 space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-2">
+                        <div>
+                          <span className="text-slate-500">Leader: </span>
+                          <strong className="text-slate-900">{t.teamLeaderName}</strong>
+                          {t.teamLeaderIdNumber && (
+                            <span className="ml-1.5 font-mono text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold border border-slate-200">
+                              NIC: {t.teamLeaderIdNumber}
+                            </span>
+                          )}
+                        </div>
+
+                        {hasMembers ? (
+                          <div className="text-[11px] bg-slate-50 p-2 rounded border border-slate-200 space-y-1">
+                            <div className="font-bold text-slate-700 text-[10px] uppercase tracking-wider flex items-center justify-between">
+                              <span>Registered Members ({t.members!.length})</span>
+                            </div>
+                            <div className="space-y-0.5 max-h-20 overflow-y-auto">
+                              {t.members!.slice(0, 3).map((m) => (
+                                <div key={m.id} className="flex items-center justify-between text-[10px]">
+                                  <span className="font-medium text-slate-800 truncate">{m.name}</span>
+                                  <span className="font-mono text-emerald-800 font-bold ml-1">{m.idNumber}</span>
+                                </div>
+                              ))}
+                              {t.members!.length > 3 && (
+                                <div className="text-[10px] text-slate-500 italic">
+                                  +{t.members!.length - 3} more members...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400 italic">
+                            No member ID details logged. Edit team to add roster.
+                          </div>
+                        )}
+
+                        <div className="text-[11px] text-slate-500 pt-0.5">
+                          Phone: <span className="font-mono text-slate-800 font-semibold">{t.contactPhone}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1836,12 +2080,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 <select
                   value={editingUser.role}
                   onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
                 >
-                  <option value="Site Admin">Site Admin</option>
-                  <option value="Central Warehouse Admin">Central Warehouse Admin</option>
-                  <option value="Field Logistics Officer">Field Logistics Officer</option>
-                  <option value="Auditor">Auditor</option>
+                  <option value="Super Admin Central">1. Super Admin Central (Full System & HQ Control)</option>
+                  <option value="All Site Branch Admin">2. All Site Branch Admin (All Branch Supervision)</option>
+                  <option value="Branch Admin">3. Branch Admin (Branch Inbound, Outbound & Teams)</option>
+                  <option value="Branch System User">4. Branch System User (Standard Site Operations)</option>
                 </select>
               </div>
 
@@ -1906,7 +2150,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </button>
             </div>
 
-            <form onSubmit={handleSaveTeamEdit} className="space-y-3.5">
+            <form onSubmit={handleSaveTeamEdit} className="space-y-3.5 max-h-[80vh] overflow-y-auto pr-1">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Team Name</label>
                 <input
@@ -1918,15 +2162,27 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Team Leader Name</label>
-                <input
-                  type="text"
-                  value={editingTeam.teamLeaderName}
-                  onChange={(e) => setEditingTeam({ ...editingTeam, teamLeaderName: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  required
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Team Leader Name</label>
+                  <input
+                    type="text"
+                    value={editingTeam.teamLeaderName}
+                    onChange={(e) => setEditingTeam({ ...editingTeam, teamLeaderName: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Leader NIC / Worker ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 198845123V / EMP-010"
+                    value={editingTeam.teamLeaderIdNumber || ''}
+                    onChange={(e) => setEditingTeam({ ...editingTeam, teamLeaderIdNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1942,6 +2198,90 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Edit Team Members Roster */}
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Users2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Team Members Roster ({editingTeam.members?.length || 0})</span>
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-medium">Names & ID / NIC numbers</span>
+                </div>
+
+                {/* Add member row */}
+                <div className="space-y-1.5 bg-white p-2 rounded-md border border-slate-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Member Name"
+                      value={editMemberName}
+                      onChange={(e) => setEditMemberName(e.target.value)}
+                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="ID / NIC No."
+                      value={editMemberIdNumber}
+                      onChange={(e) => setEditMemberIdNumber(e.target.value)}
+                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs font-mono uppercase focus:outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                    <div className="sm:col-span-8">
+                      <input
+                        type="text"
+                        placeholder="Role / Skill (e.g. Technician)"
+                        value={editMemberRole}
+                        onChange={(e) => setEditMemberRole(e.target.value)}
+                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none"
+                      />
+                    </div>
+                    <div className="sm:col-span-4">
+                      <button
+                        type="button"
+                        onClick={handleAddEditTeamMember}
+                        className="w-full py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Member</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Existing members */}
+                {editingTeam.members && editingTeam.members.length > 0 ? (
+                  <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 bg-white rounded border border-slate-200 p-1">
+                    {editingTeam.members.map((m, idx) => (
+                      <div key={m.id} className="flex items-center justify-between px-2 py-1 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}.</span>
+                          <div className="truncate">
+                            <span className="font-semibold text-slate-900">{m.name}</span>
+                            <span className="ml-1.5 font-mono text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                              {m.idNumber}
+                            </span>
+                            {m.role && <span className="ml-1 text-[10px] text-slate-500">({m.role})</span>}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEditTeamMember(m.id)}
+                          className="text-slate-400 hover:text-rose-600 p-0.5 ml-2 cursor-pointer"
+                          title="Remove member"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic text-center py-1">
+                    No members roster added yet.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

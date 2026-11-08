@@ -1,11 +1,12 @@
 import React from 'react';
 import { Eye, ShieldCheck, X, ArrowLeft, UserCheck } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
+import { isSuperAdmin } from '../../types';
 
 export const AdminPreviewBanner: React.FC = () => {
   const { authUser, viewAsUser, exitViewAsMode } = useStock();
 
-  const isCentralAdmin = authUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(authUser?.role) || authUser?.username === 'admin';
 
   if (!isCentralAdmin || !viewAsUser) {
     return null;

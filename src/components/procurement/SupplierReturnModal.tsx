@@ -285,7 +285,7 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
         vehicleNo: vehicleNo.trim() || undefined,
         driverContact: driverContact.trim() || undefined,
         notes: notes.trim() || undefined,
-        preparedBy: currentUser?.fullName || 'Central Warehouse Admin',
+        preparedBy: currentUser?.fullName || 'Super Admin Central',
         dispatchedDate: dispatchNow ? new Date().toISOString() : undefined,
         dispatchedBy: dispatchNow ? currentUser?.fullName || 'Central Storekeeper' : undefined,
       });

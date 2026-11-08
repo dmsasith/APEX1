@@ -67,7 +67,7 @@ export const INITIAL_USERS: User[] = [
     username: 'admin',
     fullName: 'System Super Admin',
     siteId: 'all',
-    role: 'Central Warehouse Admin',
+    role: 'Super Admin Central',
     password: 'sasith@123',
     createdAt: new Date().toISOString(),
   },

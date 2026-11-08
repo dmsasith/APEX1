@@ -22,9 +22,11 @@ import {
   ShoppingCart,
   Truck,
   Sparkles,
+  IdCard,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { getThemeConfig } from '../utils/themeUtils';
+import { isSuperAdmin } from '../types';
 
 interface SidebarProps {
   currentTab: string;
@@ -34,7 +36,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
   const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout, config, currentTenant } = useStock();
   const currentTheme = getThemeConfig(config?.themeId || config?.logoColor || 'emerald');
-  const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
   // Grouped Navigation Items in Logical Operations Workflow Flow
@@ -102,6 +104,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           id: 'dispatch',
           label: 'Issue to Teams',
           icon: Send,
+        },
+        {
+          id: 'branch-directory',
+          label: 'Branch Staff & Teams',
+          icon: IdCard,
         },
         {
           id: 'team-stock',
@@ -176,18 +183,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   return (
     <aside className="w-64 bg-slate-50 border-r border-slate-200 shrink-0 flex flex-col h-full">
       <div className="p-4 flex-1 overflow-y-auto">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3 mb-4">
-          Operations
+        <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 px-3 py-1.5 bg-slate-200/70 border border-slate-300/80 rounded-md mb-3 flex items-center justify-between">
+          <span>Navigation Menu</span>
         </div>
 
-        <nav className="space-y-6">
+        <nav className="space-y-5">
           {navSections.map((section, sIdx) => {
             if (!section.items || section.items.length === 0) return null;
             return (
               <div key={sIdx}>
                 {section.title && (
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3 mb-2">
-                    {section.title}
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-700 px-3 py-1 bg-slate-200/60 border border-slate-300/60 rounded-md mb-2 flex items-center justify-between">
+                    <span>{section.title}</span>
                   </div>
                 )}
                 <div className="space-y-0.5">

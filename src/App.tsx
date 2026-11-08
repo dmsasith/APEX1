@@ -30,14 +30,16 @@ import { TrialExpiredOverlay } from './components/saas/TrialExpiredOverlay';
 import { AdminPreviewBanner } from './components/common/AdminPreviewBanner';
 import { TenantPreviewBanner } from './components/common/TenantPreviewBanner';
 import { DeveloperPortalGateway } from './components/saas/DeveloperPortalGateway';
+import { BranchDirectoryView } from './components/directory/BranchDirectoryView';
 import { useStock } from './context/StockContext';
 import { getThemeConfig } from './utils/themeUtils';
+import { isSuperAdmin } from './types';
 
 function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void } = {}) {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const { config, currentUser, currentTenant } = useStock();
   const theme = getThemeConfig(config?.themeId || config?.logoColor);
-  const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
   useEffect(() => {
@@ -93,6 +95,9 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         return <TeamInHandDashboard />;
       case 'site-stock':
         return <SiteInventoriesView />;
+      case 'branch-directory':
+      case 'branch-staff-teams':
+        return <BranchDirectoryView onNavigate={(tab) => setCurrentTab(tab)} />;
       case 'audit':
         return <AuditTrailReportsView />;
       case 'templates':
@@ -136,6 +141,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
           { id: 'items', label: 'Items & Catalog' },
           { id: 'requests', label: '2. Site Requests' },
           { id: 'site-stock', label: 'Branch Stock' },
+          { id: 'branch-directory', label: 'Branch Staff & Teams' },
           { id: 'dispatch', label: '3. Issue to Teams' },
           { id: 'team-stock', label: 'Team In-Hand' },
           { id: 'projects', label: '4. Project Registry' },

@@ -26,7 +26,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { MainStockEntryType, Item, BranchReturn, DamagedStockRestoration } from '../../types';
+import { MainStockEntryType, Item, BranchReturn, DamagedStockRestoration, isSuperAdmin } from '../../types';
 import { formatNumber, formatDateTime, exportToCsv } from '../../utils/exportUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
 import { StockBalanceCell } from '../common/LowStockIndicator';
@@ -428,7 +428,7 @@ export const MainStockView: React.FC = () => {
     exportToCsv('Main_Warehouse_Inbound_History', rows);
   };
 
-  const isCentralAdmin = currentUser.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser.role) || currentUser.username === 'admin';
 
   return (
     <div className="space-y-6">
@@ -1196,7 +1196,7 @@ export const MainStockView: React.FC = () => {
                             }`}
                             title={
                               !isCentralAdmin
-                                ? 'Restoring stock is restricted to Central Warehouse Admin'
+                                ? 'Restoring stock is restricted to Super Admin Central'
                                 : row.availableBalance <= 0
                                 ? 'No damaged stock remaining to restore'
                                 : 'Restore repaired material back to Main Central Inventory'

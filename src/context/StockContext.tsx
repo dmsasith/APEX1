@@ -37,6 +37,8 @@ import {
   TenantRegistrationForm,
   ProjectType,
   ProjectTypeTemplateItem,
+  isSuperAdmin,
+  normalizeRole,
 } from '../types';
 import {
   INITIAL_CONFIG,
@@ -609,6 +611,7 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
     const isCoreAdmin = norm === 'admin';
     recovered.push({
       ...u,
+      role: normalizeRole(u.role),
       isDeleted: isCoreAdmin ? false : (u.isDeleted ?? false),
     });
   };
@@ -619,7 +622,7 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
     username: 'admin',
     fullName: 'Sasith Dissanayake',
     siteId: 'all',
-    role: 'Central Warehouse Admin',
+    role: 'Super Admin Central',
     password: 'sasith@123',
     createdAt: '2026-11-01T00:00:00.000Z',
     isDeleted: false,
@@ -1504,7 +1507,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         username: form.adminEmail.trim(),
         fullName: form.adminFullName.trim() || `${cleanName} Admin`,
         siteId: 'all',
-        role: 'Central Warehouse Admin',
+        role: 'Super Admin Central',
         password: form.adminPassword,
         createdAt: new Date().toISOString(),
       };
@@ -3035,7 +3038,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       username: 'admin',
       fullName: 'System Super Admin',
       siteId: 'all',
-      role: 'Central Warehouse Admin',
+      role: 'Super Admin Central',
       password: 'password123',
       createdAt: new Date().toISOString(),
     };
@@ -3981,7 +3984,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const clearAllUsers = () => {
     setUsers((prev) => {
-      const updated = prev.filter((u) => u.username === 'admin' || u.role === 'Central Warehouse Admin');
+      const updated = prev.filter((u) => u.username === 'admin' || isSuperAdmin(u.role));
       saveToStorage('users', updated);
       saveTenantData(currentTenantIdRef.current, 'users', updated);
       const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
@@ -4109,7 +4112,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       requestNoteNumber,
       status: 'Pending Approval',
       requestedDate: new Date().toISOString(),
-      requestedBy: currentUser?.fullName || 'Site Admin',
+      requestedBy: currentUser?.fullName || 'Branch Admin',
     };
     setStockRequests((prev) => [newRequest, ...prev]);
 
@@ -4239,7 +4242,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ...req,
           status: 'Accepted',
           acceptanceDate: new Date().toISOString(),
-          acceptedBy: currentUser?.fullName || 'Site Admin',
+          acceptedBy: currentUser?.fullName || 'Branch Admin',
           acceptanceNotes,
           items: updatedItems,
         };
@@ -4267,7 +4270,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `issue-${Date.now()}`,
       issueNoteNumber,
       issueDate: new Date().toISOString(),
-      issuedBy: currentUser?.fullName || 'Site Admin',
+      issuedBy: currentUser?.fullName || 'Branch Admin',
     };
     setTeamIssues((prev) => [newIssue, ...prev]);
 
@@ -4303,7 +4306,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `ret-${Date.now()}`,
       returnVoucherNumber,
       returnDate: new Date().toISOString(),
-      returnedBy: currentUser?.fullName || 'Site Admin',
+      returnedBy: currentUser?.fullName || 'Branch Admin',
     };
     setTeamReturns((prev) => [newReturn, ...prev]);
 
@@ -4501,7 +4504,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       itemId,
       quantity: numQty,
       restoredDate: new Date().toISOString(),
-      restoredBy: currentUser?.fullName || 'Central Warehouse Admin',
+      restoredBy: currentUser?.fullName || 'Super Admin Central',
       notes: notes?.trim() || 'Repaired and restored to central usable inventory',
       isDeleted: false,
     };
@@ -4660,8 +4663,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [currentTenantId, items.length, mainStockEntries.length, sites.length]);
 
   const restoreBackup = (backupId: string) => {
-    if (currentUser?.role !== 'Central Warehouse Admin') {
-      throw new Error('Access Denied: Restoring backups is strictly restricted to Central Warehouse Admin.');
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error('Access Denied: Restoring backups is strictly restricted to Central Super Admin.');
     }
     const backup = backups.find((b) => b.id === backupId);
     if (!backup) {
@@ -4755,7 +4758,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteBackup = (backupId: string) => {
-    if (currentUser?.role !== 'Central Warehouse Admin') {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
       return;
     }
     const backup = backups.find((b) => b.id === backupId);
@@ -4773,10 +4776,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     adminPassword: string,
     backupName: string
   ): { success: boolean; message: string; backupNumber?: number } => {
-    if (currentUser?.role !== 'Central Warehouse Admin') {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
       return {
         success: false,
-        message: 'Access Denied: Full System Flush is strictly restricted to Central Warehouse Admin.',
+        message: 'Access Denied: Full System Flush is strictly restricted to Central Super Admin.',
       };
     }
     const trimmedPw = (adminPassword || '').trim();
@@ -4848,7 +4851,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       username: 'admin',
       fullName: 'System Super Admin',
       siteId: 'all',
-      role: 'Central Warehouse Admin',
+      role: 'Super Admin Central',
       password: 'password123',
       createdAt: new Date().toISOString(),
     };

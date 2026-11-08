@@ -25,7 +25,7 @@ import {
   FolderCheck,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { StockBackup } from '../../types';
+import { StockBackup, isSuperAdmin } from '../../types';
 import { OfflineBackupViewerModal } from './OfflineBackupViewerModal';
 
 interface SystemBackupModalProps {
@@ -110,7 +110,7 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
 
   if (!isOpen) return null;
 
-  const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   if (!isCentralAdmin) {
     return (
@@ -122,7 +122,7 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
           <div>
             <h3 className="font-bold text-base text-slate-900">Access Restricted</h3>
             <p className="text-xs text-slate-600 mt-1">
-              Full System Flush and Versioned Backup operations are strictly restricted to the <strong>Central Warehouse Admin</strong>.
+              Full System Flush and Versioned Backup operations are strictly restricted to the <strong>Super Admin Central</strong>.
             </p>
           </div>
           <div className="pt-2">

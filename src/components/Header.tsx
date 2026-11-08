@@ -32,6 +32,7 @@ import { UserProfileModal } from './auth/UserProfileModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';
 import { SystemConfigModal } from './common/SystemConfigModal';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
+import { isCentralOrAllSiteAdmin, isSuperAdmin } from '../types';
 
 interface HeaderProps {
   onOpenPendingRequests?: () => void;
@@ -82,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
 
-  const isAdmin = currentUser?.role === 'Central Warehouse Admin' || currentUser?.username === 'admin' || authUser?.username === 'admin';
+  const isAdmin = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin' || authUser?.username === 'admin';
 
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [tempCompanyName, setTempCompanyName] = useState(config.companyName);
@@ -131,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   const currentThemeId = config.themeId || config.logoColor || 'emerald';
   const currentTheme = getThemeConfig(currentThemeId);
-  const isCentralAdmin = authUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(authUser?.role) || authUser?.username === 'admin';
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -143,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
   const handleSaveInlineNames = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isCentralAdmin) {
-      showStatus('Access restricted: Only Central Warehouse Admin can edit company names.');
+      showStatus('Access restricted: Only Super Admin Central can edit company names.');
       setIsEditingNames(false);
       return;
     }
@@ -159,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   const handleOpenLogoModal = () => {
     if (!isCentralAdmin) {
-      showStatus('Access restricted: Only Central Warehouse Admin can change Company Identity & Logo.');
+      showStatus('Access restricted: Only Super Admin Central can change Company Identity & Logo.');
       return;
     }
     setShowLogoModal(true);

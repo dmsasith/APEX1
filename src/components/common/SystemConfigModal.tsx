@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sliders, X, Check, Building2, Phone, Mail, MapPin, DollarSign, Palette, AlertTriangle } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { APP_THEMES } from '../../utils/themeUtils';
+import { isSuperAdmin } from '../../types';
 
 interface SystemConfigModalProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface SystemConfigModalProps {
 
 export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, onClose }) => {
   const { config, updateConfig, currentUser } = useStock();
-  const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   const [companyName, setCompanyName] = useState(config.companyName || '');
   const [systemName, setSystemName] = useState(config.systemName || '');
@@ -76,7 +77,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
             </div>
             <div>
               <h2 className="font-bold text-lg text-white leading-tight">System Settings & Operational Control</h2>
-              <p className="text-xs text-slate-400">Main Central Warehouse Admin Global Configuration</p>
+              <p className="text-xs text-slate-400">Super Admin Central Global Configuration</p>
             </div>
           </div>
           <button
@@ -92,7 +93,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
             <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
             <h3 className="text-base font-bold text-slate-900">Access Restricted</h3>
             <p className="text-xs text-slate-600 max-w-md mx-auto">
-              System Settings can only be configured by the Main Central Warehouse Admin.
+              System Settings can only be configured by the Super Admin Central.
             </p>
             <button
               onClick={onClose}

@@ -44,6 +44,7 @@ import {
   SupplierReturn,
   SupplierReturnStatus,
   SettlementType,
+  isSuperAdmin,
 } from '../../types';
 import { getThemeConfig } from '../../utils/themeUtils';
 import { formatNumber, formatDate, formatDateTime } from '../../utils/exportUtils';
@@ -79,7 +80,7 @@ export const ProcurementView: React.FC = () => {
   } = useStock();
 
   const theme = getThemeConfig(config?.themeId || config?.logoColor);
-  const isCentralAdmin = currentUser?.role === 'Central Warehouse Admin';
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   const [activeTab, setActiveTab] = useState<'orders' | 'returns' | 'suppliers'>('orders');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -572,7 +573,7 @@ export const ProcurementView: React.FC = () => {
       onConfirm: () => {
         const res = closePurchaseOrderRemainder(
           order.id,
-          'Short delivery finalized by Central Warehouse Admin. Remaining unfulfilled balance cancelled with supplier.'
+          'Short delivery finalized by Super Admin Central. Remaining unfulfilled balance cancelled with supplier.'
         );
         if (res.success) {
           showToast(res.message);
@@ -764,7 +765,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
         <h2 className="text-xl font-bold text-slate-800 mb-2">Central Procurement Restricted</h2>
         <p className="text-sm text-slate-600 mb-6">
           Material Requisitions to external suppliers and Supplier Directory management are strictly designated for the{' '}
-          <span className="font-semibold text-slate-800">Central Warehouse Admin</span>.
+          <span className="font-semibold text-slate-800">Super Admin Central</span>.
         </p>
         <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
           Currently logged in as: <strong className="text-slate-700">{currentUser?.fullName}</strong> ({currentUser?.role})

@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { StockTransferRequest, RequestPriority, Item } from '../../types';
+import { StockTransferRequest, RequestPriority, Item, isCentralOrAllSiteAdmin } from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -110,10 +110,9 @@ export const StockRequestsView: React.FC = () => {
       ? machineryRowsWithIndex
       : rows.map((r, index) => ({ row: r, index, item: items.find((i) => i.id === r.itemId) }));
 
-  // Role access helpers
   const isCentralAdmin =
-    currentUser.role === 'Central Warehouse Admin' ||
-    currentUser.role === 'Auditor' ||
+    isCentralOrAllSiteAdmin(currentUser.role) ||
+    currentUser.username === 'admin' ||
     currentUser.siteId === 'all' ||
     activeSites.find((s) => s.id === currentUser.siteId)?.isMainWarehouse === true;
 
