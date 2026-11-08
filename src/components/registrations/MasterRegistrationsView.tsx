@@ -1332,16 +1332,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         ) : (
         <div className="space-y-6">
           {/* Company Staff Direct Login Link Banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 border border-indigo-800/60 shadow-lg relative overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-950 via-emerald-950 to-slate-950 text-white rounded-2xl p-6 border border-emerald-600/40 shadow-xl relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
               <div className="space-y-1.5 max-w-xl">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0">
                     <Link2 className="w-4 h-4" />
                   </div>
                   <h3 className="font-extrabold text-base text-white flex items-center gap-2">
                     <span>Company Staff Direct Login Link</span>
-                    <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 px-2.5 py-0.5 rounded-full">
                       Workspace: {currentTenant.slug}
                     </span>
                   </h3>
@@ -1359,7 +1359,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     navigator.clipboard.writeText(loginUrl);
                     showToast(`Company login link copied to clipboard! Share this URL with your staff.`);
                   }}
-                  className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition cursor-pointer active:scale-95"
+                  className="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-emerald-900/40 transition cursor-pointer active:scale-95"
                 >
                   <Copy className="w-4 h-4" />
                   <span>Copy Direct Login URL</span>
@@ -1368,7 +1368,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
 
             {/* Link Preview box */}
-            <div className="mt-4 p-3 bg-black/40 rounded-xl border border-indigo-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-indigo-200">
+            <div className="mt-4 p-3 bg-black/50 rounded-xl border border-emerald-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-emerald-200">
               <span className="truncate">{getWorkspaceLoginUrl(currentTenant.slug)}</span>
               <span className="text-[10px] text-slate-400 font-sans shrink-0">
                 Workspace Code: <strong className="text-amber-300 font-mono">{currentTenant.slug}</strong>
