@@ -165,6 +165,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   // --- SITE FORM STATE ---
   const [siteName, setSiteName] = useState('');
   const [siteSupervisor, setSiteSupervisor] = useState('');
+  const [isCustomAddSupervisor, setIsCustomAddSupervisor] = useState(false);
+  const [isCustomEditSupervisor, setIsCustomEditSupervisor] = useState(false);
   const [siteLocation, setSiteLocation] = useState('');
   const [sitePhone, setSitePhone] = useState('');
 
@@ -183,6 +185,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     showToast(`Site Branch "${siteName}" added successfully!`);
     setSiteName('');
     setSiteSupervisor('');
+    setIsCustomAddSupervisor(false);
     setSiteLocation('');
     setSitePhone('');
   };
@@ -338,6 +341,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleClearSiteForm = () => {
     setSiteName('');
     setSiteSupervisor('');
+    setIsCustomAddSupervisor(false);
     setSiteLocation('');
     setSitePhone('');
   };
@@ -1044,15 +1048,44 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Supervisor Name *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Samuel Jenkins"
-                    value={siteSupervisor}
-                    onChange={(e) => setSiteSupervisor(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                    required
-                  />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Supervisor / Manager Name *</label>
+                  <select
+                    value={isCustomAddSupervisor ? '__custom__' : siteSupervisor}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') {
+                        setIsCustomAddSupervisor(true);
+                        setSiteSupervisor('');
+                      } else {
+                        setIsCustomAddSupervisor(false);
+                        setSiteSupervisor(val);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                    required={!isCustomAddSupervisor}
+                  >
+                    <option value="">-- Select Registered Supervisor / Manager --</option>
+                    {activeUsers.map((u) => (
+                      <option key={u.id} value={u.fullName}>
+                        {u.fullName} ({u.role} - {u.username})
+                      </option>
+                    ))}
+                    {siteSupervisor && !isCustomAddSupervisor && !activeUsers.some((u) => u.fullName.toLowerCase() === siteSupervisor.toLowerCase()) && (
+                      <option value={siteSupervisor}>{siteSupervisor} (Custom)</option>
+                    )}
+                    <option value="__custom__">✍️ Enter Custom / Unregistered Supervisor Name...</option>
+                  </select>
+
+                  {isCustomAddSupervisor && (
+                    <input
+                      type="text"
+                      placeholder="Type custom supervisor name..."
+                      value={siteSupervisor}
+                      onChange={(e) => setSiteSupervisor(e.target.value)}
+                      className="w-full mt-2 px-3 py-2 border border-amber-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none bg-amber-50/50"
+                      required
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -1184,7 +1217,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         {isCentralAdmin && (
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => setEditingSite({ ...s })}
+                              onClick={() => {
+                                setIsCustomEditSupervisor(false);
+                                setEditingSite({ ...s });
+                              }}
                               className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                               title="Edit Site Details"
                             >
@@ -1998,14 +2034,47 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Supervisor Name</label>
-                <input
-                  type="text"
-                  value={editingSite.supervisorName}
-                  onChange={(e) => setEditingSite({ ...editingSite, supervisorName: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  required
-                />
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Supervisor / Manager *</label>
+                <select
+                  value={isCustomEditSupervisor ? '__custom__' : editingSite.supervisorName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__custom__') {
+                      setIsCustomEditSupervisor(true);
+                    } else {
+                      setIsCustomEditSupervisor(false);
+                      setEditingSite({ ...editingSite, supervisorName: val });
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                  required={!isCustomEditSupervisor}
+                >
+                  <option value="">-- Select Registered Supervisor / Manager --</option>
+                  {activeUsers.map((u) => (
+                    <option key={u.id} value={u.fullName}>
+                      {u.fullName} ({u.role} - {u.username})
+                    </option>
+                  ))}
+                  {editingSite.supervisorName &&
+                    !isCustomEditSupervisor &&
+                    !activeUsers.some((u) => u.fullName.toLowerCase() === editingSite.supervisorName.toLowerCase()) && (
+                      <option value={editingSite.supervisorName}>
+                        {editingSite.supervisorName} (Current Supervisor)
+                      </option>
+                    )}
+                  <option value="__custom__">✍️ Enter Custom / Unregistered Supervisor Name...</option>
+                </select>
+
+                {isCustomEditSupervisor && (
+                  <input
+                    type="text"
+                    placeholder="Type custom supervisor name..."
+                    value={editingSite.supervisorName}
+                    onChange={(e) => setEditingSite({ ...editingSite, supervisorName: e.target.value })}
+                    className="w-full mt-2 px-3 py-2 border border-amber-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none bg-amber-50/50"
+                    required
+                  />
+                )}
               </div>
 
               <div>
