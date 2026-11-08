@@ -135,6 +135,69 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [itemThreshold, setItemThreshold] = useState<number | ''>(config.defaultLowStockThreshold);
   const [initialReceivedQty, setInitialReceivedQty] = useState<number | ''>('');
 
+  // --- DYNAMIC MACHINERY CATEGORIES STATE (ADMIN) ---
+  const [customMachineryCategories, setCustomMachineryCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('custom_machinery_categories');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [newCustomCategoryName, setNewCustomCategoryName] = useState('');
+
+  const allMachineryCategories = Array.from(
+    new Set([
+      ...STANDARD_MACHINERY_CATEGORIES,
+      ...customMachineryCategories,
+      ...activeItems
+        .filter((i) => isMachineryItem(i) && i.category)
+        .map((i) => i.category.trim()),
+    ])
+  );
+
+  const handleAddCustomMachineryCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCustomCategoryName.trim();
+    if (!trimmed) return;
+
+    if (allMachineryCategories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      showToast(`Category "${trimmed}" already exists in the list.`);
+      setItemCategory(trimmed);
+      setNewCustomCategoryName('');
+      setShowAddCategoryModal(false);
+      return;
+    }
+
+    const updated = [...customMachineryCategories, trimmed];
+    setCustomMachineryCategories(updated);
+    try {
+      localStorage.setItem('custom_machinery_categories', JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
+    setItemCategory(trimmed);
+    showToast(`New Machinery Category "${trimmed}" created & selected!`);
+    setNewCustomCategoryName('');
+    setShowAddCategoryModal(false);
+  };
+
+  const handleRemoveCustomMachineryCategory = (catToRemove: string) => {
+    const updated = customMachineryCategories.filter((c) => c !== catToRemove);
+    setCustomMachineryCategories(updated);
+    try {
+      localStorage.setItem('custom_machinery_categories', JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
+    if (itemCategory === catToRemove) {
+      setItemCategory(STANDARD_MACHINERY_CATEGORIES[0] || 'Excavator');
+    }
+    showToast(`Category "${catToRemove}" removed.`);
+  };
+
   const handleCreateItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemCode.trim() || !itemName.trim()) return;
@@ -751,30 +814,104 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               {/* Category */}
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Category *</label>
                   {itemClassification === 'Machinery' && (
-                    <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">Standard Fleet Equipment</span>
+                    <div className="flex items-center gap-1.5">
+                      {isCentralAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCategoryModal(!showAddCategoryModal)}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-200 bg-amber-100/90 dark:bg-amber-950/70 hover:bg-amber-200 border border-amber-300 dark:border-amber-800/80 px-2.5 py-0.5 rounded-lg transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Plus className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          <span>+ Add Machinery Category</span>
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">Standard Fleet Equipment</span>
+                      )}
+                    </div>
                   )}
                 </div>
 
                 {itemClassification === 'Machinery' ? (
                   <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1">
-                      {STANDARD_MACHINERY_CATEGORIES.map((cat) => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setItemCategory(cat)}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                            itemCategory === cat
-                              ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                              : 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
+                    {/* Add Custom Category Inline Sub-Form for Admin */}
+                    {isCentralAdmin && showAddCategoryModal && (
+                      <div className="p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 dark:text-amber-300">
+                          <span>Add New Machinery Category (Admin)</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddCategoryModal(false)}
+                            className="text-amber-700 hover:text-amber-950 dark:hover:text-white p-0.5 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="e.g. Crane & Boom Truck, Drilling Rig, Mobile Pump"
+                            value={newCustomCategoryName}
+                            onChange={(e) => setNewCustomCategoryName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddCustomMachineryCategory(e);
+                              }
+                            }}
+                            className="flex-1 px-3 py-1.5 border border-amber-300 dark:border-amber-700 rounded-lg text-xs bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomMachineryCategory}
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-xs shadow-2xs cursor-pointer active:scale-95"
+                          >
+                            Save Category
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {allMachineryCategories.map((cat) => {
+                        const isCustom = customMachineryCategories.includes(cat);
+                        const isSelected = itemCategory === cat;
+
+                        return (
+                          <div key={cat} className="inline-flex items-center">
+                            <button
+                              type="button"
+                              onClick={() => setItemCategory(cat)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                                isSelected
+                                  ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                                  : 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100'
+                              }`}
+                            >
+                              <span>{cat}</span>
+                              {isCustom && (
+                                <span className="text-[9px] bg-amber-700/20 text-amber-900 dark:text-amber-300 px-1 rounded font-normal">custom</span>
+                              )}
+                            </button>
+                            {isCustom && isCentralAdmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveCustomMachineryCategory(cat);
+                                }}
+                                className="ml-1 p-0.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded cursor-pointer transition-colors"
+                                title={`Remove custom category "${cat}"`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     <input
                       type="text"
