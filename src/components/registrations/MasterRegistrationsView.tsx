@@ -22,9 +22,13 @@ import {
   Copy,
   IdCard,
   UserCheck,
+  Sparkles,
+  Layers,
+  ChevronRight,
+  Warehouse,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { UserRole, Item, Site, User, Team, TeamMember, isSuperAdmin, isCentralOrAllSiteAdmin, normalizeRole } from '../../types';
+import { UserRole, Item, Site, User as UserType, Team, TeamMember, isSuperAdmin, isCentralOrAllSiteAdmin, normalizeRole } from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
 import {
   isMachineryItem,
@@ -112,7 +116,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   // Edit Modals State
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
 
   const showToast = (msg: string) => {
@@ -489,7 +493,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     });
   };
 
-  const handleDeleteUser = (u: User) => {
+  const handleDeleteUser = (u: UserType) => {
     if (u.id === currentUser?.id) {
       showToast('Cannot delete the currently active logged-in user account.');
       return;
@@ -580,68 +584,86 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     <div className="space-y-6">
       {/* Toast Notification */}
       {successToast && (
-        <div className="bg-emerald-800 text-white px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-2 shadow-md animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-          <span>{successToast}</span>
+        <div className="bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl text-xs font-medium flex items-center justify-between gap-3 shadow-xl animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+            <span>{successToast}</span>
+          </div>
+          <button onClick={() => setSuccessToast(null)} className="text-slate-400 hover:text-white p-1">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-        <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">System Setup</span>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
-          Master Registration Forms & Data Management
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-600 mt-1">
-          Register, edit, delete, or bulk-manage material items, site branches, operational users, and field crews with safe Recycle Bin protection.
-        </p>
+      {/* Executive Header Banner */}
+      <div className="relative bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        {/* Subtle background mesh visual */}
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none" />
 
-        {/* Tab Controls */}
-        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
-          <button
-            onClick={() => setActiveTab('items')}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
-              activeTab === 'items'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <PackagePlus className="w-4 h-4 text-emerald-400" />
-            <span>ADD & Manage Items ({activeItems.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('sites')}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
-              activeTab === 'sites'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Building className="w-4 h-4 text-emerald-400" />
-            <span>ADD & Manage Sites ({activeSites.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
-              activeTab === 'users'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <UserPlus className="w-4 h-4 text-emerald-400" />
-            <span>ADD & Manage Users ({activeUsers.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('teams')}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
-              activeTab === 'teams'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Users2 className="w-4 h-4 text-emerald-400" />
-            <span>ADD & Manage Teams ({activeTeams.length})</span>
-          </button>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold tracking-wider uppercase">
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+              <span>System Master Registry</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Master Registration & Asset Governance
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Register, configure, edit, or bulk-manage item catalogs, site branches, operational users, and field crews with Recycle Bin protection.
+            </p>
+          </div>
+
+          {/* High-End Segmented Control Bar */}
+          <div className="bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800 backdrop-blur-md shrink-0 flex flex-wrap sm:flex-nowrap gap-1">
+            <button
+              onClick={() => setActiveTab('items')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'items'
+                  ? 'bg-white text-slate-950 shadow-md font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <PackagePlus className={`w-4 h-4 ${activeTab === 'items' ? 'text-emerald-600' : 'text-emerald-400'}`} />
+              <span>Items ({activeItems.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('sites')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'sites'
+                  ? 'bg-white text-slate-950 shadow-md font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <Building className={`w-4 h-4 ${activeTab === 'sites' ? 'text-emerald-600' : 'text-emerald-400'}`} />
+              <span>Site Branches ({activeSites.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'users'
+                  ? 'bg-white text-slate-950 shadow-md font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <UserPlus className={`w-4 h-4 ${activeTab === 'users' ? 'text-emerald-600' : 'text-emerald-400'}`} />
+              <span>Users ({activeUsers.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('teams')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'teams'
+                  ? 'bg-white text-slate-950 shadow-md font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <Users2 className={`w-4 h-4 ${activeTab === 'teams' ? 'text-emerald-600' : 'text-emerald-400'}`} />
+              <span>Teams ({activeTeams.length})</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -650,16 +672,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Creation Form */}
           {isCentralAdmin ? (
-            <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-                <PackagePlus className="w-4 h-4 text-slate-700" />
-                <h2 className="font-semibold text-sm text-slate-900">Master Item Creation Form</h2>
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
+                    <PackagePlus className="w-4 h-4" />
+                  </div>
+                  <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Master Item Creation Form</h2>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">HQ Admin</span>
               </div>
 
-            <form onSubmit={handleCreateItem} className="space-y-3.5">
+            <form onSubmit={handleCreateItem} className="space-y-4">
               {/* Item Classification Selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Item Classification *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Item Classification *</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -670,10 +697,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       }
                       setItemUnit('pcs');
                     }}
-                    className={`py-1.5 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       itemClassification === 'Material'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <span>🧱 Material / Consumable</span>
@@ -687,37 +714,37 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       }
                       setItemUnit('Nos');
                     }}
-                    className={`py-1.5 px-3 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       itemClassification === 'Machinery'
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <span>🚜 Machinery / Equipment</span>
+                    <span>🚜 Machinery / Fleet</span>
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Item Code *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item Code *</label>
                 <input
                   type="text"
                   placeholder={itemClassification === 'Machinery' ? 'e.g. EXC-CAT-320, GEN-KUB-50, WELD-400' : 'e.g. CBL-CU-500, ST-BAR-20'}
                   value={itemCode}
                   onChange={(e) => setItemCode(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Item Name *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item Name *</label>
                 <input
                   type="text"
                   placeholder={itemClassification === 'Machinery' ? 'e.g. Caterpillar 320 Hydraulic Excavator' : 'Full material specification'}
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
@@ -725,24 +752,24 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               {/* Category */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-700">Category *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Category *</label>
                   {itemClassification === 'Machinery' && (
-                    <span className="text-[10px] text-amber-700 font-bold">Standard Fleet Equipment</span>
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">Standard Fleet Equipment</span>
                   )}
                 </div>
 
                 {itemClassification === 'Machinery' ? (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex flex-wrap gap-1">
                       {STANDARD_MACHINERY_CATEGORIES.map((cat) => (
                         <button
                           key={cat}
                           type="button"
                           onClick={() => setItemCategory(cat)}
-                          className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-all cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
                             itemCategory === cat
                               ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                              : 'bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100'
+                              : 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100'
                           }`}
                         >
                           {cat}
@@ -754,7 +781,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       placeholder="Or specify custom category..."
                       value={itemCategory}
                       onChange={(e) => setItemCategory(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                       required
                     />
                   </div>
@@ -762,7 +789,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   <select
                     value={itemCategory}
                     onChange={(e) => setItemCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                   >
                     <option value="Electrical & Power">Electrical & Power</option>
                     <option value="Structural Steel">Structural Steel</option>
@@ -776,11 +803,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Unit of Measure *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit of Measure *</label>
                 <select
                   value={itemUnit}
                   onChange={(e) => setItemUnit(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   {itemClassification === 'Machinery' ? (
                     <>
@@ -810,13 +837,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               {itemUnit === 'custom' && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Specify Custom Unit</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Specify Custom Unit</label>
                   <input
                     type="text"
                     placeholder="e.g. liters, cartons, pallets"
                     value={customUnit}
                     onChange={(e) => setCustomUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                     required
                   />
                 </div>
@@ -824,31 +851,31 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Unit Price ({config.currencySymbol})</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit Price ({config.currencySymbol})</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={itemPrice}
                     onChange={(e) => setItemPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Low Stock Alert Min</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Low Stock Alert Min</label>
                   <input
                     type="number"
                     min="1"
                     value={itemThreshold}
                     onChange={(e) => setItemThreshold(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
-              <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-lg">
-                <label className="block text-xs font-bold text-emerald-900 mb-1">
+              <div className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 rounded-xl">
+                <label className="block text-xs font-bold text-emerald-950 dark:text-emerald-300 mb-1.5">
                   Initial Received Quantity (Auto-posted to Main Stock)
                 </label>
                 <input
@@ -858,7 +885,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   placeholder="0 (Optional opening stock in Main Warehouse)"
                   value={initialReceivedQty}
                   onChange={(e) => setInitialReceivedQty(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-emerald-300 rounded-lg text-xs font-mono font-bold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs font-mono font-bold bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 />
               </div>
 
@@ -866,7 +893,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 <button
                   type="button"
                   onClick={handleClearItemForm}
-                  className="px-3 py-2.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                  className="px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   title="Clear all item form fields"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -874,7 +901,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Save Master Item</span>
@@ -883,26 +910,28 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </form>
           </div>
         ) : (
-          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col items-center justify-center text-center">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mb-3">
+          <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 mb-3">
               <Lock className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-sm text-slate-900">Master Item Catalog (Read-Only)</h3>
-            <p className="text-xs text-slate-600 mt-1.5 max-w-sm leading-relaxed">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Master Item Catalog (Read-Only)</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
               Site branch personnel can view items, units, and codes. Adding or modifying master item specifications is managed by <strong>Super Admin Central</strong>.
             </p>
-            <div className="mt-4 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
-              Role: <strong className="text-slate-800">{currentUser.fullName}</strong> ({currentUser.role})
+            <div className="mt-4 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
+              Role: <strong className="text-slate-800 dark:text-slate-200">{currentUser.fullName}</strong> ({currentUser.role})
             </div>
           </div>
         )}
 
         {/* Master Item List with Edit, Delete, Bulk Clear */}
-        <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-sm text-slate-900">Active Master Catalog</h2>
-              <span className="text-xs text-slate-500 font-mono">({activeItems.length} active)</span>
+              <h2 className="font-bold text-sm text-slate-900 dark:text-white">Active Master Catalog</h2>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                {activeItems.length} active
+              </span>
             </div>
 
             {isCentralAdmin && (
@@ -910,7 +939,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 {selectedItemIds.length > 0 && (
                   <button
                     onClick={handleBulkDeleteItems}
-                    className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Selected ({selectedItemIds.length})</span>
@@ -919,11 +948,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 {activeItems.length > 0 && (
                   <button
                     onClick={handleClearAllItems}
-                    className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                     title="Move all active items to Recycle Bin"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Clear All Items</span>
+                    <span>Clear All</span>
                   </button>
                 )}
               </div>
@@ -932,9 +961,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
             <div className="overflow-x-auto flex-1 max-h-[500px]">
               <table className="w-full min-w-[720px] text-xs text-left table-fixed">
-                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
+                <thead className="bg-slate-100/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800 sticky top-0 backdrop-blur-xs">
                   <tr>
-                    <th className="py-2.5 px-3 w-[5%]">
+                    <th className="py-3 px-3 w-[5%]">
                       <input
                         type="checkbox"
                         checked={activeItems.length > 0 && selectedItemIds.length === activeItems.length}
@@ -942,18 +971,18 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           if (e.target.checked) setSelectedItemIds(activeItems.map((i) => i.id));
                           else setSelectedItemIds([]);
                         }}
-                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                       />
                     </th>
-                    <th className="py-2.5 px-3 w-[20%]">Item Code</th>
-                    <th className="py-2.5 px-4 w-[32%]">Item Name</th>
-                    <th className="py-2.5 px-3 w-[21%]">Category</th>
-                    <th className="py-2.5 px-3 text-center w-[7%]">Unit</th>
-                    <th className="py-2.5 px-3 text-right w-[9%]">Main Stock</th>
-                    <th className="py-2.5 px-3 text-right w-[6%]">Actions</th>
+                    <th className="py-3 px-3 w-[20%]">Item Code</th>
+                    <th className="py-3 px-4 w-[32%]">Item Name</th>
+                    <th className="py-3 px-3 w-[21%]">Category</th>
+                    <th className="py-3 px-3 text-center w-[7%]">Unit</th>
+                    <th className="py-3 px-3 text-right w-[9%]">Main Stock</th>
+                    <th className="py-3 px-3 text-right w-[6%]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {activeItems.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-12 text-center text-slate-400">
@@ -966,8 +995,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       const isChecked = selectedItemIds.includes(i.id);
 
                       return (
-                        <tr key={i.id} className={`hover:bg-slate-50 ${isChecked ? 'bg-slate-50' : ''}`}>
-                          <td className="py-2.5 px-3">
+                        <tr key={i.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isChecked ? 'bg-slate-50/80 dark:bg-slate-800/60' : ''}`}>
+                          <td className="py-3 px-3">
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -976,33 +1005,33 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                   prev.includes(i.id) ? prev.filter((id) => id !== i.id) : [...prev, i.id]
                                 )
                               }
-                              className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                              className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                             />
                           </td>
-                          <td className="py-2.5 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                             {i.itemCode}
                           </td>
-                          <td className="py-2.5 px-4 text-slate-800 font-medium whitespace-normal break-words" title={i.itemName}>
+                          <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-semibold whitespace-normal break-words" title={i.itemName}>
                             {i.itemName}
                           </td>
-                          <td className="py-2.5 px-3 text-slate-600 font-medium whitespace-normal break-words">{i.category}</td>
-                          <td className="py-2.5 px-3 text-center text-slate-600">{i.unit}</td>
-                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-900">
+                          <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium whitespace-normal break-words">{i.category}</td>
+                          <td className="py-3 px-3 text-center text-slate-600 dark:text-slate-400">{i.unit}</td>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 dark:text-emerald-400">
                             {formatNumber(mainStock.availableBalance)}
                           </td>
-                          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
                             {isCentralAdmin ? (
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   onClick={() => setEditingItem({ ...i })}
-                                  className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                   title="Edit Item"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteItem(i)}
-                                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                   title="Move to Recycle Bin (Soft Delete)"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1028,27 +1057,32 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Site Creation Form */}
           {isCentralAdmin ? (
-            <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-                <Building className="w-4 h-4 text-slate-700" />
-                <h2 className="font-semibold text-sm text-slate-900">Register New Site Branch</h2>
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
+                    <Building className="w-4 h-4" />
+                  </div>
+                  <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Register New Site Branch</h2>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">Location Setup</span>
               </div>
 
-              <form onSubmit={handleCreateSite} className="space-y-3.5">
+              <form onSubmit={handleCreateSite} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Site Name *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Site Name *</label>
                   <input
                     type="text"
                     placeholder="e.g. East River Transmission Depot"
                     value={siteName}
                     onChange={(e) => setSiteName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Supervisor / Manager Name *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supervisor / Manager Name *</label>
                   <select
                     value={isCustomAddSupervisor ? '__custom__' : siteSupervisor}
                     onChange={(e) => {
@@ -1061,7 +1095,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         setSiteSupervisor(val);
                       }
                     }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                     required={!isCustomAddSupervisor}
                   >
                     <option value="">-- Select Registered Supervisor / Manager --</option>
@@ -1082,32 +1116,32 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       placeholder="Type custom supervisor name..."
                       value={siteSupervisor}
                       onChange={(e) => setSiteSupervisor(e.target.value)}
-                      className="w-full mt-2 px-3 py-2 border border-amber-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none bg-amber-50/50"
+                      className="w-full mt-2 px-3.5 py-2.5 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:outline-none bg-amber-50/50 dark:bg-amber-950/30 dark:text-white"
                       required
                     />
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Location / Details *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Location / Details *</label>
                   <input
                     type="text"
                     placeholder="Highway mile marker, grid address, or depot code"
                     value={siteLocation}
                     onChange={(e) => setSiteLocation(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
                   <input
                     type="text"
                     placeholder="+1 (555) 000-0000"
                     value={sitePhone}
                     onChange={(e) => setSitePhone(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
 
@@ -1115,7 +1149,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   <button
                     type="button"
                     onClick={handleClearSiteForm}
-                    className="px-3 py-2.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                    className="px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     title="Clear all site form fields"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -1123,7 +1157,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Register Site Branch</span>
@@ -1132,30 +1166,35 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </form>
             </div>
           ) : (
-            <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col items-center justify-center text-center">
-              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mb-3">
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col items-center justify-center text-center">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 mb-3">
                 <Lock className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-sm text-slate-900">Site Branch Setup (Read-Only)</h3>
-              <p className="text-xs text-slate-600 mt-1.5 max-w-sm leading-relaxed">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">Site Branch Setup (Read-Only)</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
                 Branch creation, supervisor assignment, and location configurations are managed exclusively by <strong>Super Admin Central</strong>.
               </p>
-              <div className="mt-4 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
-                Logged in as: <strong className="text-slate-800">{currentUser.fullName}</strong> ({currentUser.role})
+              <div className="mt-4 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
+                Logged in as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.fullName}</strong> ({currentUser.role})
               </div>
             </div>
           )}
 
           {/* Sites Grid with Edit & Delete */}
-          <div className="lg:col-span-7 space-y-3">
+          <div className="lg:col-span-7 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-sm text-slate-900">Current Operational Sites ({activeSites.length})</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-sm text-slate-900 dark:text-white">Current Operational Sites</h2>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                  {activeSites.length}
+                </span>
+              </div>
               {isCentralAdmin && (
                 <div className="flex items-center gap-2">
                   {selectedSiteIds.length > 0 && (
                     <button
                       onClick={handleBulkDeleteSites}
-                      className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                      className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete Selected ({selectedSiteIds.length})</span>
@@ -1164,7 +1203,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   {activeSites.filter((s) => !s.isMainWarehouse).length > 0 && (
                     <button
                       onClick={handleClearAllSites}
-                      className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                      className="px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Move branch sites to Recycle Bin"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -1175,7 +1214,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {activeSites.map((s) => {
                 const assignedTeams = activeTeams.filter((t) => t.assignedSiteId === s.id);
                 const isChecked = selectedSiteIds.includes(s.id);
@@ -1183,12 +1222,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 return (
                   <div
                     key={s.id}
-                    className={`bg-white rounded-xl border p-4 shadow-xs flex flex-col justify-between ${
-                      s.isMainWarehouse ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-slate-200'
+                    className={`rounded-2xl border p-5 shadow-sm transition-all flex flex-col justify-between group ${
+                      s.isMainWarehouse
+                        ? 'border-emerald-500/40 dark:border-emerald-500/50 bg-gradient-to-br from-emerald-50/50 via-white to-white dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 ring-1 ring-emerald-500/20'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {!s.isMainWarehouse && (
                             <input
@@ -1199,29 +1240,30 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                   prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id]
                                 )
                               }
-                              className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                              className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                             />
                           )}
                           <span
-                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                            className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
                               s.isMainWarehouse
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-slate-100 text-slate-700'
+                                ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/20'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                             }`}
                           >
+                            {s.isMainWarehouse && <Warehouse className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                             {s.isMainWarehouse ? 'Central HQ Warehouse' : 'Site Branch'}
                           </span>
                         </div>
 
                         {/* Edit & Delete Controls */}
                         {isCentralAdmin && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => {
                                 setIsCustomEditSupervisor(false);
                                 setEditingSite({ ...s });
                               }}
-                              className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                               title="Edit Site Details"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -1229,7 +1271,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             {!s.isMainWarehouse && (
                               <button
                                 onClick={() => handleDeleteSite(s)}
-                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                 title="Move to Recycle Bin"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1239,27 +1281,30 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         )}
                       </div>
 
-                      <h3 className="font-bold text-slate-900 text-sm mt-1">{s.name}</h3>
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-base mt-1.5 tracking-tight">{s.name}</h3>
 
-                      <div className="mt-3 space-y-1 text-xs text-slate-600">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <div className="mt-3.5 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                           <span className="truncate">{s.location}</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{s.contactNumber}</span>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                          <span className="font-mono">{s.contactNumber}</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Shield className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>Supervisor: <strong>{s.supervisorName}</strong></span>
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                          <span>Supervisor: <strong className="text-slate-900 dark:text-slate-200">{s.supervisorName}</strong></span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                      <span>Assigned Crews: <strong className="font-mono text-slate-800">{assignedTeams.length}</strong></span>
-                      <span className="text-[11px] text-emerald-700 font-medium">Active Status</span>
+                    <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <span>Assigned Crews: <strong className="font-mono text-slate-900 dark:text-white font-bold">{assignedTeams.length}</strong></span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/50">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Active Status
+                      </span>
                     </div>
                   </div>
                 );
@@ -1272,37 +1317,37 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       {/* TAB 3: ADD & MANAGE USERS */}
       {activeTab === 'users' && (
         !isCentralAdmin ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-xs text-center max-w-lg mx-auto my-6">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mx-auto mb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm text-center max-w-lg mx-auto my-6">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 mx-auto mb-3">
               <Lock className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-base text-slate-900">User & Role Management Restricted</h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+            <h3 className="font-bold text-base text-slate-900 dark:text-white">User & Role Management Restricted</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
               Adding new user accounts, modifying credentials, and configuring permissions is restricted to <strong>Super Admin Central</strong>.
             </p>
-            <div className="mt-4 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500 inline-block">
-              Logged in as: <strong className="text-slate-800">{currentUser.fullName}</strong> ({currentUser.role})
+            <div className="mt-4 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 inline-block">
+              Logged in as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.fullName}</strong> ({currentUser.role})
             </div>
           </div>
         ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {/* Company Staff Direct Login Link Banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 border border-indigo-800/60 shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-400">
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 border border-indigo-800/60 shadow-lg relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+              <div className="space-y-1.5 max-w-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
                     <Link2 className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  <h3 className="font-extrabold text-base text-white flex items-center gap-2">
                     <span>Company Staff Direct Login Link</span>
-                    <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
                       Workspace: {currentTenant.slug}
                     </span>
                   </h3>
                 </div>
-                <p className="text-xs text-slate-300">
-                  Provide this direct link to your company staff members for logging in. It logs them directly into <strong>{currentTenant.companyName}</strong> workspace, ensuring user accounts never overlap with other companies.
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Provide this direct URL to company staff members for logging in directly into the <strong>{currentTenant.companyName}</strong> workspace.
                 </p>
               </div>
 
@@ -1312,19 +1357,18 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   onClick={() => {
                     const loginUrl = getWorkspaceLoginUrl(currentTenant.slug);
                     navigator.clipboard.writeText(loginUrl);
-                    setSuccessToast(`Company login link copied to clipboard! Share this URL with your staff.`);
-                    setTimeout(() => setSuccessToast(null), 3500);
+                    showToast(`Company login link copied to clipboard! Share this URL with your staff.`);
                   }}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition cursor-pointer active:scale-95"
+                  className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition cursor-pointer active:scale-95"
                 >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Login Link</span>
+                  <Copy className="w-4 h-4" />
+                  <span>Copy Direct Login URL</span>
                 </button>
               </div>
             </div>
 
             {/* Link Preview box */}
-            <div className="mt-3.5 p-2.5 bg-black/40 rounded-xl border border-indigo-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-indigo-200">
+            <div className="mt-4 p-3 bg-black/40 rounded-xl border border-indigo-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-indigo-200">
               <span className="truncate">{getWorkspaceLoginUrl(currentTenant.slug)}</span>
               <span className="text-[10px] text-slate-400 font-sans shrink-0">
                 Workspace Code: <strong className="text-amber-300 font-mono">{currentTenant.slug}</strong>
@@ -1334,43 +1378,48 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* User Form */}
-          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-              <UserPlus className="w-4 h-4 text-slate-700" />
-              <h2 className="font-semibold text-sm text-slate-900">Register New User Account</h2>
+          <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Register New User Account</h2>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">Access Control</span>
             </div>
 
-            <form onSubmit={handleCreateUser} className="space-y-3.5">
+            <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Username *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Username *</label>
                 <input
                   type="text"
                   placeholder="e.g. jason.site, mark.admin"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Full Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Jason Miller"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Site</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base</label>
                 <select
                   value={userSiteId}
                   onChange={(e) => setUserSiteId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   <option value="all">All Sites / Central Warehouse HQ</option>
                   {activeSites.map((s) => (
@@ -1382,11 +1431,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">User Role *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">User Role *</label>
                 <select
                   value={userRole}
                   onChange={(e) => setUserRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   <option value="Super Admin Central">1. Super Admin Central (Full System & HQ Control)</option>
                   <option value="All Site Branch Admin">2. All Site Branch Admin (All Branch Supervision)</option>
@@ -1396,21 +1445,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Password *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password *</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none pr-8"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all pr-10"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 cursor-pointer"
                   >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -1419,7 +1468,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 <button
                   type="button"
                   onClick={handleClearUserForm}
-                  className="px-3 py-2.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                  className="px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   title="Clear all user form fields"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1427,27 +1476,30 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Create User</span>
+                  <span>Create User Account</span>
                 </button>
               </div>
             </form>
           </div>
 
           {/* User Table with Edit & Delete */}
-          <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
               <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-sm text-slate-900">System Users ({activeUsers.length})</h2>
+                <h2 className="font-bold text-sm text-slate-900 dark:text-white">System Users</h2>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                  {activeUsers.length} accounts
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
                 {selectedUserIds.length > 0 && (
                   <button
                     onClick={handleBulkDeleteUsers}
-                    className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Selected ({selectedUserIds.length})</span>
@@ -1456,7 +1508,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 {activeUsers.filter((u) => u.id !== currentUser.id && !isSuperAdmin(u.role)).length > 0 && (
                   <button
                     onClick={handleClearAllUsers}
-                    className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                     title="Move non-admin users to Recycle Bin"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -1468,9 +1520,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                <thead className="bg-slate-100/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="py-2.5 px-3 w-8">
+                    <th className="py-3 px-3 w-8">
                       <input
                         type="checkbox"
                         checked={activeUsers.length > 0 && selectedUserIds.length === activeUsers.length}
@@ -1478,16 +1530,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           if (e.target.checked) setSelectedUserIds(activeUsers.map((u) => u.id));
                           else setSelectedUserIds([]);
                         }}
-                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                       />
                     </th>
-                    <th className="py-2.5 px-3">Username</th>
-                    <th className="py-2.5 px-3">Full Name</th>
-                    <th className="py-2.5 px-3">Role</th>
-                    <th className="py-2.5 px-3 text-right">Actions</th>
+                    <th className="py-3 px-3">Username</th>
+                    <th className="py-3 px-3">Full Name</th>
+                    <th className="py-3 px-3">Role</th>
+                    <th className="py-3 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {activeUsers.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-12 text-center text-slate-400">
@@ -1501,15 +1553,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                     const norm = normalizeRole(u.role);
                     const badgeStyles = {
-                      'Super Admin Central': 'bg-purple-100 text-purple-900 border-purple-200',
-                      'All Site Branch Admin': 'bg-blue-100 text-blue-900 border-blue-200',
-                      'Branch Admin': 'bg-emerald-100 text-emerald-900 border-emerald-200',
-                      'Branch System User': 'bg-slate-100 text-slate-800 border-slate-200',
-                    }[norm] || 'bg-slate-100 text-slate-800 border-slate-200';
+                      'Super Admin Central': 'bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
+                      'All Site Branch Admin': 'bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
+                      'Branch Admin': 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+                      'Branch System User': 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+                    }[norm] || 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
 
                     return (
-                      <tr key={u.id} className={`hover:bg-slate-50 ${isChecked ? 'bg-slate-50' : ''}`}>
-                        <td className="py-2.5 px-3">
+                      <tr key={u.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isChecked ? 'bg-slate-50/80 dark:bg-slate-800/60' : ''}`}>
+                        <td className="py-3 px-3">
                           <input
                             type="checkbox"
                             checked={isChecked}
@@ -1518,40 +1570,40 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id]
                               )
                             }
-                            className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                            className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                           />
                         </td>
-                        <td className="py-2.5 px-3 font-mono font-semibold text-slate-900">{u.username}</td>
-                        <td className="py-2.5 px-3 text-slate-800 font-medium">
+                        <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-white">@{u.username}</td>
+                        <td className="py-3 px-3 text-slate-800 dark:text-slate-200 font-semibold">
                           {u.fullName}
-                          <div className="text-[10px] text-slate-500">{u.siteId === 'all' ? 'All Sites / HQ' : s?.name}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{u.siteId === 'all' ? 'All Sites / Central HQ' : s?.name}</div>
                         </td>
-                        <td className="py-2.5 px-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${badgeStyles}`}>
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${badgeStyles}`}>
                             {u.role}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => {
                                 setCurrentUser(u);
                                 showToast(`Switched active session to: ${u.fullName}`);
                               }}
-                              className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold underline mr-1"
+                              className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-bold px-2 py-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
                             >
                               Switch
                             </button>
                             <button
                               onClick={() => setEditingUser({ ...u })}
-                              className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                               title="Edit User Role"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteUser(u)}
-                              className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                               title="Delete User"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1575,55 +1627,60 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       {activeTab === 'teams' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Team Creation Form */}
-          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-              <Users2 className="w-4 h-4 text-slate-700" />
-              <h2 className="font-semibold text-sm text-slate-900">Register Field Work Team</h2>
+          <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
+                  <Users2 className="w-4 h-4" />
+                </div>
+                <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Register Field Work Team</h2>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">Crew Roster</span>
             </div>
 
-            <form onSubmit={handleCreateTeam} className="space-y-3.5">
+            <form onSubmit={handleCreateTeam} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Team Name *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Team Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Echo High-Tension Stringing Squad"
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Team Leader Name *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Team Leader Name *</label>
                   <input
                     type="text"
                     placeholder="e.g. Sarah Connor"
                     value={teamLeaderName}
                     onChange={(e) => setTeamLeaderName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Leader NIC / Worker ID</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Leader NIC / Worker ID</label>
                   <input
                     type="text"
                     placeholder="e.g. 198845123V / EMP-010"
                     value={teamLeaderIdNumber}
                     onChange={(e) => setTeamLeaderIdNumber(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Site Base *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base *</label>
                 <select
                   value={assignedSiteId}
                   onChange={(e) => setAssignedSiteId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   {activeSites.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -1634,31 +1691,31 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               {/* Dynamic Team Members Roster with Individual Names and ID Numbers */}
-              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/80 space-y-2.5">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 bg-slate-50/80 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Users2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Users2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Team Members & ID Roster ({teamMembers.length})</span>
                   </label>
-                  <span className="text-[10px] text-slate-500 font-medium">Add names & ID numbers</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Add names & ID numbers</span>
                 </div>
 
                 {/* Input row for adding a member */}
-                <div className="space-y-1.5 bg-white p-2.5 rounded-md border border-slate-200">
+                <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
                       placeholder="Member Full Name *"
                       value={newMemberName}
                       onChange={(e) => setNewMemberName(e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-slate-800"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
                     />
                     <input
                       type="text"
                       placeholder="ID / NIC Number *"
                       value={newMemberIdNumber}
                       onChange={(e) => setNewMemberIdNumber(e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs font-mono uppercase focus:outline-none focus:border-slate-800"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono uppercase dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
@@ -1668,7 +1725,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         placeholder="Role / Skill (e.g. Technician)"
                         value={newMemberRole}
                         onChange={(e) => setNewMemberRole(e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-slate-800"
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
                       />
                     </div>
                     <div className="sm:col-span-4">
@@ -1677,17 +1734,17 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         placeholder="Phone (Optional)"
                         value={newMemberPhone}
                         onChange={(e) => setNewMemberPhone(e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-slate-800"
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
                       />
                     </div>
                     <div className="sm:col-span-3">
                       <button
                         type="button"
                         onClick={handleAddTeamMember}
-                        className="w-full py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Add Member</span>
+                        <span>Add</span>
                       </button>
                     </div>
                   </div>
@@ -1695,14 +1752,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                 {/* Added members list */}
                 {teamMembers.length > 0 ? (
-                  <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 bg-white rounded border border-slate-200 p-1">
+                  <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-1.5">
                     {teamMembers.map((m, idx) => (
-                      <div key={m.id} className="flex items-center justify-between px-2 py-1 text-xs">
+                      <div key={m.id} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}.</span>
                           <div className="truncate">
-                            <span className="font-semibold text-slate-900">{m.name}</span>
-                            <span className="ml-1.5 font-mono text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            <span className="font-semibold text-slate-900 dark:text-slate-200">{m.name}</span>
+                            <span className="ml-2 font-mono text-[10px] text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
                               {m.idNumber}
                             </span>
                             {m.role && <span className="ml-1 text-[10px] text-slate-500">({m.role})</span>}
@@ -1711,7 +1768,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         <button
                           type="button"
                           onClick={() => handleRemoveTeamMember(m.id)}
-                          className="text-slate-400 hover:text-rose-600 p-0.5 ml-2 cursor-pointer"
+                          className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 cursor-pointer"
                           title="Remove member"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -1720,7 +1777,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-slate-400 italic text-center py-1">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center py-1">
                     No members added yet. Add individual team member names & ID numbers above.
                   </p>
                 )}
@@ -1728,7 +1785,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Crew Size ({teamMembers.length > 0 ? 'Auto-Calculated' : 'Persons'})
                   </label>
                   <input
@@ -1737,21 +1794,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     value={teamMembers.length > 0 ? teamMembers.length + 1 : crewSize}
                     onChange={(e) => setCrewSize(e.target.value === '' ? '' : Number(e.target.value))}
                     disabled={teamMembers.length > 0}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none disabled:bg-slate-100 disabled:text-slate-600"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all disabled:opacity-60"
                   />
                   {teamMembers.length > 0 && (
-                    <span className="text-[10px] text-emerald-600 font-medium">1 Leader + {teamMembers.length} Members</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">1 Leader + {teamMembers.length} Members</span>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
                   <input
                     type="text"
                     placeholder="+1 (555) 789-0000"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -1760,7 +1817,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 <button
                   type="button"
                   onClick={handleClearTeamForm}
-                  className="px-3 py-2.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                  className="px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   title="Clear all team form fields"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1768,7 +1825,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Register Field Team</span>
@@ -1778,14 +1835,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           </div>
 
           {/* Teams Cards List with Edit & Delete */}
-          <div className="lg:col-span-7 space-y-3">
+          <div className="lg:col-span-7 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-sm text-slate-900">Active Field Crews ({activeTeams.length})</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-sm text-slate-900 dark:text-white">Active Field Crews</h2>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                  {activeTeams.length} teams
+                </span>
+              </div>
               <div className="flex items-center gap-2">
                 {selectedTeamIds.length > 0 && (
                   <button
                     onClick={handleBulkDeleteTeams}
-                    className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Selected ({selectedTeamIds.length})</span>
@@ -1794,7 +1856,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 {activeTeams.length > 0 && (
                   <button
                     onClick={handleClearAllTeams}
-                    className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    className="px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                     title="Move all field teams to Recycle Bin"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -1804,14 +1866,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {activeTeams.map((t) => {
                 const s = activeSites.find((site) => site.id === t.assignedSiteId);
                 const isChecked = selectedTeamIds.includes(t.id);
                 const hasMembers = t.members && t.members.length > 0;
 
                 return (
-                  <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col justify-between">
+                  <div key={t.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
@@ -1823,22 +1885,22 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
                               )
                             }
-                            className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                            className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                           />
-                          <h3 className="font-bold text-slate-900 text-sm">{t.teamName}</h3>
+                          <h3 className="font-extrabold text-slate-900 dark:text-white text-base tracking-tight">{t.teamName}</h3>
                         </div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => setEditingTeam({ ...t })}
-                            className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                             title="Edit Team"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteTeam(t)}
-                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                             title="Delete Team"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1846,38 +1908,38 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         </div>
                       </div>
 
-                      <div className="text-xs text-emerald-700 font-semibold flex items-center justify-between">
+                      <div className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-between">
                         <span>Base: {s?.name}</span>
-                        <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                           {t.crewSize} Persons
                         </span>
                       </div>
 
-                      <div className="mt-3 space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-2">
+                      <div className="mt-3.5 space-y-2 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
                         <div>
                           <span className="text-slate-500">Leader: </span>
-                          <strong className="text-slate-900">{t.teamLeaderName}</strong>
+                          <strong className="text-slate-900 dark:text-white">{t.teamLeaderName}</strong>
                           {t.teamLeaderIdNumber && (
-                            <span className="ml-1.5 font-mono text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold border border-slate-200">
+                            <span className="ml-2 font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-bold border border-slate-200 dark:border-slate-700">
                               NIC: {t.teamLeaderIdNumber}
                             </span>
                           )}
                         </div>
 
                         {hasMembers ? (
-                          <div className="text-[11px] bg-slate-50 p-2 rounded border border-slate-200 space-y-1">
-                            <div className="font-bold text-slate-700 text-[10px] uppercase tracking-wider flex items-center justify-between">
+                          <div className="text-[11px] bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                            <div className="font-bold text-slate-700 dark:text-slate-300 text-[10px] uppercase tracking-wider flex items-center justify-between">
                               <span>Registered Members ({t.members!.length})</span>
                             </div>
-                            <div className="space-y-0.5 max-h-20 overflow-y-auto">
+                            <div className="space-y-1 max-h-20 overflow-y-auto pr-1">
                               {t.members!.slice(0, 3).map((m) => (
                                 <div key={m.id} className="flex items-center justify-between text-[10px]">
-                                  <span className="font-medium text-slate-800 truncate">{m.name}</span>
-                                  <span className="font-mono text-emerald-800 font-bold ml-1">{m.idNumber}</span>
+                                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{m.name}</span>
+                                  <span className="font-mono text-emerald-700 dark:text-emerald-400 font-bold ml-1">{m.idNumber}</span>
                                 </div>
                               ))}
                               {t.members!.length > 3 && (
-                                <div className="text-[10px] text-slate-500 italic">
+                                <div className="text-[10px] text-slate-500 italic pt-0.5">
                                   +{t.members!.length - 3} more members...
                                 </div>
                               )}
@@ -1889,8 +1951,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           </div>
                         )}
 
-                        <div className="text-[11px] text-slate-500 pt-0.5">
-                          Phone: <span className="font-mono text-slate-800 font-semibold">{t.contactPhone}</span>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                          Phone: <span className="font-mono text-slate-800 dark:text-slate-200 font-semibold">{t.contactPhone}</span>
                         </div>
                       </div>
                     </div>
@@ -1904,60 +1966,62 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
       {/* EDIT ITEM MODAL */}
       {editingItem && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-slate-800" />
-                <h3 className="font-bold text-base text-slate-900">Edit Registered Item</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">Edit Registered Item</h3>
               </div>
-              <button onClick={() => setEditingItem(null)} className="p-1 text-slate-400 hover:text-slate-700">
+              <button onClick={() => setEditingItem(null)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveItemEdit} className="space-y-3.5">
+            <form onSubmit={handleSaveItemEdit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Item Code</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item Code</label>
                 <input
                   type="text"
                   value={editingItem.itemCode}
                   onChange={(e) => setEditingItem({ ...editingItem, itemCode: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Item Name</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item Name</label>
                 <input
                   type="text"
                   value={editingItem.itemName}
                   onChange={(e) => setEditingItem({ ...editingItem, itemName: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Category</label>
                   <input
                     type="text"
                     value={editingItem.category}
                     onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Unit of Measure</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit of Measure</label>
                   <input
                     type="text"
                     value={editingItem.unit}
                     onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                     required
                   />
                 </div>
@@ -1965,39 +2029,39 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Unit Price ({config.currencySymbol})</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit Price ({config.currencySymbol})</label>
                   <input
                     type="number"
                     step="0.01"
                     value={editingItem.unitPrice}
                     onChange={(e) => setEditingItem({ ...editingItem, unitPrice: Number(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Reorder / Low Stock Threshold</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Reorder / Low Stock Threshold</label>
                   <input
                     type="number"
                     min="1"
                     value={editingItem.lowStockThreshold}
                     onChange={(e) => setEditingItem({ ...editingItem, lowStockThreshold: Number(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingItem(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -2009,32 +2073,34 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
       {/* EDIT SITE MODAL */}
       {editingSite && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-slate-800" />
-                <h3 className="font-bold text-base text-slate-900">Edit Site Branch</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">Edit Site Branch</h3>
               </div>
-              <button onClick={() => setEditingSite(null)} className="p-1 text-slate-400 hover:text-slate-700">
+              <button onClick={() => setEditingSite(null)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveSiteEdit} className="space-y-3.5">
+            <form onSubmit={handleSaveSiteEdit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Site Name</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Site Name</label>
                 <input
                   type="text"
                   value={editingSite.name}
                   onChange={(e) => setEditingSite({ ...editingSite, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Supervisor / Manager *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Supervisor / Manager *</label>
                 <select
                   value={isCustomEditSupervisor ? '__custom__' : editingSite.supervisorName}
                   onChange={(e) => {
@@ -2046,7 +2112,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       setEditingSite({ ...editingSite, supervisorName: val });
                     }
                   }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                   required={!isCustomEditSupervisor}
                 >
                   <option value="">-- Select Registered Supervisor / Manager --</option>
@@ -2071,44 +2137,44 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     placeholder="Type custom supervisor name..."
                     value={editingSite.supervisorName}
                     onChange={(e) => setEditingSite({ ...editingSite, supervisorName: e.target.value })}
-                    className="w-full mt-2 px-3 py-2 border border-amber-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none bg-amber-50/50"
+                    className="w-full mt-2 px-3.5 py-2.5 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:outline-none bg-amber-50/50 dark:bg-amber-950/30 dark:text-white"
                     required
                   />
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Location Details</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Location Details</label>
                 <input
                   type="text"
                   value={editingSite.location}
                   onChange={(e) => setEditingSite({ ...editingSite, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
                 <input
                   type="text"
                   value={editingSite.contactNumber}
                   onChange={(e) => setEditingSite({ ...editingSite, contactNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingSite(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   Save Site Changes
                 </button>
@@ -2120,36 +2186,38 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
       {/* EDIT USER MODAL */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-slate-800" />
-                <h3 className="font-bold text-base text-slate-900">Edit User Account & Role</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">Edit User Account & Role</h3>
               </div>
-              <button onClick={() => setEditingUser(null)} className="p-1 text-slate-400 hover:text-slate-700">
+              <button onClick={() => setEditingUser(null)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveUserEdit} className="space-y-3.5">
+            <form onSubmit={handleSaveUserEdit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
                 <input
                   type="text"
                   value={editingUser.fullName}
                   onChange={(e) => setEditingUser({ ...editingUser, fullName: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">User Role</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">User Role</label>
                 <select
                   value={editingUser.role}
                   onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   <option value="Super Admin Central">1. Super Admin Central (Full System & HQ Control)</option>
                   <option value="All Site Branch Admin">2. All Site Branch Admin (All Branch Supervision)</option>
@@ -2159,11 +2227,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Site Base</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base</label>
                 <select
                   value={editingUser.siteId}
                   onChange={(e) => setEditingUser({ ...editingUser, siteId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   <option value="all">All Sites / Central Warehouse HQ</option>
                   {activeSites.map((s) => (
@@ -2175,27 +2243,27 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
                 <input
                   type="text"
                   value={editingUser.password}
                   onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   Save User Changes
                 </button>
@@ -2207,59 +2275,61 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
       {/* EDIT TEAM MODAL */}
       {editingTeam && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-slate-800" />
-                <h3 className="font-bold text-base text-slate-900">Edit Field Team</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">Edit Field Team</h3>
               </div>
-              <button onClick={() => setEditingTeam(null)} className="p-1 text-slate-400 hover:text-slate-700">
+              <button onClick={() => setEditingTeam(null)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveTeamEdit} className="space-y-3.5 max-h-[80vh] overflow-y-auto pr-1">
+            <form onSubmit={handleSaveTeamEdit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Team Name</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Team Name</label>
                 <input
                   type="text"
                   value={editingTeam.teamName}
                   onChange={(e) => setEditingTeam({ ...editingTeam, teamName: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Team Leader Name</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Team Leader Name</label>
                   <input
                     type="text"
                     value={editingTeam.teamLeaderName}
                     onChange={(e) => setEditingTeam({ ...editingTeam, teamLeaderName: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Leader NIC / Worker ID</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Leader NIC / Worker ID</label>
                   <input
                     type="text"
                     placeholder="e.g. 198845123V / EMP-010"
                     value={editingTeam.teamLeaderIdNumber || ''}
                     onChange={(e) => setEditingTeam({ ...editingTeam, teamLeaderIdNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Site Base</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base</label>
                 <select
                   value={editingTeam.assignedSiteId}
                   onChange={(e) => setEditingTeam({ ...editingTeam, assignedSiteId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   {activeSites.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -2270,31 +2340,31 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               {/* Edit Team Members Roster */}
-              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/80 space-y-2">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 bg-slate-50/80 dark:bg-slate-800/40 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Users2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Users2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Team Members Roster ({editingTeam.members?.length || 0})</span>
                   </label>
-                  <span className="text-[10px] text-slate-500 font-medium">Names & ID / NIC numbers</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Names & ID / NIC numbers</span>
                 </div>
 
                 {/* Add member row */}
-                <div className="space-y-1.5 bg-white p-2 rounded-md border border-slate-200">
+                <div className="space-y-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
                       placeholder="Member Name"
                       value={editMemberName}
                       onChange={(e) => setEditMemberName(e.target.value)}
-                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none"
+                      className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none"
                     />
                     <input
                       type="text"
                       placeholder="ID / NIC No."
                       value={editMemberIdNumber}
                       onChange={(e) => setEditMemberIdNumber(e.target.value)}
-                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs font-mono uppercase focus:outline-none"
+                      className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono uppercase dark:bg-slate-800 dark:text-white focus:outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
@@ -2304,14 +2374,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         placeholder="Role / Skill (e.g. Technician)"
                         value={editMemberRole}
                         onChange={(e) => setEditMemberRole(e.target.value)}
-                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none"
+                        className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none"
                       />
                     </div>
                     <div className="sm:col-span-4">
                       <button
                         type="button"
                         onClick={handleAddEditTeamMember}
-                        className="w-full py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                        className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Add Member</span>
@@ -2322,14 +2392,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                 {/* Existing members */}
                 {editingTeam.members && editingTeam.members.length > 0 ? (
-                  <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 bg-white rounded border border-slate-200 p-1">
+                  <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-1.5">
                     {editingTeam.members.map((m, idx) => (
-                      <div key={m.id} className="flex items-center justify-between px-2 py-1 text-xs">
+                      <div key={m.id} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}.</span>
                           <div className="truncate">
-                            <span className="font-semibold text-slate-900">{m.name}</span>
-                            <span className="ml-1.5 font-mono text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            <span className="font-semibold text-slate-900 dark:text-slate-200">{m.name}</span>
+                            <span className="ml-2 font-mono text-[10px] text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
                               {m.idNumber}
                             </span>
                             {m.role && <span className="ml-1 text-[10px] text-slate-500">({m.role})</span>}
@@ -2338,7 +2408,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         <button
                           type="button"
                           onClick={() => handleRemoveEditTeamMember(m.id)}
-                          className="text-slate-400 hover:text-rose-600 p-0.5 ml-2 cursor-pointer"
+                          className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 cursor-pointer"
                           title="Remove member"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -2347,7 +2417,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-slate-400 italic text-center py-1">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center py-1">
                     No members roster added yet.
                   </p>
                 )}
@@ -2355,38 +2425,38 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Crew Size (Persons)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Crew Size (Persons)</label>
                   <input
                     type="number"
                     min="1"
                     value={editingTeam.crewSize}
                     onChange={(e) => setEditingTeam({ ...editingTeam, crewSize: Number(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
                   <input
                     type="text"
                     value={editingTeam.contactPhone}
                     onChange={(e) => setEditingTeam({ ...editingTeam, contactPhone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingTeam(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   Save Team Changes
                 </button>
