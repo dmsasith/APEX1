@@ -3234,13 +3234,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Master Registrations (Create)
   const addSite = (siteData: Omit<Site, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>): Site => {
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const newSite: Site = {
       ...siteData,
       id: `site-${Date.now()}`,
       createdAt: new Date().toISOString(),
       isDeleted: false,
     };
-    setSites((prev) => [...prev, newSite]);
+    setSites((prev) => {
+      const updated = [...prev, newSite];
+      saveTenantData(activeTenantId, 'sites', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeSitesToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     addAuditLog('MASTER_SITE_CREATED', newSite.name, newSite.name, `New site registered: ${newSite.name} (${newSite.location})`);
     return newSite;
   };
@@ -3272,6 +3281,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     itemData: Omit<Item, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>,
     initialReceivedQty?: number
   ): Item => {
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const upperCode = (itemData.itemCode || '').trim().toUpperCase();
     const existingIndex = items.findIndex(
       (i) => !i.isDeleted && i.itemCode.toUpperCase() === upperCode
@@ -3292,6 +3302,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setItems((prevItems) => {
         const next = [...prevItems];
         next[existingIndex] = savedItem;
+        saveTenantData(activeTenantId, 'items', next);
+        const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+        if (isMaster) {
+          writeItemsToFirebase(next).catch(console.warn);
+        }
         return next;
       });
       addAuditLog(
@@ -3309,7 +3324,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         createdAt: new Date().toISOString(),
         isDeleted: false,
       };
-      setItems((prev) => [...prev, savedItem]);
+      setItems((prev) => {
+        const updated = [...prev, savedItem];
+        saveTenantData(activeTenantId, 'items', updated);
+        const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+        if (isMaster) {
+          writeItemsToFirebase(updated).catch(console.warn);
+        }
+        return updated;
+      });
       addAuditLog(
         'MASTER_ITEM_CREATED',
         savedItem.itemCode,
@@ -3458,7 +3481,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: new Date().toISOString(),
       isDeleted: false,
     };
-    setTeams((prev) => [...prev, newTeam]);
+    setTeams((prev) => {
+      const updated = [...prev, newTeam];
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     const siteName = sites.find((s) => s.id === newTeam.assignedSiteId)?.name || 'Unassigned';
     addAuditLog(
       'MASTER_TEAM_CREATED',
@@ -3472,6 +3503,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const addProject = (
     projectData: Omit<Project, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>
   ): Project => {
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const pId = (projectData.projectId || '').trim().toUpperCase();
     const newProject: Project = {
       ...projectData,
@@ -3480,7 +3512,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: new Date().toISOString(),
       isDeleted: false,
     };
-    setProjects((prev) => [...prev, newProject]);
+    setProjects((prev) => {
+      const updated = [...prev, newProject];
+      saveTenantData(activeTenantId, 'projects', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeProjectsToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     addAuditLog(
       'PROJECT_CREATED',
       newProject.projectId,
