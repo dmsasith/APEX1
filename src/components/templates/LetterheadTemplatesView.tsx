@@ -709,7 +709,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                           />
                         </div>
                         <div className="text-[11px] text-slate-500 leading-relaxed sm:pt-4">
-                          Renders inside an official black oval badge (e.g., <span className="font-mono font-bold">COM</span>, <span className="font-mono font-bold">CTS</span>, <span className="font-mono font-bold">SLT</span>) next to the company title.
+                          Renders inside an official black oval badge (e.g., <span className="font-mono font-bold">COM</span>, <span className="font-mono font-bold">CTS</span>, <span className="font-mono font-bold">HQ</span>) next to the company title.
                         </div>
                       </div>
                     ) : (

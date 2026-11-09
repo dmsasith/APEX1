@@ -9,6 +9,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { MainStockView } from './components/mainStock/MainStockView';
+import { ClientFreeIssueView } from './components/mainStock/ClientFreeIssueView';
 import { MasterRegistrationsView } from './components/registrations/MasterRegistrationsView';
 import { StockRequestsView } from './components/requests/StockRequestsView';
 import { IssueToTeamsView } from './components/dispatch/IssueToTeamsView';
@@ -65,6 +66,10 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         return <ItemsManagementView initialType="Machinery" />;
       case 'main-stock':
         return <MainStockView />;
+      case 'client-free-stock':
+      case 'client-free-issue':
+      case 'foc-stock':
+        return <ClientFreeIssueView />;
       case 'procurement':
       case 'purchase-orders':
         return <ProcurementView />;
@@ -137,6 +142,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
           { id: 'dashboard', label: 'Dashboard' },
           ...(isCentralAdmin ? [{ id: 'registrations', label: 'Master Setup' }] : []),
           { id: 'main-stock', label: '1. Main Stock' },
+          { id: 'client-free-stock', label: 'Client Free Stock' },
           ...(isCentralAdmin ? [{ id: 'procurement', label: 'Supplier PO' }] : []),
           { id: 'items', label: 'Items & Catalog' },
           { id: 'requests', label: '2. Site Requests' },

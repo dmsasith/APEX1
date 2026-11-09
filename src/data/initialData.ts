@@ -13,6 +13,8 @@ import {
   PurchaseOrder,
   Tenant,
   ProjectType,
+  ClientFreeIssueEntry,
+  Client,
 } from '../types';
 
 export const DEFAULT_TENANT: Tenant = {
@@ -117,6 +119,8 @@ export const INITIAL_BACKUPS: any[] = [];
 export const INITIAL_SUPPLIERS: Supplier[] = [];
 export const INITIAL_PURCHASE_ORDERS: PurchaseOrder[] = [];
 export const INITIAL_SUPPLIER_RETURNS: any[] = [];
+export const INITIAL_CLIENT_FREE_ISSUES: ClientFreeIssueEntry[] = [];
+export const INITIAL_CLIENTS: Client[] = [];
 
 export const DEFAULT_LETTERHEAD_TEMPLATES = [
   {

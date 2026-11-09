@@ -27,9 +27,11 @@ import {
   ChevronRight,
   Warehouse,
   Target,
+  Briefcase,
+  Handshake,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { UserRole, Item, Site, User as UserType, Team, TeamMember, isSuperAdmin, isCentralOrAllSiteAdmin, normalizeRole } from '../../types';
+import { UserRole, Item, Site, User as UserType, Team, TeamMember, Client, isSuperAdmin, isCentralOrAllSiteAdmin, normalizeRole } from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
 import {
   isMachineryItem,
@@ -40,7 +42,7 @@ import {
 import { ConfirmModal } from '../common/ConfirmModal';
 
 interface MasterRegistrationsViewProps {
-  initialTab?: 'items' | 'sites' | 'users' | 'teams';
+  initialTab?: 'items' | 'sites' | 'users' | 'teams' | 'clients';
 }
 
 export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = ({ initialTab = 'items' }) => {
@@ -75,6 +77,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     clearAllUsers,
     clearAllTeams,
     getMainWarehouseStock,
+    activeClients,
+    clients,
+    addClient,
+    updateClient,
+    deleteClient,
     setCurrentUser,
     currentTenant,
     getWorkspaceLoginUrl,
@@ -82,7 +89,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   const isCentralAdmin = isSuperAdmin(currentUser.role) || currentUser.username === 'admin';
 
-  const [activeTab, setActiveTab] = useState<'items' | 'sites' | 'users' | 'teams'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'items' | 'sites' | 'users' | 'teams' | 'clients'>(initialTab);
 
   React.useEffect(() => {
     if (initialTab) {
@@ -216,8 +223,6 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     }
 
     const finalUnit = itemUnit === 'custom' ? customUnit.trim() || 'units' : itemUnit;
-    const targetProject = activeProjects.find((p) => p.id === reservedProjectId);
-    const isReserved = reservedProjectId !== 'none' && !!targetProject;
 
     addItem(
       {
@@ -228,18 +233,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         unit: finalUnit,
         unitPrice: Number(itemPrice) || 0,
         lowStockThreshold: Number(itemThreshold) || config.defaultLowStockThreshold,
-        reservedProjectId: isReserved ? targetProject?.id : undefined,
-        reservedProjectName: isReserved ? (targetProject?.projectName || targetProject?.projectId) : undefined,
-        isProjectReserved: isReserved,
       },
       initialReceivedQty ? Number(initialReceivedQty) : 0
     );
 
-    showToast(
-      `Master Item ${upperCode} registered successfully!${
-        isReserved ? ` (Reserved for ${targetProject?.projectName})` : ''
-      }`
-    );
+    showToast(`Master Item ${upperCode} registered successfully!`);
     setItemCode('');
     setItemName('');
     setInitialReceivedQty('');
@@ -660,6 +658,169 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     });
   };
 
+  // --- CLIENT REGISTRATION & DIRECTORY STATE ---
+  const STANDARD_CLIENT_CATEGORIES = [
+    'Telecom Operator & Network Owner',
+    'Power & Energy Utility Board',
+    'Civil Infrastructure Authority',
+    'Main EPC Contractor / Developer',
+    'Commercial Project Owner',
+    'Government & Municipal Body',
+    'Water & Sewage Utility',
+    'Transportation & Ports Authority',
+  ];
+
+  const [customClientCategories, setCustomClientCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('custom_client_categories');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [showAddClientCategoryModal, setShowAddClientCategoryModal] = useState(false);
+  const [newCustomClientCategoryName, setNewCustomClientCategoryName] = useState('');
+
+  const [clientCodeInput, setClientCodeInput] = useState('');
+  const [clientNameInput, setClientNameInput] = useState('');
+  const [clientCategoryInput, setClientCategoryInput] = useState('Telecom Operator & Network Owner');
+  const [clientContactPersonInput, setClientContactPersonInput] = useState('');
+  const [clientEmailInput, setClientEmailInput] = useState('');
+  const [clientPhoneInput, setClientPhoneInput] = useState('');
+  const [clientAddressInput, setClientAddressInput] = useState('');
+  const [clientTaxNoInput, setClientTaxNoInput] = useState('');
+  const [clientNotesInput, setClientNotesInput] = useState('');
+
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [clientCategoryFilter, setClientCategoryFilter] = useState('all');
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+
+  const allClientCategories = Array.from(
+    new Set([
+      ...STANDARD_CLIENT_CATEGORIES,
+      ...customClientCategories,
+      ...activeClients
+        .filter((c) => c.category)
+        .map((c) => c.category!.trim()),
+    ])
+  );
+
+  const handleAddCustomClientCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCustomClientCategoryName.trim();
+    if (!trimmed) return;
+
+    if (allClientCategories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      showToast(`Industry Category "${trimmed}" already exists.`);
+      setClientCategoryInput(trimmed);
+      setNewCustomClientCategoryName('');
+      setShowAddClientCategoryModal(false);
+      return;
+    }
+
+    const updated = [...customClientCategories, trimmed];
+    setCustomClientCategories(updated);
+    try {
+      localStorage.setItem('custom_client_categories', JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
+    setClientCategoryInput(trimmed);
+    showToast(`New Industry Category "${trimmed}" created & selected!`);
+    setNewCustomClientCategoryName('');
+    setShowAddClientCategoryModal(false);
+  };
+
+  const handleRemoveCustomClientCategory = (catToRemove: string) => {
+    const updated = customClientCategories.filter((c) => c !== catToRemove);
+    setCustomClientCategories(updated);
+    try {
+      localStorage.setItem('custom_client_categories', JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
+    if (clientCategoryInput === catToRemove) {
+      setClientCategoryInput(STANDARD_CLIENT_CATEGORIES[0]);
+    }
+    showToast(`Industry Category "${catToRemove}" removed.`);
+  };
+
+  const handleCreateClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientNameInput.trim()) return;
+
+    const newClt = addClient({
+      clientCode: clientCodeInput.trim() || undefined,
+      name: clientNameInput.trim(),
+      category: clientCategoryInput.trim(),
+      contactPerson: clientContactPersonInput.trim() || undefined,
+      email: clientEmailInput.trim() || undefined,
+      phone: clientPhoneInput.trim() || undefined,
+      address: clientAddressInput.trim() || undefined,
+      taxRegistrationNo: clientTaxNoInput.trim() || undefined,
+      notes: clientNotesInput.trim() || undefined,
+    });
+
+    showToast(`Master Client "${newClt.name}" (${newClt.clientCode}) registered successfully!`);
+    setClientCodeInput('');
+    setClientNameInput('');
+    setClientContactPersonInput('');
+    setClientEmailInput('');
+    setClientPhoneInput('');
+    setClientAddressInput('');
+    setClientTaxNoInput('');
+    setClientNotesInput('');
+  };
+
+  const handleUpdateClientSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingClient || !editingClient.name.trim()) return;
+
+    updateClient(editingClient.id, {
+      name: editingClient.name.trim(),
+      category: editingClient.category?.trim(),
+      contactPerson: editingClient.contactPerson?.trim(),
+      email: editingClient.email?.trim(),
+      phone: editingClient.phone?.trim(),
+      address: editingClient.address?.trim(),
+      taxRegistrationNo: editingClient.taxRegistrationNo?.trim(),
+      notes: editingClient.notes?.trim(),
+    });
+
+    showToast(`Updated Master Client "${editingClient.name}" successfully!`);
+    setEditingClient(null);
+  };
+
+  const handleDeleteClientSingle = (client: Client) => {
+    setConfirmState({
+      isOpen: true,
+      title: `Delete Master Client "${client.name}"?`,
+      message: `Are you sure you want to delete client ${client.clientCode} (${client.name})?`,
+      confirmLabel: 'Delete Client',
+      onConfirm: () => {
+        deleteClient(client.id);
+        showToast(`Client "${client.name}" deleted successfully.`);
+      },
+    });
+  };
+
+  const handleBulkDeleteClients = () => {
+    if (selectedClientIds.length === 0) return;
+    setConfirmState({
+      isOpen: true,
+      title: `Delete ${selectedClientIds.length} Selected Clients?`,
+      message: `Are you sure you want to delete these ${selectedClientIds.length} registered clients?`,
+      confirmLabel: 'Delete Selected',
+      onConfirm: () => {
+        selectedClientIds.forEach((id) => deleteClient(id));
+        setSelectedClientIds([]);
+        showToast(`Deleted ${selectedClientIds.length} clients successfully.`);
+      },
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -742,6 +903,17 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             >
               <Users2 className={`w-4 h-4 ${activeTab === 'teams' ? 'text-emerald-600' : 'text-emerald-400'}`} />
               <span>Teams ({activeTeams.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('clients')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'clients'
+                  ? 'bg-white text-slate-950 shadow-md font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <Briefcase className={`w-4 h-4 ${activeTab === 'clients' ? 'text-emerald-600' : 'text-emerald-400'}`} />
+              <span>Clients / Principals ({activeClients.length})</span>
             </button>
           </div>
         </div>
@@ -1026,101 +1198,6 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
-              </div>
-
-              {/* Reserved Project Allocation */}
-              <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
-                    <Target className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>Project Reservation (Optional)</span>
-                  </label>
-                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
-                    Restricted Stock
-                  </span>
-                </div>
-
-                {reservedProjectId === 'none' ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-amber-300 dark:border-amber-800 text-xs">
-                      <span className="text-slate-700 dark:text-slate-300 font-medium">📦 Unrestricted General Stock (Available to All)</span>
-                      <button
-                        type="button"
-                        onClick={() => setReservedProjectId('')}
-                        className="text-[11px] font-bold text-amber-800 dark:text-amber-400 hover:underline cursor-pointer"
-                      >
-                        🔍 Search & Assign Project...
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {(() => {
-                      const selProj = activeProjects.find((p) => p.id === reservedProjectId);
-                      return (
-                        <div className="flex items-center justify-between p-2.5 bg-amber-100/80 dark:bg-amber-900/50 rounded-lg border border-amber-300 dark:border-amber-700 text-xs">
-                          <span className="font-bold text-amber-950 dark:text-amber-200 truncate">
-                            🎯 Reserved: {selProj?.projectName || reservedProjectId} ({selProj?.projectId})
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setReservedProjectId('none')}
-                            className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:underline cursor-pointer shrink-0 ml-2"
-                          >
-                            Clear / General
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {reservedProjectId === '' && (
-                  <div className="space-y-1.5 pt-1 animate-in fade-in">
-                    <input
-                      type="text"
-                      placeholder="Type project name, ID, or customer to search..."
-                      value={projectSearchQuery}
-                      onChange={(e) => setProjectSearchQuery(e.target.value)}
-                      className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg text-xs bg-white dark:bg-slate-900 dark:text-white focus:outline-none font-medium"
-                      autoFocus
-                    />
-                    <div className="max-h-36 overflow-y-auto space-y-1 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 rounded-lg p-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReservedProjectId('none');
-                          setProjectSearchQuery('');
-                        }}
-                        className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
-                        📦 Unrestricted General Stock
-                      </button>
-                      {activeProjects
-                        .filter((p) => {
-                          const q = projectSearchQuery.toLowerCase();
-                          return !q || p.projectName.toLowerCase().includes(q) || p.projectId.toLowerCase().includes(q) || (p.customerName || '').toLowerCase().includes(q);
-                        })
-                        .map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => {
-                              setReservedProjectId(p.id);
-                              setProjectSearchQuery('');
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 hover:bg-amber-50 dark:hover:bg-amber-950/60 rounded text-xs font-medium text-slate-900 dark:text-white flex items-center justify-between"
-                          >
-                            <span className="truncate pr-2">🎯 {p.projectName}</span>
-                            <span className="font-mono text-[10px] text-amber-700 dark:text-amber-400 font-bold shrink-0">{p.projectId}</span>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                )}
-                <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80 italic">
-                  When set, this item can only be consumed for the selected project unless authorized by Central Admin.
-                </p>
               </div>
 
               <div className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 rounded-xl">
@@ -2472,6 +2549,343 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         </div>
       )}
 
+      {/* TAB 5: ADD & MANAGE CLIENTS / PRINCIPALS */}
+      {activeTab === 'clients' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Client Creation Form */}
+          {isCentralAdmin ? (
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Register Master Client / Principal</h2>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">HQ Registry</span>
+              </div>
+
+              <form onSubmit={handleCreateClient} className="space-y-3.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Client Code</label>
+                    <input
+                      type="text"
+                      value={clientCodeInput}
+                      onChange={(e) => setClientCodeInput(e.target.value)}
+                      placeholder={`Auto e.g. CLT-${String(clients.length + 1).padStart(3, '0')}`}
+                      className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold bg-slate-50 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Industry Category *</label>
+                      {isCentralAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddClientCategoryModal(!showAddClientCategoryModal)}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/80 px-2 py-0.5 rounded-lg transition-all cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span>+ Add Category</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Add Custom Category Inline Sub-Form */}
+                    {isCentralAdmin && showAddClientCategoryModal && (
+                      <div className="mb-2 p-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900 dark:text-emerald-300">
+                          <span>Add New Industry Category (Admin)</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddClientCategoryModal(false)}
+                            className="text-emerald-700 hover:text-emerald-950 dark:hover:text-white p-0.5 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="e.g. Solar & Renewable Energy, Data Center"
+                            value={newCustomClientCategoryName}
+                            onChange={(e) => setNewCustomClientCategoryName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddCustomClientCategory(e);
+                              }
+                            }}
+                            className="flex-1 px-2.5 py-1.5 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomClientCategory}
+                            className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs shadow-2xs cursor-pointer active:scale-95"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <select
+                      value={clientCategoryInput}
+                      onChange={(e) => setClientCategoryInput(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      {allClientCategories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat} {customClientCategories.includes(cat) ? '(Custom)' : ''}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Manage Custom Category Tags */}
+                    {customClientCategories.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {customClientCategories.map((cat) => (
+                          <span
+                            key={cat}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                          >
+                            <span>{cat}</span>
+                            {isCentralAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCustomClientCategory(cat)}
+                                className="text-emerald-500 hover:text-rose-600 cursor-pointer ml-0.5"
+                                title={`Delete custom category "${cat}"`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Client / Principal Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={clientNameInput}
+                    onChange={(e) => setClientNameInput(e.target.value)}
+                    placeholder="e.g. National Telecom Infrastructure Operator"
+                    className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Primary Contact Person</label>
+                    <input
+                      type="text"
+                      value={clientContactPersonInput}
+                      onChange={(e) => setClientContactPersonInput(e.target.value)}
+                      placeholder="e.g. John Smith (Project Lead)"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tax / Reg Number</label>
+                    <input
+                      type="text"
+                      value={clientTaxNoInput}
+                      onChange={(e) => setClientTaxNoInput(e.target.value)}
+                      placeholder="e.g. TAX-99201-X"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                    <input
+                      type="text"
+                      value={clientPhoneInput}
+                      onChange={(e) => setClientPhoneInput(e.target.value)}
+                      placeholder="e.g. +1 555 019 2831"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Email</label>
+                    <input
+                      type="email"
+                      value={clientEmailInput}
+                      onChange={(e) => setClientEmailInput(e.target.value)}
+                      placeholder="e.g. projects@clientcorp.com"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Office Address</label>
+                  <input
+                    type="text"
+                    value={clientAddressInput}
+                    onChange={(e) => setClientAddressInput(e.target.value)}
+                    placeholder="Head office address"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Notes / Terms</label>
+                  <textarea
+                    rows={2}
+                    value={clientNotesInput}
+                    onChange={(e) => setClientNotesInput(e.target.value)}
+                    placeholder="Specific FOC material dispatch guidelines or contract terms..."
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Register Master Client</span>
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="lg:col-span-5 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-xs text-amber-900">
+              <Shield className="w-6 h-6 text-amber-600 mb-2" />
+              <h3 className="font-bold text-sm">Central Admin Required</h3>
+              <p className="mt-1">Only Central Super Admins can register new Master Clients to the system.</p>
+            </div>
+          )}
+
+          {/* Directory & Table */}
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Registered Clients & Principals</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono font-bold">
+                    {activeClients.length}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Master client directory for FOC material dispatches and project assignments</p>
+              </div>
+
+              {selectedClientIds.length > 0 && isCentralAdmin && (
+                <button
+                  onClick={handleBulkDeleteClients}
+                  className="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold hover:bg-rose-100 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Selected ({selectedClientIds.length})</span>
+                </button>
+              )}
+            </div>
+
+            {/* Filter bar */}
+            <div className="flex items-center gap-2.5">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search client code, name, contact..."
+                  value={clientSearchQuery}
+                  onChange={(e) => setClientSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            {/* Client List */}
+            {activeClients.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500">
+                <Handshake className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="font-bold text-slate-700 dark:text-slate-300">No Master Clients Registered Yet</p>
+                <p className="mt-1">Fill out the form on the left to add your first Client / Project Principal.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                {activeClients
+                  .filter((c) => {
+                    const q = clientSearchQuery.toLowerCase();
+                    return (
+                      !q ||
+                      c.clientCode.toLowerCase().includes(q) ||
+                      c.name.toLowerCase().includes(q) ||
+                      (c.contactPerson || '').toLowerCase().includes(q) ||
+                      (c.category || '').toLowerCase().includes(q)
+                    );
+                  })
+                  .map((c) => (
+                    <div
+                      key={c.id}
+                      className="p-4 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-emerald-400">
+                            {c.clientCode}
+                          </span>
+                          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {c.name}
+                          </h4>
+                          {c.category && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                              {c.category}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
+                          {c.contactPerson && (
+                            <span>Contact: <strong className="text-slate-800 dark:text-slate-200">{c.contactPerson}</strong></span>
+                          )}
+                          {c.phone && <span>Tel: {c.phone}</span>}
+                          {c.email && <span>Email: {c.email}</span>}
+                          {c.taxRegistrationNo && <span>Tax #: {c.taxRegistrationNo}</span>}
+                        </div>
+
+                        {c.address && (
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Address: {c.address}
+                          </div>
+                        )}
+                      </div>
+
+                      {isCentralAdmin && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => setEditingClient(c)}
+                            className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition-colors"
+                            title="Edit Client"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClientSingle(c)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer transition-colors"
+                            title="Delete Client"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* EDIT SITE MODAL */}
       {editingSite && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
@@ -2860,6 +3274,143 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   Save Team Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT CLIENT MODAL */}
+      {editingClient && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">Edit Client / Principal</h3>
+              </div>
+              <button onClick={() => setEditingClient(null)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateClientSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Client Code</label>
+                  <input
+                    type="text"
+                    value={editingClient.clientCode}
+                    disabled
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-100 dark:bg-slate-800 text-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Industry Category / Sector</label>
+                  <select
+                    value={editingClient.category || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, category: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
+                  >
+                    <option value="">General Sector</option>
+                    {allClientCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Client / Principal Name *</label>
+                <input
+                  type="text"
+                  value={editingClient.name}
+                  onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Person</label>
+                  <input
+                    type="text"
+                    value={editingClient.contactPerson || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, contactPerson: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                  <input
+                    type="text"
+                    value={editingClient.phone || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={editingClient.email || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tax / Reg No.</label>
+                  <input
+                    type="text"
+                    value={editingClient.taxRegistrationNo || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, taxRegistrationNo: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Address</label>
+                <input
+                  type="text"
+                  value={editingClient.address || ''}
+                  onChange={(e) => setEditingClient({ ...editingClient, address: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Notes</label>
+                <textarea
+                  rows={2}
+                  value={editingClient.notes || ''}
+                  onChange={(e) => setEditingClient({ ...editingClient, notes: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingClient(null)}
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                >
+                  Save Client Changes
                 </button>
               </div>
             </form>

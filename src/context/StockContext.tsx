@@ -38,6 +38,9 @@ import {
   ProjectType,
   ProjectTypeTemplateItem,
   CrossProjectOverrideRequest,
+  ClientFreeIssueEntry,
+  ClientFreeIssueItemRow,
+  Client,
   AuditAction,
   isSuperAdmin,
   normalizeRole,
@@ -63,6 +66,8 @@ import {
   INITIAL_SUPPLIERS,
   INITIAL_PURCHASE_ORDERS,
   INITIAL_SUPPLIER_RETURNS,
+  INITIAL_CLIENT_FREE_ISSUES,
+  INITIAL_CLIENTS,
   DEFAULT_TENANT,
   INITIAL_TENANTS,
 } from '../data/initialData';
@@ -164,6 +169,8 @@ interface StockContextType {
   auditLogs: AuditLogEntry[];
   suppliers: Supplier[];
   activeSuppliers: Supplier[];
+  clients: Client[];
+  activeClients: Client[];
   purchaseOrders: PurchaseOrder[];
   activePurchaseOrders: PurchaseOrder[];
   supplierReturns: SupplierReturn[];
@@ -173,6 +180,11 @@ interface StockContextType {
   addSupplier: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>) => Supplier;
   updateSupplier: (id: string, updates: Partial<Supplier>) => void;
   deleteSupplier: (id: string) => void;
+
+  // Client / Principal Management (Master Directory CRUD)
+  addClient: (client: Omit<Client, 'id' | 'clientCode' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'> & { clientCode?: string }) => Client;
+  updateClient: (id: string, updates: Partial<Client>) => void;
+  deleteClient: (id: string) => void;
 
   // Purchase Orders & Material Requests for Main Stock
   addPurchaseOrder: (po: Omit<PurchaseOrder, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>) => PurchaseOrder;
@@ -322,6 +334,29 @@ interface StockContextType {
   ) => CrossProjectOverrideRequest;
   acceptCrossProjectOverrideRequest: (requestId: string, adminNotes?: string) => void;
   rejectCrossProjectOverrideRequest: (requestId: string, adminNotes?: string) => void;
+
+  // Client Free-Issue Stock (Client / Principal Project Materials)
+  clientFreeIssues: ClientFreeIssueEntry[];
+  addClientFreeIssue: (
+    data: Omit<ClientFreeIssueEntry, 'id' | 'voucherNumber' | 'createdAt' | 'isDeleted'>
+  ) => ClientFreeIssueEntry;
+  updateClientFreeIssue: (id: string, updates: Partial<ClientFreeIssueEntry>) => void;
+  deleteClientFreeIssue: (id: string) => void;
+  clearClientFreeIssues: () => void;
+  getClientFreeStockBalance: (projectId: string, itemId: string) => {
+    totalReceived: number;
+    totalUsed: number;
+    remainingBalance: number;
+  };
+  getProjectFreeStockList: (projectId: string) => Array<{
+    itemId: string;
+    itemCode: string;
+    itemName: string;
+    unit: string;
+    totalReceived: number;
+    totalUsed: number;
+    remainingBalance: number;
+  }>;
 
   // Branch Stock Return (To Main Yard)
   returnStockFromBranchToMain: (
@@ -985,6 +1020,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [crossProjectRequests, setCrossProjectRequests] = useState<CrossProjectOverrideRequest[]>(() =>
     loadTenantData(currentTenantId, 'crossProjectRequests', [])
   );
+  const [clientFreeIssues, setClientFreeIssues] = useState<ClientFreeIssueEntry[]>(() =>
+    loadTenantData(currentTenantId, 'clientFreeIssues', isDefaultTenant ? INITIAL_CLIENT_FREE_ISSUES : [])
+  );
   const [branchReturns, setBranchReturns] = useState<BranchReturn[]>(() =>
     loadTenantData(currentTenantId, 'branchReturns', isDefaultTenant ? INITIAL_BRANCH_RETURNS : [])
   );
@@ -1015,6 +1053,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   );
   const [suppliers, setSuppliers] = useState<Supplier[]>(() =>
     loadTenantData(currentTenantId, 'suppliers', isDefaultTenant ? INITIAL_SUPPLIERS : [])
+  );
+  const [clients, setClients] = useState<Client[]>(() =>
+    loadTenantData(currentTenantId, 'clients', isDefaultTenant ? INITIAL_CLIENTS : [])
   );
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(() =>
     loadTenantData(currentTenantId, 'purchaseOrders', isDefaultTenant ? INITIAL_PURCHASE_ORDERS : [])
@@ -1113,11 +1154,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const loadedProjectTypes = loadTenantData<ProjectType[]>(tenantId, 'projectTypes', INITIAL_PROJECT_TYPES);
     const loadedUsages = loadTenantData<ProjectMaterialUsage[]>(tenantId, 'projectUsages', isDefault ? INITIAL_PROJECT_USAGES : []);
     const loadedOvr = loadTenantData<CrossProjectOverrideRequest[]>(tenantId, 'crossProjectRequests', []);
+    const loadedClientFreeIssues = loadTenantData<ClientFreeIssueEntry[]>(tenantId, 'clientFreeIssues', isDefault ? INITIAL_CLIENT_FREE_ISSUES : []);
     const loadedBranchReturns = loadTenantData<BranchReturn[]>(tenantId, 'branchReturns', isDefault ? INITIAL_BRANCH_RETURNS : []);
     const loadedRestorations = loadTenantData<DamagedStockRestoration[]>(tenantId, 'damagedRestorations', []);
     const loadedBackups = loadTenantData<StockBackup[]>(tenantId, 'backups', isDefault ? INITIAL_BACKUPS : []);
     const loadedAuditLogs = loadTenantData<AuditLogEntry[]>(tenantId, 'auditLogs', isDefault ? INITIAL_AUDIT_LOGS : []);
     const loadedSuppliers = loadTenantData<Supplier[]>(tenantId, 'suppliers', isDefault ? INITIAL_SUPPLIERS : []);
+    const loadedClients = loadTenantData<Client[]>(tenantId, 'clients', isDefault ? INITIAL_CLIENTS : []);
     const loadedPOs = loadTenantData<PurchaseOrder[]>(tenantId, 'purchaseOrders', isDefault ? INITIAL_PURCHASE_ORDERS : []);
     const loadedSupplierReturns = loadTenantData<SupplierReturn[]>(tenantId, 'supplierReturns', isDefault ? INITIAL_SUPPLIER_RETURNS : []);
     const loadedTemplates = loadTenantData<LetterheadTemplate[]>(tenantId, 'letterheadTemplates', DEFAULT_LETTERHEAD_TEMPLATES);
@@ -1136,11 +1179,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setProjectTypes(loadedProjectTypes);
     setProjectUsages(loadedUsages);
     setCrossProjectRequests(loadedOvr);
+    setClientFreeIssues(loadedClientFreeIssues);
     setBranchReturns(loadedBranchReturns);
     setDamagedRestorations(loadedRestorations);
     setBackups(loadedBackups);
     setAuditLogs(loadedAuditLogs);
     setSuppliers(loadedSuppliers);
+    setClients(loadedClients);
     setPurchaseOrders(loadedPOs);
     setSupplierReturns(loadedSupplierReturns);
     setLetterheadTemplates(loadedTemplates);
@@ -2513,6 +2558,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const activeProjects = useMemo(() => projects.filter((p) => !p.isDeleted), [projects]);
   const activeProjectTypes = useMemo(() => projectTypes.filter((pt) => !pt.isDeleted), [projectTypes]);
   const activeSuppliers = useMemo(() => suppliers.filter((s) => !s.isDeleted), [suppliers]);
+  const activeClients = useMemo(() => clients.filter((c) => !c.isDeleted), [clients]);
   const activePurchaseOrders = useMemo(() => purchaseOrders.filter((po) => !po.isDeleted), [purchaseOrders]);
   const activeSupplierReturns = useMemo(() => supplierReturns.filter((r) => !r.isDeleted), [supplierReturns]);
 
@@ -2537,6 +2583,71 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const deleteSupplier = (id: string) => {
     setSuppliers((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  // Client / Principal Management (CRUD)
+  const addClient = (
+    clientData: Omit<Client, 'id' | 'clientCode' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'> & { clientCode?: string }
+  ): Client => {
+    const nextNum = clients.length + 1;
+    const clientCode = clientData.clientCode?.trim() || `CLT-${String(nextNum).padStart(3, '0')}`;
+    const newClient: Client = {
+      ...clientData,
+      id: `clt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      clientCode,
+      createdAt: new Date().toISOString(),
+      isDeleted: false,
+    };
+    setClients((prev) => {
+      const next = [newClient, ...prev];
+      saveToStorage('clients', next);
+      saveTenantData(currentTenantIdRef.current, 'clients', next);
+      return next;
+    });
+
+    addAuditLog(
+      'CONFIG_CHANGED',
+      newClient.clientCode,
+      'System Master Registry',
+      `Registered new Master Client / Principal "${newClient.name}" (${newClient.clientCode})`
+    );
+    return newClient;
+  };
+
+  const updateClient = (id: string, updates: Partial<Client>) => {
+    setClients((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...updates } : c));
+      saveToStorage('clients', next);
+      saveTenantData(currentTenantIdRef.current, 'clients', next);
+      return next;
+    });
+    const c = clients.find((x) => x.id === id);
+    if (c) {
+      addAuditLog(
+        'CONFIG_CHANGED',
+        c.clientCode,
+        'System Master Registry',
+        `Updated details for Master Client / Principal "${updates.name || c.name}"`
+      );
+    }
+  };
+
+  const deleteClient = (id: string) => {
+    const c = clients.find((x) => x.id === id);
+    setClients((prev) => {
+      const next = prev.filter((x) => x.id !== id);
+      saveToStorage('clients', next);
+      saveTenantData(currentTenantIdRef.current, 'clients', next);
+      return next;
+    });
+    if (c) {
+      addAuditLog(
+        'RECORD_DELETED',
+        c.clientCode,
+        'System Master Registry',
+        `Deleted Master Client / Principal "${c.name}" (${c.clientCode})`
+      );
+    }
   };
 
   // Purchase Orders & Material Requests for Main Stock
@@ -2628,6 +2739,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               quantity: actualReceive,
               unitCost: currentItem.unitPrice,
               notes: `Batch delivery receipt against PO #${po.poNumber} (${batchGrnNumber}). DN: ${batchReceipt.deliveryNoteNo || 'N/A'}. ${batchReceipt.notes || ''}`.trim(),
+              reservedProjectId: po.reservedProjectId,
+              reservedProjectName: po.reservedProjectName,
             });
 
             grnReceivedItems.push({
@@ -2662,6 +2775,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             quantity: remaining,
             unitCost: it.unitPrice,
             notes: `Full goods receipt against PO #${po.poNumber}. Payment terms: ${po.paymentTerms || 'Standard'}.`,
+            reservedProjectId: po.reservedProjectId,
+            reservedProjectName: po.reservedProjectName,
           });
 
           grnReceivedItems.push({
@@ -4461,6 +4576,132 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
+  // Client Free-Issue Stock (Client / Principal Project Materials)
+  const addClientFreeIssue = (
+    data: Omit<ClientFreeIssueEntry, 'id' | 'voucherNumber' | 'createdAt' | 'isDeleted'>
+  ): ClientFreeIssueEntry => {
+    const nextNum = clientFreeIssues.length + 1;
+    const voucherNumber = `FOC-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
+    const newEntry: ClientFreeIssueEntry = {
+      ...data,
+      id: `foc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      voucherNumber,
+      createdAt: new Date().toISOString(),
+      isDeleted: false,
+    };
+    setClientFreeIssues((prev) => {
+      const next = [newEntry, ...prev];
+      saveToStorage('clientFreeIssues', next);
+      saveTenantData(currentTenantIdRef.current, 'clientFreeIssues', next);
+      return next;
+    });
+
+    const totalQty = newEntry.items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+    addAuditLog(
+      'CLIENT_FREE_ISSUE_RECEIVED',
+      voucherNumber,
+      newEntry.storageLocation || 'Main Warehouse',
+      `Received Client Free-Issue Stock: ${totalQty} units across ${newEntry.items.length} item(s) from "${newEntry.clientName}" for Project "${newEntry.projectName}" (Dispatch Note: ${newEntry.dispatchNoteNo})`
+    );
+    return newEntry;
+  };
+
+  const updateClientFreeIssue = (id: string, updates: Partial<ClientFreeIssueEntry>) => {
+    setClientFreeIssues((prev) => {
+      const next = prev.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry));
+      saveToStorage('clientFreeIssues', next);
+      saveTenantData(currentTenantIdRef.current, 'clientFreeIssues', next);
+      return next;
+    });
+    const entry = clientFreeIssues.find((e) => e.id === id);
+    if (entry) {
+      addAuditLog(
+        'CLIENT_FREE_ISSUE_RECEIVED',
+        entry.voucherNumber,
+        entry.storageLocation || 'Main Warehouse',
+        `Updated Client Free-Issue Stock voucher ${entry.voucherNumber} for Project "${entry.projectName}"`
+      );
+    }
+  };
+
+  const deleteClientFreeIssue = (id: string) => {
+    const entry = clientFreeIssues.find((e) => e.id === id);
+    setClientFreeIssues((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      saveToStorage('clientFreeIssues', next);
+      saveTenantData(currentTenantIdRef.current, 'clientFreeIssues', next);
+      return next;
+    });
+    if (entry) {
+      addAuditLog(
+        'CLIENT_FREE_ISSUE_DELETED',
+        entry.voucherNumber,
+        entry.storageLocation || 'Main Warehouse',
+        `Deleted Client Free-Issue Stock voucher ${entry.voucherNumber} (${entry.clientName} for Project "${entry.projectName}")`
+      );
+    }
+  };
+
+  const clearClientFreeIssues = () => {
+    setClientFreeIssues([]);
+    saveToStorage('clientFreeIssues', []);
+    saveTenantData(currentTenantIdRef.current, 'clientFreeIssues', []);
+  };
+
+  const getClientFreeStockBalance = (projectId: string, itemId: string) => {
+    const totalReceived = clientFreeIssues
+      .filter((e) => !e.isDeleted && e.projectId === projectId)
+      .reduce((sum, entry) => {
+        const row = entry.items.find((it) => it.itemId === itemId);
+        return sum + (row ? Number(row.quantity) || 0 : 0);
+      }, 0);
+
+    const totalUsed = projectUsages
+      .filter((u) => u.projectId === projectId)
+      .reduce((sum, usage) => {
+        const row = usage.items.find((it) => it.itemId === itemId);
+        return sum + (row ? Number(row.quantity) || 0 : 0);
+      }, 0);
+
+    const remainingBalance = Math.max(0, totalReceived - totalUsed);
+    return { totalReceived, totalUsed, remainingBalance };
+  };
+
+  const getProjectFreeStockList = (projectId: string) => {
+    const itemMap = new Map<string, { itemId: string; itemCode: string; itemName: string; unit: string; totalReceived: number }>();
+    clientFreeIssues
+      .filter((e) => !e.isDeleted && e.projectId === projectId)
+      .forEach((entry) => {
+        entry.items.forEach((it) => {
+          const existing = itemMap.get(it.itemId);
+          if (existing) {
+            existing.totalReceived += Number(it.quantity) || 0;
+          } else {
+            itemMap.set(it.itemId, {
+              itemId: it.itemId,
+              itemCode: it.itemCode || '',
+              itemName: it.itemName || '',
+              unit: it.unit || 'units',
+              totalReceived: Number(it.quantity) || 0,
+            });
+          }
+        });
+      });
+
+    return Array.from(itemMap.values()).map((info) => {
+      const balance = getClientFreeStockBalance(projectId, info.itemId);
+      return {
+        itemId: info.itemId,
+        itemCode: info.itemCode,
+        itemName: info.itemName,
+        unit: info.unit,
+        totalReceived: info.totalReceived,
+        totalUsed: balance.totalUsed,
+        remainingBalance: balance.remainingBalance,
+      };
+    });
+  };
+
   const updateProjectUsage = (id: string, updates: Partial<ProjectMaterialUsage>) => {
     setProjectUsages((prev) =>
       prev.map((pu) => (pu.id === id ? { ...pu, ...updates } : pu))
@@ -5355,6 +5596,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         createCrossProjectOverrideRequest,
         acceptCrossProjectOverrideRequest,
         rejectCrossProjectOverrideRequest,
+        clientFreeIssues,
+        addClientFreeIssue,
+        updateClientFreeIssue,
+        deleteClientFreeIssue,
+        clearClientFreeIssues,
+        getClientFreeStockBalance,
+        getProjectFreeStockList,
         returnStockFromBranchToMain,
         deleteBranchReturn,
         clearBranchReturns,
@@ -5404,6 +5652,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addSupplier,
         updateSupplier,
         deleteSupplier,
+        clients,
+        activeClients,
+        addClient,
+        updateClient,
+        deleteClient,
         purchaseOrders,
         activePurchaseOrders,
         addPurchaseOrder,

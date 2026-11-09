@@ -162,6 +162,8 @@ export interface MainStockEntry {
   unitCost: number;
   notes: string;
   receivedBy: string;
+  reservedProjectId?: string;
+  reservedProjectName?: string;
 }
 
 export type RequestStatus = 
@@ -288,6 +290,8 @@ export type AuditAction =
   | 'PROJECT_DELETED'
   | 'PROJECT_MATERIAL_USED'
   | 'RESERVED_ITEM_CROSS_PROJECT_OVERRIDE'
+  | 'CLIENT_FREE_ISSUE_RECEIVED'
+  | 'CLIENT_FREE_ISSUE_DELETED'
   | 'BRANCH_RETURN_TO_MAIN'
   | 'DAMAGED_STOCK_RESTORED'
   | 'SUPPLIER_RETURN_CREATED'
@@ -299,6 +303,10 @@ export type AuditAction =
   | 'BACKUP_RESTORED'
   | 'TEMPLATE_UPDATED'
   | 'TENANT_REGISTERED'
+  | 'CONFIG_CHANGED'
+  | 'CLIENT_CREATED'
+  | 'CLIENT_UPDATED'
+  | 'CLIENT_DELETED'
   | 'OTHER';
 
 export type RecycleEntityType = 'item' | 'site' | 'user' | 'team' | 'project';
@@ -365,6 +373,52 @@ export interface ProjectMaterialUsage {
   workDetails: string;
   items: ProjectUsageItemRow[];
   isDeleted?: boolean;
+}
+
+export interface Client {
+  id: string;
+  clientCode: string; // e.g. CLT-001
+  name: string;
+  category?: string; // e.g. Telecom Operator, Power Utility, Civil Infrastructure, EPC Main Contractor
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  taxRegistrationNo?: string;
+  notes?: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export interface ClientFreeIssueItemRow {
+  itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  unit?: string;
+  quantity: number;
+  remarks?: string;
+  notes?: string;
+}
+
+export interface ClientFreeIssueEntry {
+  id: string;
+  voucherNumber: string; // e.g. FOC-2026-0001
+  clientName: string; // e.g. Telecommunications Operator, Utility Owner, Main Contractor, etc.
+  projectId: string;
+  projectName: string;
+  siteIdentifier?: string;
+  dispatchNoteNo?: string; // Client Gate Pass / Dispatch Note Number
+  receivedDate: string;
+  receivedBy: string;
+  storageLocation?: string; // Central Yard, Site Branch, etc.
+  items: ClientFreeIssueItemRow[];
+  notes?: string;
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface BranchReturn {
@@ -587,6 +641,8 @@ export interface PurchaseOrder {
   notes?: string;
   preparedBy: string;
   approvedBy?: string;
+  reservedProjectId?: string;
+  reservedProjectName?: string;
   receivedDate?: string;
   receivedBy?: string;
   receiptHistory?: GoodsReceiptRecord[];

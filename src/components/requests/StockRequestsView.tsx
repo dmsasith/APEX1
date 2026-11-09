@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ArrowRightLeft,
   Plus,
@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { StockTransferRequest, RequestPriority, Item, isCentralOrAllSiteAdmin } from '../../types';
+import { StockTransferRequest, RequestPriority, Item, isCentralOrAllSiteAdmin, ClientFreeIssueEntry, ClientFreeIssueItemRow } from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -42,12 +42,44 @@ export const StockRequestsView: React.FC = () => {
     deleteStockRequest,
     clearStockRequests,
     getMainWarehouseStock,
+    clientFreeIssues,
+    getClientFreeStockBalance,
   } = useStock();
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [selectedRequestForPrint, setSelectedRequestForPrint] = useState<StockTransferRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in-transit' | 'accepted' | 'rejected'>('all');
   const [tableSearchQuery, setTableSearchQuery] = useState('');
+  const [activeViewTab, setActiveViewTab] = useState<'requests' | 'foc-materials'>('requests');
+
+  const isCentralAdmin =
+    isCentralOrAllSiteAdmin(currentUser.role) ||
+    currentUser.username === 'admin' ||
+    currentUser.siteId === 'all' ||
+    activeSites.find((s) => s.id === currentUser.siteId)?.isMainWarehouse === true;
+
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
+
+  // Filter client FOC materials by selected branch / user site
+  const filteredClientFocMaterials = useMemo(() => {
+    return (clientFreeIssues || []).filter((v) => {
+      if (v.isDeleted) return false;
+      if (isCentralAdmin) {
+        if (selectedBranchFilter !== 'all') {
+          const targetSite = sites.find((s) => s.id === selectedBranchFilter);
+          if (!targetSite) return true;
+          const matchLoc = v.storageLocation && v.storageLocation.trim().toLowerCase() === targetSite.name.trim().toLowerCase();
+          return matchLoc;
+        }
+        return true;
+      } else {
+        const userSite = sites.find((s) => s.id === currentUser.siteId);
+        if (!userSite) return true;
+        const matchLoc = v.storageLocation && v.storageLocation.trim().toLowerCase() === userSite.name.trim().toLowerCase();
+        return matchLoc;
+      }
+    });
+  }, [clientFreeIssues, isCentralAdmin, selectedBranchFilter, currentUser.siteId, sites]);
 
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
@@ -109,12 +141,6 @@ export const StockRequestsView: React.FC = () => {
       : reqModalTab === 'Machinery'
       ? machineryRowsWithIndex
       : rows.map((r, index) => ({ row: r, index, item: items.find((i) => i.id === r.itemId) }));
-
-  const isCentralAdmin =
-    isCentralOrAllSiteAdmin(currentUser.role) ||
-    currentUser.username === 'admin' ||
-    currentUser.siteId === 'all' ||
-    activeSites.find((s) => s.id === currentUser.siteId)?.isMainWarehouse === true;
 
   const handleClearFormFields = () => {
     setPurpose('');
@@ -332,8 +358,6 @@ export const StockRequestsView: React.FC = () => {
     setAcceptingRequest(null);
   };
 
-  const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
-
   // Filter requests based on user role, branch filter, and search query
   const visibleRequests = stockRequests.filter((req) => {
     if (isCentralAdmin) {
@@ -410,7 +434,145 @@ export const StockRequestsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Workflow Tabs: Dedicated Pending Approval Routing + Branch Filter */}
+      {/* Main View Tabs: Requisitions vs Client FOC Materials */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setActiveViewTab('requests')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeViewTab === 'requests'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
+            <span>Stock Transfer Requisitions ({stockRequests.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveViewTab('foc-materials')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeViewTab === 'foc-materials'
+                ? 'bg-white text-indigo-950 shadow-2xs font-bold'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-indigo-600">🎁</span>
+            <span>Client FOC Materials ({clientFreeIssues?.filter(e => !e.isDeleted).length || 0})</span>
+          </button>
+        </div>
+      </div>
+
+      {activeViewTab === 'foc-materials' && (
+        <div className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                🎁
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-indigo-950">
+                  Client Free-Issue (FOC) Materials Shipments
+                </h3>
+                <p className="text-xs text-indigo-800">
+                  Client-supplied materials registered for branch sites. Maintained completely separate from standard warehouse inventory transfer requisitions.
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 bg-white text-indigo-900 border border-indigo-300 rounded-lg text-xs font-bold font-mono">
+              {filteredClientFocMaterials.length} Shipment(s)
+            </span>
+          </div>
+
+          {filteredClientFocMaterials.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center mx-auto mb-3 text-xl">
+                🎁
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">
+                No Client FOC Materials Found
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                No client free-issue material entries match your branch filter. Register FOC shipments from Main Stock &gt; Client FOC Materials.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredClientFocMaterials.map((foc: ClientFreeIssueEntry) => (
+                <div key={foc.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs bg-indigo-900 text-white px-2.5 py-1 rounded">
+                        {foc.voucherNumber}
+                      </span>
+                      <span className="text-xs font-bold text-slate-900">
+                        Client: <span className="text-indigo-700">{foc.clientName}</span>
+                      </span>
+                      <span aria-hidden="true" className="text-slate-300">·</span>
+                      <span className="text-xs text-slate-600">Project: {foc.projectName}</span>
+                      <span aria-hidden="true" className="text-slate-300">·</span>
+                      <span className="text-xs font-semibold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                        Site / Location: {foc.storageLocation}
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-500 font-mono">
+                      {formatDateTime(foc.receivedDate || foc.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3">Item Code</th>
+                          <th className="py-2.5 px-3">Material Description</th>
+                          <th className="py-2.5 px-3 text-center">Unit</th>
+                          <th className="py-2.5 px-3 text-right">FOC Received Qty</th>
+                          <th className="py-2.5 px-3 text-right">Remaining Bal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {foc.items.map((row: ClientFreeIssueItemRow, idx: number) => {
+                          const itm = items.find((i) => i.id === row.itemId);
+                          const bal = getClientFreeStockBalance(foc.projectId, row.itemId);
+                          return (
+                            <tr key={idx} className="bg-white">
+                              <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                {itm?.itemCode || 'ITEM'}
+                              </td>
+                              <td className="py-2.5 px-3 font-medium text-slate-800">
+                                {itm?.itemName || 'Material Item'}
+                              </td>
+                              <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
+                                {formatNumber(row.quantity)} {itm?.unit}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
+                                {formatNumber(bal.remainingBalance)} {itm?.unit}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {foc.notes && (
+                    <div className="text-xs text-slate-500 italic">
+                      Notes: &ldquo;{foc.notes}&rdquo;
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeViewTab === 'requests' && (
+        <div className="space-y-6">
+          {/* Workflow Tabs: Dedicated Pending Approval Routing + Branch Filter */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -1749,6 +1911,8 @@ export const StockRequestsView: React.FC = () => {
         onConfirm={confirmState.onConfirm}
         onClose={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
       />
+        </div>
+      )}
     </div>
   );
 };

@@ -50,6 +50,8 @@ export const MainStockView: React.FC = () => {
     clearMainStockReceipts,
     getMainWarehouseStock,
     currentUser,
+    activeProjects,
+    projects,
   } = useStock();
 
   const [activeTab, setActiveTab] = useState<'inventory' | 'returned-sites' | 'damaged-returned' | 'history'>('inventory');
@@ -125,6 +127,7 @@ export const MainStockView: React.FC = () => {
   const [quantity, setQuantity] = useState<number | ''>('');
   const [unitCost, setUnitCost] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
+  const [reservedProjectId, setReservedProjectId] = useState<string>('none');
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleClearFormFields = () => {
@@ -132,6 +135,7 @@ export const MainStockView: React.FC = () => {
     setUnitCost('');
     setSupplier('');
     setNotes('');
+    setReservedProjectId('none');
     setErrorMsg('');
   };
 
@@ -174,6 +178,8 @@ export const MainStockView: React.FC = () => {
       return;
     }
 
+    const selectedProj = activeProjects.find((p) => p.id === reservedProjectId) || projects.find((p) => p.id === reservedProjectId);
+
     addMainStockEntry({
       entryType,
       referenceNo: referenceNo.trim(),
@@ -182,11 +188,14 @@ export const MainStockView: React.FC = () => {
       quantity: Number(quantity),
       unitCost: Number(unitCost) || 0,
       notes: notes.trim(),
+      reservedProjectId: reservedProjectId !== 'none' ? reservedProjectId : undefined,
+      reservedProjectName: reservedProjectId !== 'none' ? (selectedProj?.projectName || selectedProj?.projectId) : undefined,
     });
 
     // Reset and close
     setQuantity('');
     setNotes('');
+    setReservedProjectId('none');
     setShowLogModal(false);
   };
 
@@ -1645,6 +1654,25 @@ export const MainStockView: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Allocate / Reserve for Project (Optional)</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Reserved items prioritize this project</span>
+                </label>
+                <select
+                  value={reservedProjectId}
+                  onChange={(e) => setReservedProjectId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                >
+                  <option value="none">📦 Unrestricted General Main Stock (Default)</option>
+                  {activeProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      🎯 {p.projectName} ({p.projectId}) {p.siteIdentifier ? `— Site: ${p.siteIdentifier}` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

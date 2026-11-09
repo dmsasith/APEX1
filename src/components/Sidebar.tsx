@@ -23,6 +23,7 @@ import {
   Truck,
   Sparkles,
   IdCard,
+  Gift,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { getThemeConfig } from '../utils/themeUtils';
@@ -68,6 +69,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           id: 'main-stock',
           label: 'Main Central Stock',
           icon: Boxes,
+        },
+        {
+          id: 'client-free-stock',
+          label: 'Client Free Stock (FOC)',
+          icon: Gift,
         },
         ...(isCentralAdmin
           ? [

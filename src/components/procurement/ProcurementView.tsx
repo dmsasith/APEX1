@@ -77,6 +77,8 @@ export const ProcurementView: React.FC = () => {
     activeSupplierReturns,
     deleteSupplierReturn,
     dispatchSupplierReturn,
+    activeProjects,
+    projects,
   } = useStock();
 
   const theme = getThemeConfig(config?.themeId || config?.logoColor);
@@ -248,11 +250,13 @@ export const ProcurementView: React.FC = () => {
   const [orderNotes, setOrderNotes] = useState('');
   const [taxPercent, setTaxPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [poReservedProjectId, setPoReservedProjectId] = useState<string>('none');
   const [orderItems, setOrderItems] = useState<PurchaseOrderItem[]>([]);
   const [orderError, setOrderError] = useState('');
 
   const openCreateOrder = () => {
     setPoNumber(generateNextPoNumber());
+    setPoReservedProjectId('none');
     const defaultSup = activeSuppliers[0];
     if (defaultSup) {
       setSelectedSupplierId(defaultSup.id);
@@ -412,6 +416,8 @@ export const ProcurementView: React.FC = () => {
       return;
     }
 
+    const selectedProj = activeProjects.find((p) => p.id === poReservedProjectId) || projects.find((p) => p.id === poReservedProjectId);
+
     const newOrder = addPurchaseOrder({
       poNumber: poNumber.trim(),
       supplierId: sup.id,
@@ -433,6 +439,8 @@ export const ProcurementView: React.FC = () => {
       grandTotal: calculatedGrandTotal,
       notes: orderNotes,
       preparedBy: currentUser?.fullName || 'Super Administrator',
+      reservedProjectId: poReservedProjectId !== 'none' ? poReservedProjectId : undefined,
+      reservedProjectName: poReservedProjectId !== 'none' ? (selectedProj?.projectName || selectedProj?.projectId) : undefined,
     });
 
     setShowOrderModal(false);
@@ -1717,15 +1725,35 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Delivery Destination</label>
-                <input
-                  type="text"
-                  value={deliveryLocation}
-                  onChange={(e) => setDeliveryLocation(e.target.value)}
-                  placeholder="Delivery address / warehouse yard"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Delivery Destination</label>
+                  <input
+                    type="text"
+                    value={deliveryLocation}
+                    onChange={(e) => setDeliveryLocation(e.target.value)}
+                    placeholder="Delivery address / warehouse yard"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Allocate to Project (Optional)</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Project reservation</span>
+                  </label>
+                  <select
+                    value={poReservedProjectId}
+                    onChange={(e) => setPoReservedProjectId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none"
+                  >
+                    <option value="none">📦 Unrestricted General Main Stock (Default)</option>
+                    {activeProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        🎯 {p.projectName} ({p.projectId}) {p.siteIdentifier ? `— Site: ${p.siteIdentifier}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Line Items Section */}

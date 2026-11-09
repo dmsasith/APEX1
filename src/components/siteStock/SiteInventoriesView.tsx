@@ -43,6 +43,8 @@ export const SiteInventoriesView: React.FC = () => {
     acceptStockRequest,
     projectUsages,
     teams,
+    clientFreeIssues,
+    getClientFreeStockBalance,
   } = useStock();
 
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
@@ -50,7 +52,19 @@ export const SiteInventoriesView: React.FC = () => {
     currentUser.siteId !== 'all' ? currentUser.siteId : (branchSites[0]?.id || activeSites[0]?.id || '');
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(defaultSiteId);
-  const [activeSection, setActiveSection] = useState<'inventory' | 'history'>('inventory');
+  const [activeSection, setActiveSection] = useState<'inventory' | 'foc-materials' | 'history'>('inventory');
+
+  const selectedSite = activeSites.find((s) => s.id === selectedSiteId) || sites.find((s) => s.id === selectedSiteId);
+
+  // Site-Specific FOC Client Materials
+  const siteFocMaterials = useMemo(() => {
+    if (!selectedSite) return [];
+    return (clientFreeIssues || []).filter((v) => {
+      if (v.isDeleted) return false;
+      const matchLocation = v.storageLocation && v.storageLocation.trim().toLowerCase() === selectedSite.name.trim().toLowerCase();
+      return matchLocation;
+    });
+  }, [clientFreeIssues, selectedSite]);
   
   // Inventory filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,8 +81,6 @@ export const SiteInventoriesView: React.FC = () => {
   const [acceptingShipment, setAcceptingShipment] = useState<StockTransferRequest | null>(null);
   const [receivedItems, setReceivedItems] = useState<Array<{ itemId: string; receivedQty: number }>>([]);
   const [receivingNotes, setReceivingNotes] = useState('');
-
-  const selectedSite = activeSites.find((s) => s.id === selectedSiteId) || sites.find((s) => s.id === selectedSiteId);
 
   // Incoming shipments for selected site branch in transit
   const incomingShipments = stockRequests.filter(
@@ -322,6 +334,19 @@ export const SiteInventoriesView: React.FC = () => {
           >
             <Boxes className="w-4 h-4 text-emerald-600" />
             <span>Live Yard Stock</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSection('foc-materials')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSection === 'foc-materials'
+                ? 'bg-white text-indigo-950 shadow-2xs font-bold'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-indigo-600">🎁</span>
+            <span>Client FOC Materials ({siteFocMaterials.length})</span>
           </button>
 
           <button
@@ -649,7 +674,110 @@ export const SiteInventoriesView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: SITE MATERIAL USAGE HISTORY VOUCHERS */}
+      {/* TAB 2: CLIENT FOC MATERIALS ALLOCATED TO SITE YARD */}
+      {activeSection === 'foc-materials' && (
+        <div className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+                🎁
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-indigo-950">
+                  Client Free-Issue (FOC) Materials at {selectedSite?.name}
+                </h3>
+                <p className="text-xs text-indigo-800">
+                  Client-supplied free-issue materials stored at this site yard. Maintained separately from standard company warehouse stock.
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 bg-white text-indigo-900 border border-indigo-300 rounded-lg text-xs font-bold font-mono">
+              {siteFocMaterials.length} Entry(ies)
+            </span>
+          </div>
+
+          {siteFocMaterials.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center mx-auto mb-3 text-xl">
+                🎁
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">
+                No Client FOC Materials Assigned to {selectedSite?.name}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                No client free-issue material shipments have been registered to this site yard location yet. Register FOC shipments from Main Stock &gt; Client FOC Materials.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {siteFocMaterials.map((foc) => (
+                <div key={foc.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs bg-indigo-900 text-white px-2.5 py-1 rounded">
+                        {foc.voucherNumber}
+                      </span>
+                      <span className="text-xs font-bold text-slate-900">
+                        Client: <span className="text-indigo-700">{foc.clientName}</span>
+                      </span>
+                      <span aria-hidden="true" className="text-slate-300">·</span>
+                      <span className="text-xs text-slate-600">Project: {foc.projectName}</span>
+                    </div>
+                    <span className="text-xs text-slate-500 font-mono">
+                      {formatDateTime(foc.receivedDate || foc.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3">Item Code</th>
+                          <th className="py-2.5 px-3">Material Description</th>
+                          <th className="py-2.5 px-3 text-center">Unit</th>
+                          <th className="py-2.5 px-3 text-right">FOC Received Qty</th>
+                          <th className="py-2.5 px-3 text-right">Remaining Bal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {foc.items.map((row, idx) => {
+                          const itm = items.find((i) => i.id === row.itemId);
+                          const bal = getClientFreeStockBalance(foc.projectId, row.itemId);
+                          return (
+                            <tr key={idx} className="bg-white">
+                              <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                {itm?.itemCode || 'ITEM'}
+                              </td>
+                              <td className="py-2.5 px-3 font-medium text-slate-800">
+                                {itm?.itemName || 'Material Item'}
+                              </td>
+                              <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
+                                {formatNumber(row.quantity)} {itm?.unit}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
+                                {formatNumber(bal.remainingBalance)} {itm?.unit}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {foc.notes && (
+                    <div className="text-xs text-slate-500 italic">
+                      Notes: &ldquo;{foc.notes}&rdquo;
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: SITE MATERIAL USAGE HISTORY VOUCHERS */}
       {activeSection === 'history' && (
         <div className="space-y-5">
           {/* Site Material Usage KPI Summary Cards */}

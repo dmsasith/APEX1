@@ -31,6 +31,7 @@ import {
   Target,
   Lock,
   Shield,
+  Gift,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { ProjectMaterialUsage, ProjectUsageItemRow, ProjectType, isSuperAdmin } from '../../types';
@@ -69,6 +70,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
     createCrossProjectOverrideRequest,
     acceptCrossProjectOverrideRequest,
     rejectCrossProjectOverrideRequest,
+    clientFreeIssues,
+    getClientFreeStockBalance,
+    getProjectFreeStockList,
+    activeClients,
   } = useStock();
 
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
@@ -123,6 +128,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [entrySiteId, setEntrySiteId] = useState('');
   const [entryDistrict, setEntryDistrict] = useState('');
   const [entrySubArea, setEntrySubArea] = useState('');
+  const [existingProjectFocClientId, setExistingProjectFocClientId] = useState('');
 
   // Existing Project selection (filtered by section when possible)
   const sectionProjects = activeProjects.filter((p) => !selectedSectionId || p.projectTypeId === selectedSectionId);
@@ -130,6 +136,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
     sectionProjects[0]?.id || activeProjects[0]?.id || ''
   );
   const targetProject = projects.find((p) => p.id === selectedProjectId) || activeProjects.find((p) => p.id === selectedProjectId);
+  const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
+  const projectFreeMaterials = currentTargetProjId ? getProjectFreeStockList(currentTargetProjId) : [];
 
   // Supervisor / Team Leader
   const currentTeam = teams.find((t) => t.id === selectedTeamId) || activeTeams.find((t) => t.id === selectedTeamId);
@@ -366,6 +374,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
         finalSiteIdentifier = registeredProject.siteIdentifier || '';
         finalCustomerPhone = registeredProject.customerPhone || '';
         finalCustomerName = registeredProject.customerName || '';
+      } else {
+        if (existingProjectFocClientId) {
+          finalCustomerName = existingProjectFocClientId;
+        }
       }
 
       // Check project reservation restrictions
@@ -601,6 +613,60 @@ export const ProjectMaterialUsageView: React.FC = () => {
           <span>Active Projects: <strong>{activeProjects.length}</strong></span>
           <span className="text-slate-300">|</span>
           <span>Logged Usages: <strong>{projectUsages.length}</strong></span>
+        </div>
+      </div>
+
+      {/* Global Operational Workflow Guide Card */}
+      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 border border-teal-500/30 rounded-2xl p-5 text-white shadow-xl space-y-3">
+        <div className="flex items-center justify-between border-b border-teal-800/60 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center justify-center font-bold">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-white tracking-tight">
+                Standard Operational Workflow & Stock Governance Guide
+              </h3>
+              <p className="text-[11px] text-teal-200">
+                End-to-end asset tracking from warehouse receipt to field team installation and FOC client drawdown.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2.5 py-1 rounded-full">
+            Global Best Practice
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="bg-slate-900/80 p-3 rounded-xl border border-teal-800/50 space-y-1">
+            <div className="font-bold text-teal-300 flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-black">1</span>
+              <span>Inbound & FOC Logistics</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Receive company stock via Purchase Orders (Main Stock) or record Client Free-Issue shipments (FOC) under Client Free-Issue registry.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/80 p-3 rounded-xl border border-teal-800/50 space-y-1">
+            <div className="font-bold text-teal-300 flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-black">2</span>
+              <span>Issue to Teams (Dispatch)</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Dispatch stock from Site Branch inventory yards to Field Teams via <strong>Issue to Teams</strong> so teams hold verified in-hand custody.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/80 p-3 rounded-xl border border-teal-800/50 space-y-1">
+            <div className="font-bold text-teal-300 flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-black">3</span>
+              <span>Project Usage & FOC Priority</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Log project installations. The system automatically deducts from team custody and prioritizes FOC client stock drawdown.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -850,16 +916,21 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Customer / Project Name *
+                          FOC Client / Principal Name *
                         </label>
-                        <input
-                          type="text"
+                        <select
                           value={entryCustomerName}
                           onChange={(e) => setEntryCustomerName(e.target.value)}
-                          placeholder="e.g. SLT Fibre Conn - Sunil Fernando"
-                          className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                          className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                           required
-                        />
+                        >
+                          <option value="">-- Select Registered Client / Principal --</option>
+                          {activeClients.map((clt) => (
+                            <option key={clt.id} value={clt.name}>
+                              {clt.name} ({clt.clientCode} — {clt.category || 'Client'})
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <div>
@@ -977,12 +1048,70 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       )}
                     </select>
 
+                    <div className="mt-3">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Associated FOC Client / Principal (Optional)
+                      </label>
+                      <select
+                        value={existingProjectFocClientId}
+                        onChange={(e) => setExistingProjectFocClientId(e.target.value)}
+                        className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      >
+                        <option value="">-- Select Registered Client / Principal --</option>
+                        {activeClients.map((clt) => (
+                          <option key={clt.id} value={clt.name}>
+                            {clt.name} ({clt.clientCode} — {clt.category || 'Client'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     {targetProject && (
                       <div className="mt-2 p-2.5 bg-white border border-teal-200 rounded-lg text-[11px] text-slate-700 flex flex-wrap items-center gap-3 shadow-2xs">
                         <span><strong>Site ID:</strong> {targetProject.siteIdentifier || targetProject.projectId}</span>
                         <span><strong>Phone:</strong> {targetProject.customerPhone || 'N/A'}</span>
                         <span><strong>District:</strong> {targetProject.district || 'General'}</span>
                         <span><strong>Ref:</strong> {targetProject.referenceNo || '—'}</span>
+                      </div>
+                    )}
+
+                    {projectFreeMaterials.length > 0 && (
+                      <div className="mt-2.5 p-3.5 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border border-indigo-200 rounded-xl text-xs space-y-2 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-indigo-950 font-bold border-b border-indigo-100/80 pb-2">
+                          <span className="flex items-center gap-1.5 text-xs">
+                            <Gift className="w-4 h-4 text-indigo-600 shrink-0" />
+                            <span>
+                              Client / Principal FOC Free Stock Allocated
+                              {(() => {
+                                const names = Array.from(
+                                  new Set(
+                                    clientFreeIssues
+                                      .filter((v) => !v.isDeleted && v.projectId === currentTargetProjId)
+                                      .map((v) => v.clientName)
+                                  )
+                                );
+                                const displayName = names.length > 0 ? names.join(', ') : targetProject?.customerName;
+                                return displayName ? ` (${displayName})` : '';
+                              })()}
+                            </span>
+                          </span>
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white shadow-2xs self-start sm:self-auto">
+                            Auto-Deducted Priority
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600">
+                          Material usage entered below automatically draws down this client's FOC free stock balance first before consuming team custody inventory:
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
+                          {projectFreeMaterials.map((fm) => (
+                            <div key={fm.itemId} className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-indigo-100 font-mono text-[11px] shadow-2xs">
+                              <span className="text-slate-900 font-bold truncate pr-2">[{fm.itemCode}] {fm.itemName}</span>
+                              <span className="shrink-0 font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                {formatNumber(fm.remainingBalance)} {fm.unit} FOC left
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1158,6 +1287,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               const custody = teamInHand?.items.find((x) => x.itemId === itm.id);
                               const balance = custody?.currentInHand || 0;
                               const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
+                              const focBal = currentTargetProjId ? getClientFreeStockBalance(currentTargetProjId, itm.id) : { remainingBalance: 0 };
+                              const focTag = focBal.remainingBalance > 0 ? ` [🎁 Client Free: ${formatNumber(focBal.remainingBalance)} ${itm.unit}]` : '';
                               let resTag = '';
                               if (itm.isProjectReserved && itm.reservedProjectId) {
                                 if (itm.reservedProjectId === currentTargetProjId) {
@@ -1168,7 +1299,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               }
                               return (
                                 <option key={itm.id} value={itm.id}>
-                                  [{itm.itemCode}] {itm.itemName}{resTag} ({balance > 0 ? `Holds: ${balance} ${itm.unit}` : '0 in custody'})
+                                  [{itm.itemCode}] {itm.itemName}{resTag}{focTag} ({balance > 0 ? `Holds: ${balance} ${itm.unit}` : '0 in custody'})
                                 </option>
                               );
                             })}
@@ -1653,6 +1784,80 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   <div className="text-xs text-slate-400">Participated in this Project</div>
                 </div>
               </div>
+
+              {/* Client Free-Issue Stock Reconciliation (Client/Principal Statement) */}
+              {(() => {
+                const projectFocList = getProjectFreeStockList(reconcileProjectId);
+                if (projectFocList.length === 0) return null;
+                return (
+                  <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-xs border border-indigo-900">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-indigo-800/60">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center">
+                          <Gift className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                            <span>Client Free-Issue Stock Reconciliation (Client / Principal FOC)</span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                              Official Statement
+                            </span>
+                          </h4>
+                          <p className="text-[11px] text-indigo-300/80">
+                            Materials supplied free by principal for this project vs installed in field vs remaining balance
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-indigo-800/80 text-indigo-300 font-bold uppercase text-[10px]">
+                            <th className="py-2 px-3">Item Code</th>
+                            <th className="py-2 px-3">Material Description</th>
+                            <th className="py-2 px-3 text-right">Received from Client</th>
+                            <th className="py-2 px-3 text-right">Field Installed</th>
+                            <th className="py-2 px-3 text-right">Remaining Balance</th>
+                            <th className="py-2 px-3 text-center">Reconciliation Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-indigo-900/60 font-medium">
+                          {projectFocList.map((foc) => {
+                            const isDepleted = foc.remainingBalance <= 0;
+                            return (
+                              <tr key={foc.itemId} className="hover:bg-indigo-900/30 transition-colors">
+                                <td className="py-2.5 px-3 font-mono font-bold text-white">{foc.itemCode}</td>
+                                <td className="py-2.5 px-3 text-slate-200 font-semibold">{foc.itemName}</td>
+                                <td className="py-2.5 px-3 text-right font-mono text-cyan-300 font-bold">
+                                  {formatNumber(foc.totalReceived)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono text-amber-300 font-bold">
+                                  {formatNumber(foc.totalUsed)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-300">
+                                  {formatNumber(foc.remainingBalance)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  {isDepleted ? (
+                                    <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 rounded-md">
+                                      100% Installed
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                                      Balance in Hand ({formatNumber(foc.remainingBalance)} {foc.unit})
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Grand Total Project Consumed Materials */}
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
