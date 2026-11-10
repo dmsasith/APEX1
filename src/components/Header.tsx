@@ -399,7 +399,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
               <>
                 <button
                   onClick={() => setShowBackupModal(true)}
-                  className="h-9 px-3.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition"
+                  className="h-8 px-2.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 text-rose-800 border border-rose-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs transition"
                   title="Backup & Flush"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
@@ -407,10 +407,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                 </button>
                 <button
                   onClick={() => setShowConfigModal(true)}
-                  className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 border border-slate-200 cursor-pointer shadow-2xs transition shrink-0"
+                  className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 border border-slate-200 cursor-pointer shadow-2xs transition shrink-0"
                   title="System Settings (Main Admin Only)"
                 >
-                  <Sliders className="w-4 h-4 text-emerald-600" />
+                  <Sliders className="w-3.5 h-3.5 text-emerald-600" />
                 </button>
               </>
             )}

@@ -323,21 +323,39 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
 }
 
 function AppRoot() {
-  const { isAuthenticated, authUser, currentUser, currentTenant, exitTenantPreview, exitViewAsMode, switchToMasterStock } = useStock();
+  const { isAuthenticated, authUser, currentTenant, exitTenantPreview, exitViewAsMode, switchToMasterStock } = useStock();
   const [unauthView, setUnauthView] = useState<'landing' | 'login'>('landing');
-  const [developerPortalChoice, setDeveloperPortalChoice] = useState<'pending' | 'saas' | 'stock'>('pending');
+  const [developerPortalChoice, setDeveloperPortalChoice] = useState<'pending' | 'saas' | 'stock'>(() => {
+    try {
+      const saved = sessionStorage.getItem('apex_developer_portal_choice');
+      if (saved === 'saas' || saved === 'stock') return saved;
+    } catch {
+      // ignore
+    }
+    return 'pending';
+  });
 
   const isMasterDeveloper =
-    authUser?.username === 'admin' ||
-    currentUser?.username === 'admin' ||
+    (authUser?.username === 'admin' || authUser?.id === 'usr-admin-1') &&
     currentTenant?.id === 'tenant-apex-main';
 
-  // Only reset gateway choice if user logs out
+  // Persist choice in sessionStorage & reset on logout
   useEffect(() => {
     if (!isAuthenticated) {
       setDeveloperPortalChoice('pending');
+      try {
+        sessionStorage.removeItem('apex_developer_portal_choice');
+      } catch {
+        // ignore
+      }
+    } else {
+      try {
+        sessionStorage.setItem('apex_developer_portal_choice', developerPortalChoice);
+      } catch {
+        // ignore
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, developerPortalChoice]);
 
   if (!isAuthenticated) {
     if (unauthView === 'landing') {
