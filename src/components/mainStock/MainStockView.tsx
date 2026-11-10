@@ -516,37 +516,49 @@ export const MainStockView: React.FC = () => {
         </div>
       )}
 
-      {/* Nav Tabs & Mobile-Friendly Search Filter */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Main Section Mode Buttons with Dynamic Color Changes */}
-          <div className="flex flex-wrap items-center gap-1.5">
+      {/* Unified Enterprise Command & Filter Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        {/* Tier 1: Primary Mode Tabs + Search Input */}
+        <div className="p-3.5 sm:px-5 sm:py-3.5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-50/60 border-b border-slate-200/80">
+          {/* Segmented Mode Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl border border-slate-200/90">
             <button
+              type="button"
               onClick={() => setActiveTab('inventory')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'inventory'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Boxes className="w-4 h-4" />
+              <Boxes className={`w-3.5 h-3.5 ${activeTab === 'inventory' ? 'text-emerald-400' : 'text-slate-500'}`} />
               <span>Central Stock Inventory</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                  activeTab === 'inventory'
+                    ? 'bg-slate-800 text-emerald-300'
+                    : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {activeItems.length}
+              </span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('returned-sites')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'returned-sites'
-                  ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-teal-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Returned From Sites</span>
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
                   activeTab === 'returned-sites'
-                    ? 'bg-teal-800 text-white'
+                    ? 'bg-teal-900 text-teal-200'
                     : 'bg-teal-100 text-teal-800'
                 }`}
               >
@@ -555,56 +567,65 @@ export const MainStockView: React.FC = () => {
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('damaged-returned')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'damaged-returned'
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
               <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Damaged Returned From Site (Yard)</span>
-              {totalDamagedUnitsInYard > 0 && (
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                    activeTab === 'damaged-returned'
-                      ? 'bg-amber-800 text-white'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
-                >
-                  {totalDamagedUnitsInYard}
-                </span>
-              )}
+              <span>Damaged / Scrap Yard</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                  activeTab === 'damaged-returned'
+                    ? 'bg-amber-800 text-amber-100'
+                    : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {totalDamagedUnitsInYard}
+              </span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'history'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
               <History className="w-3.5 h-3.5" />
-              <span>Inbound Receipts History ({mainStockEntries.length})</span>
+              <span>Inbound Receipts History</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                  activeTab === 'history'
+                    ? 'bg-blue-800 text-blue-100'
+                    : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {mainStockEntries.length}
+              </span>
             </button>
           </div>
 
-          {/* Search Box - 2-inch min width and full width on mobile */}
-          <div className="relative w-full sm:w-80 md:w-96 min-w-[220px]">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          {/* Global Search Input */}
+          <div className="relative w-full xl:w-80 2xl:w-96 shrink-0">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search by Item Code, Name, Category, Slip #..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
+              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200/90 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 text-xs font-bold cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded hover:bg-slate-100 text-xs font-bold cursor-pointer"
                 title="Clear Search"
               >
                 ✕
@@ -613,137 +634,156 @@ export const MainStockView: React.FC = () => {
           </div>
         </div>
 
-        {/* Central Stock Specific Filter Buttons & Machinery Tabs */}
+        {/* Tier 2: Contextual Filters Bar */}
         {activeTab === 'inventory' && (
-          <div className="pt-2 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
-            {/* Machinery & Equipment vs Materials Button Switcher */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold uppercase text-slate-400 mr-1">Classification:</span>
-              <button
-                type="button"
-                onClick={() => setItemTypeFilter('all')}
-                className={`px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer ${
-                  itemTypeFilter === 'all'
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                All Items ({activeItems.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setItemTypeFilter('Material')}
-                className={`px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                  itemTypeFilter === 'Material'
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                    : 'bg-white border-slate-200 text-indigo-700 hover:bg-indigo-50/50'
-                }`}
-              >
-                <span>🧱 Materials & Consumables</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${itemTypeFilter === 'Material' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 text-indigo-800'}`}>
-                  {materialsCount}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setItemTypeFilter('Machinery')}
-                className={`px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                  itemTypeFilter === 'Machinery'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                    : 'bg-white border-slate-200 text-amber-700 hover:bg-amber-50/50'
-                }`}
-              >
-                <span>🚜 Machinery & Equipment</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${itemTypeFilter === 'Machinery' ? 'bg-amber-800 text-white' : 'bg-amber-100 text-amber-800'}`}>
-                  {machineryCount}
-                </span>
-              </button>
+          <div className="px-3.5 py-3 sm:px-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs bg-white">
+            {/* Classification Segmented Control */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Classification:
+              </span>
+              <div className="inline-flex flex-wrap items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setItemTypeFilter('all')}
+                  className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                    itemTypeFilter === 'all'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All Items ({activeItems.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemTypeFilter('Material')}
+                  className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    itemTypeFilter === 'Material'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-indigo-700'
+                  }`}
+                >
+                  <span>Materials & Consumables</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                      itemTypeFilter === 'Material' ? 'bg-indigo-800 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {materialsCount}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemTypeFilter('Machinery')}
+                  className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    itemTypeFilter === 'Machinery'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-amber-700'
+                  }`}
+                >
+                  <span>Machinery & Equipment</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                      itemTypeFilter === 'Machinery' ? 'bg-amber-800 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {machineryCount}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            {/* Stock Availability Pill Buttons */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold uppercase text-slate-400 mr-1">Stock Level:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setAvailabilityFilter('all');
-                  setOnlyAvailable(false);
-                }}
-                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer ${
-                  availabilityFilter === 'all' && !onlyAvailable
-                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAvailabilityFilter('in-stock');
-                  setOnlyAvailable(true);
-                }}
-                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
-                  availabilityFilter === 'in-stock' || onlyAvailable
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                    : 'bg-white border-slate-200 text-emerald-700 hover:bg-emerald-50/50'
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>In Stock ({availableStockItemsCount})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAvailabilityFilter('low-stock');
-                  setOnlyAvailable(false);
-                }}
-                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
-                  availabilityFilter === 'low-stock'
-                    ? 'bg-amber-500 text-white border-amber-500 shadow-2xs'
-                    : 'bg-white border-slate-200 text-amber-700 hover:bg-amber-50/50'
-                }`}
-              >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Low ({lowStockCount})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAvailabilityFilter('out-of-stock');
-                  setOnlyAvailable(false);
-                }}
-                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer ${
-                  availabilityFilter === 'out-of-stock'
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                    : 'bg-white border-slate-200 text-rose-700 hover:bg-rose-50/50'
-                }`}
-              >
-                Out of Stock ({outOfStockCount})
-              </button>
+            {/* Stock Level & Category Controls */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Stock Level:
+              </span>
+              <div className="inline-flex flex-wrap items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvailabilityFilter('all');
+                    setOnlyAvailable(false);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                    availabilityFilter === 'all' && !onlyAvailable
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvailabilityFilter('in-stock');
+                    setOnlyAvailable(true);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    availabilityFilter === 'in-stock' || onlyAvailable
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-emerald-700 hover:bg-white/60'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>In Stock ({availableStockItemsCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvailabilityFilter('low-stock');
+                    setOnlyAvailable(false);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    availabilityFilter === 'low-stock'
+                      ? 'bg-amber-500 text-white shadow-2xs'
+                      : 'text-amber-700 hover:bg-white/60'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Low ({lowStockCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvailabilityFilter('out-of-stock');
+                    setOnlyAvailable(false);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                    availabilityFilter === 'out-of-stock'
+                      ? 'bg-rose-600 text-white shadow-2xs'
+                      : 'text-rose-700 hover:bg-white/60'
+                  }`}
+                >
+                  Out of Stock ({outOfStockCount})
+                </button>
+              </div>
 
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="ml-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
-              >
-                <option value="all">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="text-xs font-semibold text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All Categories</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'returned-sites' && (
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+          <div className="px-3.5 py-3 sm:px-5 flex items-center justify-end gap-2 text-xs bg-white">
             <select
               value={returnedSiteFilter}
               onChange={(e) => setReturnedSiteFilter(e.target.value)}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 focus:outline-none"
             >
               <option value="all">All Branch Sites</option>
               {sites
@@ -757,7 +797,7 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={exportGoodReturnsCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
               <span>Export CSV</span>
@@ -766,11 +806,11 @@ export const MainStockView: React.FC = () => {
         )}
 
         {activeTab === 'damaged-returned' && (
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+          <div className="px-3.5 py-3 sm:px-5 flex items-center justify-end gap-2 text-xs bg-white">
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:outline-none"
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 focus:outline-none"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -782,7 +822,7 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={exportDamagedStockCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
               <span>Export Report</span>
@@ -791,10 +831,10 @@ export const MainStockView: React.FC = () => {
         )}
 
         {activeTab === 'history' && (
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+          <div className="px-3.5 py-3 sm:px-5 flex items-center justify-end gap-2 text-xs bg-white">
             <button
               onClick={exportHistoryCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
               <span>Export CSV</span>
@@ -803,7 +843,7 @@ export const MainStockView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClearInboundHistory}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                 title="Clear all inbound receipt records"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-600" />
