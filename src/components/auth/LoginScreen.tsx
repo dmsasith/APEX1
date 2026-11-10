@@ -16,11 +16,9 @@ import {
   AlertCircle,
   LogIn,
   ChevronLeft,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { TenantSignupModal } from '../landing/TenantSignupModal';
-import { OfflineBackupViewerModal } from '../backup/OfflineBackupViewerModal';
 
 const PRESET_ICONS = [
   { id: 'building', icon: Building2 },
@@ -54,7 +52,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   const [collisionCompanies, setCollisionCompanies] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
-  const [showOfflineViewer, setShowOfflineViewer] = useState(false);
 
   // Render the Company Logo (matches Header)
   const renderLogo = () => {
@@ -76,7 +73,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
     }
     const iconObj = PRESET_ICONS.find((p) => p.id === config.logoIcon) || PRESET_ICONS[0];
     const IconComp = iconObj.icon;
-    return <IconComp className="w-8 h-8 text-emerald-400" />;
+    return <IconComp className="w-8 h-8 text-emerald-600" />;
   };
 
   const handleFormLogin = async (e: React.FormEvent) => {
@@ -107,290 +104,284 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col justify-between text-slate-100 p-4 sm:p-6 lg:p-8">
-      {/* Top Bar with Back to Landing & Developer Credit */}
-      <div className="max-w-6xl w-full mx-auto flex items-center justify-between py-2 text-xs text-slate-400">
-        <div className="flex items-center gap-3">
-          {onBackToLanding && (
-            <button
-              type="button"
-              onClick={onBackToLanding}
-              className="flex items-center gap-1.5 text-slate-300 hover:text-white font-semibold py-1 px-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
-            >
-              <ChevronLeft className="w-3.5 h-3.5 text-emerald-400" />
-              <span>← Back to Home & Plans</span>
-            </button>
-          )}
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-slate-300 hidden sm:inline">Live Cloud Sync Active</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowOfflineViewer(true)}
-            className="flex items-center gap-1.5 text-emerald-300 hover:text-white font-bold py-1 px-3 rounded-lg bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900 transition cursor-pointer text-[11px]"
-            title="Open emergency offline reader to view and convert .json backup files to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Emergency Offline Data Viewer</span>
-          </button>
+    <>
+      <div className="min-h-screen liquid-glass-canvas flex flex-col justify-between text-slate-900 p-4 sm:p-6 lg:p-8 relative overflow-hidden">
+        {/* Ambient Decorative Light Orbs (Pure CSS, Zero Lag) */}
+        <div className="pointer-events-none absolute -top-28 -left-28 w-96 h-96 rounded-full bg-sky-300/30 blur-3xl" />
+        <div className="pointer-events-none absolute top-1/4 -right-28 w-96 h-96 rounded-full bg-emerald-300/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/3 w-96 h-96 rounded-full bg-indigo-300/20 blur-3xl" />
 
-          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-full px-3.5 py-1 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span className="font-bold text-amber-300 text-[11px] tracking-tight">Apex Developer | System Developed By Sasith Dissanayake</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Login Card Center */}
-      <div className="max-w-md w-full mx-auto my-auto">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md overflow-hidden">
-          {/* Header Banner */}
-          <div className="px-6 pt-8 pb-6 text-center border-b border-slate-800/80 bg-gradient-to-b from-slate-800/40 to-transparent">
-            {/* Logo */}
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 mx-auto flex items-center justify-center shadow-lg mb-4">
-              {renderLogo()}
+        {/* Top Liquid Glass Navigation Bar */}
+        <div className="relative z-10 max-w-6xl w-full mx-auto flex flex-wrap items-center justify-between gap-3 py-2.5 px-4 rounded-2xl bg-white/75 backdrop-blur-md border border-white/95 shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,1)] text-xs">
+          <div className="flex items-center gap-3">
+            {onBackToLanding && (
+              <button
+                type="button"
+                onClick={onBackToLanding}
+                className="flex items-center gap-1.5 text-slate-700 hover:text-slate-950 font-bold py-1.5 px-3.5 rounded-xl bg-white/90 hover:bg-white border border-slate-200/80 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Back to Home & Plans</span>
+              </button>
+            )}
+            <div className="hidden sm:flex items-center gap-2 text-slate-600 font-semibold px-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Cloud Sync Protected</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              {config.systemName || 'Apex Stock & Site Management System'}
-            </h1>
-            <p className="text-xs text-slate-400 mt-1.5">
-              Secure Central Warehouse & Multi-Site Logistics Access
-            </p>
           </div>
 
-          <div className="p-6">
-            {errorMessage && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-fadeIn">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="hidden md:flex items-center gap-1.5 bg-white/90 border border-slate-200/80 rounded-xl px-3.5 py-1.5 shadow-2xs">
+              <span className="text-emerald-600 font-bold">◆</span>
+              <span className="font-bold text-slate-800 text-[11px] tracking-tight">
+                Apex Developer | System Developed By Sasith Dissanayake
+              </span>
+            </div>
+          </div>
+        </div>
 
-            {/* Interactive Workspace Chooser on Collision */}
-            {collisionCompanies.length > 0 && (
-              <div className="mb-4 p-3.5 bg-indigo-950/80 border border-indigo-500/50 rounded-xl space-y-2.5 animate-fadeIn">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                  <Building2 className="w-4 h-4 text-amber-400" />
-                  <span>Choose Your Company Workspace:</span>
-                </div>
-                <div className="space-y-1.5">
-                  {collisionCompanies.map((comp) => (
-                    <button
-                      key={comp.id}
-                      type="button"
-                      onClick={async () => {
-                        setWorkspaceCode(comp.slug);
-                        setCollisionCompanies([]);
-                        setErrorMessage(null);
-                        setIsSubmitting(true);
-                        const res = await login(username.trim(), password, comp.slug);
-                        if (!res.success) {
-                          setErrorMessage(res.message);
-                          setIsSubmitting(false);
-                        }
-                      }}
-                      className="w-full p-2.5 rounded-lg bg-slate-900 hover:bg-emerald-950/80 border border-slate-700 hover:border-emerald-500/60 flex items-center justify-between text-left transition cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
-                          {comp.name.charAt(0)}
-                        </div>
-                        <span className="text-xs font-bold text-white group-hover:text-emerald-300 transition">
-                          {comp.name}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                        {comp.slug}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+        {/* Center Main Liquid Glass Login Card */}
+        <div className="relative z-10 max-w-md w-full mx-auto my-8">
+          <div className="bg-gradient-to-br from-white/88 via-white/78 to-emerald-50/65 backdrop-blur-xl border border-white/95 rounded-[32px] shadow-[0_24px_60px_-15px_rgba(15,23,42,0.12),0_8px_24px_-6px_rgba(16,185,129,0.08),inset_0_2px_0_0_rgba(255,255,255,1)] overflow-hidden">
+            {/* Hero Header Inside Login Card */}
+            <div className="px-7 pt-8 pb-6 text-center border-b border-slate-200/60 bg-gradient-to-b from-white/70 to-transparent">
+              {/* Liquid Glass Logo Capsule */}
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white to-emerald-50 border border-white shadow-[0_12px_28px_-6px_rgba(16,185,129,0.25),inset_0_1.5px_0_rgba(255,255,255,1)] mx-auto flex items-center justify-center mb-4">
+                {renderLogo()}
               </div>
-            )}
 
-            {/* Active Company Workspace Badge (Only shown when accessing via company link or explicit workspace code) */}
-            {Boolean(workspaceCode) && (
-              <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 to-slate-900 border border-emerald-500/40 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                    <Building2 className="w-4 h-4" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-[11px] font-bold mb-2">
+                <Sparkles className="w-3 h-3 text-emerald-600" />
+                <span>Client Workspace Portal</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-[26px] font-extrabold tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-800 bg-clip-text text-transparent leading-tight">
+                {config.systemName || 'Apex Stock & Site Management System'}
+              </h1>
+              <p className="text-xs text-slate-600 font-medium mt-1.5">
+                Secure Central Warehouse & Multi-Site Logistics Access
+              </p>
+            </div>
+
+            <div className="p-7">
+              {errorMessage && (
+                <div className="mb-5 p-3.5 rounded-2xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2.5 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              {/* Interactive Workspace Chooser on Collision */}
+              {collisionCompanies.length > 0 && (
+                <div className="mb-5 p-4 bg-white/90 border border-emerald-200 rounded-2xl space-y-2.5 shadow-sm">
+                  <div className="flex items-center gap-2 text-xs font-extrabold text-slate-900">
+                    <Building2 className="w-4 h-4 text-emerald-600" />
+                    <span>Choose Your Company Workspace:</span>
                   </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Logging in to Workspace</div>
-                    <div className="text-xs font-black text-white">
-                      {tenants.find(t => t.slug.toLowerCase() === workspaceCode.toLowerCase() || t.id === workspaceCode)?.companyName || workspaceCode}
+                  <div className="space-y-2">
+                    {collisionCompanies.map((comp) => (
+                      <button
+                        key={comp.id}
+                        type="button"
+                        onClick={async () => {
+                          setWorkspaceCode(comp.slug);
+                          setCollisionCompanies([]);
+                          setErrorMessage(null);
+                          setIsSubmitting(true);
+                          const res = await login(username.trim(), password, comp.slug);
+                          if (!res.success) {
+                            setErrorMessage(res.message);
+                            setIsSubmitting(false);
+                          }
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-slate-50/90 hover:bg-emerald-50 border border-slate-200/90 hover:border-emerald-300 flex items-center justify-between text-left transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">
+                            {comp.name.charAt(0)}
+                          </div>
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 transition">
+                            {comp.name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold">
+                          {comp.slug}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Active Company Workspace Badge */}
+              {Boolean(workspaceCode) && (
+                <div className="mb-5 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50/90 to-teal-50/80 border border-emerald-200/90 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider">
+                        Logging in to Workspace
+                      </div>
+                      <div className="text-xs font-extrabold text-slate-900">
+                        {tenants.find(
+                          (t) =>
+                            t.slug.toLowerCase() === workspaceCode.toLowerCase() ||
+                            t.id === workspaceCode
+                        )?.companyName || workspaceCode}
+                      </div>
                     </div>
                   </div>
+                  <span className="text-[10px] font-mono font-bold bg-white text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-200 shadow-2xs">
+                    {workspaceCode}
+                  </span>
                 </div>
-                <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  {workspaceCode}
-                </span>
-              </div>
-            )}
+              )}
 
-            {/* Secure Sign In Form */}
-            <form onSubmit={handleFormLogin} className="space-y-4">
-              {/* Username / Email Input */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Username or Work Email
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <UserIcon className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="e.g. admin or yourname@company.com"
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Password Input */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="w-full pl-9 pr-10 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Company Workspace Code (Optional) */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-300">
-                    Company Workspace Code (Optional)
+              {/* Secure Sign In Form */}
+              <form onSubmit={handleFormLogin} className="space-y-4">
+                {/* Username / Email Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Username or Work Email
                   </label>
-                  {workspaceCode && (
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <UserIcon className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="e.g. admin or yourname@company.com"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-sm text-slate-900 placeholder-slate-400 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Password Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full pl-10 pr-10 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-sm text-slate-900 placeholder-slate-400 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                    />
                     <button
                       type="button"
-                      onClick={() => setWorkspaceCode('')}
-                      className="text-[10px] text-slate-400 hover:text-slate-200 underline cursor-pointer"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 cursor-pointer"
                     >
-                      Clear Code
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Building2 className="w-4 h-4" />
                   </div>
-                  <input
-                    type="text"
-                    value={workspaceCode}
-                    onChange={(e) => setWorkspaceCode(e.target.value)}
-                    placeholder="e.g. apex-telecom (or leave blank)"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950/70 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono transition-all"
-                  />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  If your username exists in multiple companies, specify your Workspace Code or use your company's direct login link.
-                </p>
-              </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer disabled:opacity-50 active:scale-98"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Log In to Workspace</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+                {/* Company Workspace Code (Optional) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Company Workspace Code <span className="text-slate-400 font-medium">(Optional)</span>
+                    </label>
+                    {workspaceCode && (
+                      <button
+                        type="button"
+                        onClick={() => setWorkspaceCode('')}
+                        className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline cursor-pointer"
+                      >
+                        Clear Code
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Building2 className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <input
+                      type="text"
+                      value={workspaceCode}
+                      onChange={(e) => setWorkspaceCode(e.target.value)}
+                      placeholder="e.g. apex-telecom (or leave blank)"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-xs text-slate-900 placeholder-slate-400 font-mono shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                    If your username exists in multiple companies, specify your Workspace Code or use your direct company link.
+                  </p>
+                </div>
 
-              {/* Demo Quick Fill for testing convenience without revealing any user data */}
-              <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/80">
-                <span>Demo Workspace Access:</span>
+                {/* Submit Button */}
                 <button
-                  type="button"
-                  onClick={() => {
-                    setUsername('admin');
-                    setPassword('password123');
-                    setErrorMessage(null);
-                  }}
-                  className="text-emerald-400 hover:text-emerald-300 font-semibold underline cursor-pointer"
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full mt-2 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 border border-white/30 shadow-[0_10px_25px_-5px_rgba(16,185,129,0.45),inset_0_1.5px_0_rgba(255,255,255,0.45)] transition-all duration-200 hover:-translate-y-0.5 active:scale-98 cursor-pointer disabled:opacity-50"
                 >
-                  Fill Demo Admin Credentials
+                  <LogIn className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Signing In...' : 'Log In to Workspace'}</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
-              </div>
-            </form>
-          </div>
 
-          {/* New Company Workspace Link */}
-          <div className="px-6 py-3.5 bg-slate-950 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-            <span className="text-slate-400">Need a private company workspace?</span>
-            <button
-              type="button"
-              onClick={() => setShowSignupModal(true)}
-              className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Start 7-Day Free Trial ($19.90/mo or $189/yr)</span>
-            </button>
-          </div>
+                {/* Demo Quick Fill */}
+                <div className="pt-3 flex items-center justify-between text-xs text-slate-500 border-t border-slate-200/70">
+                  <span className="font-medium">Demo Workspace Access:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUsername('admin');
+                      setPassword('password123');
+                      setErrorMessage(null);
+                    }}
+                    className="text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
+                  >
+                    Fill Demo Admin Credentials
+                  </button>
+                </div>
+              </form>
+            </div>
 
-          {/* Footer Security Note */}
-          <div className="px-6 py-3 bg-slate-950/60 border-t border-slate-800/60 flex items-center justify-center gap-2 text-[11px] text-slate-500">
-            <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Multi-User Session Protected with Firebase RTDB</span>
+            {/* New Company Workspace Link */}
+            <div className="px-7 py-4 bg-white/75 border-t border-white/90 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+              <span className="text-slate-600 font-medium">Need a private company workspace?</span>
+              <button
+                type="button"
+                onClick={() => setShowSignupModal(true)}
+                className="text-emerald-700 hover:text-emerald-900 font-extrabold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Start 7-Day Free Trial</span>
+              </button>
+            </div>
+
+            {/* Footer Security Note */}
+            <div className="px-7 py-3 bg-slate-50/80 border-t border-slate-200/60 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-500">
+              <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Multi-User Session Protected with Real-Time Cloud Sync</span>
+            </div>
           </div>
         </div>
 
-        {/* Emergency offline data access callout */}
-        <div className="text-center mt-3">
-          <button
-            type="button"
-            onClick={() => setShowOfflineViewer(true)}
-            className="text-xs text-slate-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1.5 transition cursor-pointer underline decoration-slate-700 hover:decoration-emerald-400"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Server Down / Offline? View Your Backup File or Local Data (Emergency Offline Tool)</span>
-          </button>
+        {/* Bottom Footer Details */}
+        <div className="relative z-10 max-w-6xl w-full mx-auto text-center py-2 text-xs font-medium text-slate-500">
+          <p>© {new Date().getFullYear()} {config.companyName}. All rights reserved.</p>
         </div>
       </div>
 
-      {/* Bottom Footer Details */}
-      <div className="max-w-6xl w-full mx-auto text-center py-2 text-xs text-slate-400">
-        <p>© {new Date().getFullYear()} {config.companyName}. All rights reserved.</p>
-      </div>
-
-      {/* Tenant Self-Registration Modal */}
+      {/* Modals rendered outside main container so fixed positioning covers 100% of viewport */}
       <TenantSignupModal
         isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
       />
-
-      {/* Emergency Offline Backup Data Viewer Modal */}
-      <OfflineBackupViewerModal
-        isOpen={showOfflineViewer}
-        onClose={() => setShowOfflineViewer(false)}
-      />
-    </div>
+    </>
   );
 };

@@ -187,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   ];
 
   return (
-    <aside className="w-72 pl-4 sm:pl-6 py-6 shrink-0 flex flex-col">
+    <aside className="w-68 xl:w-72 shrink-0 flex flex-col">
       <div className="liquid-glass-panel rounded-[28px] p-4 flex-1 flex flex-col justify-between overflow-y-auto">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-widest text-slate-700 px-3.5 py-2 bg-white/70 border border-white/95 rounded-2xl mb-4 flex items-center justify-between shadow-[0_4px_12px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)]">

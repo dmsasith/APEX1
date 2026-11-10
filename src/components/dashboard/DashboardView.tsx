@@ -103,49 +103,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner / Hero Welcome with Outer Glow & Gradient */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700/80 p-5 sm:p-6 shadow-xl shadow-slate-950/20 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500" />
-        <div className="relative z-10">
-          <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">Enterprise Overview</span>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-2">
+    <div className="space-y-5">
+      {/* Top Banner / Hero Welcome - Balanced Apple Liquid Glass Hero Card */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-white/95 via-white/90 to-emerald-50/85 rounded-[28px] border border-white/95 p-5 sm:p-6 shadow-[0_14px_38px_-12px_rgba(15,23,42,0.08),inset_0_1.5px_0_rgba(255,255,255,1)] text-slate-900 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-800 uppercase tracking-widest bg-emerald-100/80 border border-emerald-200/90 px-3 py-0.5 rounded-full">
+            <span>Enterprise Overview</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-2">
             Operations & Inventory Hub
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl font-medium">
             Real-time control covering Central Main Stock, branch requisitions, daily field team issuance, and in-hand balances.
           </p>
         </div>
 
-        {/* Fast Action Buttons */}
-        <div className="relative z-10 flex flex-wrap items-center gap-2">
+        {/* Fast Action Buttons - Aligned on a single balanced row */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full xl:w-auto justify-start xl:justify-end">
           <button
             onClick={() => onNavigate('items')}
-            className="px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-950/30 cursor-pointer"
+            className="h-9 px-3.5 bg-white hover:bg-emerald-50/80 text-emerald-800 border border-emerald-200/90 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             title="Import assembly units from Excel or manage catalog"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>Items (Excel Import)</span>
           </button>
           <button
             onClick={() => onNavigate('main-stock')}
-            className="px-3 py-2 bg-slate-950 hover:bg-slate-900 text-white border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            className="h-9 px-3.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-800 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
           >
-            <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <PlusCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>Receive Stock (Main)</span>
           </button>
           <button
             onClick={() => onNavigate('requests')}
-            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
+            className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
           >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
+            <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
             <span>Stock Requisition</span>
           </button>
           <button
             onClick={() => onNavigate('dispatch')}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-blue-950/40 cursor-pointer"
+            className="h-9 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
           >
-            <Send className="w-3.5 h-3.5" />
+            <Send className="w-3.5 h-3.5 shrink-0" />
             <span>Issue to Team</span>
           </button>
         </div>

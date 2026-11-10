@@ -29,7 +29,6 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
-import { OfflineBackupViewerModal } from '../backup/OfflineBackupViewerModal';
 
 interface LandingPageProps {
   onOpenLogin: () => void;
@@ -38,7 +37,6 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const [isSignupOpen, setIsSignupOpen] = useState(false);
-  const [isOfflineViewerOpen, setIsOfflineViewerOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
 
@@ -98,15 +96,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setIsOfflineViewerOpen(true)}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-400 hover:text-white hover:bg-slate-900 border border-emerald-500/30 rounded-xl transition cursor-pointer"
-              title="Emergency offline reader to open and view your .json backup files and export to Excel"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Offline Data Viewer</span>
-            </button>
-
             <button
               onClick={onOpenLogin}
               className="px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-900 border border-slate-800 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
@@ -766,14 +755,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           </div>
 
           <div className="flex flex-col items-center md:items-end gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsOfflineViewerOpen(true)}
-              className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1.5 transition cursor-pointer underline decoration-emerald-500/50"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Offline Backup Viewer & Excel Converter (Emergency Data Tool)</span>
-            </button>
             <div className="text-xs font-semibold text-slate-400">
               Apex Stock SaaS © {new Date().getFullYear()} · All Rights Reserved
             </div>
@@ -789,12 +770,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
         isOpen={isSignupOpen}
         onClose={() => setIsSignupOpen(false)}
         onSuccessLogin={onOpenLogin}
-      />
-
-      {/* Emergency Offline Backup Data Viewer Modal */}
-      <OfflineBackupViewerModal
-        isOpen={isOfflineViewerOpen}
-        onClose={() => setIsOfflineViewerOpen(false)}
       />
     </div>
   );

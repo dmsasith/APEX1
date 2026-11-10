@@ -26,7 +26,6 @@ import {
 import { useStock } from '../context/StockContext';
 import { ConfirmModal } from './common/ConfirmModal';
 import { SystemBackupModal } from './backup/SystemBackupModal';
-import { OfflineBackupViewerModal } from './backup/OfflineBackupViewerModal';
 import { SubscriptionModal } from './subscription/SubscriptionModal';
 import { UserProfileModal } from './auth/UserProfileModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';
@@ -106,7 +105,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
-  const [showOfflineViewer, setShowOfflineViewer] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -229,16 +227,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white/90 text-slate-900 border-b border-white/95 shadow-[0_8px_30px_-10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,1)]">
-        {/* Main Top Liquid Glass Bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Zone 1: Company & System Identity */}
+      <header className="sticky top-0 z-30 bg-white/88 backdrop-blur-xl text-slate-900 border-b border-white/95 shadow-[0_8px_28px_-10px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,1)]">
+        {/* Main Top Liquid Glass Bar - Aligned to exact same 1600px grid as Workspace */}
+        <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 min-h-[60px] flex items-center justify-between gap-4">
+          {/* Zone 1: Company & System Identity (Left-aligned with Sidebar) */}
           <div className="flex items-center gap-3.5 min-w-0">
             {isCentralAdmin ? (
               <button
                 type="button"
                 onClick={handleOpenLogoModal}
-                className="group relative w-11 h-11 rounded-2xl bg-gradient-to-br from-white to-emerald-50/80 border border-white shadow-[0_6px_16px_-4px_rgba(16,185,129,0.22),inset_0_1.5px_0_rgba(255,255,255,1)] flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-105 cursor-pointer"
+                className="group relative w-10 h-10 rounded-2xl bg-gradient-to-br from-white to-emerald-50/90 border border-white shadow-[0_6px_16px_-4px_rgba(16,185,129,0.22),inset_0_1.5px_0_rgba(255,255,255,1)] flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-105 cursor-pointer"
                 title="Click to customize Company Logo & Identity (Main Admin Only)"
               >
                 {renderCurrentLogo(config.logoType || (config.logoImage ? 'image' : 'icon'), config.logoImage, config.logoIcon, config.logoMonogram, config.logoColor)}
@@ -247,19 +245,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                 </div>
               </button>
             ) : (
-              <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-white to-emerald-50/80 border border-white shadow-[0_6px_16px_-4px_rgba(16,185,129,0.18),inset_0_1.5px_0_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-white to-emerald-50/90 border border-white shadow-[0_6px_16px_-4px_rgba(16,185,129,0.18),inset_0_1.5px_0_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
                 {renderCurrentLogo(config.logoType || (config.logoImage ? 'image' : 'icon'), config.logoImage, config.logoIcon, config.logoMonogram, config.logoColor)}
               </div>
             )}
 
             {!isEditingNames ? (
               <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   {isCentralAdmin ? (
                     <>
                       <span
                         onClick={handleOpenLogoModal}
-                        className="font-extrabold text-slate-900 tracking-tight text-base sm:text-lg truncate cursor-pointer hover:text-emerald-700 transition-colors"
+                        className="font-extrabold text-slate-900 tracking-tight text-base sm:text-[17px] leading-tight truncate cursor-pointer hover:text-emerald-700 transition-colors"
                         title="Click to customize"
                       >
                         {config.companyName}
@@ -267,22 +265,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                       <button
                         type="button"
                         onClick={handleOpenLogoModal}
-                        className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
                         aria-label="Edit"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                     </>
                   ) : (
-                    <span className="font-extrabold text-slate-900 tracking-tight text-base sm:text-lg truncate">
+                    <span className="font-extrabold text-slate-900 tracking-tight text-base sm:text-[17px] leading-tight truncate">
                       {config.companyName}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600 truncate">
+                <div className="flex items-center gap-2 text-xs text-slate-600 truncate mt-0.5">
                   <span className="text-emerald-700 font-semibold truncate">{config.systemName}</span>
-                  <span aria-hidden="true" className="text-slate-400">·</span>
-                  <span className="text-slate-500 hidden sm:inline font-medium">Liquid Glass Enterprise OS</span>
+                  <span aria-hidden="true" className="text-slate-300 hidden sm:inline">·</span>
+                  <span className="text-slate-500 hidden sm:inline font-medium whitespace-nowrap">Liquid Glass Enterprise OS</span>
                 </div>
               </div>
             ) : (
@@ -316,16 +314,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
             )}
           </div>
 
-          {/* Zone 2: Liquid Glass Action Controls & Status */}
-          <div className="hidden lg:flex items-center gap-2.5 text-xs">
+          {/* Zone 2: Liquid Glass Action Controls & Status (Right-aligned with Main Workspace) */}
+          <div className="hidden lg:flex items-center gap-2 text-xs shrink-0">
             {onReturnToGateway && authUser.username === 'admin' && (
               <button
                 type="button"
                 onClick={onReturnToGateway}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-50 hover:bg-slate-100 text-teal-800 border border-slate-200/90 shadow-2xs transition cursor-pointer"
+                className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/90 hover:bg-white text-teal-800 border border-slate-200/90 shadow-2xs transition cursor-pointer"
                 title="Return to Developer Portal Gateway"
               >
-                <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>Portal Gateway</span>
               </button>
             )}
@@ -341,10 +339,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                 <button
                   type="button"
                   onClick={() => setShowSubscriptionModal(true)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer shadow-2xs ${
+                  className={`h-9 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-bold whitespace-nowrap border transition cursor-pointer shadow-2xs ${
                     sub.status === 'trialing'
-                      ? 'bg-amber-50 border-amber-300 text-amber-900'
-                      : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                      ? 'bg-amber-50/90 hover:bg-amber-100/80 border-amber-300 text-amber-900'
+                      : 'bg-emerald-50/90 hover:bg-emerald-100/80 border-emerald-300 text-emerald-900'
                   }`}
                   title={`Subscription: ${planLabel} (${daysLeft} days remaining). Click to view details.`}
                 >
@@ -359,7 +357,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                 <button
                   type="button"
                   onClick={() => setShowEmailVerifyModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-100 border border-amber-300 text-amber-900 transition cursor-pointer"
+                  className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-100/90 hover:bg-amber-200/70 border border-amber-300 text-amber-900 transition cursor-pointer shadow-2xs"
                   title="Verify Email"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -367,7 +365,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                 </button>
               ) : (
                 <div
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800"
+                  className="h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold whitespace-nowrap bg-emerald-50/90 border border-emerald-200 text-emerald-800"
                   title="Email Verified"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -379,9 +377,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
             {pendingRequestsCount > 0 && (
               <button
                 onClick={onOpenPendingRequests}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-semibold transition-colors cursor-pointer"
+                className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl whitespace-nowrap bg-amber-50/90 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold transition-colors cursor-pointer shadow-2xs"
               >
-                <Bell className="w-3.5 h-3.5 text-amber-600" />
+                <Bell className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span>{pendingRequestsCount} Pending</span>
               </button>
             )}
@@ -389,39 +387,27 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
             {recycleBinCount > 0 && (
               <button
                 onClick={onOpenRecycleBin}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 font-semibold transition-colors cursor-pointer"
+                className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 border border-rose-200 text-rose-800 font-bold transition-colors cursor-pointer shadow-2xs"
               >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                 <span>{recycleBinCount} in Bin</span>
               </button>
             )}
-
-            {/* Offline Data Viewer & Excel */}
-            <button
-              type="button"
-              onClick={() => setShowOfflineViewer(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-bold cursor-pointer transition shadow-2xs"
-              title="Emergency Offline Data Viewer & Excel Exporter"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden xl:inline">Offline Viewer & Excel</span>
-              <span className="xl:hidden">Offline Data</span>
-            </button>
 
             {/* Backup/Flush & Settings - Restricted to Central Admin */}
             {isCentralAdmin && (
               <>
                 <button
                   onClick={() => setShowBackupModal(true)}
-                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  className="h-9 px-3.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition"
                   title="Backup & Flush"
                 >
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                  <span className="hidden sm:inline">Backup & Flush</span>
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <span>Backup & Flush</span>
                 </button>
                 <button
                   onClick={() => setShowConfigModal(true)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer shadow-2xs"
+                  className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 border border-slate-200 cursor-pointer shadow-2xs transition shrink-0"
                   title="System Settings (Main Admin Only)"
                 >
                   <Sliders className="w-4 h-4 text-emerald-600" />
@@ -431,93 +417,93 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
           </div>
         </div>
 
-        {/* Row 2: Sub-Bar (Active User, Logout, Scope, Theme) */}
-        <div className="bg-slate-50/90 border-t border-slate-200/80 px-4 sm:px-6 lg:px-8 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-600">
-          {/* Active User Controls */}
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-            <div className="flex items-center gap-2.5 bg-white border border-slate-200/90 rounded-2xl px-3 py-1 text-xs shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setShowProfileModal(true)}
-                className="w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
-                title="Click to edit account profile & email"
-              >
-                {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
-              </button>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-slate-500 font-medium">Active:</span>
+        {/* Row 2: Sub-Bar (Aligned to exact same 1600px grid as Row 1 & Workspace) */}
+        <div className="bg-slate-50/85 border-t border-slate-200/75">
+          <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-600">
+            {/* Active User Controls (Left-aligned with Logo & Sidebar) */}
+            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+              <div className="h-8 flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-2.5 text-xs shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                  className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                  title="Click to edit account profile & email"
+                >
+                  {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+                </button>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {isCentralAdmin ? (
+                    <select
+                      value={currentUser.id}
+                      onChange={(e) => setViewAsUser(activeUsers.find((u) => u.id === e.target.value)!)}
+                      className="bg-transparent text-slate-900 font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[165px]"
+                    >
+                      {activeUsers.map((u) => (
+                        <option key={u.id} value={u.id} className="bg-white text-slate-900">
+                          {u.id === authUser.id ? `★ ${u.fullName}` : u.fullName}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="font-bold text-slate-900 text-xs truncate max-w-[165px]">
+                      {currentUser?.fullName} ({currentUser?.role})
+                    </span>
+                  )}
+                  <span className="text-slate-300">·</span>
                   <button
                     type="button"
                     onClick={() => setShowProfileModal(true)}
-                    className="text-[10px] text-emerald-700 hover:text-emerald-600 font-bold cursor-pointer underline"
+                    className="text-[11px] text-emerald-700 hover:text-emerald-600 font-bold cursor-pointer hover:underline whitespace-nowrap"
                   >
                     Edit Profile
                   </button>
                 </div>
-                {isCentralAdmin ? (
-                  <select
-                    value={currentUser.id}
-                    onChange={(e) => setViewAsUser(activeUsers.find((u) => u.id === e.target.value)!)}
-                    className="bg-transparent text-slate-900 font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[155px]"
-                  >
-                    {activeUsers.map((u) => (
-                      <option key={u.id} value={u.id} className="bg-white text-slate-900">
-                        {u.id === authUser.id ? `★ ${u.fullName}` : u.fullName}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className="font-bold text-slate-900 text-xs truncate max-w-[155px]">
-                    {currentUser?.fullName} ({currentUser?.role})
-                  </span>
-                )}
               </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={logout}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs cursor-pointer"
-              title="Log Out"
-            >
-              <LogOut className="w-3.5 h-3.5 text-white" />
-              <span className="font-bold">Log Out</span>
-            </button>
-          </div>
-
-          {/* Status & Scope */}
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-            <div className="flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-3 py-1 text-slate-600 shadow-2xs">
-              <Layers className="w-3.5 h-3.5 text-emerald-600" />
-              <span>
-                Scope: <strong className="text-slate-900">{activeSiteName}</strong>
-              </span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
-              <span>
-                Role: <strong className="text-emerald-700">{currentUser.role}</strong>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-2.5 py-1 text-xs shadow-2xs">
-              <Palette className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-[10px] text-slate-500 font-medium">Glass Tone:</span>
-              <select
-                value={currentThemeId}
-                onChange={(e) => updateConfig({ themeId: e.target.value, logoColor: e.target.value })}
-                className="bg-transparent text-slate-900 text-xs font-bold focus:outline-none cursor-pointer"
+              <button
+                type="button"
+                onClick={logout}
+                className="h-8 flex items-center gap-1.5 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap"
+                title="Log Out"
               >
-                {Object.entries(APP_THEMES).map(([key, t]) => (
-                  <option key={key} value={key} className="bg-white text-slate-900">
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                <LogOut className="w-3.5 h-3.5 text-white shrink-0" />
+                <span>Log Out</span>
+              </button>
             </div>
 
-            <div className="hidden md:flex items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-3 py-1 text-[11px] font-bold text-slate-800 shadow-2xs">
-              <span className="text-emerald-600">◆</span>
-              <span>Apex Developer | System Developed By Sasith Dissanayake</span>
+            {/* Status & Scope (Right-aligned with Action Buttons & Main Workspace) */}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <div className="h-8 flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-3 text-slate-600 shadow-2xs whitespace-nowrap">
+                <Layers className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>
+                  Scope: <strong className="text-slate-900">{activeSiteName}</strong>
+                </span>
+                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span>
+                  Role: <strong className="text-emerald-700">{currentUser.role}</strong>
+                </span>
+              </div>
+
+              <div className="h-8 flex items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-3 text-xs shadow-2xs whitespace-nowrap">
+                <Palette className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="text-[11px] text-slate-500 font-medium">Glass Tone:</span>
+                <select
+                  value={currentThemeId}
+                  onChange={(e) => updateConfig({ themeId: e.target.value, logoColor: e.target.value })}
+                  className="bg-transparent text-slate-900 text-xs font-bold focus:outline-none cursor-pointer"
+                >
+                  {Object.entries(APP_THEMES).map(([key, t]) => (
+                    <option key={key} value={key} className="bg-white text-slate-900">
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="hidden xl:flex h-8 items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-3 text-[11px] font-bold text-slate-800 shadow-2xs whitespace-nowrap">
+                <span className="text-emerald-600">◆</span>
+                <span>Apex Developer | System Developed By Sasith Dissanayake</span>
+              </div>
             </div>
           </div>
         </div>
@@ -556,7 +542,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
       )}
       <SystemConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} />
       <SystemBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
-      <OfflineBackupViewerModal isOpen={showOfflineViewer} onClose={() => setShowOfflineViewer(false)} />
       <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
       <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <EmailVerificationModal isOpen={showEmailVerifyModal} onClose={() => setShowEmailVerifyModal(false)} />

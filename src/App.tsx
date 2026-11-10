@@ -215,14 +215,14 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         ))}
       </div>
 
-      {/* Main Body with Sleek Glass Desktop Sidebar */}
-      <div className="flex-1 flex max-w-[1440px] w-full mx-auto">
-        <div className="hidden lg:block no-print">
+      {/* Main Body with Sleek Glass Desktop Sidebar - Aligned to exact 1600px grid as Header */}
+      <div className="flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 gap-6 items-start">
+        <div className="hidden lg:block no-print shrink-0">
           <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
         </div>
 
         {/* Viewport Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-7 pb-28 lg:pb-10 overflow-y-auto min-w-0">
+        <main className="flex-1 pb-28 lg:pb-10 min-w-0">
           {renderActiveView()}
         </main>
       </div>
