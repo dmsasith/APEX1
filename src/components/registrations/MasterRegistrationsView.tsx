@@ -82,6 +82,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     addClient,
     updateClient,
     deleteClient,
+    clientFreeIssues,
     setCurrentUser,
     currentTenant,
     getWorkspaceLoginUrl,
@@ -913,7 +914,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               }`}
             >
               <Briefcase className={`w-4 h-4 ${activeTab === 'clients' ? 'text-emerald-600' : 'text-emerald-400'}`} />
-              <span>Clients / Principals ({activeClients.length})</span>
+              <span>Client Register ({activeClients.length})</span>
             </button>
           </div>
         </div>
@@ -1014,7 +1015,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-200 bg-amber-100/90 dark:bg-amber-950/70 hover:bg-amber-200 border border-amber-300 dark:border-amber-800/80 px-2.5 py-0.5 rounded-lg transition-all cursor-pointer shadow-2xs"
                         >
                           <Plus className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                          <span>+ Add Machinery Category</span>
+                          <span>Add Machinery Category</span>
                         </button>
                       ) : (
                         <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">Standard Fleet Equipment</span>
@@ -1431,35 +1432,48 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
       {/* TAB 2: ADD & MANAGE SITES */}
       {activeTab === 'sites' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Site Creation Form */}
           {isCentralAdmin ? (
-            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
-                    <Building className="w-4 h-4" />
+            <div className="lg:col-span-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-white/90 dark:border-slate-800 ring-1 ring-slate-900/[0.06] p-6 shadow-[0_12px_34px_-12px_rgba(15,23,42,0.12)] transition-all">
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/70 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-emerald-600 dark:to-teal-700 text-emerald-400 dark:text-white flex items-center justify-center shadow-md shadow-slate-900/15 shrink-0">
+                    <Building className="w-5 h-5" />
                   </div>
-                  <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Register New Site Branch</h2>
+                  <div>
+                    <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                      Branch & Depot Registry
+                    </div>
+                    <h2 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">
+                      Register New Site Branch
+                    </h2>
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">Location Setup</span>
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Location Setup
+                </span>
               </div>
 
               <form onSubmit={handleCreateSite} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Site Name *</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Site Branch Name *
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. East River Transmission Depot"
+                    placeholder="e.g. Matale Regional Depot, Kandy Operations Yard"
                     value={siteName}
                     onChange={(e) => setSiteName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-medium bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supervisor / Manager Name *</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Supervisor / Branch Manager *
+                  </label>
                   <select
                     value={isCustomAddSupervisor ? '__custom__' : siteSupervisor}
                     onChange={(e) => {
@@ -1472,7 +1486,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         setSiteSupervisor(val);
                       }
                     }}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all font-medium"
                     required={!isCustomAddSupervisor}
                   >
                     <option value="">-- Select Registered Supervisor / Manager --</option>
@@ -1484,49 +1498,53 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     {siteSupervisor && !isCustomAddSupervisor && !activeUsers.some((u) => u.fullName.toLowerCase() === siteSupervisor.toLowerCase()) && (
                       <option value={siteSupervisor}>{siteSupervisor} (Custom)</option>
                     )}
-                    <option value="__custom__">✍️ Enter Custom / Unregistered Supervisor Name...</option>
+                    <option value="__custom__">Enter Custom / Unregistered Supervisor Name...</option>
                   </select>
 
                   {isCustomAddSupervisor && (
                     <input
                       type="text"
-                      placeholder="Type custom supervisor name..."
+                      placeholder="Type custom supervisor full name..."
                       value={siteSupervisor}
                       onChange={(e) => setSiteSupervisor(e.target.value)}
-                      className="w-full mt-2 px-3.5 py-2.5 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:outline-none bg-amber-50/50 dark:bg-amber-950/30 dark:text-white"
+                      className="w-full mt-2 px-4 py-2.5 border border-amber-300 dark:border-amber-700/60 rounded-2xl text-xs focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:outline-none bg-amber-50/60 dark:bg-amber-950/30 dark:text-white font-medium"
                       required
                     />
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Location / Details *</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Geographic Location / Address *
+                  </label>
                   <input
                     type="text"
-                    placeholder="Highway mile marker, grid address, or depot code"
+                    placeholder="Town, district, grid address, or depot code"
                     value={siteLocation}
                     onChange={(e) => setSiteLocation(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-medium bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Branch Contact Number
+                  </label>
                   <input
                     type="text"
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="+94 77 123 4567"
                     value={sitePhone}
                     onChange={(e) => setSitePhone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-mono tabular-nums bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                   />
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={handleClearSiteForm}
-                    className="px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                     title="Clear all site form fields"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -1534,7 +1552,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                    className="flex-1 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-slate-900/15 cursor-pointer whitespace-nowrap"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Register Site Branch</span>
@@ -1543,7 +1561,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </form>
             </div>
           ) : (
-            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="lg:col-span-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 mb-3">
                 <Lock className="w-6 h-6" />
               </div>
@@ -1557,13 +1575,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
           )}
 
-          {/* Sites Grid with Edit & Delete */}
+          {/* Sites Grid with High-Craft Liquid Glass Cards */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm text-slate-900 dark:text-white">Current Operational Sites</h2>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
-                  {activeSites.length}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white/75 dark:bg-slate-900/75 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/85 dark:border-slate-800 ring-1 ring-slate-900/[0.05] shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-5 rounded-full bg-emerald-500" />
+                <h2 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
+                  Current Operational Sites
+                </h2>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums font-bold">
+                  · {activeSites.length} Registered
                 </span>
               </div>
               {isCentralAdmin && (
@@ -1571,7 +1592,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   {selectedSiteIds.length > 0 && (
                     <button
                       onClick={handleBulkDeleteSites}
-                      className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete Selected ({selectedSiteIds.length})</span>
@@ -1580,7 +1601,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   {activeSites.filter((s) => !s.isMainWarehouse).length > 0 && (
                     <button
                       onClick={handleClearAllSites}
-                      className="px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
                       title="Move branch sites to Recycle Bin"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -1592,23 +1613,67 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {activeSites.map((s) => {
+              {activeSites.map((s, idx) => {
                 const assignedTeams = activeTeams.filter((t) => t.assignedSiteId === s.id);
+                const assignedUsers = activeUsers.filter((u) =>
+                  s.isMainWarehouse ? u.siteId === 'all' || u.siteId === s.id : u.siteId === s.id
+                );
                 const isChecked = selectedSiteIds.includes(s.id);
+                const supervisorInitials = (s.supervisorName || 'S')
+                  .split(' ')
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part) => part[0]?.toUpperCase())
+                  .join('');
 
                 return (
                   <div
                     key={s.id}
-                    className={`rounded-2xl border p-5 shadow-sm transition-all flex flex-col justify-between group ${
+                    className={`relative overflow-hidden rounded-3xl p-5 sm:p-6 transition-all duration-200 flex flex-col justify-between group ${
                       s.isMainWarehouse
-                        ? 'border-emerald-500/40 dark:border-emerald-500/50 bg-gradient-to-br from-emerald-50/50 via-white to-white dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 ring-1 ring-emerald-500/20'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+                        ? 'bg-gradient-to-br from-emerald-50/95 via-white/95 to-teal-50/80 dark:from-emerald-950/40 dark:via-slate-900/95 dark:to-slate-900 border border-emerald-400/60 dark:border-emerald-500/40 shadow-[0_14px_34px_-12px_rgba(16,185,129,0.22)] hover:shadow-[0_20px_42px_-12px_rgba(16,185,129,0.3)]'
+                        : isChecked
+                        ? 'bg-emerald-50/40 dark:bg-slate-900 border-2 border-emerald-500 shadow-md'
+                        : 'bg-gradient-to-br from-white/95 via-white/90 to-slate-50/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-800/80 backdrop-blur-xl border border-white/95 dark:border-slate-800 ring-1 ring-slate-900/[0.06] dark:ring-white/[0.06] shadow-[0_10px_28px_-12px_rgba(15,23,42,0.1)] hover:shadow-[0_18px_38px_-12px_rgba(16,185,129,0.16)] hover:border-emerald-400/50'
                     }`}
                   >
+                    {/* Top Row: Icon Badge + Title & Actions */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {!s.isMainWarehouse && (
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
+                              s.isMainWarehouse
+                                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/25'
+                                : 'bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-emerald-400 shadow-slate-900/15'
+                            }`}
+                          >
+                            {s.isMainWarehouse ? (
+                              <Warehouse className="w-5 h-5" />
+                            ) : (
+                              <Building className="w-5 h-5" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                              <span className={s.isMainWarehouse ? 'text-emerald-700 dark:text-emerald-400' : ''}>
+                                {s.isMainWarehouse ? 'Central HQ Warehouse' : 'Regional Site Branch'}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span className="font-mono tabular-nums text-[10px]">
+                                {s.isMainWarehouse ? 'HQ-01' : `BR-${String(idx).padStart(2, '0')}`}
+                              </span>
+                            </div>
+                            <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight truncate mt-0.5">
+                              {s.name}
+                            </h3>
+                          </div>
+                        </div>
+
+                        {/* Unified Glass Action Bar */}
+                        <div className="flex items-center gap-1 bg-slate-100/85 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-1.5 py-1 shrink-0">
+                          {!s.isMainWarehouse && isCentralAdmin && (
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -1617,70 +1682,100 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                   prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id]
                                 )
                               }
-                              className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                              title="Select branch for bulk action"
+                              className="w-3.5 h-3.5 mx-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                             />
                           )}
-                          <span
-                            className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
-                              s.isMainWarehouse
-                                ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/20'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                            }`}
-                          >
-                            {s.isMainWarehouse && <Warehouse className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
-                            {s.isMainWarehouse ? 'Central HQ Warehouse' : 'Site Branch'}
-                          </span>
-                        </div>
-
-                        {/* Edit & Delete Controls */}
-                        {isCentralAdmin && (
-                          <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => {
-                                setIsCustomEditSupervisor(false);
-                                setEditingSite({ ...s });
-                              }}
-                              className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                              title="Edit Site Details"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            {!s.isMainWarehouse && (
+                          {isCentralAdmin && (
+                            <>
                               <button
-                                onClick={() => handleDeleteSite(s)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                                title="Move to Recycle Bin"
+                                onClick={() => {
+                                  setIsCustomEditSupervisor(false);
+                                  setEditingSite({ ...s });
+                                }}
+                                className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                title="Edit Site Details"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                            )}
-                          </div>
-                        )}
+                              {!s.isMainWarehouse && (
+                                <button
+                                  onClick={() => handleDeleteSite(s)}
+                                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                  title="Move to Recycle Bin"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
 
-                      <h3 className="font-extrabold text-slate-900 dark:text-white text-base mt-1.5 tracking-tight">{s.name}</h3>
+                      {/* Structured Details Surface */}
+                      <div className="mt-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-2.5">
+                        {/* Supervisor Row */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-extrabold text-[11px] flex items-center justify-center shrink-0">
+                              {supervisorInitials || 'SV'}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-none">
+                                Supervisor / In-Charge
+                              </div>
+                              <div className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                {s.supervisorName || 'Unassigned'}
+                              </div>
+                            </div>
+                          </div>
+                          <Shield className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                        </div>
 
-                      <div className="mt-3.5 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                          <span className="truncate">{s.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                          <span className="font-mono">{s.contactNumber}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                          <span>Supervisor: <strong className="text-slate-900 dark:text-slate-200">{s.supervisorName}</strong></span>
+                        {/* Location & Phone Split Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                          <div className="flex items-start gap-2 min-w-0">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
+                                Location
+                              </div>
+                              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5" title={s.location}>
+                                {s.location}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2 min-w-0">
+                            <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
+                                Direct Line
+                              </div>
+                              <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5">
+                                {s.contactNumber}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                      <span>Assigned Crews: <strong className="font-mono text-slate-900 dark:text-white font-bold">{assignedTeams.length}</strong></span>
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/50">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Active Status
+                    {/* Footer Telemetry Bar */}
+                    <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                        <span>
+                          Crews: <strong className="font-mono tabular-nums text-slate-900 dark:text-white font-extrabold">{assignedTeams.length}</strong>
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>
+                          Staff: <strong className="font-mono tabular-nums text-slate-900 dark:text-white font-extrabold">{assignedUsers.length}</strong>
+                        </span>
+                      </div>
+
+                      <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{s.isMainWarehouse ? 'Primary Hub' : 'Operational'}</span>
                       </span>
                     </div>
                   </div>
@@ -2002,62 +2097,79 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
       {/* TAB 4: ADD & MANAGE TEAMS */}
       {activeTab === 'teams' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Team Creation Form */}
-          <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
-                  <Users2 className="w-4 h-4" />
+          <div className="lg:col-span-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-white/90 dark:border-slate-800 ring-1 ring-slate-900/[0.06] p-6 shadow-[0_12px_34px_-12px_rgba(15,23,42,0.12)] transition-all">
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/70 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+                  <Users2 className="w-5 h-5" />
                 </div>
-                <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Register Field Work Team</h2>
+                <div>
+                  <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                    Field Operations & Roster
+                  </div>
+                  <h2 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">
+                    Register Field Work Team
+                  </h2>
+                </div>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">Crew Roster</span>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                Crew Roster
+              </span>
             </div>
 
             <form onSubmit={handleCreateTeam} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Team Name *</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Team / Squad Name *
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Echo High-Tension Stringing Squad"
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-medium bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Team Leader Name *</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Team Leader Name *
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. Sarah Connor"
+                    placeholder="e.g. Kasun Perera"
                     value={teamLeaderName}
                     onChange={(e) => setTeamLeaderName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-medium bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Leader NIC / Worker ID</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Leader NIC / Worker ID
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. 198845123V / EMP-010"
                     value={teamLeaderIdNumber}
                     onChange={(e) => setTeamLeaderIdNumber(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-mono tabular-nums uppercase bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base *</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Assigned Site Base *
+                </label>
                 <select
                   value={assignedSiteId}
                   onChange={(e) => setAssignedSiteId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
+                  className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all font-medium"
                 >
                   {activeSites.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -2068,13 +2180,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               {/* Dynamic Team Members Roster with Individual Names and ID Numbers */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 bg-slate-50/80 dark:bg-slate-800/40 space-y-3">
+              <div className="border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/80 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <label className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
                     <Users2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Team Members & ID Roster ({teamMembers.length})</span>
                   </label>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Add names & ID numbers</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                    Add names & ID numbers
+                  </span>
                 </div>
 
                 {/* Input row for adding a member */}
@@ -2085,14 +2199,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       placeholder="Member Full Name *"
                       value={newMemberName}
                       onChange={(e) => setNewMemberName(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-emerald-600"
                     />
                     <input
                       type="text"
                       placeholder="ID / NIC Number *"
                       value={newMemberIdNumber}
                       onChange={(e) => setNewMemberIdNumber(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono uppercase dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono tabular-nums uppercase dark:bg-slate-800 dark:text-white focus:outline-none focus:border-emerald-600"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
@@ -2102,7 +2216,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         placeholder="Role / Skill (e.g. Technician)"
                         value={newMemberRole}
                         onChange={(e) => setNewMemberRole(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-emerald-600"
                       />
                     </div>
                     <div className="sm:col-span-4">
@@ -2111,14 +2225,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         placeholder="Phone (Optional)"
                         value={newMemberPhone}
                         onChange={(e) => setNewMemberPhone(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-slate-800"
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-emerald-600"
                       />
                     </div>
                     <div className="sm:col-span-3">
                       <button
                         type="button"
                         onClick={handleAddTeamMember}
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Add</span>
@@ -2133,11 +2247,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     {teamMembers.map((m, idx) => (
                       <div key={m.id} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}.</span>
+                          <span className="text-[10px] font-mono tabular-nums font-bold text-slate-400 w-4">{idx + 1}.</span>
                           <div className="truncate">
                             <span className="font-semibold text-slate-900 dark:text-slate-200">{m.name}</span>
-                            <span className="ml-2 font-mono text-[10px] text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
-                              {m.idNumber}
+                            <span className="ml-2 font-mono tabular-nums text-[10px] text-emerald-700 dark:text-emerald-300 font-bold">
+                              · {m.idNumber}
                             </span>
                             {m.role && <span className="ml-1 text-[10px] text-slate-500">({m.role})</span>}
                           </div>
@@ -2154,7 +2268,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center py-1">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center py-1">
                     No members added yet. Add individual team member names & ID numbers above.
                   </p>
                 )}
@@ -2162,7 +2276,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Crew Size ({teamMembers.length > 0 ? 'Auto-Calculated' : 'Persons'})
                   </label>
                   <input
@@ -2171,30 +2285,34 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     value={teamMembers.length > 0 ? teamMembers.length + 1 : crewSize}
                     onChange={(e) => setCrewSize(e.target.value === '' ? '' : Number(e.target.value))}
                     disabled={teamMembers.length > 0}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all disabled:opacity-60"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-mono tabular-nums bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all disabled:opacity-60"
                   />
                   {teamMembers.length > 0 && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">1 Leader + {teamMembers.length} Members</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      1 Leader + {teamMembers.length} Members
+                    </span>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Contact Phone
+                  </label>
                   <input
                     type="text"
-                    placeholder="+1 (555) 789-0000"
+                    placeholder="+94 77 123 4567"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-mono tabular-nums bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={handleClearTeamForm}
-                  className="px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                   title="Clear all team form fields"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -2202,7 +2320,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                  className="flex-1 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-slate-900/15 cursor-pointer whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Register Field Team</span>
@@ -2211,20 +2329,23 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </form>
           </div>
 
-          {/* Teams Cards List with Edit & Delete */}
+          {/* Teams Cards List with High-Craft Liquid Glass Cards */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm text-slate-900 dark:text-white">Active Field Crews</h2>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
-                  {activeTeams.length} teams
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white/75 dark:bg-slate-900/75 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/85 dark:border-slate-800 ring-1 ring-slate-900/[0.05] shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-5 rounded-full bg-emerald-500" />
+                <h2 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
+                  Active Field Crews
+                </h2>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums font-bold">
+                  · {activeTeams.length} Registered
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 {selectedTeamIds.length > 0 && (
                   <button
                     onClick={handleBulkDeleteTeams}
-                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Selected ({selectedTeamIds.length})</span>
@@ -2233,7 +2354,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 {activeTeams.length > 0 && (
                   <button
                     onClick={handleClearAllTeams}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
                     title="Move all field teams to Recycle Bin"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -2243,100 +2364,200 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {activeTeams.map((t) => {
-                const s = activeSites.find((site) => site.id === t.assignedSiteId);
-                const isChecked = selectedTeamIds.includes(t.id);
-                const hasMembers = t.members && t.members.length > 0;
+            {activeTeams.length === 0 ? (
+              <div className="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl rounded-3xl border border-white/90 dark:border-slate-800 ring-1 ring-slate-900/[0.05] p-10 text-center space-y-2 shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                  <Users2 className="w-6 h-6" />
+                </div>
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                  No Active Field Teams Registered
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+                  Use the Field Work Team registration panel on the left to register your field squads, team leaders, and member NIC rosters.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {activeTeams.map((t, idx) => {
+                  const s = activeSites.find((site) => site.id === t.assignedSiteId);
+                  const isChecked = selectedTeamIds.includes(t.id);
+                  const hasMembers = t.members && t.members.length > 0;
+                  const leaderInitials = (t.teamLeaderName || 'TL')
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((part) => part[0]?.toUpperCase())
+                    .join('');
 
-                return (
-                  <div key={t.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() =>
-                              setSelectedTeamIds((prev) =>
-                                prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
-                              )
-                            }
-                            className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
-                          />
-                          <h3 className="font-extrabold text-slate-900 dark:text-white text-base tracking-tight">{t.teamName}</h3>
+                  return (
+                    <div
+                      key={t.id}
+                      className={`relative overflow-hidden rounded-3xl p-5 sm:p-6 transition-all duration-200 flex flex-col justify-between group ${
+                        isChecked
+                          ? 'bg-emerald-50/40 dark:bg-slate-900 border-2 border-emerald-500 shadow-md'
+                          : 'bg-gradient-to-br from-white/95 via-white/90 to-slate-50/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-800/80 backdrop-blur-xl border border-white/95 dark:border-slate-800 ring-1 ring-slate-900/[0.06] dark:ring-white/[0.06] shadow-[0_10px_28px_-12px_rgba(15,23,42,0.1)] hover:shadow-[0_18px_38px_-12px_rgba(16,185,129,0.18)] hover:border-emerald-400/50'
+                      }`}
+                    >
+                      <div>
+                        {/* Header: Icon Badge + Squad Title + Actions */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
+                              <Users2 className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">
+                                <span className="truncate">{s?.name || 'Central Base'}</span>
+                                <span aria-hidden="true">·</span>
+                                <span className="font-mono tabular-nums text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                                  SQ-{String(idx + 1).padStart(2, '0')}
+                                </span>
+                              </div>
+                              <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight truncate mt-0.5">
+                                {t.teamName}
+                              </h3>
+                            </div>
+                          </div>
+
+                          {/* Unified Glass Action Bar */}
+                          <div className="flex items-center gap-1 bg-slate-100/85 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-1.5 py-1 shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() =>
+                                setSelectedTeamIds((prev) =>
+                                  prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                                )
+                              }
+                              title="Select team for bulk action"
+                              className="w-3.5 h-3.5 mx-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <button
+                              onClick={() => setEditingTeam({ ...t })}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                              title="Edit Team"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTeam(t)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                              title="Delete Team"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => setEditingTeam({ ...t })}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            title="Edit Team"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTeam(t)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                            title="Delete Team"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+                        {/* Structured Leader & Contact Surface */}
+                        <div className="mt-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-emerald-600 text-emerald-400 dark:text-white font-extrabold text-[11px] flex items-center justify-center shrink-0">
+                                {leaderInitials || 'TL'}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-none">
+                                  Squad Leader
+                                </div>
+                                <div className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                  {t.teamLeaderName}
+                                </div>
+                              </div>
+                            </div>
+                            {t.teamLeaderIdNumber && (
+                              <span className="font-mono tabular-nums text-[10px] font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                                ID: {t.teamLeaderIdNumber}
+                              </span>
+                            )}
+                          </div>
 
-                      <div className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-between">
-                        <span>Base: {s?.name}</span>
-                        <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
-                          {t.crewSize} Persons
-                        </span>
-                      </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                            <div className="flex items-start gap-2 min-w-0">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
+                              <div className="min-w-0">
+                                <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
+                                  Assigned Base
+                                </div>
+                                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5">
+                                  {s?.name || 'Central HQ'}
+                                </div>
+                              </div>
+                            </div>
 
-                      <div className="mt-3.5 space-y-2 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
-                        <div>
-                          <span className="text-slate-500">Leader: </span>
-                          <strong className="text-slate-900 dark:text-white">{t.teamLeaderName}</strong>
-                          {t.teamLeaderIdNumber && (
-                            <span className="ml-2 font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-bold border border-slate-200 dark:border-slate-700">
-                              NIC: {t.teamLeaderIdNumber}
-                            </span>
+                            <div className="flex items-start gap-2 min-w-0">
+                              <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
+                              <div className="min-w-0">
+                                <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
+                                  Contact Phone
+                                </div>
+                                <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5">
+                                  {t.contactPhone}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Member Roster Sub-list */}
+                          {hasMembers ? (
+                            <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+                              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                <span>Registered Crew Roster</span>
+                                <span className="font-mono tabular-nums">{t.members!.length} Members</span>
+                              </div>
+                              <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                {t.members!.slice(0, 3).map((m, mIdx) => (
+                                  <div
+                                    key={m.id}
+                                    className="flex items-center justify-between text-[11px] bg-white/80 dark:bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-200/60 dark:border-slate-800"
+                                  >
+                                    <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                      <span className="font-mono tabular-nums text-slate-400 mr-1">{mIdx + 1}.</span>
+                                      {m.name}
+                                    </span>
+                                    <span className="font-mono tabular-nums text-[10px] text-emerald-700 dark:text-emerald-400 font-bold ml-2 shrink-0">
+                                      {m.idNumber}
+                                    </span>
+                                  </div>
+                                ))}
+                                {t.members!.length > 3 && (
+                                  <div className="text-[10px] text-slate-500 font-medium pt-0.5 pl-1">
+                                    +{t.members!.length - 3} additional crew member(s)
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
+                              <span>Individual NIC roster not logged</span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingTeam({ ...t })}
+                                className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                              >
+                                + Add Roster
+                              </button>
+                            </div>
                           )}
                         </div>
+                      </div>
 
-                        {hasMembers ? (
-                          <div className="text-[11px] bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1.5">
-                            <div className="font-bold text-slate-700 dark:text-slate-300 text-[10px] uppercase tracking-wider flex items-center justify-between">
-                              <span>Registered Members ({t.members!.length})</span>
-                            </div>
-                            <div className="space-y-1 max-h-20 overflow-y-auto pr-1">
-                              {t.members!.slice(0, 3).map((m) => (
-                                <div key={m.id} className="flex items-center justify-between text-[10px]">
-                                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{m.name}</span>
-                                  <span className="font-mono text-emerald-700 dark:text-emerald-400 font-bold ml-1">{m.idNumber}</span>
-                                </div>
-                              ))}
-                              {t.members!.length > 3 && (
-                                <div className="text-[10px] text-slate-500 italic pt-0.5">
-                                  +{t.members!.length - 3} more members...
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-[10px] text-slate-400 italic">
-                            No member ID details logged. Edit team to add roster.
-                          </div>
-                        )}
+                      {/* Footer Telemetry Strip */}
+                      <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Total Strength: <strong className="font-mono tabular-nums text-slate-900 dark:text-white font-extrabold">{t.crewSize} Personnel</strong>
+                        </span>
 
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                          Phone: <span className="font-mono text-slate-800 dark:text-slate-200 font-semibold">{t.contactPhone}</span>
-                        </div>
+                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Active Squad</span>
+                        </span>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2549,45 +2770,51 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         </div>
       )}
 
-      {/* TAB 5: ADD & MANAGE CLIENTS / PRINCIPALS */}
+      {/* TAB 5: CLIENT REGISTER (SYNCED WITH CLIENT FREE STOCK) */}
       {activeTab === 'clients' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Client Creation Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* New Client Register Form */}
           {isCentralAdmin ? (
-            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-emerald-400 flex items-center justify-center font-bold">
-                    <Briefcase className="w-4 h-4" />
+            <div className="lg:col-span-5 relative overflow-hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-[24px] border border-slate-200/90 dark:border-slate-800 p-6 shadow-[0_12px_36px_-12px_rgba(15,23,42,0.08)] transition-all">
+              <div className="absolute -top-16 -right-16 w-36 h-36 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
+              <div className="relative flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-emerald-600 dark:to-teal-700 text-emerald-400 dark:text-white flex items-center justify-center shadow-md shadow-slate-900/10">
+                    <Briefcase className="w-5 h-5" />
                   </div>
-                  <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">Register Master Client / Principal</h2>
+                  <div>
+                    <h2 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">New Client Register</h2>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Synced with Client Free Stock (FOC) & Projects</p>
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">HQ Registry</span>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                  Client Register
+                </span>
               </div>
 
-              <form onSubmit={handleCreateClient} className="space-y-3.5">
+              <form onSubmit={handleCreateClient} className="space-y-3.5 relative">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Client Code</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Client Code</label>
                     <input
                       type="text"
                       value={clientCodeInput}
                       onChange={(e) => setClientCodeInput(e.target.value)}
                       placeholder={`Auto e.g. CLT-${String(clients.length + 1).padStart(3, '0')}`}
-                      className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold bg-slate-50 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-mono font-bold bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     />
                   </div>
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Industry Category *</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Industry Category *</label>
                       {isCentralAdmin && (
                         <button
                           type="button"
                           onClick={() => setShowAddClientCategoryModal(!showAddClientCategoryModal)}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/80 px-2 py-0.5 rounded-lg transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/80 px-2 py-0.5 rounded-lg transition-all cursor-pointer"
                         >
                           <Plus className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          <span>+ Add Category</span>
+                          <span>Add Category</span>
                         </button>
                       )}
                     </div>
@@ -2596,7 +2823,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     {isCentralAdmin && showAddClientCategoryModal && (
                       <div className="mb-2 p-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1">
                         <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900 dark:text-emerald-300">
-                          <span>Add New Industry Category (Admin)</span>
+                          <span>Add New Industry Category</span>
                           <button
                             type="button"
                             onClick={() => setShowAddClientCategoryModal(false)}
@@ -2608,7 +2835,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         <div className="flex gap-1.5">
                           <input
                             type="text"
-                            placeholder="e.g. Solar & Renewable Energy, Data Center"
+                            placeholder="e.g. Solar & Renewable Energy"
                             value={newCustomClientCategoryName}
                             onChange={(e) => setNewCustomClientCategoryName(e.target.value)}
                             onKeyDown={(e) => {
@@ -2634,7 +2861,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     <select
                       value={clientCategoryInput}
                       onChange={(e) => setClientCategoryInput(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-semibold bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     >
                       {allClientCategories.map((cat) => (
                         <option key={cat} value={cat}>
@@ -2670,92 +2897,111 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Client / Principal Name *</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Client / Principal Name *</label>
                   <input
                     type="text"
                     required
                     value={clientNameInput}
                     onChange={(e) => setClientNameInput(e.target.value)}
-                    placeholder="e.g. National Telecom Infrastructure Operator"
-                    className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="e.g. Sri Lanka Telecom PLC / National Grid Corp"
+                    className="w-full px-3.5 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-bold bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Primary Contact Person</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Primary Contact Person</label>
                     <input
                       type="text"
                       value={clientContactPersonInput}
                       onChange={(e) => setClientContactPersonInput(e.target.value)}
-                      placeholder="e.g. John Smith (Project Lead)"
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="e.g. Eng. K. Perera"
+                      className="w-full px-3 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-medium bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tax / Reg Number</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Tax / Reg Number</label>
                     <input
                       type="text"
                       value={clientTaxNoInput}
                       onChange={(e) => setClientTaxNoInput(e.target.value)}
-                      placeholder="e.g. TAX-99201-X"
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="e.g. VAT-99201-X"
+                      className="w-full px-3 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Contact Phone</label>
                     <input
                       type="text"
                       value={clientPhoneInput}
                       onChange={(e) => setClientPhoneInput(e.target.value)}
-                      placeholder="e.g. +1 555 019 2831"
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="e.g. +94 11 234 5678"
+                      className="w-full px-3 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Email</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Contact Email</label>
                     <input
                       type="email"
                       value={clientEmailInput}
                       onChange={(e) => setClientEmailInput(e.target.value)}
-                      placeholder="e.g. projects@clientcorp.com"
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="e.g. foc-logistics@client.com"
+                      className="w-full px-3 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Office Address</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Office / Headquarter Address</label>
                   <input
                     type="text"
                     value={clientAddressInput}
                     onChange={(e) => setClientAddressInput(e.target.value)}
-                    placeholder="Head office address"
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Corporate office or central yard address"
+                    className="w-full px-3 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Notes / Terms</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">FOC Material Dispatch Notes / Terms</label>
                   <textarea
                     rows={2}
                     value={clientNotesInput}
                     onChange={(e) => setClientNotesInput(e.target.value)}
-                    placeholder="Specific FOC material dispatch guidelines or contract terms..."
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Specific FOC material dispatch guidelines, drum return policies, or contract terms..."
+                    className="w-full px-3 py-2 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Register Master Client</span>
-                </button>
+                <div className="pt-1 flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClientCodeInput('');
+                      setClientNameInput('');
+                      setClientContactPersonInput('');
+                      setClientPhoneInput('');
+                      setClientEmailInput('');
+                      setClientAddressInput('');
+                      setClientTaxNoInput('');
+                      setClientNotesInput('');
+                    }}
+                    className="px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Clear</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 hover:from-emerald-600 hover:via-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl shadow-md shadow-slate-900/15 hover:shadow-emerald-600/25 transition-all text-xs cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Save to Client Register</span>
+                  </button>
+                </div>
               </form>
             </div>
           ) : (
@@ -2766,53 +3012,58 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
           )}
 
-          {/* Directory & Table */}
-          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Registered Clients & Principals</span>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono font-bold">
-                    {activeClients.length}
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Master client directory for FOC material dispatches and project assignments</p>
+          {/* Client Register Cards Directory */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <span>Registered Clients & Principals</span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-900 text-emerald-400 dark:bg-slate-800 dark:text-emerald-300 font-mono font-bold">
+                      {activeClients.length}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Directly linked with Client Free Stock (FOC) dispatches & project allocations
+                  </p>
+                </div>
               </div>
 
-              {selectedClientIds.length > 0 && isCentralAdmin && (
-                <button
-                  onClick={handleBulkDeleteClients}
-                  className="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold hover:bg-rose-100 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Selected ({selectedClientIds.length})</span>
-                </button>
-              )}
-            </div>
-
-            {/* Filter bar */}
-            <div className="flex items-center gap-2.5">
-              <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search client code, name, contact..."
-                  value={clientSearchQuery}
-                  onChange={(e) => setClientSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+              <div className="flex items-center gap-2">
+                {selectedClientIds.length > 0 && isCentralAdmin && (
+                  <button
+                    onClick={handleBulkDeleteClients}
+                    className="px-3 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-500 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Selected ({selectedClientIds.length})</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Client List */}
+            {/* Search Filter bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                placeholder="Search client code, principal name, industry category, or contact person..."
+                value={clientSearchQuery}
+                onChange={(e) => setClientSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 text-xs font-medium border border-slate-200/90 dark:border-slate-800 rounded-2xl bg-white/90 dark:bg-slate-900/90 dark:text-white shadow-2xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+              />
+            </div>
+
+            {/* Client Cards Grid */}
             {activeClients.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500">
-                <Handshake className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="font-bold text-slate-700 dark:text-slate-300">No Master Clients Registered Yet</p>
-                <p className="mt-1">Fill out the form on the left to add your first Client / Project Principal.</p>
+              <div className="p-10 text-center bg-white/90 dark:bg-slate-900/90 rounded-[22px] border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500">
+                <Handshake className="w-9 h-9 text-slate-300 mx-auto mb-2.5" />
+                <p className="font-extrabold text-sm text-slate-800 dark:text-slate-200">No Clients Registered Yet</p>
+                <p className="mt-1">Use the New Client Register form on the left or inside Client Free Stock (FOC) to add your first Client / Principal.</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {activeClients
                   .filter((c) => {
                     const q = clientSearchQuery.toLowerCase();
@@ -2824,62 +3075,126 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       (c.category || '').toLowerCase().includes(q)
                     );
                   })
-                  .map((c) => (
-                    <div
-                      key={c.id}
-                      className="p-4 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-emerald-400">
-                            {c.clientCode}
-                          </span>
-                          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                            {c.name}
-                          </h4>
-                          {c.category && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
-                              {c.category}
-                            </span>
-                          )}
-                        </div>
+                  .map((c) => {
+                    const isSelected = selectedClientIds.includes(c.id);
+                    const focVoucherCount = clientFreeIssues.filter(
+                      (v) => !v.isDeleted && v.clientName.trim().toLowerCase() === c.name.trim().toLowerCase()
+                    ).length;
 
-                        <div className="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
-                          {c.contactPerson && (
-                            <span>Contact: <strong className="text-slate-800 dark:text-slate-200">{c.contactPerson}</strong></span>
-                          )}
-                          {c.phone && <span>Tel: {c.phone}</span>}
-                          {c.email && <span>Email: {c.email}</span>}
-                          {c.taxRegistrationNo && <span>Tax #: {c.taxRegistrationNo}</span>}
-                        </div>
+                    return (
+                      <div
+                        key={c.id}
+                        className={`group relative overflow-hidden rounded-[22px] p-5 transition-all duration-200 flex flex-col justify-between bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl ${
+                          isSelected
+                            ? 'border-2 border-rose-400 ring-2 ring-rose-500/10 shadow-md'
+                            : 'border border-slate-200/90 dark:border-slate-800 shadow-[0_8px_28px_-10px_rgba(15,23,42,0.07)] hover:shadow-[0_14px_34px_-10px_rgba(16,185,129,0.14)] hover:border-emerald-300/80 dark:hover:border-emerald-700'
+                        }`}
+                      >
+                        {/* Top Accent Line */}
+                        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-emerald-500 to-teal-400 opacity-85" />
 
-                        {c.address && (
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Address: {c.address}
+                        <div>
+                          {/* Header Row */}
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {isCentralAdmin && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() =>
+                                    setSelectedClientIds((prev) =>
+                                      prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                                    )
+                                  }
+                                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer w-3.5 h-3.5"
+                                />
+                              )}
+                              <span className="font-mono text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-900 text-emerald-400 dark:bg-slate-800 dark:text-emerald-300 tracking-wider">
+                                {c.clientCode}
+                              </span>
+                              {c.category && (
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 truncate max-w-[140px]">
+                                  {c.category}
+                                </span>
+                              )}
+                            </div>
+
+                            {isCentralAdmin && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => setEditingClient(c)}
+                                  className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
+                                  title="Edit Client"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteClientSingle(c)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer transition-colors"
+                                  title="Delete Client"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
 
-                      {isCentralAdmin && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => setEditingClient(c)}
-                            className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition-colors"
-                            title="Edit Client"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClientSingle(c)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer transition-colors"
-                            title="Delete Client"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Client Title & Icon */}
+                          <div className="flex items-start gap-3 mb-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                              <Briefcase className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight leading-snug truncate" title={c.name}>
+                                {c.name}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                                {c.contactPerson ? `Contact: ${c.contactPerson}` : 'Registered Project Principal'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Structured Metadata Box */}
+                          <div className="rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3 space-y-2 text-xs">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Phone</span>
+                                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                  {c.phone || 'Not specified'}
+                                </span>
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Tax / Reg #</span>
+                                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                  {c.taxRegistrationNo || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                            {(c.email || c.address) && (
+                              <div className="pt-1.5 border-t border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5">
+                                {c.email && <div className="truncate"><span className="text-slate-400 font-semibold">Email:</span> {c.email}</div>}
+                                {c.address && <div className="truncate"><span className="text-slate-400 font-semibold">Address:</span> {c.address}</div>}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {/* Card Footer */}
+                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold">
+                            <span className="text-[11px]">FOC Dispatches:</span>
+                            <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-extrabold text-[11px] border border-indigo-200/60 dark:border-indigo-800/50">
+                              {focVoucherCount}
+                            </span>
+                          </div>
+                          <span className="inline-flex items-center gap-1.5 text-[10px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-full font-bold border border-emerald-200/80 dark:border-emerald-800/60">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Synced with FOC
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
