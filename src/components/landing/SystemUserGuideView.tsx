@@ -297,9 +297,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           <button
             type="button"
             onClick={onBackToOverview}
-            className="px-4 py-2.5 rounded-xl bg-white/90 hover:bg-white text-slate-900 border border-slate-300 text-xs font-extrabold flex items-center gap-2 shadow-2xs cursor-pointer transition whitespace-nowrap"
+            className="px-4 py-2.5 rounded-xl bg-[#253050] hover:bg-[#2d3a5e] text-white border border-[#dc9750]/40 text-xs font-extrabold flex items-center gap-2 shadow-sm cursor-pointer transition whitespace-nowrap"
           >
-            <ArrowLeft className="w-4 h-4 text-slate-700" />
+            <ArrowLeft className="w-4 h-4 text-[#dc9750]" />
             <span>Back to Platform Overview</span>
           </button>
 
@@ -307,7 +307,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <button
               type="button"
               onClick={handlePrintPdfManual}
-              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/15 cursor-pointer transition whitespace-nowrap"
+              className="px-4 py-2.5 rounded-xl bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black text-xs flex items-center gap-2 shadow-md shadow-[#dc9750]/20 cursor-pointer transition whitespace-nowrap"
             >
               <Printer className="w-4 h-4" />
               <span>Download / Print Full Guide (PDF)</span>
@@ -316,10 +316,10 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <button
               type="button"
               onClick={onOpenSignup}
-              className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 shadow-md cursor-pointer transition whitespace-nowrap"
+              className="px-4 py-2.5 rounded-xl bg-[#161d33] hover:bg-[#222c4a] text-white border border-[#dc9750]/40 font-bold text-xs flex items-center gap-2 shadow-md cursor-pointer transition whitespace-nowrap"
             >
-              <span className="text-amber-400 font-black">Start 7-Day Free Trial</span>
-              <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[#e5a460] font-black">Start 7-Day Free Trial</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#dc9750]" />
             </button>
           </div>
         </div>
@@ -345,33 +345,33 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           </div>
 
           {/* Hero Banner of the User Guide Tab */}
-          <div className="rounded-[28px] bg-white/85 backdrop-blur-2xl border border-white ring-1 ring-slate-900/8 shadow-[0_20px_50px_-15px_rgba(15,23,42,0.12)] p-6 sm:p-10 relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-slate-950 via-amber-500 to-slate-950 no-print" />
+          <div className="rounded-[28px] bg-[#faf4ec] border border-[#dc9750]/60 shadow-[0_20px_50px_-15px_rgba(8,12,24,0.45)] p-6 sm:p-10 relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#1e2640] via-[#dc9750] to-[#1e2640] no-print" />
 
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="max-w-3xl">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 mb-2">
-                  <BookOpen className="w-4 h-4 text-amber-600" />
+                <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-2">
+                  <BookOpen className="w-4 h-4 text-[#b56b21]" />
                   <span>Complete System Documentation & Client Handbook</span>
                 </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight text-balance">
+                <h1 className="text-2xl sm:text-4xl font-black text-[#1e2640] tracking-tight leading-tight text-balance">
                   How Apex Stock Works: Simple Step-by-Step User Guide & Features
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-700 mt-3 leading-relaxed font-medium">
+                <p className="text-xs sm:text-sm text-[#2d3859] mt-3 leading-relaxed font-medium">
                   Everything you need to understand how materials, client-supplied stock, heavy machinery, and daily crew dispatches flow across your headquarters, regional site yards, and active projects. You can read online below or save this handbook as an A4 PDF for your team.
                 </p>
               </div>
 
               {/* Quick PDF & Trial Box */}
-              <div className="no-print shrink-0 bg-slate-950 text-white rounded-2xl p-5 border border-slate-800 lg:w-80 shadow-xl">
-                <div className="text-xs font-bold text-amber-400">Share with Your Team or Management</div>
-                <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+              <div className="no-print shrink-0 bg-[#1e2640] text-white rounded-2xl p-5 border border-[#dc9750]/50 lg:w-80 shadow-xl">
+                <div className="text-xs font-bold text-[#e5a460]">Share with Your Team or Management</div>
+                <p className="text-[11px] text-slate-200 mt-1 leading-relaxed">
                   Save this complete guide as a clean A4 PDF document to review offline with project managers, engineers, or storekeepers.
                 </p>
                 <button
                   type="button"
                   onClick={handlePrintPdfManual}
-                  className="mt-3.5 w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap"
+                  className="mt-3.5 w-full py-2.5 px-4 rounded-xl bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Save / Print PDF Handbook</span>
@@ -380,9 +380,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             </div>
 
             {/* ==================== 5-STAGE VISUAL STOCK FLOW ("AT A GLANCE") ==================== */}
-            <div className="mt-8 pt-7 border-t border-slate-200/90">
-              <div className="text-xs font-extrabold text-slate-900 mb-4 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-amber-600" />
+            <div className="mt-8 pt-7 border-t border-[#dc9750]/35">
+              <div className="text-xs font-extrabold text-[#1e2640] mb-4 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#b56b21]" />
                 <span>End-to-End Operational Flow at a Glance (5 Simple Stages)</span>
               </div>
 
@@ -423,17 +423,17 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   return (
                     <div
                       key={item.stage}
-                      className="rounded-2xl bg-slate-100/90 border border-slate-200/90 p-4 flex flex-col justify-between"
+                      className="rounded-2xl bg-white border border-[#dc9750]/35 p-4 flex flex-col justify-between shadow-2xs"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-[11px] font-mono font-extrabold text-amber-700">
+                          <span className="text-[11px] font-mono font-extrabold text-[#a6601a]">
                             {item.stage}
                           </span>
-                          <StageIcon className="w-4 h-4 text-slate-700 shrink-0" />
+                          <StageIcon className="w-4 h-4 text-[#1e2640] shrink-0" />
                         </div>
-                        <h3 className="text-xs sm:text-sm font-black text-slate-950">{item.title}</h3>
-                        <p className="text-[11px] text-slate-600 mt-1 leading-relaxed font-medium">
+                        <h3 className="text-xs sm:text-sm font-black text-[#1e2640]">{item.title}</h3>
+                        <p className="text-[11px] text-[#3a4769] mt-1 leading-relaxed font-medium">
                           {item.desc}
                         </p>
                       </div>
@@ -445,7 +445,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           </div>
 
           {/* ==================== INTERACTIVE FILTER & SEARCH BAR (WEB ONLY) ==================== */}
-          <div className="no-print rounded-2xl bg-white/85 backdrop-blur-xl border border-white ring-1 ring-slate-900/6 p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-2xs">
+          <div className="no-print rounded-2xl bg-[#faf4ec] border border-[#dc9750]/50 p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-sm">
             {/* Category Filter Buttons */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
               {[
@@ -462,8 +462,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   onClick={() => setSelectedCategory(tab.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
                     selectedCategory === tab.id
-                      ? 'bg-slate-950 text-amber-400 shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-200/70 hover:text-slate-950'
+                      ? 'bg-[#1e2640] text-[#dc9750] shadow-xs'
+                      : 'text-[#1e2640] hover:bg-[#dc9750]/20'
                   }`}
                 >
                   {tab.label}
@@ -508,26 +508,26 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                 return (
                   <div
                     key={chapter.id}
-                    className="rounded-[24px] bg-white/85 backdrop-blur-2xl border border-white ring-1 ring-slate-900/8 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.08)] p-6 sm:p-8 break-inside-avoid"
+                    className="rounded-[24px] bg-[#fdfaf5] border border-[#dc9750]/45 shadow-[0_14px_34px_-12px_rgba(8,12,24,0.35)] p-6 sm:p-8 break-inside-avoid"
                   >
                     {/* Chapter Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-slate-200/90">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-[#dc9750]/30">
                       <div className="flex items-start gap-3.5">
-                        <div className="w-11 h-11 rounded-xl bg-slate-950 text-amber-400 flex items-center justify-center shrink-0 shadow-xs no-print">
+                        <div className="w-11 h-11 rounded-xl bg-[#1e2640] text-[#dc9750] flex items-center justify-center shrink-0 shadow-xs no-print">
                           <ChapterIcon className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2 text-xs font-bold">
-                            <span className="font-mono font-extrabold text-amber-700">
+                            <span className="font-mono font-extrabold text-[#a6601a]">
                               {chapter.number}
                             </span>
                             <span aria-hidden="true" className="text-slate-300">·</span>
-                            <span className="text-slate-600">{chapter.categoryLabel}</span>
+                            <span className="text-[#475577]">{chapter.categoryLabel}</span>
                           </div>
-                          <h2 className="text-lg sm:text-2xl font-black text-slate-950 mt-1 tracking-tight">
+                          <h2 className="text-lg sm:text-2xl font-black text-[#1e2640] mt-1 tracking-tight">
                             {chapter.title}
                           </h2>
-                          <p className="text-xs sm:text-sm text-slate-700 mt-1.5 leading-relaxed font-medium max-w-3xl">
+                          <p className="text-xs sm:text-sm text-[#2d3859] mt-1.5 leading-relaxed font-medium max-w-3xl">
                             {chapter.summary}
                           </p>
                         </div>
@@ -539,12 +539,12 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       {chapter.steps.map((st) => (
                         <div
                           key={st.stepTitle}
-                          className="rounded-2xl bg-slate-50/95 border border-slate-200/90 p-4"
+                          className="rounded-2xl bg-white border border-[#dc9750]/30 p-4"
                         >
-                          <h3 className="text-xs sm:text-sm font-extrabold text-slate-950">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-[#1e2640]">
                             {st.stepTitle}
                           </h3>
-                          <p className="text-xs text-slate-700 mt-1.5 leading-relaxed font-medium">
+                          <p className="text-xs text-[#334063] mt-1.5 leading-relaxed font-medium">
                             {st.detail}
                           </p>
                         </div>
@@ -552,14 +552,14 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     </div>
 
                     {/* Key Documents / Outputs Footer */}
-                    <div className="mt-5 pt-4 border-t border-slate-200/80 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-                      <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-amber-600" />
+                    <div className="mt-5 pt-4 border-t border-[#dc9750]/25 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+                      <span className="font-extrabold text-[#1e2640] flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#b56b21]" />
                         <span>Key Outputs & Controls:</span>
                       </span>
                       {chapter.keyOutputs.map((out) => (
-                        <span key={out} className="flex items-center gap-1.5 font-bold text-slate-700">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span key={out} className="flex items-center gap-1.5 font-bold text-[#2d3859]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#b56b21] shrink-0" />
                           <span>{out}</span>
                         </span>
                       ))}
@@ -573,26 +573,26 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           {/* ==================== COMPLETE FEATURE CHECKLIST & USER ROLE PERMISSIONS ==================== */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 break-inside-avoid">
             {/* Complete Platform Features Overview */}
-            <div className="lg:col-span-7 rounded-[24px] bg-white/85 backdrop-blur-2xl border border-white ring-1 ring-slate-900/8 p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 mb-2">
-                <FileSpreadsheet className="w-4 h-4 text-amber-600" />
+            <div className="lg:col-span-7 rounded-[24px] bg-[#fdfaf5] border border-[#dc9750]/45 p-6 sm:p-8 shadow-md">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-2">
+                <FileSpreadsheet className="w-4 h-4 text-[#b56b21]" />
                 <span>Complete Module & Feature Checklist</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-black text-[#1e2640] tracking-tight">
                 Everything Included in Every Workspace
               </h2>
-              <p className="text-xs text-slate-600 mt-1 font-medium">
+              <p className="text-xs text-[#475577] mt-1 font-medium">
                 All modules below are unlocked during your 7-Day Free Trial as well as Pro Monthly and Pro Annual plans.
               </p>
 
               <div className="mt-5 space-y-5">
                 {FEATURE_SUMMARY_LIST.map((sec) => (
-                  <div key={sec.group} className="pt-4 first:pt-0 border-t first:border-t-0 border-slate-200/80">
-                    <h3 className="text-xs font-black text-slate-950 mb-2.5">{sec.group}</h3>
+                  <div key={sec.group} className="pt-4 first:pt-0 border-t first:border-t-0 border-[#dc9750]/25">
+                    <h3 className="text-xs font-black text-[#1e2640] mb-2.5">{sec.group}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {sec.items.map((item) => (
-                        <div key={item} className="flex items-start gap-2 text-xs text-slate-700 font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                        <div key={item} className="flex items-start gap-2 text-xs text-[#2d3859] font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#b56b21] shrink-0 mt-0.5" />
                           <span>{item}</span>
                         </div>
                       ))}
@@ -603,36 +603,36 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             </div>
 
             {/* Staff Role & Branch-Lock Guide */}
-            <div className="lg:col-span-5 rounded-[24px] bg-white/85 backdrop-blur-2xl border border-white ring-1 ring-slate-900/8 p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+            <div className="lg:col-span-5 rounded-[24px] bg-[#fdfaf5] border border-[#dc9750]/45 p-6 sm:p-8 shadow-md flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 mb-2">
-                  <Lock className="w-4 h-4 text-amber-600" />
+                <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-2">
+                  <Lock className="w-4 h-4 text-[#b56b21]" />
                   <span>Staff Access Control Guide</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black text-[#1e2640] tracking-tight">
                   How Staff Roles Work
                 </h2>
-                <p className="text-xs text-slate-600 mt-1 font-medium">
+                <p className="text-xs text-[#475577] mt-1 font-medium">
                   Assign tailored access to headquarters executives and regional site storekeepers.
                 </p>
 
                 <div className="mt-5 space-y-4">
-                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-                    <div className="flex items-center gap-2 text-xs font-black text-slate-950">
-                      <UserCheck className="w-4 h-4 text-amber-600" />
+                  <div className="rounded-2xl bg-white border border-[#dc9750]/30 p-4">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#1e2640]">
+                      <UserCheck className="w-4 h-4 text-[#b56b21]" />
                       <span>Central HQ Administrator / Store Manager</span>
                     </div>
-                    <p className="text-xs text-slate-700 mt-1.5 leading-relaxed font-medium">
+                    <p className="text-xs text-[#334063] mt-1.5 leading-relaxed font-medium">
                       Full visibility across Central Warehouse, Client-Supplied Free Stock, Supplier Purchase Orders, Master Registrations, all Regional Site Yards, Audit Trails, and System Backups.
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-                    <div className="flex items-center gap-2 text-xs font-black text-slate-950">
-                      <Truck className="w-4 h-4 text-emerald-700" />
+                  <div className="rounded-2xl bg-white border border-[#dc9750]/30 p-4">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#1e2640]">
+                      <Truck className="w-4 h-4 text-[#1e2640]" />
                       <span>Site Branch Supervisor / Yard Storekeeper</span>
                     </div>
-                    <p className="text-xs text-slate-700 mt-1.5 leading-relaxed font-medium">
+                    <p className="text-xs text-[#334063] mt-1.5 leading-relaxed font-medium">
                       Automatically locked to their assigned Site Branch. Can submit Stock Requisitions to HQ, manage their own Site Yard stock, issue items to their Field Crews, and log Project Material Usage & Returns—with zero access to other branches.
                     </p>
                   </div>
@@ -640,12 +640,12 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               </div>
 
               {/* Bottom CTA Card (Hidden when printing) */}
-              <div className="no-print mt-6 pt-5 border-t border-slate-200">
+              <div className="no-print mt-6 pt-5 border-t border-[#dc9750]/30">
                 <div className="flex flex-col sm:flex-row items-center gap-2.5">
                   <button
                     type="button"
                     onClick={onOpenSignup}
-                    className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-400 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap"
+                    className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-[#1e2640] hover:bg-[#283354] text-[#dc9750] font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap"
                   >
                     <span>Start 7-Day Free Trial</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -653,7 +653,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   <button
                     type="button"
                     onClick={onOpenLogin}
-                    className="w-full sm:w-auto py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 font-bold text-xs cursor-pointer transition whitespace-nowrap"
+                    className="w-full sm:w-auto py-3 px-4 rounded-xl bg-white hover:bg-slate-50 text-[#1e2640] border border-[#1e2640]/30 font-bold text-xs cursor-pointer transition whitespace-nowrap"
                   >
                     Client Login
                   </button>

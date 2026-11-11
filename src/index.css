@@ -43,19 +43,18 @@
       linear-gradient(145deg, #e3eff8 0%, #eef2ff 36%, #e8faef 70%, #f4f7fb 100%);
   }
 
-  /* Rich Engineering Blueprint Blue, Golden Construction Amber & Industrial Slate Canvas */
+  /* Desert Sun (#dc9750) & Architectural Dark Blue (#1e2640) Construction Canvas */
   .construction-blueprint-canvas {
-    background-color: #d6e3f3;
+    background-color: #1e2640;
     background-image:
-      linear-gradient(to right, rgba(15, 23, 42, 0.048) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(15, 23, 42, 0.048) 1px, transparent 1px),
-      radial-gradient(circle at 8% 10%, rgba(3, 105, 161, 0.28), transparent 40%),
-      radial-gradient(circle at 92% 12%, rgba(217, 119, 6, 0.28), transparent 38%),
-      radial-gradient(circle at 50% 44%, rgba(30, 64, 175, 0.14), transparent 46%),
-      radial-gradient(circle at 14% 76%, rgba(5, 150, 105, 0.22), transparent 42%),
-      radial-gradient(circle at 88% 84%, rgba(180, 83, 9, 0.22), transparent 42%),
-      linear-gradient(135deg, #c7dbf4 0%, #dce7f7 32%, #f5e7ce 68%, #cde4de 100%);
-    background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+      linear-gradient(to right, rgba(220, 151, 80, 0.065) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(220, 151, 80, 0.065) 1px, transparent 1px),
+      radial-gradient(circle at 12% 10%, rgba(220, 151, 80, 0.22), transparent 42%),
+      radial-gradient(circle at 88% 14%, rgba(220, 151, 80, 0.18), transparent 40%),
+      radial-gradient(circle at 50% 48%, rgba(44, 56, 94, 0.55), transparent 52%),
+      radial-gradient(circle at 16% 82%, rgba(220, 151, 80, 0.16), transparent 44%),
+      linear-gradient(145deg, #181f36 0%, #1e2640 45%, #242e4d 78%, #192038 100%);
+    background-size: 52px 52px, 52px 52px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
     background-attachment: fixed;
   }
 
