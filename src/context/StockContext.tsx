@@ -45,6 +45,8 @@ import {
   AuditAction,
   isSuperAdmin,
   normalizeRole,
+  isUserAllSites,
+  getUserAssignedSiteIds,
 } from '../types';
 import {
   INITIAL_CONFIG,
@@ -232,7 +234,10 @@ interface StockContextType {
   ) => { success: boolean; message: string };
 
   // Master Registrations
-  addSite: (site: Omit<Site, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>) => Site;
+  addSite: (
+    site: Omit<Site, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>,
+    assignedUserIds?: string[]
+  ) => Site;
   addUser: (user: Omit<User, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>) => User;
   addItem: (item: Omit<Item, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>, initialReceivedQty?: number) => Item;
   addTeam: (team: Omit<Team, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>) => Team;
@@ -241,7 +246,7 @@ interface StockContextType {
   bulkImportProjects: (rows: Array<Omit<Project, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>>) => { added: number; updated: number };
 
   // Master Updates (CRUD - Edit)
-  updateSite: (id: string, updates: Partial<Site>) => void;
+  updateSite: (id: string, updates: Partial<Site>, assignedUserIds?: string[]) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   updateItem: (id: string, updates: Partial<Item>) => void;
   updateTeam: (id: string, updates: Partial<Team>) => void;
@@ -979,8 +984,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [tenants]);
 
-  // Helper to safely merge local and remote collections by ID without losing newly created or edited local records
-  const mergeListsById = <T extends { id: string }>(localList: T[], remoteList: T[]): T[] => {
+  // Helper to safely merge local and remote collections by ID, respecting updatedAt timestamps when present
+  const mergeListsById = <T extends { id: string; updatedAt?: string }>(localList: T[], remoteList: T[]): T[] => {
     const map = new Map<string, T>();
     (remoteList || []).forEach((item) => {
       if (item && item.id) map.set(item.id, item);
@@ -988,7 +993,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     (localList || []).forEach((item) => {
       if (item && item.id) {
         const existing = map.get(item.id);
-        map.set(item.id, existing ? { ...existing, ...item } : item);
+        if (!existing) {
+          map.set(item.id, item);
+        } else if (existing.updatedAt && item.updatedAt) {
+          const remoteMs = new Date(existing.updatedAt).getTime();
+          const localMs = new Date(item.updatedAt).getTime();
+          map.set(item.id, remoteMs > localMs ? { ...item, ...existing } : { ...existing, ...item });
+        } else {
+          map.set(item.id, { ...existing, ...item });
+        }
       }
     });
     return Array.from(map.values());
@@ -3565,10 +3578,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   };
 
-  // Active Site scope
+  // Active Site scope (supports single and multi-site assignments)
   const activeSite = useMemo(() => {
-    if (!currentUser || currentUser.siteId === 'all') return null;
-    return activeSites.find((s) => s.id === currentUser.siteId) || null;
+    if (!currentUser || isUserAllSites(currentUser)) return null;
+    const assignedIds = getUserAssignedSiteIds(currentUser, activeSites);
+    if (assignedIds.length === 0) return null;
+    return activeSites.find((s) => s.id === assignedIds[0]) || null;
   }, [currentUser, activeSites]);
 
   const updateConfig = (newConfig: Partial<SystemConfig>) => {
@@ -3777,48 +3792,179 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
-  // Master Registrations (Create)
-  const addSite = (siteData: Omit<Site, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>): Site => {
+  // Master Registrations (Create) with Bi-Directional Site <-> User Sync
+  const addSite = (
+    siteData: Omit<Site, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>,
+    assignedUserIds?: string[]
+  ): Site => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const nowIso = new Date().toISOString();
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+
+    const normSupName = (siteData.supervisorName || '').trim().toLowerCase();
+    const matchedSup = users.find(
+      (u) =>
+        !u.isDeleted &&
+        ((siteData.supervisorUserId && u.id === siteData.supervisorUserId) ||
+          (normSupName && u.fullName.trim().toLowerCase() === normSupName))
+    );
+
     const newSite: Site = {
       ...siteData,
+      supervisorName: matchedSup ? matchedSup.fullName : siteData.supervisorName,
+      supervisorUserId: matchedSup ? matchedSup.id : '',
       id: `site-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       isDeleted: false,
     };
+
+    const nextSitesSnapshot = [...sites, newSite];
+
     setSites((prev) => {
       const updated = [...prev, newSite];
       saveTenantData(activeTenantId, 'sites', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeSitesToFirebase(updated).catch(console.warn);
       }
       return updated;
     });
+
+    // Bi-directional sync: add newSite.id to the selected supervisor & any selected assigned users
+    const targetUserIds = new Set<string>(assignedUserIds || []);
+    if (matchedSup) {
+      targetUserIds.add(matchedSup.id);
+    }
+
+    if (targetUserIds.size > 0) {
+      setUsers((prevUsers) => {
+        let anyUserChanged = false;
+        const updatedUsers = prevUsers.map((u) => {
+          if (u.isDeleted || !targetUserIds.has(u.id)) return u;
+          if (isUserAllSites(u)) {
+            return u;
+          }
+          const existingIds = getUserAssignedSiteIds(u, nextSitesSnapshot);
+          const nextIds = Array.from(new Set([...existingIds, newSite.id]));
+          anyUserChanged = true;
+          const syncedUser: User = {
+            ...u,
+            siteId: nextIds[0] || newSite.id,
+            siteIds: nextIds,
+            updatedAt: nowIso,
+          };
+          if (currentUser?.id === u.id) {
+            setCurrentUser(syncedUser);
+          }
+          if (authUser?.id === u.id) {
+            setAuthUser(syncedUser);
+          }
+          return syncedUser;
+        });
+
+        if (anyUserChanged) {
+          saveTenantData(activeTenantId, 'users', updatedUsers);
+          if (isMaster) {
+            writeUsersToFirebase(updatedUsers).catch(console.warn);
+          }
+          return updatedUsers;
+        }
+        return prevUsers;
+      });
+    }
+
     addAuditLog('MASTER_SITE_CREATED', newSite.name, newSite.name, `New site registered: ${newSite.name} (${newSite.location})`);
     return newSite;
   };
 
   const addUser = (userData: Omit<User, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>): User => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const nowIso = new Date().toISOString();
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+
+    const wantsAllSites =
+      userData.siteId === 'all' ||
+      (Array.isArray(userData.siteIds) && userData.siteIds.includes('all')) ||
+      isSuperAdmin(userData.role);
+
+    const cleanSpecificIds = wantsAllSites
+      ? []
+      : Array.from(
+          new Set(
+            (Array.isArray(userData.siteIds) && userData.siteIds.length > 0
+              ? userData.siteIds
+              : [userData.siteId]
+            ).filter((sid): sid is string => Boolean(sid && sid !== 'all' && sid !== 'unassigned'))
+          )
+        );
+
+    const normalizedSiteId = wantsAllSites ? 'all' : (cleanSpecificIds[0] || 'unassigned');
+    const normalizedSiteIds = wantsAllSites
+      ? ['all']
+      : cleanSpecificIds.length > 0
+      ? cleanSpecificIds
+      : ['unassigned'];
+
     const newUser: User = {
       ...userData,
+      siteId: normalizedSiteId,
+      siteIds: normalizedSiteIds,
       id: `usr-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       isDeleted: false,
       tenantId: activeTenantId,
     };
+
     setUsers((prev) => {
       const updated = [...prev, newUser];
       saveTenantData(activeTenantId, 'users', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeUsersToFirebase(updated).catch(console.warn);
       }
       return updated;
     });
-    const siteName = sites.find((s) => s.id === newUser.siteId)?.name || 'All Sites';
-    addAuditLog('MASTER_USER_CREATED', newUser.username, siteName, `New user created: ${newUser.fullName} [${newUser.role}]`);
+
+    // Bi-directional sync: if assigned to site(s) that currently have placeholder/unassigned supervisor, link this user
+    if (cleanSpecificIds.length > 0) {
+      setSites((prevSites) => {
+        let anySiteUpdated = false;
+        const updatedSites = prevSites.map((s) => {
+          if (s.isDeleted || !cleanSpecificIds.includes(s.id)) return s;
+          const supLower = (s.supervisorName || '').trim().toLowerCase();
+          const hasNoRegisteredSupervisor =
+            !s.supervisorUserId &&
+            (supLower === '' || supLower === 'unassigned' || supLower === 'assigned supervisor');
+          if (hasNoRegisteredSupervisor) {
+            anySiteUpdated = true;
+            return {
+              ...s,
+              supervisorName: newUser.fullName,
+              supervisorUserId: newUser.id,
+              updatedAt: nowIso,
+            };
+          }
+          return s;
+        });
+
+        if (anySiteUpdated) {
+          saveTenantData(activeTenantId, 'sites', updatedSites);
+          if (isMaster) {
+            writeSitesToFirebase(updatedSites).catch(console.warn);
+          }
+          return updatedSites;
+        }
+        return prevSites;
+      });
+    }
+
+    const assignedLabel = wantsAllSites
+      ? 'All Sites'
+      : cleanSpecificIds
+          .map((sid) => sites.find((s) => s.id === sid)?.name)
+          .filter(Boolean)
+          .join(', ') || 'Unassigned';
+    addAuditLog('MASTER_USER_CREATED', newUser.username, assignedLabel, `New user created: ${newUser.fullName} [${newUser.role}]`);
     return newUser;
   };
 
@@ -4131,46 +4277,276 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
-  const updateSite = (id: string, updates: Partial<Site>) => {
+  const updateSite = (id: string, updates: Partial<Site>, assignedUserIds?: string[]) => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const nowIso = new Date().toISOString();
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+
+    const oldSite = sites.find((s) => s.id === id);
+    const nextSupName =
+      updates.supervisorName !== undefined ? updates.supervisorName : (oldSite?.supervisorName || '');
+    const normNextSup = nextSupName.trim().toLowerCase();
+
+    const matchedNewSup =
+      updates.supervisorUserId === ''
+        ? undefined
+        : users.find(
+            (u) =>
+              !u.isDeleted &&
+              ((updates.supervisorUserId && u.id === updates.supervisorUserId) ||
+                (!updates.supervisorUserId && normNextSup && u.fullName.trim().toLowerCase() === normNextSup))
+          );
+
+    const oldNormSup = (oldSite?.supervisorName || '').trim().toLowerCase();
+    const oldSupUser = oldSite
+      ? users.find(
+          (u) =>
+            !u.isDeleted &&
+            ((oldSite.supervisorUserId && u.id === oldSite.supervisorUserId) ||
+              (!oldSite.supervisorUserId && oldNormSup && u.fullName.trim().toLowerCase() === oldNormSup))
+        )
+      : undefined;
+
+    const finalSiteUpdates: Partial<Site> = {
+      ...updates,
+      supervisorName: matchedNewSup ? matchedNewSup.fullName : nextSupName,
+      supervisorUserId: matchedNewSup ? matchedNewSup.id : '',
+      updatedAt: nowIso,
+    };
+
+    const nextSitesSnapshot = sites.map((s) => (s.id === id ? { ...s, ...finalSiteUpdates } : s));
+
     setSites((prev) => {
-      const updated = prev.map((s) => (s.id === id ? { ...s, ...updates } : s));
+      const updated = prev.map((s) => (s.id === id ? { ...s, ...finalSiteUpdates } : s));
       saveTenantData(activeTenantId, 'sites', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeSitesToFirebase(updated).catch(console.warn);
       }
       return updated;
     });
-    const site = sites.find((s) => s.id === id);
+
+    // Bi-directional sync: update users' assigned siteIds to match this site's supervisor & staff roster
+    setUsers((prevUsers) => {
+      let anyUserChanged = false;
+      const updatedUsers = prevUsers.map((u) => {
+        if (u.isDeleted || isUserAllSites(u)) return u;
+
+        const prevAssigned = getUserAssignedSiteIds(u, sites);
+        const otherSites = prevAssigned.filter((sid) => sid !== id);
+
+        let shouldBeAssignedHere = false;
+        if (assignedUserIds !== undefined) {
+          shouldBeAssignedHere = assignedUserIds.includes(u.id) || matchedNewSup?.id === u.id;
+        } else if (matchedNewSup?.id === u.id) {
+          shouldBeAssignedHere = true;
+        } else if (oldSupUser?.id === u.id && matchedNewSup?.id !== u.id) {
+          shouldBeAssignedHere = false;
+        } else {
+          shouldBeAssignedHere = prevAssigned.includes(id);
+        }
+
+        const nextIds = shouldBeAssignedHere ? [...otherSites, id] : otherSites;
+        const nextSiteId = nextIds[0] || 'unassigned';
+        const nextSiteIdsField = nextIds.length > 0 ? nextIds : ['unassigned'];
+
+        const prevCompare = Array.isArray(u.siteIds) ? u.siteIds.join(',') : u.siteId;
+        const nextCompare = nextSiteIdsField.join(',');
+        if (u.siteId === nextSiteId && prevCompare === nextCompare) {
+          return u;
+        }
+
+        anyUserChanged = true;
+        const syncedUser: User = {
+          ...u,
+          siteId: nextSiteId,
+          siteIds: nextSiteIdsField,
+          updatedAt: nowIso,
+        };
+        if (currentUser?.id === u.id) {
+          setCurrentUser(syncedUser);
+        }
+        if (authUser?.id === u.id) {
+          setAuthUser(syncedUser);
+        }
+        return syncedUser;
+      });
+
+      if (anyUserChanged) {
+        saveTenantData(activeTenantId, 'users', updatedUsers);
+        if (isMaster) {
+          writeUsersToFirebase(updatedUsers).catch(console.warn);
+        }
+        return updatedUsers;
+      }
+      return prevUsers;
+    });
+
+    // Suppress unused warning if snapshot only used for reasoning
+    void nextSitesSnapshot;
+
     addAuditLog(
       'MASTER_SITE_UPDATED',
-      updates.name || site?.name || id,
-      updates.name || site?.name || 'Site',
-      `Updated site branch profile: ${updates.name || site?.name}`
+      updates.name || oldSite?.name || id,
+      updates.name || oldSite?.name || 'Site',
+      `Updated site branch profile & staff sync: ${updates.name || oldSite?.name}`
     );
   };
 
   const updateUser = (id: string, updates: Partial<User>) => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const nowIso = new Date().toISOString();
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+
+    const oldUser = users.find((u) => u.id === id);
+    const nextRole = updates.role !== undefined ? updates.role : (oldUser?.role || 'Branch System User');
+    const nextFullName = (updates.fullName !== undefined ? updates.fullName : (oldUser?.fullName || '')).trim();
+    const nextUsername = updates.username !== undefined ? updates.username : (oldUser?.username || '');
+
+    const hasExplicitSiteChange =
+      updates.siteId !== undefined || updates.siteIds !== undefined || isSuperAdmin(nextRole);
+
+    let normalizedSiteId = oldUser?.siteId || 'unassigned';
+    let normalizedSiteIds = oldUser?.siteIds || (oldUser?.siteId ? [oldUser.siteId] : ['unassigned']);
+    let cleanSpecificIds: string[] = [];
+    let isAllScope = false;
+
+    if (hasExplicitSiteChange) {
+      isAllScope =
+        nextUsername === 'admin' ||
+        isSuperAdmin(nextRole) ||
+        updates.siteId === 'all' ||
+        (Array.isArray(updates.siteIds) && updates.siteIds.includes('all'));
+
+      if (isAllScope) {
+        normalizedSiteId = 'all';
+        normalizedSiteIds = ['all'];
+        cleanSpecificIds = [];
+      } else {
+        const rawSource =
+          updates.siteIds !== undefined
+            ? updates.siteIds
+            : updates.siteId !== undefined
+            ? [updates.siteId]
+            : getUserAssignedSiteIds(oldUser, sites);
+
+        cleanSpecificIds = Array.from(
+          new Set(rawSource.filter((sid): sid is string => Boolean(sid && sid !== 'all' && sid !== 'unassigned')))
+        );
+        normalizedSiteId = cleanSpecificIds[0] || 'unassigned';
+        normalizedSiteIds = cleanSpecificIds.length > 0 ? cleanSpecificIds : ['unassigned'];
+      }
+    } else if (oldUser) {
+      isAllScope = isUserAllSites(oldUser);
+      cleanSpecificIds = isAllScope ? [] : getUserAssignedSiteIds(oldUser, sites);
+    }
+
+    const finalUserUpdates: Partial<User> = {
+      ...updates,
+      fullName: nextFullName || updates.fullName,
+      siteId: normalizedSiteId,
+      siteIds: normalizedSiteIds,
+      updatedAt: nowIso,
+    };
+
+    const nextUsersSnapshot = users.map((u) => (u.id === id ? { ...u, ...finalUserUpdates } : u));
+
     setUsers((prev) => {
-      const updated = prev.map((u) => (u.id === id ? { ...u, ...updates } : u));
+      const updated = prev.map((u) => (u.id === id ? { ...u, ...finalUserUpdates } : u));
       saveTenantData(activeTenantId, 'users', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeUsersToFirebase(updated).catch(console.warn);
       }
       return updated;
     });
-    const user = users.find((u) => u.id === id);
+
+    // Bi-directional sync: keep Site supervisorName & supervisorUserId consistent with User changes
+    setSites((prevSites) => {
+      let anySiteChanged = false;
+      const oldNameLower = (oldUser?.fullName || '').trim().toLowerCase();
+      const assignedSet = new Set(cleanSpecificIds);
+
+      const updatedSites = prevSites.map((s) => {
+        if (s.isDeleted) return s;
+
+        const supLower = (s.supervisorName || '').trim().toLowerCase();
+        const wasSupervisedByThisUser =
+          s.supervisorUserId === id ||
+          (!s.supervisorUserId && Boolean(oldNameLower) && supLower === oldNameLower);
+
+        // 1. If user was unassigned from this site (and is not All-Sites), reassign or clear site supervisor
+        if (wasSupervisedByThisUser && !isAllScope && !assignedSet.has(s.id)) {
+          const fallbackStaff = nextUsersSnapshot.find(
+            (other) =>
+              !other.isDeleted &&
+              other.id !== id &&
+              !isUserAllSites(other) &&
+              getUserAssignedSiteIds(other).includes(s.id)
+          );
+          anySiteChanged = true;
+          return {
+            ...s,
+            supervisorName: fallbackStaff ? fallbackStaff.fullName : 'Unassigned',
+            supervisorUserId: fallbackStaff ? fallbackStaff.id : '',
+            updatedAt: nowIso,
+          };
+        }
+
+        // 2. If still supervised by this user and user's fullName changed (or supervisorUserId wasn't linked yet), sync it
+        if (wasSupervisedByThisUser && (s.supervisorName !== nextFullName || s.supervisorUserId !== id)) {
+          anySiteChanged = true;
+          return {
+            ...s,
+            supervisorName: nextFullName,
+            supervisorUserId: id,
+            updatedAt: nowIso,
+          };
+        }
+
+        // 3. If user was newly assigned to a site that currently has no supervisor, auto-assign as supervisor
+        const hasPlaceholderSupervisor =
+          !s.supervisorUserId &&
+          (supLower === '' || supLower === 'unassigned' || supLower === 'assigned supervisor');
+        if (!isAllScope && assignedSet.has(s.id) && hasPlaceholderSupervisor) {
+          anySiteChanged = true;
+          return {
+            ...s,
+            supervisorName: nextFullName,
+            supervisorUserId: id,
+            updatedAt: nowIso,
+          };
+        }
+
+        return s;
+      });
+
+      if (anySiteChanged) {
+        saveTenantData(activeTenantId, 'sites', updatedSites);
+        if (isMaster) {
+          writeSitesToFirebase(updatedSites).catch(console.warn);
+        }
+        return updatedSites;
+      }
+      return prevSites;
+    });
+
+    const siteSummary = isAllScope
+      ? 'All Sites'
+      : cleanSpecificIds
+          .map((sid) => sites.find((s) => s.id === sid)?.name)
+          .filter(Boolean)
+          .join(', ') || 'Unassigned';
+
     addAuditLog(
       'MASTER_USER_UPDATED',
-      updates.username || user?.username || id,
-      'All Sites',
-      `Updated user account: ${updates.fullName || user?.fullName} [${updates.role || user?.role}]`
+      updates.username || oldUser?.username || id,
+      siteSummary,
+      `Updated user account: ${nextFullName} [${nextRole}] -> Sites: ${siteSummary}`
     );
+    if (currentUser?.id === id) {
+      setCurrentUser({ ...currentUser, ...finalUserUpdates });
+    }
     if (authUser?.id === id) {
-      setAuthUser((prev) => ({ ...prev, ...updates }));
+      setAuthUser((prev) => ({ ...prev, ...finalUserUpdates }));
     }
   };
 
@@ -4324,15 +4700,48 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const timestamp = new Date().toISOString();
     const deletedBy = currentUser?.fullName || 'Administrator';
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+
     setSites((prev) => {
-      const updated = prev.map((s) => (s.id === id ? { ...s, isDeleted: true, deletedAt: timestamp, deletedBy } : s));
+      const updated = prev.map((s) =>
+        s.id === id ? { ...s, isDeleted: true, deletedAt: timestamp, deletedBy, updatedAt: timestamp } : s
+      );
       saveTenantData(activeTenantId, 'sites', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeSitesToFirebase(updated).catch(console.warn);
       }
       return updated;
     });
+
+    // Remove deleted site from non-all-site users' siteIds so stale site references never linger
+    setUsers((prevUsers) => {
+      let changed = false;
+      const updatedUsers = prevUsers.map((u) => {
+        if (u.isDeleted || isUserAllSites(u)) return u;
+        const remaining = getUserAssignedSiteIds(u, sites).filter((sid) => sid !== id);
+        const prevIds = getUserAssignedSiteIds(u, sites);
+        if (remaining.length === prevIds.length && u.siteId !== id) return u;
+        changed = true;
+        const nextUser: User = {
+          ...u,
+          siteId: remaining[0] || 'unassigned',
+          siteIds: remaining.length > 0 ? remaining : ['unassigned'],
+          updatedAt: timestamp,
+        };
+        if (currentUser?.id === u.id) setCurrentUser(nextUser);
+        if (authUser?.id === u.id) setAuthUser(nextUser);
+        return nextUser;
+      });
+      if (changed) {
+        saveTenantData(activeTenantId, 'users', updatedUsers);
+        if (isMaster) {
+          writeUsersToFirebase(updatedUsers).catch(console.warn);
+        }
+        return updatedUsers;
+      }
+      return prevUsers;
+    });
+
     const site = sites.find((s) => s.id === id);
     addAuditLog(
       'MASTER_SITE_SOFT_DELETED',
@@ -4346,21 +4755,52 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const timestamp = new Date().toISOString();
     const deletedBy = currentUser?.fullName || 'Administrator';
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+    const targetUser = users.find((u) => u.id === id);
+
     setUsers((prev) => {
-      const updated = prev.map((u) => (u.id === id ? { ...u, isDeleted: true, deletedAt: timestamp, deletedBy } : u));
+      const updated = prev.map((u) =>
+        u.id === id ? { ...u, isDeleted: true, deletedAt: timestamp, deletedBy, updatedAt: timestamp } : u
+      );
       saveTenantData(activeTenantId, 'users', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeUsersToFirebase(updated).catch(console.warn);
       }
       return updated;
     });
-    const user = users.find((u) => u.id === id);
+
+    // Clear deleted user from any site supervisor slot
+    if (targetUser) {
+      const targetNameLower = targetUser.fullName.trim().toLowerCase();
+      setSites((prevSites) => {
+        let siteChanged = false;
+        const updatedSites = prevSites.map((s) => {
+          if (s.isDeleted) return s;
+          if (
+            s.supervisorUserId === id ||
+            (!s.supervisorUserId && (s.supervisorName || '').trim().toLowerCase() === targetNameLower)
+          ) {
+            siteChanged = true;
+            return { ...s, supervisorName: 'Unassigned', supervisorUserId: '', updatedAt: timestamp };
+          }
+          return s;
+        });
+        if (siteChanged) {
+          saveTenantData(activeTenantId, 'sites', updatedSites);
+          if (isMaster) {
+            writeSitesToFirebase(updatedSites).catch(console.warn);
+          }
+          return updatedSites;
+        }
+        return prevSites;
+      });
+    }
+
     addAuditLog(
       'MASTER_USER_SOFT_DELETED',
-      user?.username || id,
+      targetUser?.username || id,
       'All Sites',
-      `Moved user account "${user?.fullName}" to Recycle Bin`
+      `Moved user account "${targetUser?.fullName}" to Recycle Bin`
     );
   };
 
@@ -4602,7 +5042,44 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const permanentlyDeleteSite = (id: string) => {
     const site = sites.find((s) => s.id === id);
-    setSites((prev) => prev.filter((s) => s.id !== id));
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+    const nowIso = new Date().toISOString();
+
+    setSites((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      saveTenantData(activeTenantId, 'sites', updated);
+      if (isMaster) {
+        writeSitesToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
+
+    setUsers((prevUsers) => {
+      let changed = false;
+      const updatedUsers = prevUsers.map((u) => {
+        if (isUserAllSites(u)) return u;
+        const remaining = getUserAssignedSiteIds(u, sites).filter((sid) => sid !== id);
+        if (!Array.isArray(u.siteIds) && u.siteId !== id) return u;
+        if (Array.isArray(u.siteIds) && !u.siteIds.includes(id) && u.siteId !== id) return u;
+        changed = true;
+        return {
+          ...u,
+          siteId: remaining[0] || 'unassigned',
+          siteIds: remaining.length > 0 ? remaining : ['unassigned'],
+          updatedAt: nowIso,
+        };
+      });
+      if (changed) {
+        saveTenantData(activeTenantId, 'users', updatedUsers);
+        if (isMaster) {
+          writeUsersToFirebase(updatedUsers).catch(console.warn);
+        }
+        return updatedUsers;
+      }
+      return prevUsers;
+    });
+
     addAuditLog(
       'MASTER_SITE_PERMANENTLY_DELETED',
       site?.name || id,
@@ -4614,15 +5091,43 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const permanentlyDeleteUser = (id: string) => {
     const user = users.find((u) => u.id === id);
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+    const nowIso = new Date().toISOString();
+
     setUsers((prev) => {
       const updated = prev.filter((u) => u.id !== id);
       saveTenantData(activeTenantId, 'users', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
         writeUsersToFirebase(updated).catch(console.warn);
       }
       return updated;
     });
+
+    if (user) {
+      const targetNameLower = user.fullName.trim().toLowerCase();
+      setSites((prevSites) => {
+        let siteChanged = false;
+        const updatedSites = prevSites.map((s) => {
+          if (
+            s.supervisorUserId === id ||
+            (!s.supervisorUserId && (s.supervisorName || '').trim().toLowerCase() === targetNameLower)
+          ) {
+            siteChanged = true;
+            return { ...s, supervisorName: 'Unassigned', supervisorUserId: '', updatedAt: nowIso };
+          }
+          return s;
+        });
+        if (siteChanged) {
+          saveTenantData(activeTenantId, 'sites', updatedSites);
+          if (isMaster) {
+            writeSitesToFirebase(updatedSites).catch(console.warn);
+          }
+          return updatedSites;
+        }
+        return prevSites;
+      });
+    }
+
     addAuditLog(
       'MASTER_USER_PERMANENTLY_DELETED',
       user?.username || id,

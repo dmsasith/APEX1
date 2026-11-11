@@ -31,7 +31,22 @@ import {
   Handshake,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { UserRole, Item, Site, User as UserType, Team, TeamMember, Client, isSuperAdmin, isCentralOrAllSiteAdmin, normalizeRole } from '../../types';
+import {
+  UserRole,
+  Item,
+  Site,
+  User as UserType,
+  Team,
+  TeamMember,
+  Client,
+  isSuperAdmin,
+  isCentralOrAllSiteAdmin,
+  normalizeRole,
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  getUserSupervisedSites,
+  isUserAssignedToSite,
+} from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
 import {
   isMachineryItem,
@@ -127,6 +142,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   // Edit Modals State
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
+  const [editingSiteUserIds, setEditingSiteUserIds] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
 
@@ -248,6 +264,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   // --- SITE FORM STATE ---
   const [siteName, setSiteName] = useState('');
   const [siteSupervisor, setSiteSupervisor] = useState('');
+  const [siteSupervisorUserId, setSiteSupervisorUserId] = useState('');
+  const [newSiteAssignedUserIds, setNewSiteAssignedUserIds] = useState<string[]>([]);
   const [isCustomAddSupervisor, setIsCustomAddSupervisor] = useState(false);
   const [isCustomEditSupervisor, setIsCustomEditSupervisor] = useState(false);
   const [siteLocation, setSiteLocation] = useState('');
@@ -257,29 +275,48 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     e.preventDefault();
     if (!siteName.trim()) return;
 
-    addSite({
-      name: siteName.trim(),
-      supervisorName: siteSupervisor.trim() || 'Assigned Supervisor',
-      location: siteLocation.trim() || 'On-site details pending',
-      contactNumber: sitePhone.trim() || '+1 (555) 000-0000',
-      isMainWarehouse: false,
-    });
+    addSite(
+      {
+        name: siteName.trim(),
+        supervisorName: siteSupervisor.trim() || 'Assigned Supervisor',
+        supervisorUserId: isCustomAddSupervisor ? '' : siteSupervisorUserId,
+        location: siteLocation.trim() || 'On-site details pending',
+        contactNumber: sitePhone.trim() || '+1 (555) 000-0000',
+        isMainWarehouse: false,
+      },
+      newSiteAssignedUserIds
+    );
 
-    showToast(`Site Branch "${siteName}" added successfully!`);
+    showToast(`Site Branch "${siteName}" added & synced with assigned user account(s)!`);
     setSiteName('');
     setSiteSupervisor('');
+    setSiteSupervisorUserId('');
+    setNewSiteAssignedUserIds([]);
     setIsCustomAddSupervisor(false);
     setSiteLocation('');
     setSitePhone('');
   };
 
-  // --- USER FORM STATE ---
+  // --- USER FORM STATE (Supports All Sites, Single Site, or Multiple Sites) ---
+  const defaultInitialBranchId =
+    activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id || '';
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
-  const [userSiteId, setUserSiteId] = useState(activeSites[0]?.id || 'all');
+  const [userSiteScope, setUserSiteScope] = useState<'all' | 'specific'>('specific');
+  const [userSelectedSiteIds, setUserSelectedSiteIds] = useState<string[]>(
+    defaultInitialBranchId ? [defaultInitialBranchId] : []
+  );
   const [userRole, setUserRole] = useState<UserRole>('Branch Admin');
   const [password, setPassword] = useState('pass123');
   const [showPassword, setShowPassword] = useState(false);
+
+  const toggleCreateUserSite = (targetSiteId: string) => {
+    setUserSelectedSiteIds((prev) =>
+      prev.includes(targetSiteId)
+        ? prev.filter((id) => id !== targetSiteId)
+        : [...prev, targetSiteId]
+    );
+  };
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -291,15 +328,28 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       return;
     }
 
+    const isAllSitesSelected = userSiteScope === 'all' || isSuperAdmin(userRole);
+    if (!isAllSitesSelected && userSelectedSiteIds.length === 0) {
+      showToast('Please select at least one site branch or switch to "All Sites / Central HQ".');
+      return;
+    }
+
+    const finalSiteIds = isAllSitesSelected ? ['all'] : userSelectedSiteIds;
+    const finalPrimarySiteId = isAllSitesSelected ? 'all' : (userSelectedSiteIds[0] || 'unassigned');
+
     addUser({
       username: normalizedUsername,
       fullName: fullName.trim(),
-      siteId: userSiteId || 'all',
+      siteId: finalPrimarySiteId,
+      siteIds: finalSiteIds,
       role: userRole,
       password: password.trim(),
     });
 
-    showToast(`User account "${normalizedUsername}" created with role "${userRole}"!`);
+    const countMsg = isAllSitesSelected
+      ? 'All Sites / Central HQ'
+      : `${userSelectedSiteIds.length} assigned site(s)`;
+    showToast(`User "${normalizedUsername}" created (${countMsg})!`);
     setUsername('');
     setFullName('');
     setPassword('pass123');
@@ -424,15 +474,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleClearSiteForm = () => {
     setSiteName('');
     setSiteSupervisor('');
+    setSiteSupervisorUserId('');
+    setNewSiteAssignedUserIds([]);
     setIsCustomAddSupervisor(false);
     setSiteLocation('');
     setSitePhone('');
   };
 
   const handleClearUserForm = () => {
+    const firstBranch = activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id || '';
     setUsername('');
     setFullName('');
-    setUserSiteId(activeSites[0]?.id || 'all');
+    setUserSiteScope('specific');
+    setUserSelectedSiteIds(firstBranch ? [firstBranch] : []);
     setUserRole('Branch Admin');
     setPassword('pass123');
   };
@@ -462,16 +516,17 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleSaveSiteEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSite) return;
-    updateSite(editingSite.id, editingSite);
-    showToast(`Site Branch "${editingSite.name}" updated successfully.`);
+    updateSite(editingSite.id, editingSite, editingSiteUserIds);
+    showToast(`Site Branch "${editingSite.name}" & assigned staff synchronized.`);
     setEditingSite(null);
+    setEditingSiteUserIds([]);
   };
 
   const handleSaveUserEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
     updateUser(editingUser.id, editingUser);
-    showToast(`User account "${editingUser.fullName}" updated.`);
+    showToast(`User "${editingUser.fullName}" settings & site assignments synchronized.`);
     setEditingUser(null);
   };
 
@@ -1479,22 +1534,44 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val === '__custom__') {
+                        const prevSupId = siteSupervisorUserId;
                         setIsCustomAddSupervisor(true);
                         setSiteSupervisor('');
+                        setSiteSupervisorUserId('');
+                        if (prevSupId) {
+                          setNewSiteAssignedUserIds((prev) => prev.filter((id) => id !== prevSupId));
+                        }
                       } else {
+                        const prevSupId = siteSupervisorUserId;
                         setIsCustomAddSupervisor(false);
                         setSiteSupervisor(val);
+                        const matchedUser = activeUsers.find(
+                          (u) => u.fullName.trim().toLowerCase() === val.trim().toLowerCase()
+                        );
+                        setSiteSupervisorUserId(matchedUser?.id || '');
+                        setNewSiteAssignedUserIds((prev) => {
+                          const withoutPrev = prevSupId ? prev.filter((id) => id !== prevSupId) : prev;
+                          if (matchedUser && !isUserAllSites(matchedUser)) {
+                            return Array.from(new Set([...withoutPrev, matchedUser.id]));
+                          }
+                          return withoutPrev;
+                        });
                       }
                     }}
                     className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all font-medium"
                     required={!isCustomAddSupervisor}
                   >
                     <option value="">-- Select Registered Supervisor / Manager --</option>
-                    {activeUsers.map((u) => (
-                      <option key={u.id} value={u.fullName}>
-                        {u.fullName} ({u.role} - {u.username})
-                      </option>
-                    ))}
+                    {activeUsers.map((u) => {
+                      const curSiteCount = isUserAllSites(u)
+                        ? 'All Sites'
+                        : `${getUserAssignedSiteIds(u, activeSites).length} site(s)`;
+                      return (
+                        <option key={u.id} value={u.fullName}>
+                          {u.fullName} (@{u.username} · {curSiteCount})
+                        </option>
+                      );
+                    })}
                     {siteSupervisor && !isCustomAddSupervisor && !activeUsers.some((u) => u.fullName.toLowerCase() === siteSupervisor.toLowerCase()) && (
                       <option value={siteSupervisor}>{siteSupervisor} (Custom)</option>
                     )}
@@ -1511,7 +1588,75 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       required
                     />
                   )}
+
+                  {!isCustomAddSupervisor && siteSupervisorUserId && (
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1.5 font-medium">
+                      This site will be automatically linked to {siteSupervisor}&apos;s user account settings.
+                    </p>
+                  )}
                 </div>
+
+                {/* Additional Branch Users Multi-Assign on Site Creation */}
+                {activeUsers.some((u) => !isUserAllSites(u)) && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Assign Branch System Users
+                      </label>
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        {newSiteAssignedUserIds.length} selected
+                      </span>
+                    </div>
+                    <div className="max-h-36 overflow-y-auto rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 divide-y divide-slate-200/60 dark:divide-slate-700/60">
+                      {activeUsers
+                        .filter((u) => !isUserAllSites(u))
+                        .map((u) => {
+                          const checked = newSiteAssignedUserIds.includes(u.id);
+                          const isSelectedSup = !isCustomAddSupervisor && siteSupervisorUserId === u.id;
+                          const existingCount = getUserAssignedSiteIds(u, activeSites).length;
+                          return (
+                            <label
+                              key={u.id}
+                              className={`flex items-center justify-between gap-2 px-3.5 py-2 text-xs cursor-pointer transition-colors ${
+                                checked
+                                  ? 'bg-emerald-50/70 dark:bg-emerald-950/30'
+                                  : 'hover:bg-white/80 dark:hover:bg-slate-800/70'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={checked || isSelectedSup}
+                                  disabled={isSelectedSup}
+                                  onChange={() => {
+                                    setNewSiteAssignedUserIds((prev) =>
+                                      prev.includes(u.id)
+                                        ? prev.filter((id) => id !== u.id)
+                                        : [...prev, u.id]
+                                    );
+                                  }}
+                                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-slate-900 dark:text-white break-words leading-snug">
+                                    {u.fullName}
+                                    {isSelectedSup && (
+                                      <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                        · Supervisor
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 break-words leading-snug mt-0.5">
+                                    @{u.username} · {u.role} · Currently {existingCount} site(s)
+                                  </div>
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -1612,12 +1757,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 ${activeSites.length > 1 ? '2xl:grid-cols-2' : ''} gap-4`}>
               {activeSites.map((s, idx) => {
                 const assignedTeams = activeTeams.filter((t) => t.assignedSiteId === s.id);
-                const assignedUsers = activeUsers.filter((u) =>
-                  s.isMainWarehouse ? u.siteId === 'all' || u.siteId === s.id : u.siteId === s.id
-                );
+                const assignedUsers = activeUsers.filter((u) => isUserAssignedToSite(u, s, activeSites));
                 const isChecked = selectedSiteIds.includes(s.id);
                 const supervisorInitials = (s.supervisorName || 'S')
                   .split(' ')
@@ -1640,7 +1783,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     {/* Top Row: Icon Badge + Title & Actions */}
                     <div>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3.5 min-w-0">
+                        <div className="flex items-start gap-3.5 min-w-0 flex-1">
                           <div
                             className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
                               s.isMainWarehouse
@@ -1655,8 +1798,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             )}
                           </div>
 
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
                               <span className={s.isMainWarehouse ? 'text-emerald-700 dark:text-emerald-400' : ''}>
                                 {s.isMainWarehouse ? 'Central HQ Warehouse' : 'Regional Site Branch'}
                               </span>
@@ -1665,7 +1808,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 {s.isMainWarehouse ? 'HQ-01' : `BR-${String(idx).padStart(2, '0')}`}
                               </span>
                             </div>
-                            <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight truncate mt-0.5">
+                            <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
                               {s.name}
                             </h3>
                           </div>
@@ -1691,10 +1834,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               <button
                                 onClick={() => {
                                   setIsCustomEditSupervisor(false);
+                                  const staffIds = activeUsers
+                                    .filter((u) => !isUserAllSites(u) && isUserAssignedToSite(u, s, activeSites))
+                                    .map((u) => u.id);
+                                  setEditingSiteUserIds(staffIds);
                                   setEditingSite({ ...s });
                                 }}
                                 className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                                title="Edit Site Details"
+                                title="Edit Site Details & Assigned Staff"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
@@ -1715,53 +1862,74 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       {/* Structured Details Surface */}
                       <div className="mt-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-2.5">
                         {/* Supervisor Row */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-extrabold text-[11px] flex items-center justify-center shrink-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
                               {supervisorInitials || 'SV'}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-none">
                                 Supervisor / In-Charge
                               </div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white leading-snug break-words mt-0.5">
                                 {s.supervisorName || 'Unassigned'}
                               </div>
                             </div>
                           </div>
-                          <Shield className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                          <Shield className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0 mt-1" />
                         </div>
 
-                        {/* Location & Phone Split Row */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                        {/* Full-Width Location / Address & Direct Line Rows */}
+                        <div className="space-y-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
                           <div className="flex items-start gap-2 min-w-0">
                             <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
-                                Location
+                                Geographic Location / Address
                               </div>
-                              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5" title={s.location}>
-                                {s.location}
+                              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-relaxed break-words mt-0.5">
+                                {s.location || 'Not specified'}
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex items-start gap-2 min-w-0">
+                          <div className="flex items-start gap-2 min-w-0 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
                             <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
                                 Direct Line
                               </div>
-                              <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5">
-                                {s.contactNumber}
+                              <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words mt-0.5">
+                                {s.contactNumber || 'Not specified'}
                               </div>
                             </div>
                           </div>
+                        </div>
+
+                        {/* Assigned System Users Row */}
+                        <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                          <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none mb-1">
+                            Assigned System Users ({assignedUsers.length})
+                          </div>
+                          {assignedUsers.length === 0 ? (
+                            <div className="text-slate-400 dark:text-slate-500 italic">
+                              No user account linked yet
+                            </div>
+                          ) : (
+                            <div className="text-slate-700 dark:text-slate-200 font-semibold leading-relaxed break-words">
+                              {assignedUsers.map((u, uIdx) => (
+                                <React.Fragment key={u.id}>
+                                  {uIdx > 0 && <span className="text-slate-400 mx-1.5">·</span>}
+                                  <span>{u.fullName}</span>
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Footer Telemetry Bar */}
+                    {/* Footer Bar */}
                     <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
                         <span>
@@ -1887,26 +2055,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base</label>
-                <select
-                  value={userSiteId}
-                  onChange={(e) => setUserSiteId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
-                >
-                  <option value="all">All Sites / Central Warehouse HQ</option>
-                  {activeSites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">User Role *</label>
                 <select
                   value={userRole}
-                  onChange={(e) => setUserRole(e.target.value as UserRole)}
+                  onChange={(e) => {
+                    const nextR = e.target.value as UserRole;
+                    setUserRole(nextR);
+                    if (isCentralOrAllSiteAdmin(nextR)) {
+                      setUserSiteScope('all');
+                    }
+                  }}
                   className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
                   <option value="Super Admin Central">1. Super Admin Central (Full System & HQ Control)</option>
@@ -1914,6 +2072,113 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   <option value="Branch Admin">3. Branch Admin (Branch Inbound, Outbound & Teams)</option>
                   <option value="Branch System User">4. Branch System User (Standard Site Operations)</option>
                 </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Assigned Site(s) Scope *
+                  </label>
+                  <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                    {userSiteScope === 'all' || isSuperAdmin(userRole)
+                      ? 'All Sites / HQ'
+                      : `${userSelectedSiteIds.length} site(s) selected`}
+                  </span>
+                </div>
+
+                {/* Segmented Scope Selector */}
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 mb-2.5">
+                  <button
+                    type="button"
+                    disabled={isSuperAdmin(userRole)}
+                    onClick={() => setUserSiteScope('specific')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 ${
+                      userSiteScope === 'specific' && !isSuperAdmin(userRole)
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Specific Site(s)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserSiteScope('all')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      userSiteScope === 'all' || isSuperAdmin(userRole)
+                        ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    All Sites / Central HQ
+                  </button>
+                </div>
+
+                {userSiteScope === 'all' || isSuperAdmin(userRole) ? (
+                  <div className="rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 p-3 text-xs text-emerald-900 dark:text-emerald-300">
+                    <div className="font-bold">Full Multi-Branch &amp; Central Warehouse Access</div>
+                    <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                      This user can view and manage inventory across all registered operational sites.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Select one or multiple site branches:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setUserSelectedSiteIds(activeSites.map((s) => s.id))}
+                          className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                        >
+                          Select All
+                        </button>
+                        <span className="text-slate-300">·</span>
+                        <button
+                          type="button"
+                          onClick={() => setUserSelectedSiteIds([])}
+                          className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 divide-y divide-slate-200/70 dark:divide-slate-700/60">
+                      {activeSites.map((s) => {
+                        const checked = userSelectedSiteIds.includes(s.id);
+                        return (
+                          <label
+                            key={s.id}
+                            className={`flex items-center justify-between gap-2 px-3 py-2 text-xs cursor-pointer transition-colors ${
+                              checked
+                                ? 'bg-emerald-50/80 dark:bg-emerald-950/30'
+                                : 'hover:bg-white dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleCreateUserSite(s.id)}
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                              />
+                              <div className="min-w-0">
+                                <div className="font-bold text-slate-900 dark:text-white break-words leading-snug">
+                                  {s.name}
+                                </div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 break-words leading-snug mt-0.5">
+                                  {s.location} · In-Charge: {s.supervisorName || 'Unassigned'}
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1957,13 +2222,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </form>
           </div>
 
-          {/* User Table with Edit & Delete */}
+          {/* User Table with Multi-Site Visibility, Edit & Delete */}
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-sm text-slate-900 dark:text-white">System Users</h2>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold bg-slate-200 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
-                  {activeUsers.length} accounts
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold">
+                  · {activeUsers.length} accounts
                 </span>
               </div>
 
@@ -2005,8 +2270,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                       />
                     </th>
-                    <th className="py-3 px-3">Username</th>
-                    <th className="py-3 px-3">Full Name</th>
+                    <th className="py-3 px-3">User Account</th>
+                    <th className="py-3 px-3">Assigned Site(s)</th>
                     <th className="py-3 px-3">Role</th>
                     <th className="py-3 px-3 text-right">Actions</th>
                   </tr>
@@ -2020,20 +2285,27 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     </tr>
                   ) : (
                     activeUsers.map((u) => {
-                    const s = activeSites.find((site) => site.id === u.siteId);
+                    const isAll = isUserAllSites(u);
+                    const assignedSiteIds = getUserAssignedSiteIds(u, activeSites);
+                    const assignedSiteObjs = isAll
+                      ? []
+                      : assignedSiteIds
+                          .map((sid) => activeSites.find((site) => site.id === sid))
+                          .filter((site): site is Site => Boolean(site));
+                    const supervisedSites = getUserSupervisedSites(u, activeSites);
                     const isChecked = selectedUserIds.includes(u.id);
 
                     const norm = normalizeRole(u.role);
-                    const badgeStyles = {
-                      'Super Admin Central': 'bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
-                      'All Site Branch Admin': 'bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
-                      'Branch Admin': 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
-                      'Branch System User': 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
-                    }[norm] || 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+                    const roleTextStyles = {
+                      'Super Admin Central': 'text-purple-800 dark:text-purple-300 font-bold',
+                      'All Site Branch Admin': 'text-blue-800 dark:text-blue-300 font-bold',
+                      'Branch Admin': 'text-emerald-800 dark:text-emerald-300 font-bold',
+                      'Branch System User': 'text-slate-700 dark:text-slate-300 font-semibold',
+                    }[norm] || 'text-slate-700 dark:text-slate-300 font-semibold';
 
                     return (
                       <tr key={u.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isChecked ? 'bg-slate-50/80 dark:bg-slate-800/60' : ''}`}>
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 align-top">
                           <input
                             type="checkbox"
                             checked={isChecked}
@@ -2042,20 +2314,64 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id]
                               )
                             }
-                            className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                            className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer mt-0.5"
                           />
                         </td>
-                        <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-white">@{u.username}</td>
-                        <td className="py-3 px-3 text-slate-800 dark:text-slate-200 font-semibold">
-                          {u.fullName}
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{u.siteId === 'all' ? 'All Sites / Central HQ' : s?.name}</div>
+                        <td className="py-3 px-3 align-top">
+                          <div className="text-slate-900 dark:text-white font-bold">{u.fullName}</div>
+                          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">@{u.username}</div>
                         </td>
-                        <td className="py-3 px-3">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${badgeStyles}`}>
+                        <td className="py-3 px-3 align-top">
+                          {isAll ? (
+                            <div className="space-y-0.5">
+                              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                                All Sites / Central HQ
+                              </div>
+                              {supervisedSites.length > 0 && (
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  In-Charge: {supervisedSites.map((st) => st.name).join(' · ')}
+                                </div>
+                              )}
+                            </div>
+                          ) : assignedSiteObjs.length === 0 ? (
+                            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                              Unassigned (Click Edit to assign)
+                            </span>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                {assignedSiteObjs.length === 1
+                                  ? '1 Assigned Site'
+                                  : `${assignedSiteObjs.length} Assigned Sites`}
+                              </div>
+                              <div className="space-y-0.5">
+                                {assignedSiteObjs.map((siteObj) => {
+                                  const isSup = supervisedSites.some((sp) => sp.id === siteObj.id);
+                                  return (
+                                    <div
+                                      key={siteObj.id}
+                                      className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
+                                    >
+                                      <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span>{siteObj.name}</span>
+                                      {isSup && (
+                                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                          · Supervisor
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 align-top">
+                          <span className={`text-[11px] ${roleTextStyles}`}>
                             {u.role}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <td className="py-3 px-3 text-right whitespace-nowrap align-top">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => {
@@ -2067,9 +2383,17 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               Switch
                             </button>
                             <button
-                              onClick={() => setEditingUser({ ...u })}
+                              onClick={() => {
+                                const userAll = isUserAllSites(u);
+                                const resolvedIds = userAll ? ['all'] : getUserAssignedSiteIds(u, activeSites);
+                                setEditingUser({
+                                  ...u,
+                                  siteId: userAll ? 'all' : (resolvedIds[0] || 'unassigned'),
+                                  siteIds: resolvedIds,
+                                });
+                              }}
                               className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                              title="Edit User Role"
+                              title="Edit User Settings & Assigned Sites"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -2246,9 +2570,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-1.5">
                     {teamMembers.map((m, idx) => (
                       <div key={m.id} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] font-mono tabular-nums font-bold text-slate-400 w-4">{idx + 1}.</span>
-                          <div className="truncate">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <span className="text-[10px] font-mono tabular-nums font-bold text-slate-400 w-4 shrink-0 mt-0.5">{idx + 1}.</span>
+                          <div className="break-words leading-snug min-w-0">
                             <span className="font-semibold text-slate-900 dark:text-slate-200">{m.name}</span>
                             <span className="ml-2 font-mono tabular-nums text-[10px] text-emerald-700 dark:text-emerald-300 font-bold">
                               · {m.idNumber}
@@ -2377,7 +2701,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 ${activeTeams.length > 1 ? '2xl:grid-cols-2' : ''} gap-4`}>
                 {activeTeams.map((t, idx) => {
                   const s = activeSites.find((site) => site.id === t.assignedSiteId);
                   const isChecked = selectedTeamIds.includes(t.id);
@@ -2401,19 +2725,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       <div>
                         {/* Header: Icon Badge + Squad Title + Actions */}
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="flex items-start gap-3.5 min-w-0 flex-1">
                             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
                               <Users2 className="w-5 h-5" />
                             </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">
-                                <span className="truncate">{s?.name || 'Central Base'}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                                <span className="break-words">{s?.name || 'Central Base'}</span>
                                 <span aria-hidden="true">·</span>
                                 <span className="font-mono tabular-nums text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
                                   SQ-{String(idx + 1).padStart(2, '0')}
                                 </span>
                               </div>
-                              <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight truncate mt-0.5">
+                              <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
                                 {t.teamName}
                               </h3>
                             </div>
@@ -2451,16 +2775,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                         {/* Structured Leader & Contact Surface */}
                         <div className="mt-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-2.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-emerald-600 text-emerald-400 dark:text-white font-extrabold text-[11px] flex items-center justify-center shrink-0">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-emerald-600 text-emerald-400 dark:text-white font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
                                 {leaderInitials || 'TL'}
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-none">
                                   Squad Leader
                                 </div>
-                                <div className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                <div className="text-xs font-bold text-slate-900 dark:text-white leading-snug break-words mt-0.5">
                                   {t.teamLeaderName}
                                 </div>
                               </div>
@@ -2472,27 +2796,32 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             )}
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                          <div className="space-y-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
                             <div className="flex items-start gap-2 min-w-0">
                               <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
                                   Assigned Base
                                 </div>
-                                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5">
+                                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words mt-0.5">
                                   {s?.name || 'Central HQ'}
+                                  {s?.location ? (
+                                    <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                                      {' '}· {s.location}
+                                    </span>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex items-start gap-2 min-w-0">
+                            <div className="flex items-start gap-2 min-w-0 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
                               <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
                                   Contact Phone
                                 </div>
-                                <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 truncate mt-0.5">
-                                  {t.contactPhone}
+                                <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words mt-0.5">
+                                  {t.contactPhone || 'Not specified'}
                                 </div>
                               </div>
                             </div>
@@ -2505,26 +2834,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 <span>Registered Crew Roster</span>
                                 <span className="font-mono tabular-nums">{t.members!.length} Members</span>
                               </div>
-                              <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
-                                {t.members!.slice(0, 3).map((m, mIdx) => (
+                              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                                {t.members!.map((m, mIdx) => (
                                   <div
                                     key={m.id}
-                                    className="flex items-center justify-between text-[11px] bg-white/80 dark:bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-200/60 dark:border-slate-800"
+                                    className="flex flex-wrap items-start justify-between gap-2 text-[11px] bg-white/80 dark:bg-slate-900/70 px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800"
                                   >
-                                    <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                    <span className="font-semibold text-slate-800 dark:text-slate-200 break-words min-w-0 flex-1">
                                       <span className="font-mono tabular-nums text-slate-400 mr-1">{mIdx + 1}.</span>
                                       {m.name}
                                     </span>
-                                    <span className="font-mono tabular-nums text-[10px] text-emerald-700 dark:text-emerald-400 font-bold ml-2 shrink-0">
+                                    <span className="font-mono tabular-nums text-[10px] text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
                                       {m.idNumber}
                                     </span>
                                   </div>
                                 ))}
-                                {t.members!.length > 3 && (
-                                  <div className="text-[10px] text-slate-500 font-medium pt-0.5 pl-1">
-                                    +{t.members!.length - 3} additional crew member(s)
-                                  </div>
-                                )}
                               </div>
                             </div>
                           ) : (
@@ -3063,7 +3387,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 <p className="mt-1">Use the New Client Register form on the left or inside Client Free Stock (FOC) to add your first Client / Principal.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 ${activeClients.length > 1 ? '2xl:grid-cols-2' : ''} gap-4`}>
                 {activeClients
                   .filter((c) => {
                     const q = clientSearchQuery.toLowerCase();
@@ -3095,8 +3419,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                         <div>
                           {/* Header Row */}
-                          <div className="flex items-center justify-between gap-2 mb-3">
-                            <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
                               {isCentralAdmin && (
                                 <input
                                   type="checkbox"
@@ -3113,7 +3437,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 {c.clientCode}
                               </span>
                               {c.category && (
-                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 truncate max-w-[140px]">
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 break-words">
                                   {c.category}
                                 </span>
                               )}
@@ -3145,10 +3469,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               <Briefcase className="w-4 h-4" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight leading-snug truncate" title={c.name}>
+                              <h4 className="font-black text-slate-900 dark:text-white text-sm sm:text-base tracking-tight leading-snug break-words">
                                 {c.name}
                               </h4>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-snug break-words mt-0.5">
                                 {c.contactPerson ? `Contact: ${c.contactPerson}` : 'Registered Project Principal'}
                               </p>
                             </div>
@@ -3156,24 +3480,37 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                           {/* Structured Metadata Box */}
                           <div className="rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3 space-y-2 text-xs">
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                               <div className="min-w-0">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Phone</span>
-                                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 break-words block mt-0.5">
                                   {c.phone || 'Not specified'}
                                 </span>
                               </div>
                               <div className="min-w-0">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Tax / Reg #</span>
-                                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 break-words block mt-0.5">
                                   {c.taxRegistrationNo || 'N/A'}
                                 </span>
                               </div>
                             </div>
-                            {(c.email || c.address) && (
-                              <div className="pt-1.5 border-t border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5">
-                                {c.email && <div className="truncate"><span className="text-slate-400 font-semibold">Email:</span> {c.email}</div>}
-                                {c.address && <div className="truncate"><span className="text-slate-400 font-semibold">Address:</span> {c.address}</div>}
+                            {(c.email || c.address || c.notes) && (
+                              <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-300 space-y-1.5">
+                                {c.email && (
+                                  <div className="break-words leading-snug">
+                                    <span className="text-slate-400 font-semibold">Email:</span> {c.email}
+                                  </div>
+                                )}
+                                {c.address && (
+                                  <div className="break-words leading-relaxed">
+                                    <span className="text-slate-400 font-semibold">Address:</span> {c.address}
+                                  </div>
+                                )}
+                                {c.notes && (
+                                  <div className="break-words leading-relaxed">
+                                    <span className="text-slate-400 font-semibold">Notes:</span> {c.notes}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -3201,18 +3538,31 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         </div>
       )}
 
-      {/* EDIT SITE MODAL */}
+      {/* EDIT SITE MODAL (Synced with User Assignments) */}
       {editingSite && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
                   <Edit2 className="w-4 h-4" />
                 </div>
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">Edit Site Branch</h3>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">
+                    Edit Site Branch &amp; Staff
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Supervisor and staff changes automatically update User Settings
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setEditingSite(null)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+              <button
+                onClick={() => {
+                  setEditingSite(null);
+                  setEditingSiteUserIds([]);
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -3235,30 +3585,60 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   value={isCustomEditSupervisor ? '__custom__' : editingSite.supervisorName}
                   onChange={(e) => {
                     const val = e.target.value;
+                    const prevSup = activeUsers.find(
+                      (u) =>
+                        (editingSite.supervisorUserId && u.id === editingSite.supervisorUserId) ||
+                        (!editingSite.supervisorUserId &&
+                          u.fullName.trim().toLowerCase() === (editingSite.supervisorName || '').trim().toLowerCase())
+                    );
+
                     if (val === '__custom__') {
                       setIsCustomEditSupervisor(true);
+                      setEditingSite({ ...editingSite, supervisorUserId: '' });
+                      if (prevSup) {
+                        setEditingSiteUserIds((prev) => prev.filter((id) => id !== prevSup.id));
+                      }
                     } else {
                       setIsCustomEditSupervisor(false);
-                      setEditingSite({ ...editingSite, supervisorName: val });
+                      const matched = activeUsers.find(
+                        (u) => u.fullName.trim().toLowerCase() === val.trim().toLowerCase()
+                      );
+                      setEditingSite({
+                        ...editingSite,
+                        supervisorName: val,
+                        supervisorUserId: matched?.id || '',
+                      });
+                      setEditingSiteUserIds((prev) => {
+                        const withoutOldSup = prevSup ? prev.filter((id) => id !== prevSup.id) : prev;
+                        if (matched && !isUserAllSites(matched)) {
+                          return Array.from(new Set([...withoutOldSup, matched.id]));
+                        }
+                        return withoutOldSup;
+                      });
                     }
                   }}
                   className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                   required={!isCustomEditSupervisor}
                 >
                   <option value="">-- Select Registered Supervisor / Manager --</option>
-                  {activeUsers.map((u) => (
-                    <option key={u.id} value={u.fullName}>
-                      {u.fullName} ({u.role} - {u.username})
-                    </option>
-                  ))}
+                  {activeUsers.map((u) => {
+                    const siteCount = isUserAllSites(u)
+                      ? 'All Sites'
+                      : `${getUserAssignedSiteIds(u, activeSites).length} site(s)`;
+                    return (
+                      <option key={u.id} value={u.fullName}>
+                        {u.fullName} (@{u.username} · {siteCount})
+                      </option>
+                    );
+                  })}
                   {editingSite.supervisorName &&
                     !isCustomEditSupervisor &&
                     !activeUsers.some((u) => u.fullName.toLowerCase() === editingSite.supervisorName.toLowerCase()) && (
                       <option value={editingSite.supervisorName}>
-                        {editingSite.supervisorName} (Current Supervisor)
+                        {editingSite.supervisorName} (Current Custom Supervisor)
                       </option>
                     )}
-                  <option value="__custom__">✍️ Enter Custom / Unregistered Supervisor Name...</option>
+                  <option value="__custom__">Enter Custom / Unregistered Supervisor Name...</option>
                 </select>
 
                 {isCustomEditSupervisor && (
@@ -3266,38 +3646,115 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     type="text"
                     placeholder="Type custom supervisor name..."
                     value={editingSite.supervisorName}
-                    onChange={(e) => setEditingSite({ ...editingSite, supervisorName: e.target.value })}
+                    onChange={(e) =>
+                      setEditingSite({ ...editingSite, supervisorName: e.target.value, supervisorUserId: '' })
+                    }
                     className="w-full mt-2 px-3.5 py-2.5 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:outline-none bg-amber-50/50 dark:bg-amber-950/30 dark:text-white"
                     required
                   />
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Location Details</label>
-                <input
-                  type="text"
-                  value={editingSite.location}
-                  onChange={(e) => setEditingSite({ ...editingSite, location: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
-                  required
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Location Details</label>
+                  <input
+                    type="text"
+                    value={editingSite.location}
+                    onChange={(e) => setEditingSite({ ...editingSite, location: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                  <input
+                    type="text"
+                    value={editingSite.contactNumber}
+                    onChange={(e) => setEditingSite({ ...editingSite, contactNumber: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
-                <input
-                  type="text"
-                  value={editingSite.contactNumber}
-                  onChange={(e) => setEditingSite({ ...editingSite, contactNumber: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
-                />
-              </div>
+              {/* Synced Site Users Checklist */}
+              {activeUsers.some((u) => !isUserAllSites(u)) && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Assigned Branch Users ({editingSiteUserIds.length})
+                    </label>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                      Synced with User Accounts
+                    </span>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 divide-y divide-slate-200/70 dark:divide-slate-700/60">
+                    {activeUsers
+                      .filter((u) => !isUserAllSites(u))
+                      .map((u) => {
+                        const isSupOfThisSite =
+                          !isCustomEditSupervisor &&
+                          (editingSite.supervisorUserId === u.id ||
+                            (!editingSite.supervisorUserId &&
+                              u.fullName.trim().toLowerCase() === (editingSite.supervisorName || '').trim().toLowerCase()));
+                        const checked = editingSiteUserIds.includes(u.id) || isSupOfThisSite;
+                        const otherSitesCount = getUserAssignedSiteIds(u, activeSites).filter(
+                          (sid) => sid !== editingSite.id
+                        ).length;
+
+                        return (
+                          <label
+                            key={u.id}
+                            className={`flex items-center justify-between gap-2 px-3.5 py-2 text-xs cursor-pointer transition-colors ${
+                              checked
+                                ? 'bg-emerald-50/80 dark:bg-emerald-950/30'
+                                : 'hover:bg-white dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={isSupOfThisSite}
+                                onChange={() => {
+                                  setEditingSiteUserIds((prev) =>
+                                    prev.includes(u.id)
+                                      ? prev.filter((id) => id !== u.id)
+                                      : [...prev, u.id]
+                                  );
+                                }}
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                              />
+                              <div className="min-w-0">
+                                <div className="font-bold text-slate-900 dark:text-white break-words leading-snug">
+                                  {u.fullName}
+                                  {isSupOfThisSite && (
+                                    <span className="ml-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                      · Selected Supervisor
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 break-words leading-snug mt-0.5">
+                                  @{u.username} · {u.role}
+                                  {otherSitesCount > 0 ? ` · Also on ${otherSitesCount} other site(s)` : ''}
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setEditingSite(null)}
+                  onClick={() => {
+                    setEditingSite(null);
+                    setEditingSiteUserIds([]);
+                  }}
                   className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                 >
                   Cancel
@@ -3314,94 +3771,345 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         </div>
       )}
 
-      {/* EDIT USER MODAL */}
-      {editingUser && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
-                  <Edit2 className="w-4 h-4" />
+      {/* EDIT USER MODAL (Shows Single or All Multiple Assigned Sites & Bi-Directional Sync) */}
+      {editingUser && (() => {
+        const isEditingUserAllSites =
+          editingUser.username === 'admin' ||
+          isSuperAdmin(editingUser.role) ||
+          editingUser.siteId === 'all' ||
+          (Array.isArray(editingUser.siteIds) && editingUser.siteIds.includes('all'));
+
+        const currentEditSiteIds = isEditingUserAllSites
+          ? []
+          : (Array.isArray(editingUser.siteIds)
+              ? editingUser.siteIds.filter((id) => id && id !== 'all' && id !== 'unassigned')
+              : editingUser.siteId && editingUser.siteId !== 'all' && editingUser.siteId !== 'unassigned'
+              ? [editingUser.siteId]
+              : []);
+
+        const currentEditSiteObjs = currentEditSiteIds
+          .map((sid) => activeSites.find((s) => s.id === sid))
+          .filter((s): s is Site => Boolean(s));
+
+        const supervisedByEditUser = getUserSupervisedSites(editingUser, activeSites);
+
+        const setEditUserAllSitesMode = () => {
+          setEditingUser({
+            ...editingUser,
+            siteId: 'all',
+            siteIds: ['all'],
+          });
+        };
+
+        const setEditUserSpecificSitesMode = () => {
+          const fallbackIds =
+            currentEditSiteIds.length > 0
+              ? currentEditSiteIds
+              : supervisedByEditUser.length > 0
+              ? supervisedByEditUser.map((s) => s.id)
+              : [];
+          setEditingUser({
+            ...editingUser,
+            siteId: fallbackIds[0] || 'unassigned',
+            siteIds: fallbackIds,
+          });
+        };
+
+        const toggleEditUserSite = (targetSiteId: string) => {
+          const exists = currentEditSiteIds.includes(targetSiteId);
+          const nextIds = exists
+            ? currentEditSiteIds.filter((id) => id !== targetSiteId)
+            : [...currentEditSiteIds, targetSiteId];
+          setEditingUser({
+            ...editingUser,
+            siteId: nextIds[0] || 'unassigned',
+            siteIds: nextIds,
+          });
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
+                    <Edit2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">
+                      Edit User Account &amp; Assigned Sites
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      @{editingUser.username} · Synchronized with Site Branch Registry
+                    </p>
+                  </div>
                 </div>
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">Edit User Account & Role</h3>
-              </div>
-              <button onClick={() => setEditingUser(null)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveUserEdit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={editingUser.fullName}
-                  onChange={(e) => setEditingUser({ ...editingUser, fullName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">User Role</label>
-                <select
-                  value={editingUser.role}
-                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
-                >
-                  <option value="Super Admin Central">1. Super Admin Central (Full System & HQ Control)</option>
-                  <option value="All Site Branch Admin">2. All Site Branch Admin (All Branch Supervision)</option>
-                  <option value="Branch Admin">3. Branch Admin (Branch Inbound, Outbound & Teams)</option>
-                  <option value="Branch System User">4. Branch System User (Standard Site Operations)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base</label>
-                <select
-                  value={editingUser.siteId}
-                  onChange={(e) => setEditingUser({ ...editingUser, siteId: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
-                >
-                  <option value="all">All Sites / Central Warehouse HQ</option>
-                  {activeSites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
-                <input
-                  type="text"
-                  value={editingUser.password}
-                  onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
-                  type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
-                >
-                  Save User Changes
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSaveUserEdit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      value={editingUser.fullName}
+                      onChange={(e) => setEditingUser({ ...editingUser, fullName: e.target.value })}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
+                    <input
+                      type="text"
+                      value={editingUser.password}
+                      onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">User Role</label>
+                  <select
+                    value={editingUser.role}
+                    onChange={(e) => {
+                      const nextR = e.target.value as UserRole;
+                      if (isSuperAdmin(nextR)) {
+                        setEditingUser({ ...editingUser, role: nextR, siteId: 'all', siteIds: ['all'] });
+                      } else {
+                        setEditingUser({ ...editingUser, role: nextR });
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
+                  >
+                    <option value="Super Admin Central">1. Super Admin Central (Full System & HQ Control)</option>
+                    <option value="All Site Branch Admin">2. All Site Branch Admin (All Branch Supervision)</option>
+                    <option value="Branch Admin">3. Branch Admin (Branch Inbound, Outbound & Teams)</option>
+                    <option value="Branch System User">4. Branch System User (Standard Site Operations)</option>
+                  </select>
+                </div>
+
+                {/* ASSIGNED SITES SECTION (Single & Multi-Site) */}
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                        Assigned Site(s) &amp; Branch Access
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {isEditingUserAllSites
+                          ? 'Global access across all sites & central warehouse'
+                          : currentEditSiteObjs.length === 0
+                          ? 'Currently not assigned to any site branch'
+                          : currentEditSiteObjs.length === 1
+                          ? 'Assigned to 1 site branch'
+                          : `Assigned to ${currentEditSiteObjs.length} multiple site branches`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scope Switcher */}
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-xl">
+                    <button
+                      type="button"
+                      disabled={editingUser.username === 'admin' || isSuperAdmin(editingUser.role)}
+                      onClick={setEditUserSpecificSitesMode}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 ${
+                        !isEditingUserAllSites
+                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      Assigned Site(s) ({currentEditSiteObjs.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={setEditUserAllSitesMode}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        isEditingUserAllSites
+                          ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      All Sites / Central HQ
+                    </button>
+                  </div>
+
+                  {isEditingUserAllSites ? (
+                    <div className="rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 p-3 text-xs space-y-1.5">
+                      <div className="font-bold text-emerald-900 dark:text-emerald-300">
+                        All Sites / Central Warehouse HQ Enabled
+                      </div>
+                      <div className="text-[11px] text-emerald-800/80 dark:text-emerald-400">
+                        User can access inventory, transfers, and reports across every operational site.
+                      </div>
+                      {supervisedByEditUser.length > 0 && (
+                        <div className="pt-1.5 border-t border-emerald-200/70 dark:border-emerald-800/50 text-[11px] text-slate-700 dark:text-slate-300">
+                          <strong>Direct Supervisor Of:</strong>{' '}
+                          {supervisedByEditUser.map((s) => s.name).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Active Assigned Sites Summary */}
+                      <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                            Active Assigned Sites ({currentEditSiteObjs.length})
+                          </span>
+                          <div className="flex items-center gap-2 text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingUser({
+                                  ...editingUser,
+                                  siteId: activeSites[0]?.id || 'unassigned',
+                                  siteIds: activeSites.map((s) => s.id),
+                                })
+                              }
+                              className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                            >
+                              Assign All Branches
+                            </button>
+                            {currentEditSiteObjs.length > 0 && (
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingUser({
+                                      ...editingUser,
+                                      siteId: 'unassigned',
+                                      siteIds: [],
+                                    })
+                                  }
+                                  className="text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
+                                >
+                                  Unassign All
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {currentEditSiteObjs.length === 0 ? (
+                          <div className="text-xs text-amber-700 dark:text-amber-400 font-medium py-1">
+                            No sites currently assigned. Tick one or more site branches below to assign this user.
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {currentEditSiteObjs.map((siteObj) => {
+                              const isSup = supervisedByEditUser.some((sp) => sp.id === siteObj.id);
+                              return (
+                                <div
+                                  key={siteObj.id}
+                                  className="py-2 flex items-start justify-between gap-2 text-xs"
+                                >
+                                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                                    <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                                    <div className="min-w-0 flex-1 break-words leading-snug">
+                                      <span className="font-bold text-slate-900 dark:text-white">
+                                        {siteObj.name}
+                                      </span>
+                                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        {' '}· {siteObj.location}
+                                        {isSup ? ' · Site Supervisor' : ''}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleEditUserSite(siteObj.id)}
+                                    className="px-2 py-0.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 rounded-md transition-colors cursor-pointer shrink-0"
+                                    title={`Remove ${siteObj.name} from this user`}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Multi-Site Selection Checklist */}
+                      <div>
+                        <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                          Select / Update Site Branches (Single or Multiple):
+                        </div>
+                        <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                          {activeSites.map((s) => {
+                            const checked = currentEditSiteIds.includes(s.id);
+                            const isSup = supervisedByEditUser.some((sp) => sp.id === s.id);
+                            return (
+                              <label
+                                key={s.id}
+                                className={`flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs cursor-pointer transition-colors ${
+                                  checked
+                                    ? 'bg-emerald-50/70 dark:bg-emerald-950/30'
+                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                                }`}
+                              >
+                                <div className="flex items-start gap-2.5 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleEditUserSite(s.id)}
+                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer mt-0.5"
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-slate-900 dark:text-white break-words leading-snug">
+                                      {s.name}
+                                      {isSup && (
+                                        <span className="ml-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                          · Current Supervisor
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 break-words leading-snug mt-0.5">
+                                      {s.location} · In-Charge: {s.supervisorName || 'Unassigned'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  >
+                    Save User Changes
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* EDIT TEAM MODAL */}
       {editingTeam && (
@@ -3525,9 +4233,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   <div className="max-h-36 overflow-y-auto space-y-1 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-1.5">
                     {editingTeam.members.map((m, idx) => (
                       <div key={m.id} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}.</span>
-                          <div className="truncate">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <span className="text-[10px] font-bold text-slate-400 w-4 shrink-0 mt-0.5">{idx + 1}.</span>
+                          <div className="break-words leading-snug min-w-0">
                             <span className="font-semibold text-slate-900 dark:text-slate-200">{m.name}</span>
                             <span className="ml-2 font-mono text-[10px] text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
                               {m.idNumber}

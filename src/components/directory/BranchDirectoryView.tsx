@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
-import { Site, Team, User as AppUser } from '../../types';
+import { Site, Team, User as AppUser, isUserAssignedToSite } from '../../types';
 
 interface BranchDirectoryViewProps {
   onNavigate?: (tabId: string) => void;
@@ -48,10 +48,8 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
       // Teams assigned to this site
       const siteTeams = activeTeams.filter((t) => t.assignedSiteId === site.id);
 
-      // Users assigned to this specific site (or 'all' for central management)
-      const siteUsers = activeUsers.filter(
-        (u) => !u.isDeleted && (u.siteId === site.id || (site.isMainWarehouse && u.siteId === 'all'))
-      );
+      // Users assigned to this site (supports single site, multiple sites, and linked supervisors)
+      const siteUsers = activeUsers.filter((u) => isUserAssignedToSite(u, site, activeSites));
 
       // Filter teams by search query
       const matchingTeams = siteTeams.filter((team) => {

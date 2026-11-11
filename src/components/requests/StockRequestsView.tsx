@@ -19,7 +19,17 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { StockTransferRequest, RequestPriority, Item, isCentralOrAllSiteAdmin, ClientFreeIssueEntry, ClientFreeIssueItemRow } from '../../types';
+import {
+  StockTransferRequest,
+  RequestPriority,
+  Item,
+  isCentralOrAllSiteAdmin,
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  userHasSiteAccess,
+  ClientFreeIssueEntry,
+  ClientFreeIssueItemRow,
+} from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -52,15 +62,16 @@ export const StockRequestsView: React.FC = () => {
   const [tableSearchQuery, setTableSearchQuery] = useState('');
   const [activeViewTab, setActiveViewTab] = useState<'requests' | 'foc-materials'>('requests');
 
+  const userAssignedIds = getUserAssignedSiteIds(currentUser, activeSites);
+
   const isCentralAdmin =
     isCentralOrAllSiteAdmin(currentUser.role) ||
-    currentUser.username === 'admin' ||
-    currentUser.siteId === 'all' ||
-    activeSites.find((s) => s.id === currentUser.siteId)?.isMainWarehouse === true;
+    isUserAllSites(currentUser) ||
+    userAssignedIds.some((sid) => activeSites.find((s) => s.id === sid)?.isMainWarehouse === true);
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
 
-  // Filter client FOC materials by selected branch / user site
+  // Filter client FOC materials by selected branch / user assigned site(s)
   const filteredClientFocMaterials = useMemo(() => {
     return (clientFreeIssues || []).filter((v) => {
       if (v.isDeleted) return false;
@@ -73,13 +84,15 @@ export const StockRequestsView: React.FC = () => {
         }
         return true;
       } else {
-        const userSite = sites.find((s) => s.id === currentUser.siteId);
-        if (!userSite) return true;
-        const matchLoc = v.storageLocation && v.storageLocation.trim().toLowerCase() === userSite.name.trim().toLowerCase();
-        return matchLoc;
+        const userSiteNames = userAssignedIds
+          .map((sid) => sites.find((s) => s.id === sid)?.name.trim().toLowerCase())
+          .filter((n): n is string => Boolean(n));
+        if (userSiteNames.length === 0) return false;
+        const locLower = (v.storageLocation || '').trim().toLowerCase();
+        return userSiteNames.includes(locLower);
       }
     });
-  }, [clientFreeIssues, isCentralAdmin, selectedBranchFilter, currentUser.siteId, sites]);
+  }, [clientFreeIssues, isCentralAdmin, selectedBranchFilter, userAssignedIds, sites]);
 
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
@@ -107,10 +120,13 @@ export const StockRequestsView: React.FC = () => {
   const [receivedItems, setReceivedItems] = useState<Array<{ itemId: string; receivedQty: number }>>([]);
   const [acceptanceNotes, setAcceptanceNotes] = useState('');
 
-  // Requisition Form State
+  // Requisition Form State (scoped to user's assigned sites if not Central/All-Sites)
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const allowedRequisitionSites = isCentralAdmin
+    ? branchSites
+    : branchSites.filter((s) => userHasSiteAccess(currentUser, s.id, activeSites));
   const defaultSite =
-    currentUser.siteId !== 'all' ? currentUser.siteId : (branchSites[0]?.id || activeSites[0]?.id || '');
+    allowedRequisitionSites[0]?.id || branchSites[0]?.id || activeSites[0]?.id || '';
 
   // Separate active items by classification
   const activeMaterialItems = activeItems.filter((i) => !isMachineryItem(i));
@@ -358,12 +374,13 @@ export const StockRequestsView: React.FC = () => {
     setAcceptingRequest(null);
   };
 
-  // Filter requests based on user role, branch filter, and search query
+  // Filter requests based on user role, assigned site(s), branch filter, and search query
   const visibleRequests = stockRequests.filter((req) => {
     if (isCentralAdmin) {
       if (selectedBranchFilter !== 'all' && req.siteId !== selectedBranchFilter) return false;
     } else {
-      if (req.siteId !== currentUser.siteId) return false;
+      if (!userHasSiteAccess(currentUser, req.siteId, activeSites)) return false;
+      if (selectedBranchFilter !== 'all' && req.siteId !== selectedBranchFilter) return false;
     }
 
     if (tableSearchQuery.trim()) {
@@ -761,7 +778,7 @@ export const StockRequestsView: React.FC = () => {
                   })
                   .map((req) => {
                   const site = sites.find((s) => s.id === req.siteId);
-                  const isSiteReceiver = isCentralAdmin || currentUser.siteId === req.siteId;
+                  const isSiteReceiver = isCentralAdmin || userHasSiteAccess(currentUser, req.siteId, activeSites);
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
@@ -971,10 +988,11 @@ export const StockRequestsView: React.FC = () => {
                   <select
                     value={formSiteId}
                     onChange={(e) => setFormSiteId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium shadow-2xs"
+                    disabled={!isCentralAdmin && allowedRequisitionSites.length <= 1}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium shadow-2xs disabled:bg-slate-100"
                     required
                   >
-                    {branchSites.map((s) => (
+                    {(allowedRequisitionSites.length > 0 ? allowedRequisitionSites : branchSites).map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name} ({s.location || 'Site Branch'})
                       </option>

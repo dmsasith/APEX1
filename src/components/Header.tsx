@@ -31,7 +31,7 @@ import { UserProfileModal } from './auth/UserProfileModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';
 import { SystemConfigModal } from './common/SystemConfigModal';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
-import { isCentralOrAllSiteAdmin, isSuperAdmin } from '../types';
+import { isCentralOrAllSiteAdmin, isSuperAdmin, isUserAllSites, getUserAssignedSiteIds } from '../types';
 
 interface HeaderProps {
   onOpenPendingRequests?: () => void;
@@ -203,10 +203,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
     showStatus('Company name & logo updated and applied successfully.');
   };
 
-  const activeSiteName =
-    currentUser.siteId === 'all'
-      ? 'Central HQ / All Sites'
-      : activeSites.find((s) => s.id === currentUser.siteId)?.name || 'Branch Site';
+  const assignedHeaderSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
+  const assignedHeaderSiteNames = assignedHeaderSiteIds
+    .map((sid) => activeSites.find((s) => s.id === sid)?.name)
+    .filter((n): n is string => Boolean(n));
+  const activeSiteName = isUserAllSites(currentUser)
+    ? 'Central HQ / All Sites'
+    : assignedHeaderSiteNames.length > 1
+    ? `${assignedHeaderSiteNames[0]} +${assignedHeaderSiteNames.length - 1} more`
+    : assignedHeaderSiteNames[0] || 'Branch Site';
 
   const renderCurrentLogo = (type: 'icon' | 'image' | 'monogram', image?: string, iconId?: string, monogram?: string, color?: string) => {
     if (type === 'image' && image) {

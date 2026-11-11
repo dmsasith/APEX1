@@ -28,7 +28,13 @@ import {
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
 import { StockBalanceCell } from '../common/LowStockIndicator';
-import { StockTransferRequest, ProjectMaterialUsage } from '../../types';
+import {
+  StockTransferRequest,
+  ProjectMaterialUsage,
+  isCentralOrAllSiteAdmin,
+  isUserAllSites,
+  userHasSiteAccess,
+} from '../../types';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 
 export const SiteInventoriesView: React.FC = () => {
@@ -47,11 +53,20 @@ export const SiteInventoriesView: React.FC = () => {
     getClientFreeStockBalance,
   } = useStock();
 
-  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
-  const defaultSiteId =
-    currentUser.siteId !== 'all' ? currentUser.siteId : (branchSites[0]?.id || activeSites[0]?.id || '');
+  const allBranchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const canViewAllBranches = isCentralOrAllSiteAdmin(currentUser.role) || isUserAllSites(currentUser);
+  const branchSites = canViewAllBranches
+    ? allBranchSites
+    : allBranchSites.filter((s) => userHasSiteAccess(currentUser, s.id, activeSites));
+  const defaultSiteId = branchSites[0]?.id || allBranchSites[0]?.id || activeSites[0]?.id || '';
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(defaultSiteId);
+
+  React.useEffect(() => {
+    if (branchSites.length > 0 && !branchSites.some((s) => s.id === selectedSiteId)) {
+      setSelectedSiteId(branchSites[0].id);
+    }
+  }, [branchSites, selectedSiteId]);
   const [activeSection, setActiveSection] = useState<'inventory' | 'foc-materials' | 'history'>('inventory');
 
   const selectedSite = activeSites.find((s) => s.id === selectedSiteId) || sites.find((s) => s.id === selectedSiteId);

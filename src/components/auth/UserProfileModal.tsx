@@ -11,8 +11,10 @@ import {
   Save,
   Eye,
   EyeOff,
+  MapPin,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
+import { isUserAllSites, getUserAssignedSiteIds, getUserSupervisedSites, Site } from '../../types';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -20,7 +22,7 @@ interface UserProfileModalProps {
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
-  const { currentUser, updateUser, setCurrentUser } = useStock();
+  const { currentUser, activeSites, updateUser, setCurrentUser } = useStock();
 
   const [fullName, setFullName] = useState(currentUser.fullName);
   const [username, setUsername] = useState(currentUser.username);
@@ -163,12 +165,74 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               </div>
             </div>
 
-            {/* Role Badge */}
-            <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs">
-              <span className="text-slate-400">Assigned System Role:</span>
-              <span className="font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2.5 py-0.5 rounded-full text-[11px]">
-                {currentUser.role}
-              </span>
+            {/* Role & Assigned Site(s) Summary */}
+            <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Assigned System Role:</span>
+                <span className="font-bold text-emerald-400">
+                  {currentUser.role}
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80">
+                <div className="text-slate-400 mb-1.5">Assigned Site(s):</div>
+                {(() => {
+                  const allScope = isUserAllSites(currentUser);
+                  const assignedIds = getUserAssignedSiteIds(currentUser, activeSites);
+                  const assignedObjs = allScope
+                    ? []
+                    : assignedIds
+                        .map((sid) => activeSites.find((s) => s.id === sid))
+                        .filter((s): s is Site => Boolean(s));
+                  const supervised = getUserSupervisedSites(currentUser, activeSites);
+
+                  if (allScope) {
+                    return (
+                      <div className="space-y-1">
+                        <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>All Sites / Central Warehouse HQ</span>
+                        </div>
+                        {supervised.length > 0 && (
+                          <div className="text-[11px] text-slate-400">
+                            Direct Supervisor Of: <strong className="text-slate-200">{supervised.map((s) => s.name).join(', ')}</strong>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  if (assignedObjs.length === 0) {
+                    return <div className="text-amber-400 font-semibold">No active site assigned</div>;
+                  }
+
+                  return (
+                    <div className="space-y-2 divide-y divide-slate-800/80">
+                      {assignedObjs.map((siteObj) => {
+                        const isSup = supervised.some((sp) => sp.id === siteObj.id);
+                        return (
+                          <div key={siteObj.id} className="pt-2 first:pt-0 space-y-0.5">
+                            <div className="flex items-start gap-1.5 text-slate-200 font-semibold leading-snug break-words">
+                              <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                              <span>{siteObj.name}</span>
+                              {isSup && (
+                                <span className="text-[10px] font-bold text-emerald-400">
+                                  · Supervisor
+                                </span>
+                              )}
+                            </div>
+                            {siteObj.location && (
+                              <div className="pl-5 text-[11px] text-slate-400 leading-relaxed break-words">
+                                {siteObj.location}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Buttons */}

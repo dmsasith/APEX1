@@ -15,7 +15,14 @@ import {
   Lock,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { TeamIssue, Item } from '../../types';
+import {
+  TeamIssue,
+  Item,
+  isCentralOrAllSiteAdmin,
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  userHasSiteAccess,
+} from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { StockBalanceCell } from '../common/LowStockIndicator';
@@ -53,34 +60,34 @@ export const IssueToTeamsView: React.FC = () => {
     onConfirm: () => {},
   });
 
-  // Check if current user is restricted to a specific site
-  const isSiteRestricted = currentUser.siteId !== 'all';
-  const userAssignedSite = sites.find((s) => s.id === currentUser.siteId);
+  // Check if current user is restricted to specific site(s)
+  const isAllSitesUser = isUserAllSites(currentUser) || isCentralOrAllSiteAdmin(currentUser.role);
+  const isSiteRestricted = !isAllSitesUser;
+  const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
 
-  // Filter sites for dispatch: If restricted, ONLY their assigned site is available.
-  // Otherwise, all active branch sites are available.
+  // Filter sites for dispatch: If restricted, ONLY their assigned site(s) are available.
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
   const allowedSites = isSiteRestricted
-    ? (activeSites.filter((s) => s.id === currentUser.siteId).length > 0
-        ? activeSites.filter((s) => s.id === currentUser.siteId)
-        : sites.filter((s) => s.id === currentUser.siteId))
+    ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
 
-  const initialSiteId = isSiteRestricted
-    ? currentUser.siteId
-    : (allowedSites[0]?.id || activeSites[0]?.id || '');
+  const isSingleSiteLocked = isSiteRestricted && allowedSites.length <= 1;
+  const userAssignedSite = allowedSites[0] || sites.find((s) => s.id === currentUser.siteId);
+
+  const initialSiteId = allowedSites[0]?.id || activeSites[0]?.id || '';
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
 
-  // Keep site locked if currentUser changes or is restricted
+  // Keep selectedSiteId within allowedSites if currentUser or site assignments change
   useEffect(() => {
-    if (isSiteRestricted && selectedSiteId !== currentUser.siteId) {
-      setSelectedSiteId(currentUser.siteId);
-      const newTeams = activeTeams.filter((t) => t.assignedSiteId === currentUser.siteId);
+    if (isSiteRestricted && allowedSites.length > 0 && !allowedSites.some((s) => s.id === selectedSiteId)) {
+      const nextId = allowedSites[0].id;
+      setSelectedSiteId(nextId);
+      const newTeams = activeTeams.filter((t) => t.assignedSiteId === nextId);
       setSelectedTeamId(newTeams[0]?.id || '');
       setDispatchItemsList([]);
     }
-  }, [currentUser.siteId, isSiteRestricted]);
+  }, [isSiteRestricted, allowedSites, selectedSiteId, activeTeams]);
 
   const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
 
@@ -98,7 +105,7 @@ export const IssueToTeamsView: React.FC = () => {
 
   // Whenever selected site changes, update available teams
   const handleSiteChange = (newSiteId: string) => {
-    if (isSiteRestricted) return; // Prevent changing if user is locked to an assigned site
+    if (isSiteRestricted && !allowedSites.some((s) => s.id === newSiteId)) return;
     setSelectedSiteId(newSiteId);
     const newTeams = activeTeams.filter((t) => t.assignedSiteId === newSiteId);
     setSelectedTeamId(newTeams[0]?.id || '');
@@ -156,8 +163,8 @@ export const IssueToTeamsView: React.FC = () => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (isSiteRestricted && selectedSiteId !== currentUser.siteId) {
-      setErrorMessage(`Access restricted: You are assigned to ${userAssignedSite?.name || 'your site'} and can only issue stock to teams within your assigned site.`);
+    if (isSiteRestricted && !userHasSiteAccess(currentUser, selectedSiteId, activeSites)) {
+      setErrorMessage(`Access restricted: You can only issue stock to teams within your assigned site(s) (${allowedSites.map((s) => s.name).join(', ') || userAssignedSite?.name || 'none'}).`);
       return;
     }
 
@@ -208,10 +215,10 @@ export const IssueToTeamsView: React.FC = () => {
   const selectedTeam = teams.find((t) => t.id === selectedTeamId);
   const selectedSite = sites.find((s) => s.id === selectedSiteId);
 
-  // History filtered by site if needed
+  // History filtered by assigned site(s) if restricted
   const visibleIssues = teamIssues.filter((iss) => {
-    if (currentUser.siteId === 'all') return true;
-    return iss.siteId === currentUser.siteId;
+    if (!isSiteRestricted) return true;
+    return userHasSiteAccess(currentUser, iss.siteId, activeSites);
   });
 
   return (
@@ -295,24 +302,24 @@ export const IssueToTeamsView: React.FC = () => {
                 {isSiteRestricted && (
                   <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
                     <Lock className="w-2.5 h-2.5 text-amber-700" />
-                    <span>Assigned Site Only</span>
+                    <span>{allowedSites.length > 1 ? `${allowedSites.length} Assigned Sites` : 'Assigned Site Only'}</span>
                   </span>
                 )}
               </div>
               <div className="relative">
                 <select
                   value={selectedSiteId}
-                  disabled={isSiteRestricted}
+                  disabled={isSingleSiteLocked}
                   onChange={(e) => handleSiteChange(e.target.value)}
                   className={`w-full px-3 py-2 border rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none transition-colors ${
-                    isSiteRestricted
+                    isSingleSiteLocked
                       ? 'bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none opacity-95'
                       : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400'
                   }`}
                 >
                   {allowedSites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} {isSiteRestricted ? '(Your Assigned Site)' : ''}
+                      {s.name} {isSiteRestricted ? '(Assigned)' : ''}
                     </option>
                   ))}
                 </select>

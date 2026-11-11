@@ -34,7 +34,16 @@ import {
   Gift,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { ProjectMaterialUsage, ProjectUsageItemRow, ProjectType, isSuperAdmin } from '../../types';
+import {
+  ProjectMaterialUsage,
+  ProjectUsageItemRow,
+  ProjectType,
+  isSuperAdmin,
+  isCentralOrAllSiteAdmin,
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  userHasSiteAccess,
+} from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -101,16 +110,16 @@ export const ProjectMaterialUsageView: React.FC = () => {
     onConfirm: () => {},
   });
 
-  // Site selection
-  const isSiteRestricted = currentUser.siteId !== 'all';
+  // Site selection (supports All Sites, Single Site, and Multiple Assigned Sites)
+  const isAllSitesUser = isUserAllSites(currentUser) || isCentralOrAllSiteAdmin(currentUser.role);
+  const isSiteRestricted = !isAllSitesUser;
+  const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
   const allowedSites = isSiteRestricted
-    ? (activeSites.filter((s) => s.id === currentUser.siteId).length > 0
-        ? activeSites.filter((s) => s.id === currentUser.siteId)
-        : sites.filter((s) => s.id === currentUser.siteId))
+    ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
-  const initialSiteId =
-    currentUser.siteId !== 'all' ? currentUser.siteId : (allowedSites[0]?.id || activeSites[0]?.id || '');
+  const isSingleSiteLocked = isSiteRestricted && allowedSites.length <= 1;
+  const initialSiteId = allowedSites[0]?.id || activeSites[0]?.id || '';
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
 
   // Teams for selected site
@@ -540,7 +549,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
     if (projectFilter !== 'all' && pu.projectId !== projectFilter) return false;
     if (teamFilter !== 'all' && pu.teamId !== teamFilter) return false;
     if (sectionFilter !== 'all' && pu.projectTypeId !== sectionFilter) return false;
-    if (currentUser.siteId !== 'all' && pu.siteId !== currentUser.siteId) return false;
+    if (isSiteRestricted && !userHasSiteAccess(currentUser, pu.siteId, activeSites)) return false;
     if (searchFilter.trim()) {
       const q = searchFilter.toLowerCase();
       const matchVoucher = pu.usageVoucherNumber.toLowerCase().includes(q);
@@ -1136,7 +1145,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     <select
                       value={selectedSiteId}
                       onChange={(e) => handleSiteChange(e.target.value)}
-                      disabled={currentUser.siteId !== 'all'}
+                      disabled={isSingleSiteLocked}
                       className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:opacity-75"
                     >
                       {allowedSites.map((s) => (

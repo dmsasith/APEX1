@@ -14,7 +14,14 @@ import {
   Boxes,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { BranchReturn, ReturnCondition, isSuperAdmin } from '../../types';
+import {
+  BranchReturn,
+  ReturnCondition,
+  isSuperAdmin,
+  isCentralOrAllSiteAdmin,
+  isUserAllSites,
+  userHasSiteAccess,
+} from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -54,10 +61,15 @@ export const BranchStockReturnView: React.FC = () => {
     onConfirm: () => {},
   });
 
-  // Eligible branch sites (excluding main warehouse)
+  const isAllSitesAdmin =
+    isCentralAdmin || isCentralOrAllSiteAdmin(currentUser?.role) || isUserAllSites(currentUser);
+
+  // Eligible branch sites (excluding main warehouse), scoped to assigned sites when restricted
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
-  const initialSiteId =
-    currentUser.siteId !== 'all' ? currentUser.siteId : (branchSites[0]?.id || activeSites[0]?.id || '');
+  const allowedBranchSites = isAllSitesAdmin
+    ? branchSites
+    : branchSites.filter((s) => userHasSiteAccess(currentUser, s.id, activeSites));
+  const initialSiteId = allowedBranchSites[0]?.id || branchSites[0]?.id || activeSites[0]?.id || '';
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
   const [selectedItemId, setSelectedItemId] = useState<string>('');
@@ -146,7 +158,7 @@ export const BranchStockReturnView: React.FC = () => {
     if (br.isDeleted) return false;
     const bId = br.fromSiteId || br.siteId;
     if (filterBranchId !== 'all' && bId !== filterBranchId) return false;
-    if (!isCentralAdmin && currentUser.siteId !== 'all' && bId !== currentUser.siteId) return false;
+    if (!isAllSitesAdmin && !userHasSiteAccess(currentUser, bId, activeSites)) return false;
     if (searchFilter.trim()) {
       const q = searchFilter.toLowerCase();
       const matchNum = br.branchReturnNumber.toLowerCase().includes(q);
@@ -235,14 +247,14 @@ export const BranchStockReturnView: React.FC = () => {
                 <select
                   value={selectedSiteId}
                   onChange={(e) => handleSiteChange(e.target.value)}
-                  disabled={!isCentralAdmin}
+                  disabled={!isAllSitesAdmin && allowedBranchSites.length <= 1}
                   className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-80"
                   required
                 >
-                  {!isCentralAdmin ? (
+                  {!isAllSitesAdmin && allowedBranchSites.length === 0 ? (
                     <option value={currentBranchObj?.id}>{currentBranchObj?.name} ({currentBranchObj?.location})</option>
                   ) : (
-                    branchSites.map((s) => (
+                    (isAllSitesAdmin ? branchSites : allowedBranchSites).map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name} ({s.location})
                       </option>
@@ -250,8 +262,10 @@ export const BranchStockReturnView: React.FC = () => {
                   )}
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isCentralAdmin
+                  {isAllSitesAdmin
                     ? 'As Central Admin, you can select and return stock from any site branch.'
+                    : allowedBranchSites.length > 1
+                    ? `You can select any of your ${allowedBranchSites.length} assigned site branches.`
                     : 'Branch users can only return items from their assigned branch.'}
                 </p>
               </div>

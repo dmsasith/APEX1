@@ -12,7 +12,14 @@ import {
   Lock,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { ReturnCondition, TeamReturn } from '../../types';
+import {
+  ReturnCondition,
+  TeamReturn,
+  isCentralOrAllSiteAdmin,
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  userHasSiteAccess,
+} from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -51,30 +58,31 @@ export const TeamReturnsView: React.FC = () => {
     onConfirm: () => {},
   });
 
-  const isSiteRestricted = currentUser.siteId !== 'all';
-  const userAssignedSite = sites.find((s) => s.id === currentUser.siteId);
+  const isAllSitesUser = isUserAllSites(currentUser) || isCentralOrAllSiteAdmin(currentUser.role);
+  const isSiteRestricted = !isAllSitesUser;
+  const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
 
   const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
   const allowedSites = isSiteRestricted
-    ? (activeSites.filter((s) => s.id === currentUser.siteId).length > 0
-        ? activeSites.filter((s) => s.id === currentUser.siteId)
-        : sites.filter((s) => s.id === currentUser.siteId))
+    ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
 
-  const initialSiteId = isSiteRestricted
-    ? currentUser.siteId
-    : (allowedSites[0]?.id || activeSites[0]?.id || '');
+  const isSingleSiteLocked = isSiteRestricted && allowedSites.length <= 1;
+  const userAssignedSite = allowedSites[0] || sites.find((s) => s.id === currentUser.siteId);
+
+  const initialSiteId = allowedSites[0]?.id || activeSites[0]?.id || '';
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
 
-  // Keep site locked if currentUser changes or is restricted
+  // Keep selectedSiteId within allowedSites if currentUser changes
   useEffect(() => {
-    if (isSiteRestricted && selectedSiteId !== currentUser.siteId) {
-      setSelectedSiteId(currentUser.siteId);
-      const newTeams = teams.filter((t) => t.assignedSiteId === currentUser.siteId);
+    if (isSiteRestricted && allowedSites.length > 0 && !allowedSites.some((s) => s.id === selectedSiteId)) {
+      const nextId = allowedSites[0].id;
+      setSelectedSiteId(nextId);
+      const newTeams = teams.filter((t) => t.assignedSiteId === nextId);
       if (newTeams[0]) handleTeamChange(newTeams[0].id);
     }
-  }, [currentUser.siteId, isSiteRestricted]);
+  }, [isSiteRestricted, allowedSites, selectedSiteId]);
 
   const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
 
@@ -161,8 +169,8 @@ export const TeamReturnsView: React.FC = () => {
   };
 
   const visibleReturns = teamReturns.filter((ret) => {
-    if (currentUser.siteId === 'all') return true;
-    return ret.siteId === currentUser.siteId;
+    if (!isSiteRestricted) return true;
+    return userHasSiteAccess(currentUser, ret.siteId, activeSites);
   });
 
   return (
@@ -219,34 +227,36 @@ export const TeamReturnsView: React.FC = () => {
                   {isSiteRestricted && (
                     <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded flex items-center gap-1">
                       <Lock className="w-2.5 h-2.5 text-amber-700" />
-                      <span>Assigned Site Only</span>
+                      <span>{allowedSites.length > 1 ? `${allowedSites.length} Assigned Sites` : 'Assigned Site Only'}</span>
                     </span>
                   )}
                 </div>
                 <select
                   value={selectedSiteId}
-                  disabled={isSiteRestricted}
+                  disabled={isSingleSiteLocked}
                   onChange={(e) => {
-                    if (isSiteRestricted) return;
+                    if (isSiteRestricted && !allowedSites.some((s) => s.id === e.target.value)) return;
                     setSelectedSiteId(e.target.value);
                     const newTeams = teams.filter((t) => t.assignedSiteId === e.target.value);
                     if (newTeams[0]) handleTeamChange(newTeams[0].id);
                   }}
                   className={`w-full px-3 py-2 border rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none transition-colors ${
-                    isSiteRestricted
+                    isSingleSiteLocked
                       ? 'bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none opacity-95'
                       : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400'
                   }`}
                 >
                   {allowedSites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} {isSiteRestricted ? '(Your Assigned Site)' : ''}
+                      {s.name} {isSiteRestricted ? '(Assigned)' : ''}
                     </option>
                   ))}
                 </select>
                 {isSiteRestricted && (
                   <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                    <span>🔒 Only teams and stock under <strong>{userAssignedSite?.name || 'your assigned site'}</strong> are accessible.</span>
+                    <span>
+                      Only teams and stock under <strong>{allowedSites.map((s) => s.name).join(', ') || userAssignedSite?.name || 'your assigned site(s)'}</strong> are accessible.
+                    </span>
                   </p>
                 )}
               </div>

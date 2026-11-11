@@ -61,9 +61,11 @@ export interface Site {
   name: string;
   isMainWarehouse: boolean;
   supervisorName: string;
+  supervisorUserId?: string; // Linked registered User ID when assigned to a system user ('' when custom/unassigned)
   location: string;
   contactNumber: string;
   createdAt: string;
+  updatedAt?: string;
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
@@ -73,14 +75,108 @@ export interface User {
   id: string;
   username: string;
   fullName: string;
-  siteId: string; // 'all' or specific site id
+  siteId: string; // 'all', 'unassigned', or primary assigned site id (kept synced with siteIds[0])
+  siteIds?: string[]; // ['all'], ['unassigned'], or array of 1+ assigned site IDs
   role: UserRole;
   password: string;
   createdAt: string;
+  updatedAt?: string;
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
   tenantId?: string;
+}
+
+export function isUserAllSites(
+  user?: Pick<User, 'siteId' | 'siteIds' | 'role' | 'username'> | null
+): boolean {
+  if (!user) return false;
+  if (user.username === 'admin' || isSuperAdmin(user.role)) return true;
+  if (user.siteId === 'all') return true;
+  if (Array.isArray(user.siteIds) && user.siteIds.includes('all')) return true;
+  return false;
+}
+
+export function getUserSupervisedSites(
+  user?: Pick<User, 'id' | 'fullName'> | null,
+  sites?: Site[]
+): Site[] {
+  if (!user || !sites || sites.length === 0) return [];
+  const normName = (user.fullName || '').trim().toLowerCase();
+  return sites.filter((s) => {
+    if (s.isDeleted) return false;
+    if (s.supervisorUserId && s.supervisorUserId === user.id) return true;
+    if (
+      !s.supervisorUserId &&
+      normName &&
+      (s.supervisorName || '').trim().toLowerCase() === normName
+    ) {
+      return true;
+    }
+    return false;
+  });
+}
+
+export function getUserAssignedSiteIds(
+  user?: Pick<User, 'id' | 'fullName' | 'siteId' | 'siteIds' | 'role' | 'username'> | null,
+  sites?: Site[]
+): string[] {
+  if (!user) return [];
+  if (isUserAllSites(user)) return ['all'];
+
+  const ids = new Set<string>();
+
+  if (Array.isArray(user.siteIds) && user.siteIds.length > 0) {
+    user.siteIds.forEach((id) => {
+      if (id && id !== 'all' && id !== 'unassigned') {
+        ids.add(id);
+      }
+    });
+  } else if (user.siteId && user.siteId !== 'all' && user.siteId !== 'unassigned') {
+    ids.add(user.siteId);
+  }
+
+  // Include any active site where this user is designated as supervisor
+  if (sites && sites.length > 0) {
+    const supervised = getUserSupervisedSites(user, sites);
+    supervised.forEach((s) => ids.add(s.id));
+  }
+
+  const result = Array.from(ids);
+  if (sites && sites.length > 0) {
+    return result.filter((id) => sites.some((s) => s.id === id && !s.isDeleted));
+  }
+  return result;
+}
+
+export function userHasSiteAccess(
+  user: Pick<User, 'id' | 'fullName' | 'siteId' | 'siteIds' | 'role' | 'username'> | null | undefined,
+  siteId: string,
+  sites?: Site[]
+): boolean {
+  if (!user || !siteId) return false;
+  if (isUserAllSites(user) || isCentralOrAllSiteAdmin(user.role)) return true;
+  return getUserAssignedSiteIds(user, sites).includes(siteId);
+}
+
+export function isUserAssignedToSite(
+  user: Pick<User, 'id' | 'fullName' | 'siteId' | 'siteIds' | 'role' | 'username' | 'isDeleted'>,
+  site: Site,
+  allSites?: Site[]
+): boolean {
+  if (!user || user.isDeleted || !site || site.isDeleted) return false;
+  if (site.isMainWarehouse && isUserAllSites(user)) return true;
+  if (site.supervisorUserId && site.supervisorUserId === user.id) return true;
+  if (
+    !site.supervisorUserId &&
+    user.fullName &&
+    site.supervisorName &&
+    site.supervisorName.trim().toLowerCase() === user.fullName.trim().toLowerCase()
+  ) {
+    return true;
+  }
+  if (isUserAllSites(user)) return false;
+  return getUserAssignedSiteIds(user, allSites).includes(site.id);
 }
 
 export interface Item {
