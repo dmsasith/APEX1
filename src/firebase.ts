@@ -5,6 +5,7 @@ import {
   onValue,
   set,
   get,
+  update,
   DatabaseReference,
   DataSnapshot,
 } from 'firebase/database';
@@ -20,9 +21,11 @@ import {
   AuditLogEntry,
   SystemConfig,
   Project,
+  ProjectType,
   ProjectMaterialUsage,
   BranchReturn,
   StockBackup,
+  FlushMeta,
   LetterheadTemplate,
   DigitalSignature,
   Supplier,
@@ -767,28 +770,160 @@ export async function clearAllFirebaseData(
   initialAuditLog: AuditLogEntry
 ): Promise<void> {
   try {
-    await Promise.all([
-      set(ref(rtdb, 'items'), []),
-      set(ref(rtdb, 'mainStockEntries'), []),
-      set(ref(rtdb, 'stockRequests'), []),
-      set(ref(rtdb, 'teamIssues'), []),
-      set(ref(rtdb, 'teamReturns'), []),
-      set(ref(rtdb, 'projectUsages'), []),
-      set(ref(rtdb, 'branchReturns'), []),
-      set(ref(rtdb, 'projects'), []),
-      set(ref(rtdb, 'teams'), []),
-      set(ref(rtdb, 'suppliers'), []),
-      set(ref(rtdb, 'purchaseOrders'), []),
-      set(ref(rtdb, 'supplierReturns'), []),
-      set(ref(rtdb, 'sites'), [sanitizeData(cleanSite)]),
-      set(ref(rtdb, 'users'), [sanitizeData(cleanUser)]),
-      set(ref(rtdb, 'config'), sanitizeData(cleanConfig)),
-      set(ref(rtdb, 'auditLogs'), [sanitizeData(initialAuditLog)]),
-    ]);
+    const updates: Record<string, unknown> = {
+      items: null,
+      mainStockEntries: null,
+      stockRequests: null,
+      teamIssues: null,
+      teamReturns: null,
+      projectUsages: null,
+      crossProjectRequests: null,
+      clientFreeIssues: null,
+      branchReturns: null,
+      damagedRestorations: null,
+      projects: null,
+      teams: null,
+      suppliers: null,
+      clients: null,
+      purchaseOrders: null,
+      supplierReturns: null,
+      sites: [sanitizeData(cleanSite)],
+      users: [sanitizeData(cleanUser)],
+      config: sanitizeData(cleanConfig),
+      auditLogs: [sanitizeData(initialAuditLog)],
+    };
+    await update(ref(rtdb), updates);
   } catch (err) {
     console.error('Failed to clear Firebase data:', err);
     throw err;
   }
+}
+
+export interface AtomicFlushPayload {
+  tenantId: string;
+  isMasterTenant: boolean;
+  cleanSite: Site;
+  cleanUser: User;
+  cleanConfig: SystemConfig;
+  cleanProjectTypes: ProjectType[];
+  flushLog: AuditLogEntry;
+  backups: StockBackup[];
+  flushMeta: FlushMeta;
+}
+
+/**
+ * Single atomic multi-path Firebase RTDB flush so all operational & master records
+ * are wiped simultaneously and stamped with flushMeta to prevent stale tab/device resurrection.
+ */
+export async function atomicFlushWorkspaceInFirebase(payload: AtomicFlushPayload): Promise<void> {
+  const {
+    tenantId,
+    isMasterTenant,
+    cleanSite,
+    cleanUser,
+    cleanConfig,
+    cleanProjectTypes,
+    flushLog,
+    backups,
+    flushMeta,
+  } = payload;
+
+  const updates: Record<string, unknown> = {
+    [`tenantsData/${tenantId}/sites`]: [sanitizeData(cleanSite)],
+    [`tenantsData/${tenantId}/users`]: [sanitizeData(cleanUser)],
+    [`tenantsData/${tenantId}/config`]: sanitizeData(cleanConfig),
+    [`tenantsData/${tenantId}/projectTypes`]: sanitizeData(cleanProjectTypes),
+    [`tenantsData/${tenantId}/auditLogs`]: [sanitizeData(flushLog)],
+    [`tenantsData/${tenantId}/backups`]: sanitizeData(backups),
+    [`tenantsData/${tenantId}/flushMeta`]: sanitizeData(flushMeta),
+    [`tenantsData/${tenantId}/items`]: null,
+    [`tenantsData/${tenantId}/teams`]: null,
+    [`tenantsData/${tenantId}/projects`]: null,
+    [`tenantsData/${tenantId}/mainStockEntries`]: null,
+    [`tenantsData/${tenantId}/stockRequests`]: null,
+    [`tenantsData/${tenantId}/teamIssues`]: null,
+    [`tenantsData/${tenantId}/teamReturns`]: null,
+    [`tenantsData/${tenantId}/projectUsages`]: null,
+    [`tenantsData/${tenantId}/crossProjectRequests`]: null,
+    [`tenantsData/${tenantId}/clientFreeIssues`]: null,
+    [`tenantsData/${tenantId}/branchReturns`]: null,
+    [`tenantsData/${tenantId}/damagedRestorations`]: null,
+    [`tenantsData/${tenantId}/suppliers`]: null,
+    [`tenantsData/${tenantId}/clients`]: null,
+    [`tenantsData/${tenantId}/purchaseOrders`]: null,
+    [`tenantsData/${tenantId}/supplierReturns`]: null,
+  };
+
+  if (isMasterTenant) {
+    updates['sites'] = [sanitizeData(cleanSite)];
+    updates['users'] = [sanitizeData(cleanUser)];
+    updates['config'] = sanitizeData(cleanConfig);
+    updates['projectTypes'] = sanitizeData(cleanProjectTypes);
+    updates['auditLogs'] = [sanitizeData(flushLog)];
+    updates['backups'] = sanitizeData(backups);
+    updates['flushMeta'] = sanitizeData(flushMeta);
+    updates['items'] = null;
+    updates['teams'] = null;
+    updates['projects'] = null;
+    updates['mainStockEntries'] = null;
+    updates['stockRequests'] = null;
+    updates['teamIssues'] = null;
+    updates['teamReturns'] = null;
+    updates['projectUsages'] = null;
+    updates['crossProjectRequests'] = null;
+    updates['clientFreeIssues'] = null;
+    updates['branchReturns'] = null;
+    updates['damagedRestorations'] = null;
+    updates['suppliers'] = null;
+    updates['clients'] = null;
+    updates['purchaseOrders'] = null;
+    updates['supplierReturns'] = null;
+  }
+
+  await update(ref(rtdb), updates);
+}
+
+/**
+ * Clears flushMeta barrier when an administrator intentionally restores a historical backup snapshot.
+ */
+export async function clearFlushMetaInFirebase(
+  tenantId: string,
+  isMasterTenant: boolean
+): Promise<void> {
+  try {
+    const updates: Record<string, unknown> = {
+      [`tenantsData/${tenantId}/flushMeta`]: null,
+    };
+    if (isMasterTenant) {
+      updates['flushMeta'] = null;
+    }
+    await update(ref(rtdb), updates);
+  } catch (err) {
+    console.warn('Failed clearing flushMeta in Firebase:', err);
+  }
+}
+
+export function subscribeToFirebaseFlushMeta(
+  onData: (meta: FlushMeta | null) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const flushRef = ref(rtdb, 'flushMeta');
+  const unsubscribe = onValue(
+    flushRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val && typeof val === 'object' && 'flushedAtMs' in val) {
+        onData(val as FlushMeta);
+      } else {
+        onData(null);
+      }
+    },
+    (error) => {
+      console.warn('Firebase flushMeta subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
 }
 
 /**

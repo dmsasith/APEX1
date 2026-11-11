@@ -22,6 +22,7 @@ import {
   BranchReturn,
   DamagedStockRestoration,
   StockBackup,
+  FlushMeta,
   LetterheadTemplate,
   DigitalSignature,
   Supplier,
@@ -116,6 +117,9 @@ import {
   subscribeToFirebaseSupplierReturns,
   writeSupplierReturnsToFirebase,
   clearAllFirebaseData,
+  atomicFlushWorkspaceInFirebase,
+  clearFlushMetaInFirebase,
+  subscribeToFirebaseFlushMeta,
   firebaseConfig,
 } from '../firebase';
 
@@ -382,7 +386,10 @@ interface StockContextType {
   createBackup: (name: string, reason?: string) => StockBackup;
   restoreBackup: (backupId: string) => void;
   deleteBackup: (backupId: string) => void;
-  flushSystemWithBackup: (adminPassword: string, backupName: string) => { success: boolean; message: string; backupNumber?: number };
+  flushSystemWithBackup: (
+    adminPassword: string,
+    backupName: string
+  ) => Promise<{ success: boolean; message: string; backupNumber?: number }>;
   lastAutoBackupTime: string | null;
   triggerDailyBackupNow: () => StockBackup;
 
@@ -500,10 +507,152 @@ function getTenantStorageKey(tenantId: string, key: string): string {
   return `${STORAGE_KEY_PREFIX}${tenantId}_${key}`;
 }
 
+const FLUSHABLE_ARRAY_KEYS = new Set<string>([
+  'sites',
+  'users',
+  'items',
+  'teams',
+  'projects',
+  'mainStockEntries',
+  'stockRequests',
+  'teamIssues',
+  'teamReturns',
+  'projectUsages',
+  'crossProjectRequests',
+  'clientFreeIssues',
+  'branchReturns',
+  'damagedRestorations',
+  'suppliers',
+  'clients',
+  'purchaseOrders',
+  'supplierReturns',
+  'auditLogs',
+]);
+
+export function getTenantFlushMeta(tenantId: string): FlushMeta | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${tenantId}_flushMeta`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.flushedAtMs === 'number') {
+        return parsed as FlushMeta;
+      }
+    }
+    if (tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main') {
+      const rootRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}flushMeta`);
+      if (rootRaw) {
+        const parsed = JSON.parse(rootRaw);
+        if (parsed && typeof parsed.flushedAtMs === 'number') {
+          return parsed as FlushMeta;
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveTenantFlushMetaLocal(tenantId: string, meta: FlushMeta): void {
+  try {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}${tenantId}_flushMeta`, JSON.stringify(meta));
+    if (tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main') {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}flushMeta`, JSON.stringify(meta));
+    }
+  } catch (e) {
+    console.warn('Failed saving flushMeta locally:', e);
+  }
+}
+
+function clearTenantFlushMetaLocal(tenantId: string): void {
+  try {
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}${tenantId}_flushMeta`);
+    if (tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main') {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}flushMeta`);
+    }
+  } catch (e) {
+    console.warn('Failed clearing flushMeta locally:', e);
+  }
+}
+
+function extractRecordCreatedMs(rec: any): number {
+  if (!rec || typeof rec !== 'object') return 0;
+  if (typeof rec.id === 'string') {
+    const idMatch = rec.id.match(/(\d{13})/);
+    if (idMatch) {
+      const parsedIdMs = Number(idMatch[1]);
+      if (parsedIdMs > 1500000000000) return parsedIdMs;
+    }
+  }
+  if (typeof rec.createdAt === 'string' && rec.createdAt.includes('T')) {
+    const ms = Date.parse(rec.createdAt);
+    if (!Number.isNaN(ms)) return ms;
+  }
+  if (typeof rec.timestamp === 'string' && rec.timestamp.includes('T')) {
+    const ms = Date.parse(rec.timestamp);
+    if (!Number.isNaN(ms)) return ms;
+  }
+  return 0;
+}
+
+function isProtectedCoreRecord(key: string, rec: any): boolean {
+  if (!rec || typeof rec !== 'object') return false;
+  if (key === 'sites') {
+    return (
+      rec.isMainWarehouse === true ||
+      rec.id === 'site-main' ||
+      (typeof rec.id === 'string' && rec.id.endsWith('-main'))
+    );
+  }
+  if (key === 'users') {
+    const uName = typeof rec.username === 'string' ? rec.username.trim().toLowerCase() : '';
+    const uId = typeof rec.id === 'string' ? rec.id.toLowerCase() : '';
+    return (
+      uName === 'admin' ||
+      uId === 'usr-admin-1' ||
+      uId.endsWith('-admin') ||
+      (rec.role === 'Super Admin Central' && !rec.isDeleted)
+    );
+  }
+  return false;
+}
+
+export function filterPostFlushRecords<T>(tenantId: string, key: string, list: T[]): T[] {
+  if (!Array.isArray(list)) return [];
+  if (!FLUSHABLE_ARRAY_KEYS.has(key)) return list;
+  const flushMeta = getTenantFlushMeta(tenantId);
+  if (!flushMeta || !flushMeta.flushedAtMs) return list;
+
+  return list.filter((rec: any) => {
+    if (!rec) return false;
+    if (isProtectedCoreRecord(key, rec)) return true;
+    const createdMs = extractRecordCreatedMs(rec);
+    return createdMs >= flushMeta.flushedAtMs;
+  });
+}
+
 export function loadTenantData<T>(tenantId: string, key: string, fallback: T): T {
   try {
+    const flushMeta = getTenantFlushMeta(tenantId);
     const tenantKey = getTenantStorageKey(tenantId, key);
     const item = localStorage.getItem(tenantKey);
+
+    // If this workspace has been flushed, NEVER resurrect legacy or comtec keys and filter pre-flush records
+    if (flushMeta && flushMeta.flushedAtMs) {
+      if (item !== null) {
+        const parsed = JSON.parse(item);
+        if (Array.isArray(parsed) && FLUSHABLE_ARRAY_KEYS.has(key)) {
+          return filterPostFlushRecords(tenantId, key, parsed) as unknown as T;
+        }
+        return parsed;
+      }
+      if (Array.isArray(fallback) && FLUSHABLE_ARRAY_KEYS.has(key)) {
+        return filterPostFlushRecords(tenantId, key, fallback) as unknown as T;
+      }
+      return fallback;
+    }
+
     if (tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main') {
       const legacyItem = localStorage.getItem(STORAGE_KEY_PREFIX + key);
       if (item !== null && legacyItem !== null) {
@@ -783,6 +932,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const currentTenantIdRef = useRef<string>(currentTenantId);
   const loadedTenantIdRef = useRef<string>(currentTenantId);
+  const isFlushingRef = useRef<boolean>(false);
   useEffect(() => {
     currentTenantIdRef.current = currentTenantId;
   }, [currentTenantId]);
@@ -844,130 +994,177 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return Array.from(map.values());
   };
 
-  // Helper to sync all collections for any tenantId from Firebase RTDB
+  // Purges any pre-flush records in React state & localStorage when a newer flushMeta is discovered from Firebase
+  const applyRemoteFlushBarrier = (targetTenantId: string, remoteMeta: FlushMeta) => {
+    const localMeta = getTenantFlushMeta(targetTenantId);
+    if (localMeta && localMeta.flushedAtMs >= remoteMeta.flushedAtMs) {
+      return;
+    }
+    saveTenantFlushMetaLocal(targetTenantId, remoteMeta);
+
+    const isMaster = targetTenantId === DEFAULT_TENANT.id || targetTenantId === 'tenant-apex-main';
+    const clearedKeys = [
+      'items',
+      'teams',
+      'projects',
+      'mainStockEntries',
+      'stockRequests',
+      'teamIssues',
+      'teamReturns',
+      'projectUsages',
+      'crossProjectRequests',
+      'clientFreeIssues',
+      'branchReturns',
+      'damagedRestorations',
+      'suppliers',
+      'clients',
+      'purchaseOrders',
+      'supplierReturns',
+    ];
+    clearedKeys.forEach((k) => {
+      try {
+        localStorage.setItem(getTenantStorageKey(targetTenantId, k), JSON.stringify([]));
+        if (isMaster) {
+          localStorage.setItem(STORAGE_KEY_PREFIX + k, JSON.stringify([]));
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}tenant-comtec-main_${k}`);
+        }
+      } catch {}
+    });
+
+    if (currentTenantIdRef.current !== targetTenantId) return;
+
+    const wasFlushing = isFlushingRef.current;
+    isFlushingRef.current = true;
+    setSites((prev) => {
+      const filtered = filterPostFlushRecords(targetTenantId, 'sites', prev);
+      return filtered.length > 0 ? filtered : INITIAL_SITES;
+    });
+    setUsers((prev) => {
+      const filtered = sanitizeTenantUsers(
+        targetTenantId,
+        filterPostFlushRecords(targetTenantId, 'users', prev),
+        tenants
+      );
+      return filtered;
+    });
+    setItems((prev) => filterPostFlushRecords(targetTenantId, 'items', prev));
+    setTeams((prev) => filterPostFlushRecords(targetTenantId, 'teams', prev));
+    setProjects((prev) => filterPostFlushRecords(targetTenantId, 'projects', prev));
+    setMainStockEntries((prev) => filterPostFlushRecords(targetTenantId, 'mainStockEntries', prev));
+    setStockRequests((prev) => filterPostFlushRecords(targetTenantId, 'stockRequests', prev));
+    setTeamIssues((prev) => filterPostFlushRecords(targetTenantId, 'teamIssues', prev));
+    setTeamReturns((prev) => filterPostFlushRecords(targetTenantId, 'teamReturns', prev));
+    setProjectUsages((prev) => filterPostFlushRecords(targetTenantId, 'projectUsages', prev));
+    setCrossProjectRequests((prev) => filterPostFlushRecords(targetTenantId, 'crossProjectRequests', prev));
+    setClientFreeIssues((prev) => filterPostFlushRecords(targetTenantId, 'clientFreeIssues', prev));
+    setBranchReturns((prev) => filterPostFlushRecords(targetTenantId, 'branchReturns', prev));
+    setDamagedRestorations((prev) => filterPostFlushRecords(targetTenantId, 'damagedRestorations', prev));
+    setSuppliers((prev) => filterPostFlushRecords(targetTenantId, 'suppliers', prev));
+    setClients((prev) => filterPostFlushRecords(targetTenantId, 'clients', prev));
+    setPurchaseOrders((prev) => filterPostFlushRecords(targetTenantId, 'purchaseOrders', prev));
+    setSupplierReturns((prev) => filterPostFlushRecords(targetTenantId, 'supplierReturns', prev));
+    setAuditLogs((prev) => filterPostFlushRecords(targetTenantId, 'auditLogs', prev));
+    setTimeout(() => {
+      if (!wasFlushing) {
+        isFlushingRef.current = false;
+      }
+    }, 150);
+  };
+
+  // Helper to sync all collections for any tenantId from Firebase RTDB (respecting flushMeta barrier)
   const syncTenantCollectionsFromFirebase = (targetTenantId: string) => {
-    if (!targetTenantId) return;
+    if (!targetTenantId || isFlushingRef.current) return;
 
-    fetchTenantDataFromFirebase<User[]>(targetTenantId, 'users').then((remoteUsers) => {
-      if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
-        if (currentTenantIdRef.current !== targetTenantId) return;
-        setUsers((prev) => {
-          const merged = sanitizeTenantUsers(targetTenantId, mergeListsById(prev, remoteUsers), tenants);
-          saveTenantData(targetTenantId, 'users', merged);
-          return merged;
+    (async () => {
+      // 1. Fetch flushMeta FIRST before merging any collection so pre-flush records can never resurrect
+      const remoteFlushMeta = await fetchTenantDataFromFirebase<FlushMeta>(targetTenantId, 'flushMeta');
+      if (remoteFlushMeta && typeof remoteFlushMeta.flushedAtMs === 'number') {
+        applyRemoteFlushBarrier(targetTenantId, remoteFlushMeta);
+      }
+      if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
+
+      fetchTenantDataFromFirebase<User[]>(targetTenantId, 'users').then((remoteUsers) => {
+        if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+          if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
+          setUsers((prev) => {
+            const cleanPrev = filterPostFlushRecords(targetTenantId, 'users', prev);
+            const cleanRemote = filterPostFlushRecords(targetTenantId, 'users', remoteUsers);
+            const merged = sanitizeTenantUsers(targetTenantId, mergeListsById(cleanPrev, cleanRemote), tenants);
+            saveTenantData(targetTenantId, 'users', merged);
+            return merged;
+          });
+        }
+      });
+
+      fetchTenantDataFromFirebase<Site[]>(targetTenantId, 'sites').then((remoteSites) => {
+        if (remoteSites && Array.isArray(remoteSites) && remoteSites.length > 0) {
+          if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
+          setSites((prev) => {
+            const cleanPrev = filterPostFlushRecords(targetTenantId, 'sites', prev);
+            const cleanRemote = filterPostFlushRecords(targetTenantId, 'sites', remoteSites);
+            const merged = mergeListsById(cleanPrev, cleanRemote);
+            const finalSites = merged.length > 0 ? merged : INITIAL_SITES;
+            saveTenantData(targetTenantId, 'sites', finalSites);
+            return finalSites;
+          });
+        }
+      });
+
+      fetchTenantDataFromFirebase<SystemConfig>(targetTenantId, 'config').then((remoteConfig) => {
+        if (remoteConfig && remoteConfig.companyName) {
+          if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
+          setConfig((prev) => {
+            const merged = { ...remoteConfig, ...prev };
+            saveTenantData(targetTenantId, 'config', merged);
+            return merged;
+          });
+        }
+      });
+
+      const syncCollection = <T extends { id: string }>(
+        key: string,
+        setter: React.Dispatch<React.SetStateAction<T[]>>,
+        persistAfterMerge = false
+      ) => {
+        fetchTenantDataFromFirebase<T[]>(targetTenantId, key).then((remote) => {
+          if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
+          if (remote && Array.isArray(remote) && remote.length > 0) {
+            const cleanRemote = filterPostFlushRecords(targetTenantId, key, remote);
+            if (cleanRemote.length < remote.length) {
+              writeTenantDataToFirebase(targetTenantId, key, cleanRemote).catch(() => {});
+            }
+            setter((prev) => {
+              const cleanPrev = filterPostFlushRecords(targetTenantId, key, prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
+              if (persistAfterMerge) {
+                saveTenantData(targetTenantId, key, merged);
+              }
+              return merged;
+            });
+          } else {
+            setter((prev) => filterPostFlushRecords(targetTenantId, key, prev));
+          }
         });
-      }
-    });
+      };
 
-    fetchTenantDataFromFirebase<Site[]>(targetTenantId, 'sites').then((remoteSites) => {
-      if (remoteSites && Array.isArray(remoteSites) && remoteSites.length > 0) {
-        if (currentTenantIdRef.current !== targetTenantId) return;
-        setSites((prev) => {
-          const merged = mergeListsById(prev, remoteSites);
-          saveTenantData(targetTenantId, 'sites', merged);
-          return merged;
-        });
-      }
-    });
-
-    fetchTenantDataFromFirebase<SystemConfig>(targetTenantId, 'config').then((remoteConfig) => {
-      if (remoteConfig && remoteConfig.companyName) {
-        if (currentTenantIdRef.current !== targetTenantId) return;
-        setConfig((prev) => {
-          const merged = { ...remoteConfig, ...prev };
-          saveTenantData(targetTenantId, 'config', merged);
-          return merged;
-        });
-      }
-    });
-
-    fetchTenantDataFromFirebase<Item[]>(targetTenantId, 'items').then((remoteItems) => {
-      if (remoteItems && Array.isArray(remoteItems) && remoteItems.length > 0) {
-        if (currentTenantIdRef.current !== targetTenantId) return;
-        setItems((prev) => {
-          const merged = mergeListsById(prev, remoteItems);
-          saveTenantData(targetTenantId, 'items', merged);
-          return merged;
-        });
-      }
-    });
-
-    fetchTenantDataFromFirebase<Team[]>(targetTenantId, 'teams').then((remoteTeams) => {
-      if (remoteTeams && Array.isArray(remoteTeams) && remoteTeams.length > 0) {
-        if (currentTenantIdRef.current !== targetTenantId) return;
-        setTeams((prev) => {
-          const merged = mergeListsById(prev, remoteTeams);
-          saveTenantData(targetTenantId, 'teams', merged);
-          return merged;
-        });
-      }
-    });
-
-    fetchTenantDataFromFirebase<MainStockEntry[]>(targetTenantId, 'mainStockEntries').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setMainStockEntries((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<StockTransferRequest[]>(targetTenantId, 'stockRequests').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setStockRequests((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<TeamIssue[]>(targetTenantId, 'teamIssues').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setTeamIssues((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<TeamReturn[]>(targetTenantId, 'teamReturns').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setTeamReturns((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<Project[]>(targetTenantId, 'projects').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setProjects((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<ProjectType[]>(targetTenantId, 'projectTypes').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setProjectTypes((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<ProjectMaterialUsage[]>(targetTenantId, 'projectUsages').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setProjectUsages((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<ClientFreeIssueEntry[]>(targetTenantId, 'clientFreeIssues').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setClientFreeIssues((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<BranchReturn[]>(targetTenantId, 'branchReturns').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setBranchReturns((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<Supplier[]>(targetTenantId, 'suppliers').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setSuppliers((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<Client[]>(targetTenantId, 'clients').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setClients((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<PurchaseOrder[]>(targetTenantId, 'purchaseOrders').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setPurchaseOrders((prev) => mergeListsById(prev, remote));
-      }
-    });
-    fetchTenantDataFromFirebase<SupplierReturn[]>(targetTenantId, 'supplierReturns').then((remote) => {
-      if (remote && Array.isArray(remote) && remote.length > 0 && currentTenantIdRef.current === targetTenantId) {
-        setSupplierReturns((prev) => mergeListsById(prev, remote));
-      }
-    });
+      syncCollection<Item>('items', setItems, true);
+      syncCollection<Team>('teams', setTeams, true);
+      syncCollection<MainStockEntry>('mainStockEntries', setMainStockEntries);
+      syncCollection<StockTransferRequest>('stockRequests', setStockRequests);
+      syncCollection<TeamIssue>('teamIssues', setTeamIssues);
+      syncCollection<TeamReturn>('teamReturns', setTeamReturns);
+      syncCollection<Project>('projects', setProjects);
+      syncCollection<ProjectType>('projectTypes', setProjectTypes);
+      syncCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages);
+      syncCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests);
+      syncCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues);
+      syncCollection<BranchReturn>('branchReturns', setBranchReturns);
+      syncCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations);
+      syncCollection<Supplier>('suppliers', setSuppliers);
+      syncCollection<Client>('clients', setClients);
+      syncCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders);
+      syncCollection<SupplierReturn>('supplierReturns', setSupplierReturns);
+    })();
   };
 
   // Realtime Cloud Data Sync for current active tenant (multi-device / Vercel deployment support)
@@ -976,14 +1173,37 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     syncTenantCollectionsFromFirebase(currentTenantId);
 
+    // Realtime listener for tenant flushMeta so other open browser tabs/devices clear immediately on flush
+    const unsubFlushMeta = subscribeToFirebaseTenantData<FlushMeta>(
+      currentTenantId,
+      'flushMeta',
+      (remoteMeta) => {
+        if (
+          remoteMeta &&
+          typeof remoteMeta === 'object' &&
+          typeof remoteMeta.flushedAtMs === 'number' &&
+          currentTenantIdRef.current === currentTenantId
+        ) {
+          applyRemoteFlushBarrier(currentTenantId, remoteMeta);
+        }
+      }
+    );
+
     // Realtime listener for tenant users
     const unsubUsers = subscribeToFirebaseTenantData<User[]>(
       currentTenantId,
       'users',
       (remoteUsers) => {
-        if (remoteUsers && Array.isArray(remoteUsers) && currentTenantIdRef.current === currentTenantId) {
+        if (
+          remoteUsers &&
+          Array.isArray(remoteUsers) &&
+          currentTenantIdRef.current === currentTenantId &&
+          !isFlushingRef.current
+        ) {
           setUsers((prev) => {
-            const merged = sanitizeTenantUsers(currentTenantId, mergeListsById(prev, remoteUsers), tenants);
+            const cleanPrev = filterPostFlushRecords(currentTenantId, 'users', prev);
+            const cleanRemote = filterPostFlushRecords(currentTenantId, 'users', remoteUsers);
+            const merged = sanitizeTenantUsers(currentTenantId, mergeListsById(cleanPrev, cleanRemote), tenants);
             try {
               const tenantKey = getTenantStorageKey(currentTenantId, 'users');
               localStorage.setItem(tenantKey, JSON.stringify(merged));
@@ -995,6 +1215,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     return () => {
+      if (unsubFlushMeta) unsubFlushMeta();
       if (unsubUsers) unsubUsers();
     };
   }, [currentTenantId]);
@@ -1077,6 +1298,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [tenants]);
 
   const saveToStorage = <T,>(key: string, data: T) => {
+    if (isFlushingRef.current) return;
     if (loadedTenantIdRef.current !== currentTenantIdRef.current) return;
     saveTenantData(currentTenantIdRef.current, key, data);
   };
@@ -2020,8 +2242,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let unsubPurchaseOrders: (() => void) | undefined;
     let unsubSupplierReturns: (() => void) | undefined;
     let unsubTenants: (() => void) | undefined;
+    let unsubRootFlushMeta: (() => void) | undefined;
 
     try {
+      unsubRootFlushMeta = subscribeToFirebaseFlushMeta((remoteMeta) => {
+        if (remoteMeta && typeof remoteMeta.flushedAtMs === 'number') {
+          const isMaster =
+            currentTenantIdRef.current === DEFAULT_TENANT.id ||
+            currentTenantIdRef.current === 'tenant-apex-main';
+          if (isMaster) {
+            applyRemoteFlushBarrier(DEFAULT_TENANT.id, remoteMeta);
+          } else {
+            saveTenantFlushMetaLocal(DEFAULT_TENANT.id, remoteMeta);
+          }
+        }
+      });
+
       unsubTenants = subscribeToFirebaseTenants(
         (remoteTenants) => {
           if (remoteTenants && remoteTenants.length > 0) {
@@ -2057,6 +2293,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteItems) => {
           setFirebaseConnected(true);
           hasLoadedItemsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteItems && remoteItems.length > 0) {
@@ -2068,9 +2305,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               setItems([]);
               saveToStorage('items', []);
             } else {
+              const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'items', remoteItems);
+              if (cleanRemote.length < remoteItems.length) {
+                writeItemsToFirebase(cleanRemote).catch(() => {});
+              }
               isIncomingFirebaseItems.current = true;
               setItems((prev) => {
-                const merged = mergeListsById(prev, remoteItems);
+                const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'items', prev);
+                const merged = mergeListsById(cleanPrev, cleanRemote);
                 saveToStorage('items', merged);
                 return merged;
               });
@@ -2091,6 +2333,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteRequests) => {
           setFirebaseConnected(true);
           hasLoadedRequestsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteRequests && remoteRequests.length > 0) {
@@ -2100,9 +2343,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               setStockRequests([]);
               saveToStorage('stockRequests', []);
             } else {
+              const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'stockRequests', remoteRequests);
+              if (cleanRemote.length < remoteRequests.length) {
+                writeStockRequestsToFirebase(cleanRemote).catch(() => {});
+              }
               isIncomingFirebaseRequests.current = true;
               setStockRequests((prev) => {
-                const merged = mergeListsById(prev, remoteRequests);
+                const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'stockRequests', prev);
+                const merged = mergeListsById(cleanPrev, cleanRemote);
                 saveToStorage('stockRequests', merged);
                 return merged;
               });
@@ -2122,6 +2370,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteEntries) => {
           setFirebaseConnected(true);
           hasLoadedEntriesFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteEntries && remoteEntries.length > 0) {
@@ -2131,9 +2380,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               setMainStockEntries([]);
               saveToStorage('mainStockEntries', []);
             } else {
+              const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'mainStockEntries', remoteEntries);
+              if (cleanRemote.length < remoteEntries.length) {
+                writeMainStockEntriesToFirebase(cleanRemote).catch(() => {});
+              }
               isIncomingFirebaseEntries.current = true;
               setMainStockEntries((prev) => {
-                const merged = mergeListsById(prev, remoteEntries);
+                const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'mainStockEntries', prev);
+                const merged = mergeListsById(cleanPrev, cleanRemote);
                 saveToStorage('mainStockEntries', merged);
                 return merged;
               });
@@ -2153,14 +2407,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteSites) => {
           setFirebaseConnected(true);
           hasLoadedSitesFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteSites && remoteSites.length > 0) {
-            const cleanSites = remoteSites.filter((s) => !s.id.includes('civilect') && !s.name.toLowerCase().includes('civilect'));
+            const cleanSites = filterPostFlushRecords(
+              DEFAULT_TENANT.id,
+              'sites',
+              remoteSites.filter((s) => !s.id.includes('civilect') && !s.name.toLowerCase().includes('civilect'))
+            );
             const finalSites = cleanSites.length > 0 ? cleanSites : INITIAL_SITES;
             isIncomingFirebaseSites.current = true;
             setSites((prev) => {
-              const merged = mergeListsById(prev, finalSites);
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'sites', prev);
+              const merged = mergeListsById(cleanPrev, finalSites);
               saveToStorage('sites', merged);
               if (merged.length > finalSites.length) {
                 writeSitesToFirebase(merged).catch(() => {});
@@ -2182,14 +2442,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteTeams) => {
           setFirebaseConnected(true);
           hasLoadedTeamsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteTeams && remoteTeams.length > 0) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'teams', remoteTeams);
+            if (cleanRemote.length < remoteTeams.length) {
+              writeTeamsToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseTeams.current = true;
             setTeams((prev) => {
-              const merged = mergeListsById(prev, remoteTeams);
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'teams', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
               saveToStorage('teams', merged);
-              if (merged.length > remoteTeams.length) {
+              if (merged.length > cleanRemote.length) {
                 writeTeamsToFirebase(merged).catch(() => {});
               }
               return merged;
@@ -2209,13 +2475,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteUsers) => {
           setFirebaseConnected(true);
           hasLoadedUsersFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           if (remoteUsers && remoteUsers.length > 0) {
             const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
             if (isMaster) {
-              const cleanApex = sanitizeAndRecoverApexUsers(remoteUsers);
+              const cleanApex = sanitizeAndRecoverApexUsers(
+                filterPostFlushRecords(DEFAULT_TENANT.id, 'users', remoteUsers)
+              );
               isIncomingFirebaseUsers.current = true;
               setUsers((prev) => {
-                const merged = sanitizeAndRecoverApexUsers(mergeListsById(prev, cleanApex));
+                const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'users', prev);
+                const merged = sanitizeAndRecoverApexUsers(mergeListsById(cleanPrev, cleanApex));
                 saveToStorage('users', merged);
                 if (merged.length > cleanApex.length) {
                   writeUsersToFirebase(merged).catch(() => {});
@@ -2238,12 +2508,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteIssues) => {
           setFirebaseConnected(true);
           hasLoadedIssuesFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteIssues && remoteIssues.length > 0) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamIssues', remoteIssues);
+            if (cleanRemote.length < remoteIssues.length) {
+              writeTeamIssuesToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseIssues.current = true;
             setTeamIssues((prev) => {
-              const merged = mergeListsById(prev, remoteIssues);
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamIssues', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
               saveToStorage('teamIssues', merged);
               return merged;
             });
@@ -2262,12 +2538,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteReturns) => {
           setFirebaseConnected(true);
           hasLoadedReturnsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteReturns && remoteReturns.length > 0) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamReturns', remoteReturns);
+            if (cleanRemote.length < remoteReturns.length) {
+              writeTeamReturnsToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseReturns.current = true;
             setTeamReturns((prev) => {
-              const merged = mergeListsById(prev, remoteReturns);
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamReturns', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
               saveToStorage('teamReturns', merged);
               return merged;
             });
@@ -2286,14 +2568,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteProjects) => {
           setFirebaseConnected(true);
           hasLoadedProjectsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteProjects && remoteProjects.length > 0) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'projects', remoteProjects);
+            if (cleanRemote.length < remoteProjects.length) {
+              writeProjectsToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseProjects.current = true;
             setProjects((prev) => {
-              const merged = mergeListsById(prev, remoteProjects);
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'projects', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
               saveToStorage('projects', merged);
-              if (merged.length > remoteProjects.length) {
+              if (merged.length > cleanRemote.length) {
                 writeProjectsToFirebase(merged).catch(() => {});
               }
               return merged;
@@ -2313,12 +2601,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteUsages) => {
           setFirebaseConnected(true);
           hasLoadedProjectUsagesFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteUsages) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'projectUsages', remoteUsages);
+            if (cleanRemote.length < remoteUsages.length) {
+              writeProjectUsagesToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseProjectUsages.current = true;
-            setProjectUsages(remoteUsages);
-            saveToStorage('projectUsages', remoteUsages);
+            setProjectUsages((prev) => {
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'projectUsages', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
+              saveToStorage('projectUsages', merged);
+              return merged;
+            });
             setTimeout(() => {
               isIncomingFirebaseProjectUsages.current = false;
             }, 120);
@@ -2334,12 +2631,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteBranchReturns) => {
           setFirebaseConnected(true);
           hasLoadedBranchReturnsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteBranchReturns) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'branchReturns', remoteBranchReturns);
+            if (cleanRemote.length < remoteBranchReturns.length) {
+              writeBranchReturnsToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseBranchReturns.current = true;
-            setBranchReturns(remoteBranchReturns);
-            saveToStorage('branchReturns', remoteBranchReturns);
+            setBranchReturns((prev) => {
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'branchReturns', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
+              saveToStorage('branchReturns', merged);
+              return merged;
+            });
             setTimeout(() => {
               isIncomingFirebaseBranchReturns.current = false;
             }, 120);
@@ -2355,12 +2661,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteBackups) => {
           setFirebaseConnected(true);
           hasLoadedBackupsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteBackups) {
             isIncomingFirebaseBackups.current = true;
-            setBackups(remoteBackups);
-            saveToStorage('backups', remoteBackups);
+            setBackups((prev) => {
+              const merged = mergeListsById(prev, remoteBackups);
+              saveToStorage('backups', merged);
+              return merged;
+            });
             setTimeout(() => {
               isIncomingFirebaseBackups.current = false;
             }, 120);
@@ -2376,12 +2686,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteAudit) => {
           setFirebaseConnected(true);
           hasLoadedAuditFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteAudit) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'auditLogs', remoteAudit);
             isIncomingFirebaseAudit.current = true;
-            setAuditLogs(remoteAudit);
-            saveToStorage('auditLogs', remoteAudit);
+            setAuditLogs(cleanRemote);
+            saveToStorage('auditLogs', cleanRemote);
             setTimeout(() => {
               isIncomingFirebaseAudit.current = false;
             }, 120);
@@ -2397,6 +2709,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteConfig) => {
           setFirebaseConnected(true);
           hasLoadedConfigFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteConfig && remoteConfig.companyName) {
@@ -2423,6 +2736,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteTemplates) => {
           setFirebaseConnected(true);
           hasLoadedTemplatesFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteTemplates && remoteTemplates.length > 0) {
@@ -2444,6 +2758,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteSignatures) => {
           setFirebaseConnected(true);
           hasLoadedSignaturesFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteSignatures && remoteSignatures.length > 0) {
@@ -2465,12 +2780,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteSuppliers) => {
           setFirebaseConnected(true);
           hasLoadedSuppliersFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteSuppliers) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'suppliers', remoteSuppliers);
+            if (cleanRemote.length < remoteSuppliers.length) {
+              writeSuppliersToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseSuppliers.current = true;
-            setSuppliers(remoteSuppliers);
-            saveToStorage('suppliers', remoteSuppliers);
+            setSuppliers((prev) => {
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'suppliers', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
+              saveToStorage('suppliers', merged);
+              return merged;
+            });
             setTimeout(() => {
               isIncomingFirebaseSuppliers.current = false;
             }, 120);
@@ -2486,12 +2810,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteOrders) => {
           setFirebaseConnected(true);
           hasLoadedPurchaseOrdersFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteOrders) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'purchaseOrders', remoteOrders);
+            if (cleanRemote.length < remoteOrders.length) {
+              writePurchaseOrdersToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebasePurchaseOrders.current = true;
-            setPurchaseOrders(remoteOrders);
-            saveToStorage('purchaseOrders', remoteOrders);
+            setPurchaseOrders((prev) => {
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'purchaseOrders', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
+              saveToStorage('purchaseOrders', merged);
+              return merged;
+            });
             setTimeout(() => {
               isIncomingFirebasePurchaseOrders.current = false;
             }, 120);
@@ -2507,12 +2840,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (remoteReturns) => {
           setFirebaseConnected(true);
           hasLoadedSupplierReturnsFromFirebase.current = true;
+          if (isFlushingRef.current) return;
           const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteReturns) {
+            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'supplierReturns', remoteReturns);
+            if (cleanRemote.length < remoteReturns.length) {
+              writeSupplierReturnsToFirebase(cleanRemote).catch(() => {});
+            }
             isIncomingFirebaseSupplierReturns.current = true;
-            setSupplierReturns(remoteReturns);
-            saveToStorage('supplierReturns', remoteReturns);
+            setSupplierReturns((prev) => {
+              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'supplierReturns', prev);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
+              saveToStorage('supplierReturns', merged);
+              return merged;
+            });
             setTimeout(() => {
               isIncomingFirebaseSupplierReturns.current = false;
             }, 120);
@@ -2528,6 +2870,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     return () => {
+      if (unsubRootFlushMeta) unsubRootFlushMeta();
       if (unsubItems) unsubItems();
       if (unsubRequests) unsubRequests();
       if (unsubEntries) unsubEntries();
@@ -2551,9 +2894,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, []);
 
-  // Write changes to Firebase when modified locally (saveToStorage writes to tenantsData/{tenantId}/{key} for EVERY tenant; root Firebase writes only run for Master tenant)
+  // Write changes to Firebase when modified locally (saveToStorage writes to tenantsData/{tenantId}/{key} for EVERY tenant; root Firebase writes only run for Master tenant and skip during atomic flush)
   const isMasterWorkspaceActive = () =>
-    currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
+    !isFlushingRef.current &&
+    (currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main');
 
   useEffect(() => {
     saveToStorage('items', items);
@@ -5175,7 +5519,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: new Date().toISOString(),
       createdBy: currentUser?.fullName || 'System Administrator',
       itemCount: items.length,
-      transactionCount: mainStockEntries.length + stockRequests.length + teamIssues.length + teamReturns.length + projectUsages.length + branchReturns.length + damagedRestorations.length,
+      transactionCount:
+        mainStockEntries.length +
+        stockRequests.length +
+        teamIssues.length +
+        teamReturns.length +
+        projectUsages.length +
+        clientFreeIssues.length +
+        branchReturns.length +
+        damagedRestorations.length +
+        purchaseOrders.length +
+        supplierReturns.length,
       reason: reason || 'Manual user backup',
       snapshot: {
         config,
@@ -5190,8 +5544,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         teamIssues,
         teamReturns,
         projectUsages,
+        crossProjectRequests,
+        clientFreeIssues,
         branchReturns,
         damagedRestorations,
+        suppliers,
+        clients,
+        purchaseOrders,
+        supplierReturns,
         auditLogs,
       },
     };
@@ -5226,8 +5586,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         teamIssues.length +
         teamReturns.length +
         projectUsages.length +
+        clientFreeIssues.length +
         branchReturns.length +
-        damagedRestorations.length,
+        damagedRestorations.length +
+        purchaseOrders.length +
+        supplierReturns.length,
       reason: 'Daily automated background snapshot for disaster recovery and offline access',
       snapshot: {
         config,
@@ -5242,8 +5605,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         teamIssues,
         teamReturns,
         projectUsages,
+        crossProjectRequests,
+        clientFreeIssues,
         branchReturns,
         damagedRestorations,
+        suppliers,
+        clients,
+        purchaseOrders,
+        supplierReturns,
         auditLogs,
       },
     };
@@ -5279,8 +5648,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return autoBackup;
   };
 
-  // Automated Daily Backup background trigger (runs when stock data exists)
+  // Automated Daily Backup background trigger (only runs when genuine inventory/transaction data exists, NOT just empty default site)
   useEffect(() => {
+    if (isFlushingRef.current) return;
     const todayStr = new Date().toISOString().split('T')[0];
     let lastBackupDate: string | null = null;
     try {
@@ -5289,13 +5659,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       // ignore
     }
 
-    if (lastBackupDate !== todayStr && (items.length > 0 || mainStockEntries.length > 0 || sites.length > 0)) {
+    if (lastBackupDate !== todayStr && (items.length > 0 || mainStockEntries.length > 0 || projects.length > 0)) {
       const timer = setTimeout(() => {
-        triggerDailyBackupNow();
+        if (!isFlushingRef.current) {
+          triggerDailyBackupNow();
+        }
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [currentTenantId, items.length, mainStockEntries.length, sites.length]);
+  }, [currentTenantId, items.length, mainStockEntries.length, projects.length]);
 
   const restoreBackup = (backupId: string) => {
     if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
@@ -5305,20 +5677,29 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!backup) {
       throw new Error('Backup not found');
     }
+
+    const targetTenantId = currentTenantIdRef.current;
+    const isMaster = targetTenantId === DEFAULT_TENANT.id || targetTenantId === 'tenant-apex-main';
+
+    // Clear flushMeta barrier so intentionally restored historical records are never filtered out
+    clearTenantFlushMetaLocal(targetTenantId);
+    clearFlushMetaInFirebase(targetTenantId, isMaster).catch(() => {});
+
     const snap = backup.snapshot;
     if (snap.config) {
       setConfig(snap.config);
       saveToStorage('config', snap.config);
+      saveTenantData(targetTenantId, 'config', snap.config);
     }
     if (snap.sites) {
       setSites(snap.sites);
       saveToStorage('sites', snap.sites);
+      saveTenantData(targetTenantId, 'sites', snap.sites);
     }
     if (snap.users) {
       setUsers(snap.users);
       saveToStorage('users', snap.users);
-      saveTenantData(currentTenantIdRef.current, 'users', snap.users);
-      const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
+      saveTenantData(targetTenantId, 'users', snap.users);
       if (isMaster) {
         writeUsersToFirebase(snap.users).catch(console.warn);
       }
@@ -5326,62 +5707,92 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (snap.items) {
       setItems(snap.items);
       saveToStorage('items', snap.items);
-      saveTenantData(currentTenantIdRef.current, 'items', snap.items);
+      saveTenantData(targetTenantId, 'items', snap.items);
     }
     if (snap.teams) {
       setTeams(snap.teams);
       saveToStorage('teams', snap.teams);
-      saveTenantData(currentTenantIdRef.current, 'teams', snap.teams);
+      saveTenantData(targetTenantId, 'teams', snap.teams);
     }
     if (snap.projects) {
       setProjects(snap.projects);
       saveToStorage('projects', snap.projects);
-      saveTenantData(currentTenantIdRef.current, 'projects', snap.projects);
+      saveTenantData(targetTenantId, 'projects', snap.projects);
     }
     if (snap.projectTypes) {
       setProjectTypes(snap.projectTypes);
       saveToStorage('projectTypes', snap.projectTypes);
-      saveTenantData(currentTenantIdRef.current, 'projectTypes', snap.projectTypes);
+      saveTenantData(targetTenantId, 'projectTypes', snap.projectTypes);
     }
     if (snap.mainStockEntries) {
       setMainStockEntries(snap.mainStockEntries);
       saveToStorage('mainStockEntries', snap.mainStockEntries);
-      saveTenantData(currentTenantIdRef.current, 'mainStockEntries', snap.mainStockEntries);
+      saveTenantData(targetTenantId, 'mainStockEntries', snap.mainStockEntries);
     }
     if (snap.stockRequests) {
       setStockRequests(snap.stockRequests);
       saveToStorage('stockRequests', snap.stockRequests);
-      saveTenantData(currentTenantIdRef.current, 'stockRequests', snap.stockRequests);
+      saveTenantData(targetTenantId, 'stockRequests', snap.stockRequests);
     }
     if (snap.teamIssues) {
       setTeamIssues(snap.teamIssues);
       saveToStorage('teamIssues', snap.teamIssues);
-      saveTenantData(currentTenantIdRef.current, 'teamIssues', snap.teamIssues);
+      saveTenantData(targetTenantId, 'teamIssues', snap.teamIssues);
     }
     if (snap.teamReturns) {
       setTeamReturns(snap.teamReturns);
       saveToStorage('teamReturns', snap.teamReturns);
-      saveTenantData(currentTenantIdRef.current, 'teamReturns', snap.teamReturns);
+      saveTenantData(targetTenantId, 'teamReturns', snap.teamReturns);
     }
     if (snap.projectUsages) {
       setProjectUsages(snap.projectUsages);
       saveToStorage('projectUsages', snap.projectUsages);
-      saveTenantData(currentTenantIdRef.current, 'projectUsages', snap.projectUsages);
+      saveTenantData(targetTenantId, 'projectUsages', snap.projectUsages);
+    }
+    if (snap.crossProjectRequests) {
+      setCrossProjectRequests(snap.crossProjectRequests);
+      saveToStorage('crossProjectRequests', snap.crossProjectRequests);
+      saveTenantData(targetTenantId, 'crossProjectRequests', snap.crossProjectRequests);
+    }
+    if (snap.clientFreeIssues) {
+      setClientFreeIssues(snap.clientFreeIssues);
+      saveToStorage('clientFreeIssues', snap.clientFreeIssues);
+      saveTenantData(targetTenantId, 'clientFreeIssues', snap.clientFreeIssues);
     }
     if (snap.branchReturns) {
       setBranchReturns(snap.branchReturns);
       saveToStorage('branchReturns', snap.branchReturns);
-      saveTenantData(currentTenantIdRef.current, 'branchReturns', snap.branchReturns);
+      saveTenantData(targetTenantId, 'branchReturns', snap.branchReturns);
     }
     if (snap.damagedRestorations) {
       setDamagedRestorations(snap.damagedRestorations);
       saveToStorage('damagedRestorations', snap.damagedRestorations);
-      saveTenantData(currentTenantIdRef.current, 'damagedRestorations', snap.damagedRestorations);
+      saveTenantData(targetTenantId, 'damagedRestorations', snap.damagedRestorations);
+    }
+    if (snap.suppliers) {
+      setSuppliers(snap.suppliers);
+      saveToStorage('suppliers', snap.suppliers);
+      saveTenantData(targetTenantId, 'suppliers', snap.suppliers);
+    }
+    if (snap.clients) {
+      setClients(snap.clients);
+      saveToStorage('clients', snap.clients);
+      saveTenantData(targetTenantId, 'clients', snap.clients);
+    }
+    if (snap.purchaseOrders) {
+      setPurchaseOrders(snap.purchaseOrders);
+      saveToStorage('purchaseOrders', snap.purchaseOrders);
+      saveTenantData(targetTenantId, 'purchaseOrders', snap.purchaseOrders);
+    }
+    if (snap.supplierReturns) {
+      setSupplierReturns(snap.supplierReturns);
+      saveToStorage('supplierReturns', snap.supplierReturns);
+      saveTenantData(targetTenantId, 'supplierReturns', snap.supplierReturns);
     }
     if (snap.auditLogs) {
       setAuditLogs(snap.auditLogs);
       saveToStorage('auditLogs', snap.auditLogs);
-      saveTenantData(currentTenantIdRef.current, 'auditLogs', snap.auditLogs);
+      saveTenantData(targetTenantId, 'auditLogs', snap.auditLogs);
     }
 
     addAuditLog(
@@ -5407,10 +5818,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const flushSystemWithBackup = (
+  const flushSystemWithBackup = async (
     adminPassword: string,
     backupName: string
-  ): { success: boolean; message: string; backupNumber?: number } => {
+  ): Promise<{ success: boolean; message: string; backupNumber?: number }> => {
     if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
       return {
         success: false,
@@ -5430,14 +5841,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: false, message: 'Invalid Admin Password! System flush cancelled.' };
     }
 
-    // 1. Create versioned backup snapshot BEFORE flush
+    const flushMs = Date.now();
+    const flushIso = new Date(flushMs).toISOString();
+    const targetTenantId = currentTenantIdRef.current;
+    const isMaster = targetTenantId === DEFAULT_TENANT.id || targetTenantId === 'tenant-apex-main';
+    const activeTenant = tenants.find((t) => t.id === targetTenantId) || currentTenant;
+
+    // 1. Create complete versioned backup snapshot BEFORE flush
     const backupNumber = backups.length + 1;
     const assignedName = (backupName || '').trim() || `Pre-Flush Auto Backup #${backupNumber}`;
     const autoBackup: StockBackup = {
-      id: `backup-${Date.now()}`,
+      id: `backup-${flushMs}`,
       backupNumber,
       name: assignedName,
-      createdAt: new Date().toISOString(),
+      createdAt: flushIso,
       createdBy: currentUser?.fullName || 'System Administrator',
       itemCount: items.length,
       transactionCount:
@@ -5446,8 +5863,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         teamIssues.length +
         teamReturns.length +
         projectUsages.length +
+        clientFreeIssues.length +
         branchReturns.length +
-        damagedRestorations.length,
+        damagedRestorations.length +
+        purchaseOrders.length +
+        supplierReturns.length,
       reason: 'Automatic snapshot preserved prior to full system flush',
       snapshot: {
         config,
@@ -5456,22 +5876,27 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         items,
         teams,
         projects,
+        projectTypes,
         mainStockEntries,
         stockRequests,
         teamIssues,
         teamReturns,
         projectUsages,
+        crossProjectRequests,
+        clientFreeIssues,
         branchReturns,
         damagedRestorations,
+        suppliers,
+        clients,
+        purchaseOrders,
+        supplierReturns,
         auditLogs,
       },
     };
 
     const newBackups = [autoBackup, ...backups];
-    setBackups(newBackups);
-    saveToStorage('backups', newBackups);
 
-    // 2. Clear all operational data and catalog items cleanly
+    // 2. Build clean post-flush baseline records & flushMeta barrier
     const cleanMainSite: Site = {
       id: 'site-main',
       name: 'Main Central Warehouse',
@@ -5479,9 +5904,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       supervisorName: 'Administrator',
       location: 'Central Logistics Yard',
       contactNumber: '+1 (555) 010-0000',
-      createdAt: new Date().toISOString(),
+      createdAt: flushIso,
     };
-    const activeTenant = tenants.find((t) => t.id === currentTenantIdRef.current) || currentTenant;
     const cleanAdminUser: User = {
       id: currentUser?.id || `usr-${activeTenant.slug}-admin`,
       username: currentUser?.username || 'admin',
@@ -5489,82 +5913,138 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       siteId: 'all',
       role: 'Super Admin Central',
       password: currentUser?.password || 'password123',
-      createdAt: currentUser?.createdAt || new Date().toISOString(),
-      tenantId: currentTenantIdRef.current,
+      createdAt: flushIso,
+      isDeleted: false,
+      tenantId: targetTenantId,
     };
-
-    setSites([cleanMainSite]);
-    setUsers([cleanAdminUser]);
-    setItems([]);
-    setTeams([]);
-    setProjects([]);
-    setMainStockEntries([]);
-    setStockRequests([]);
-    setTeamIssues([]);
-    setTeamReturns([]);
-    setProjectUsages([]);
-    setCrossProjectRequests([]);
-    setClientFreeIssues([]);
-    setBranchReturns([]);
-    setDamagedRestorations([]);
-    setSuppliers([]);
-    setClients([]);
-    setPurchaseOrders([]);
-    setSupplierReturns([]);
-    setCurrentUser(cleanAdminUser);
-
     const flushLog: AuditLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      id: `log-${flushMs}`,
+      timestamp: flushIso,
       action: 'SYSTEM_FLUSHED_WITH_BACKUP',
       referenceNo: `FLUSH-#${backupNumber}`,
       siteName: 'Main Central Warehouse',
       performedBy: currentUser?.fullName || 'System Super Admin',
       details: `Full System Flush completed under admin authorization. Prior inventory and records saved as Backup #${backupNumber} ("${assignedName}"). System reset to clean state.`,
     };
-
-    setAuditLogs([flushLog]);
-
-    try {
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}tenant-comtec-main_users`);
-    } catch {}
-
-    const targetTenantId = currentTenantIdRef.current;
-
-    // Save clean state to storage AND tenant-specific Firebase node (tenantsData/{tenantId}/...)
-    saveTenantData(targetTenantId, 'sites', [cleanMainSite]);
-    saveTenantData(targetTenantId, 'users', [cleanAdminUser]);
-    saveTenantData(targetTenantId, 'items', []);
-    saveTenantData(targetTenantId, 'teams', []);
-    saveTenantData(targetTenantId, 'projects', []);
-    saveTenantData(targetTenantId, 'mainStockEntries', []);
-    saveTenantData(targetTenantId, 'stockRequests', []);
-    saveTenantData(targetTenantId, 'teamIssues', []);
-    saveTenantData(targetTenantId, 'teamReturns', []);
-    saveTenantData(targetTenantId, 'projectUsages', []);
-    saveTenantData(targetTenantId, 'crossProjectRequests', []);
-    saveTenantData(targetTenantId, 'clientFreeIssues', []);
-    saveTenantData(targetTenantId, 'branchReturns', []);
-    saveTenantData(targetTenantId, 'damagedRestorations', []);
-    saveTenantData(targetTenantId, 'suppliers', []);
-    saveTenantData(targetTenantId, 'clients', []);
-    saveTenantData(targetTenantId, 'purchaseOrders', []);
-    saveTenantData(targetTenantId, 'supplierReturns', []);
-    saveTenantData(targetTenantId, 'auditLogs', [flushLog]);
-    saveTenantData(targetTenantId, 'backups', newBackups);
-
-    // Only clear root Firebase nodes if flushing the Master Developer workspace (never affect other tenants)
-    if (targetTenantId === DEFAULT_TENANT.id || targetTenantId === 'tenant-apex-main') {
-      writeBackupsToFirebase(newBackups).catch(() => {});
-      clearAllFirebaseData(cleanMainSite, cleanAdminUser, config, flushLog).catch(() => {});
-      writeUsersToFirebase([cleanAdminUser]).catch(() => {});
-    }
-
-    return {
-      success: true,
-      message: `System successfully flushed for ${activeTenant.companyName}! Versioned Backup #${backupNumber} ("${assignedName}") was preserved and all tenant accounts remain 100% safe.`,
+    const flushMeta: FlushMeta = {
+      flushId: `flush-${flushMs}`,
+      flushedAt: flushIso,
+      flushedAtMs: flushMs,
+      flushedBy: currentUser?.fullName || 'System Super Admin',
       backupNumber,
     };
+
+    // Pause background useEffect writers while atomic local + cloud wipe executes
+    isFlushingRef.current = true;
+    try {
+      // 3. Persist flushMeta locally FIRST so no listener or reload can resurrect stale records
+      saveTenantFlushMetaLocal(targetTenantId, flushMeta);
+
+      // 4. Purge all tenant, legacy, and comtec localStorage keys cleanly
+      const clearedArrayKeys = [
+        'items',
+        'teams',
+        'projects',
+        'mainStockEntries',
+        'stockRequests',
+        'teamIssues',
+        'teamReturns',
+        'projectUsages',
+        'crossProjectRequests',
+        'clientFreeIssues',
+        'branchReturns',
+        'damagedRestorations',
+        'suppliers',
+        'clients',
+        'purchaseOrders',
+        'supplierReturns',
+      ];
+      const allFlushableKeys = [...clearedArrayKeys, 'sites', 'users', 'projectTypes', 'auditLogs'];
+
+      try {
+        localStorage.removeItem(`apex_daily_auto_snapshot_${targetTenantId}`);
+        if (isMaster) {
+          allFlushableKeys.forEach((k) => {
+            localStorage.removeItem(`${STORAGE_KEY_PREFIX}tenant-comtec-main_${k}`);
+            localStorage.removeItem(STORAGE_KEY_PREFIX + k);
+          });
+        }
+        clearedArrayKeys.forEach((k) => {
+          localStorage.setItem(getTenantStorageKey(targetTenantId, k), JSON.stringify([]));
+          if (isMaster) {
+            localStorage.setItem(STORAGE_KEY_PREFIX + k, JSON.stringify([]));
+          }
+        });
+        localStorage.setItem(getTenantStorageKey(targetTenantId, 'sites'), JSON.stringify([cleanMainSite]));
+        localStorage.setItem(getTenantStorageKey(targetTenantId, 'users'), JSON.stringify([cleanAdminUser]));
+        localStorage.setItem(getTenantStorageKey(targetTenantId, 'projectTypes'), JSON.stringify(INITIAL_PROJECT_TYPES));
+        localStorage.setItem(getTenantStorageKey(targetTenantId, 'auditLogs'), JSON.stringify([flushLog]));
+        localStorage.setItem(getTenantStorageKey(targetTenantId, 'backups'), JSON.stringify(newBackups));
+        if (isMaster) {
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'sites', JSON.stringify([cleanMainSite]));
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'users', JSON.stringify([cleanAdminUser]));
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'projectTypes', JSON.stringify(INITIAL_PROJECT_TYPES));
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'auditLogs', JSON.stringify([flushLog]));
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'backups', JSON.stringify(newBackups));
+        }
+      } catch (storageErr) {
+        console.warn('Local storage cleanup warning during flush:', storageErr);
+      }
+
+      // 5. Update in-memory React state immediately
+      setBackups(newBackups);
+      setSites([cleanMainSite]);
+      setUsers([cleanAdminUser]);
+      setProjectTypes(INITIAL_PROJECT_TYPES);
+      setItems([]);
+      setTeams([]);
+      setProjects([]);
+      setMainStockEntries([]);
+      setStockRequests([]);
+      setTeamIssues([]);
+      setTeamReturns([]);
+      setProjectUsages([]);
+      setCrossProjectRequests([]);
+      setClientFreeIssues([]);
+      setBranchReturns([]);
+      setDamagedRestorations([]);
+      setSuppliers([]);
+      setClients([]);
+      setPurchaseOrders([]);
+      setSupplierReturns([]);
+      setAuditLogs([flushLog]);
+      setCurrentUser(cleanAdminUser);
+
+      // 6. Execute single atomic multi-path flush on Firebase Realtime Database and AWAIT confirmation
+      await atomicFlushWorkspaceInFirebase({
+        tenantId: targetTenantId,
+        isMasterTenant: isMaster,
+        cleanSite: cleanMainSite,
+        cleanUser: cleanAdminUser,
+        cleanConfig: config,
+        cleanProjectTypes: INITIAL_PROJECT_TYPES,
+        flushLog,
+        backups: newBackups,
+        flushMeta,
+      });
+
+      return {
+        success: true,
+        message: `System permanently flushed across Local & Cloud storage for ${activeTenant.companyName}! Versioned Backup #${backupNumber} ("${assignedName}") was preserved and all tenant accounts remain 100% safe.`,
+        backupNumber,
+      };
+    } catch (err) {
+      console.error('Atomic Firebase flush failed:', err);
+      return {
+        success: false,
+        message:
+          'Local workspace cleared, but Cloud database flush could not be confirmed. Please check your internet connection and run System Flush once more.',
+      };
+    } finally {
+      setTimeout(() => {
+        isFlushingRef.current = false;
+      }, 250);
+    }
   };
 
   // Dynamic Inventory Balance Calculations

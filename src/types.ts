@@ -476,17 +476,30 @@ export interface StockBackup {
     teamIssues: TeamIssue[];
     teamReturns: TeamReturn[];
     projectUsages: ProjectMaterialUsage[];
+    crossProjectRequests?: CrossProjectOverrideRequest[];
+    clientFreeIssues?: ClientFreeIssueEntry[];
     branchReturns: BranchReturn[];
     damagedRestorations?: DamagedStockRestoration[];
     projects: Project[];
     projectTypes?: ProjectType[];
-    purchaseOrders?: any[];
+    suppliers?: Supplier[];
+    clients?: Client[];
+    purchaseOrders?: PurchaseOrder[];
+    supplierReturns?: SupplierReturn[];
     sites: Site[];
     teams: Team[];
     users: User[];
     auditLogs: AuditLogEntry[];
     config: SystemConfig;
   };
+}
+
+export interface FlushMeta {
+  flushId: string;
+  flushedAt: string;
+  flushedAtMs: number;
+  flushedBy: string;
+  backupNumber: number;
 }
 
 export interface RecycleBinItem {

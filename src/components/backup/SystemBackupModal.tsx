@@ -150,7 +150,7 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
     projectUsages.length +
     branchReturns.length;
 
-  const handleExecuteFlush = (e: React.FormEvent) => {
+  const handleExecuteFlush = async (e: React.FormEvent) => {
     e.preventDefault();
     setFlushStatus(null);
 
@@ -171,11 +171,10 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
     }
 
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
       const defaultName = backupName.trim() || `Pre-Flush Archive #${backups.length + 1}`;
-      const result = flushSystemWithBackup(adminPassword, defaultName);
+      const result = await flushSystemWithBackup(adminPassword, defaultName);
 
-      setIsProcessing(false);
       if (result.success) {
         setFlushStatus({
           type: 'success',
@@ -190,7 +189,14 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
           text: result.message,
         });
       }
-    }, 400);
+    } catch (err: unknown) {
+      setFlushStatus({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'An unexpected error occurred during system flush.',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleCreateManualBackup = (e: React.FormEvent) => {
