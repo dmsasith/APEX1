@@ -953,10 +953,57 @@ export function subscribeToFirebaseTenants(
 
 export async function writeTenantsToFirebase(tenants: Tenant[]): Promise<void> {
   try {
-    const tenantsRef = ref(rtdb, 'saasTenants');
-    await set(tenantsRef, sanitizeData(tenants));
+    const cleanTenants = sanitizeData(tenants);
+    const updates: Record<string, unknown> = {
+      saasTenants: cleanTenants,
+      'tenantsData/tenant-apex-main/tenants': cleanTenants,
+    };
+    await update(ref(rtdb), updates);
   } catch (err) {
     console.error('Failed to write saasTenants to Firebase:', err);
+    throw err;
+  }
+}
+
+export function subscribeToFirebaseDeletedTenants(
+  onData: (deletedMap: Record<string, number>) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const deletedRef = ref(rtdb, 'saasDeletedTenants');
+  const unsubscribe = onValue(
+    deletedRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        onData(val as Record<string, number>);
+      } else {
+        onData({});
+      }
+    },
+    (error) => {
+      console.warn('Firebase saasDeletedTenants subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
+}
+
+export async function deleteTenantInFirebase(
+  tenantId: string,
+  updatedTenants: Tenant[]
+): Promise<void> {
+  try {
+    if (!tenantId || tenantId === 'tenant-apex-main') return;
+    const cleanTenants = sanitizeData(updatedTenants);
+    const updates: Record<string, unknown> = {
+      saasTenants: cleanTenants,
+      'tenantsData/tenant-apex-main/tenants': cleanTenants,
+      [`saasDeletedTenants/${tenantId}`]: Date.now(),
+      [`tenantsData/${tenantId}`]: null,
+    };
+    await update(ref(rtdb), updates);
+  } catch (err) {
+    console.error(`Failed to atomically delete tenant ${tenantId} from Firebase:`, err);
     throw err;
   }
 }

@@ -77,6 +77,8 @@ import {
 import {
   subscribeToFirebaseTenants,
   writeTenantsToFirebase,
+  subscribeToFirebaseDeletedTenants,
+  deleteTenantInFirebase,
   subscribeToFirebaseTenantData,
   writeTenantDataToFirebase,
   fetchTenantDataFromFirebase,
@@ -704,8 +706,111 @@ export function loadTenantData<T>(tenantId: string, key: string, fallback: T): T
   }
 }
 
+const DELETED_TENANTS_STORAGE_KEY = `${STORAGE_KEY_PREFIX}deleted_tenant_ids`;
+
+export function getDeletedTenantIds(): Set<string> {
+  try {
+    if (typeof window === 'undefined') return new Set();
+    const raw = localStorage.getItem(DELETED_TENANTS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    const list: string[] = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === 'object'
+        ? Object.keys(parsed)
+        : [];
+    return new Set(
+      list.filter((id) => typeof id === 'string' && id !== DEFAULT_TENANT.id && id !== 'tenant-apex-main')
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function purgeTenantLocalStorageKeys(tenantId: string): void {
+  try {
+    if (typeof window === 'undefined' || !tenantId) return;
+    if (tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main') return;
+    const prefix = `${STORAGE_KEY_PREFIX}${tenantId}_`;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch (e) {
+    console.warn(`Failed purging localStorage keys for deleted tenant ${tenantId}:`, e);
+  }
+}
+
+function markTenantDeletedLocal(tenantId: string): Set<string> {
+  const deletedSet = getDeletedTenantIds();
+  if (tenantId && tenantId !== DEFAULT_TENANT.id && tenantId !== 'tenant-apex-main') {
+    deletedSet.add(tenantId);
+    try {
+      localStorage.setItem(DELETED_TENANTS_STORAGE_KEY, JSON.stringify(Array.from(deletedSet)));
+    } catch (e) {
+      console.warn('Could not persist deleted_tenant_ids locally:', e);
+    }
+    purgeTenantLocalStorageKeys(tenantId);
+  }
+  return deletedSet;
+}
+
+function mergeRemoteDeletedTenantIds(remoteMap: Record<string, number>): Set<string> {
+  const deletedSet = getDeletedTenantIds();
+  let changed = false;
+  Object.keys(remoteMap || {}).forEach((id) => {
+    if (id && id !== DEFAULT_TENANT.id && id !== 'tenant-apex-main') {
+      if (!deletedSet.has(id)) {
+        deletedSet.add(id);
+        changed = true;
+      }
+      purgeTenantLocalStorageKeys(id);
+    }
+  });
+  if (changed) {
+    try {
+      localStorage.setItem(DELETED_TENANTS_STORAGE_KEY, JSON.stringify(Array.from(deletedSet)));
+    } catch (e) {
+      console.warn('Could not persist merged deleted_tenant_ids locally:', e);
+    }
+  }
+  return deletedSet;
+}
+
+function persistTenantsLocal(tenantsList: Tenant[]): Tenant[] {
+  const deletedIds = getDeletedTenantIds();
+  const clean = (tenantsList || []).filter(
+    (t) => t && t.id && (t.id === DEFAULT_TENANT.id || t.id === 'tenant-apex-main' || !deletedIds.has(t.id))
+  );
+  try {
+    const serialized = JSON.stringify(clean);
+    localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', serialized);
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`, serialized);
+  } catch (e) {
+    console.warn('Could not write tenants registry to localStorage:', e);
+  }
+  return clean;
+}
+
 function saveTenantData<T>(tenantId: string, key: string, data: T) {
   try {
+    if (
+      tenantId &&
+      tenantId !== DEFAULT_TENANT.id &&
+      tenantId !== 'tenant-apex-main' &&
+      getDeletedTenantIds().has(tenantId)
+    ) {
+      return;
+    }
+
+    if (key === 'tenants' && Array.isArray(data)) {
+      const cleanTenants = persistTenantsLocal(data as unknown as Tenant[]);
+      writeTenantDataToFirebase(DEFAULT_TENANT.id, 'tenants', cleanTenants).catch(() => {});
+      return;
+    }
+
     const tenantKey = getTenantStorageKey(tenantId, key);
     localStorage.setItem(tenantKey, JSON.stringify(data));
     if (tenantId === DEFAULT_TENANT.id && key !== 'current_tenant_id') {
@@ -720,6 +825,7 @@ function saveTenantData<T>(tenantId: string, key: string, data: T) {
 
 export function getAllSavedTenants(): Tenant[] {
   try {
+    const deletedIds = getDeletedTenantIds();
     const rawRoot = localStorage.getItem(STORAGE_KEY_PREFIX + 'tenants');
     const rawApex = localStorage.getItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`);
     const parsedRoot: Tenant[] = rawRoot ? JSON.parse(rawRoot) : [];
@@ -728,15 +834,31 @@ export function getAllSavedTenants(): Tenant[] {
     const map = new Map<string, Tenant>();
 
     // Initial defaults
-    INITIAL_TENANTS.forEach((t) => map.set(t.id, t));
-    parsedApex.forEach((t) => map.set(t.id, t));
-    parsedRoot.forEach((t) => map.set(t.id, t));
+    INITIAL_TENANTS.forEach((t) => {
+      if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) {
+        map.set(t.id, t);
+      }
+    });
+    parsedApex.forEach((t) => {
+      if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) {
+        map.set(t.id, t);
+      }
+    });
+    parsedRoot.forEach((t) => {
+      if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) {
+        map.set(t.id, t);
+      }
+    });
 
-    // Dynamic Discovery: Scan all localStorage keys for any created tenant workspaces
-    for (let i = 0; i < localStorage.length; i++) {
+    // Dynamic Discovery: Scan all localStorage keys for any created tenant workspaces (excluding deleted tenants)
+    for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
       if (k && k.startsWith(STORAGE_KEY_PREFIX + 'tenant-') && k.endsWith('_config')) {
         const tenantId = k.replace(STORAGE_KEY_PREFIX, '').replace('_config', '');
+        if (tenantId !== DEFAULT_TENANT.id && tenantId !== 'tenant-apex-main' && deletedIds.has(tenantId)) {
+          purgeTenantLocalStorageKeys(tenantId);
+          continue;
+        }
         if (!map.has(tenantId)) {
           try {
             const rawCfg = localStorage.getItem(k);
@@ -786,12 +908,7 @@ export function getAllSavedTenants(): Tenant[] {
       contactEmail: 'apexdevinfo@gmail.com',
     });
 
-    const combined = Array.from(map.values());
-    try {
-      localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(combined));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`, JSON.stringify(combined));
-    } catch {}
-    return combined;
+    return persistTenantsLocal(Array.from(map.values()));
   } catch {
     return INITIAL_TENANTS;
   }
@@ -904,9 +1021,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [tenants, setTenants] = useState<Tenant[]>(() => {
     return getAllSavedTenants();
   });
+  const tenantsRef = useRef<Tenant[]>(tenants);
+  useEffect(() => {
+    tenantsRef.current = tenants;
+  }, [tenants]);
 
   const [currentTenantId, setCurrentTenantId] = useState<string>(() => {
     try {
+      const deletedIds = getDeletedTenantIds();
       const loadedTenants = getAllSavedTenants();
       const urlParams = new URLSearchParams(window.location.search);
       const wsSlug = urlParams.get('workspace');
@@ -914,10 +1036,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const clean = wsSlug.trim().toLowerCase();
         const foundBySlug = loadedTenants.find(
           (t) =>
-            t.slug?.toLowerCase() === clean ||
-            t.id?.toLowerCase() === clean ||
-            t.companyName?.toLowerCase() === clean ||
-            t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, '')
+            !deletedIds.has(t.id) &&
+            (t.slug?.toLowerCase() === clean ||
+              t.id?.toLowerCase() === clean ||
+              t.companyName?.toLowerCase() === clean ||
+              t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, ''))
         );
         if (foundBySlug) {
           localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', foundBySlug.id);
@@ -925,9 +1048,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
       const storedId = localStorage.getItem(STORAGE_KEY_PREFIX + 'current_tenant_id');
-      if (storedId === 'tenant-comtec-main') {
-        localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', 'tenant-apex-main');
-        return 'tenant-apex-main';
+      if (storedId === 'tenant-comtec-main' || (storedId && deletedIds.has(storedId))) {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', DEFAULT_TENANT.id);
+        return DEFAULT_TENANT.id;
       }
       return storedId || DEFAULT_TENANT.id;
     } catch {
@@ -1084,13 +1207,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, 150);
   };
 
-  // Helper to sync all collections for any tenantId from Firebase RTDB (respecting flushMeta barrier)
+  // Helper to sync all collections for any tenantId from Firebase RTDB (respecting flushMeta & deleted tombstones)
   const syncTenantCollectionsFromFirebase = (targetTenantId: string) => {
     if (!targetTenantId || isFlushingRef.current) return;
+    if (targetTenantId !== DEFAULT_TENANT.id && getDeletedTenantIds().has(targetTenantId)) return;
 
     (async () => {
       // 1. Fetch flushMeta FIRST before merging any collection so pre-flush records can never resurrect
       const remoteFlushMeta = await fetchTenantDataFromFirebase<FlushMeta>(targetTenantId, 'flushMeta');
+      if (targetTenantId !== DEFAULT_TENANT.id && getDeletedTenantIds().has(targetTenantId)) return;
       if (remoteFlushMeta && typeof remoteFlushMeta.flushedAtMs === 'number') {
         applyRemoteFlushBarrier(targetTenantId, remoteFlushMeta);
       }
@@ -1907,7 +2032,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       const rawSlug = form.slug?.trim() || cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
       const slug = rawSlug.replace(/^-|-$/g, '') || 'company';
-      const tenantId = `tenant-${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const deletedSet = getDeletedTenantIds();
+      let tenantId = `tenant-${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
+      while (deletedSet.has(tenantId)) {
+        tenantId = `tenant-${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
 
       const newTenant: Tenant = {
         id: tenantId,
@@ -1997,15 +2126,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       saveTenantData(tenantId, 'digitalSignatures', DEFAULT_DIGITAL_SIGNATURES);
 
       // Save tenant to global tenants registry
-      const updatedTenants = [...tenants.filter((t) => t.id !== newTenant.id), newTenant];
+      const baseList = tenantsRef.current.length > 0 ? tenantsRef.current : tenants;
+      const updatedTenants = persistTenantsLocal([...baseList.filter((t) => t.id !== newTenant.id), newTenant]);
+      tenantsRef.current = updatedTenants;
       setTenants(updatedTenants);
-      saveTenantData(DEFAULT_TENANT.id, 'tenants', updatedTenants);
-      try {
-        localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(updatedTenants));
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`, JSON.stringify(updatedTenants));
-      } catch (e) {
-        console.warn('Could not write tenants to localStorage:', e);
-      }
       writeTenantsToFirebase(updatedTenants).catch(console.warn);
 
       // Switch context to new tenant
@@ -2045,24 +2169,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     subscriptionUpdates: Partial<TenantSubscription>
   ) => {
     setTenants((prev) => {
-      const updated = prev.map((t) => {
-        if (t.id === tenantId) {
-          return {
-            ...t,
-            subscription: {
-              ...t.subscription,
-              ...subscriptionUpdates,
-            },
-          };
-        }
-        return t;
-      });
-      saveTenantData(DEFAULT_TENANT.id, 'tenants', updated);
-      try {
-        localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(updated));
-      } catch (e) {
-        console.warn('Failed to write tenants to root storage key:', e);
-      }
+      const updated = persistTenantsLocal(
+        prev.map((t) => {
+          if (t.id === tenantId) {
+            return {
+              ...t,
+              subscription: {
+                ...t.subscription,
+                ...subscriptionUpdates,
+              },
+            };
+          }
+          return t;
+        })
+      );
+      tenantsRef.current = updated;
       writeTenantsToFirebase(updated).catch(console.warn);
       return updated;
     });
@@ -2073,21 +2194,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug'>>
   ) => {
     setTenants((prev) => {
-      const updated = prev.map((t) => {
-        if (t.id === tenantId) {
-          return {
-            ...t,
-            ...updates,
-          };
-        }
-        return t;
-      });
-      saveTenantData(DEFAULT_TENANT.id, 'tenants', updated);
-      try {
-        localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(updated));
-      } catch (e) {
-        console.warn('Failed to write tenants to root storage key:', e);
-      }
+      const updated = persistTenantsLocal(
+        prev.map((t) => {
+          if (t.id === tenantId) {
+            return {
+              ...t,
+              ...updates,
+            };
+          }
+          return t;
+        })
+      );
+      tenantsRef.current = updated;
       writeTenantsToFirebase(updated).catch(console.warn);
       return updated;
     });
@@ -2109,48 +2227,35 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteTenant = (tenantId: string) => {
-    if (tenantId === DEFAULT_TENANT.id) {
+    if (!tenantId || tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main') {
       console.warn('Cannot delete default master tenant.');
       return;
     }
 
-    const updatedTenants = tenants.filter((t) => t.id !== tenantId);
+    // 1. Record permanent deletion tombstone locally & purge every localStorage key for this tenant
+    const deletedIds = markTenantDeletedLocal(tenantId);
+
+    // 2. Update React state & synchronize both localStorage tenant registry keys
+    const baseList = tenantsRef.current.length > 0 ? tenantsRef.current : tenants;
+    const updatedTenants = persistTenantsLocal(
+      baseList.filter((t) => t.id !== tenantId && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id)))
+    );
+    tenantsRef.current = updatedTenants;
     setTenants(updatedTenants);
-    saveTenantData(DEFAULT_TENANT.id, 'tenants', updatedTenants);
-    writeTenantsToFirebase(updatedTenants).catch(console.warn);
 
-    const keysToRemove = [
-      'config',
-      'users',
-      'sites',
-      'items',
-      'teams',
-      'mainStockEntries',
-      'stockRequests',
-      'teamIssues',
-      'teamReturns',
-      'projects',
-      'projectUsages',
-      'branchReturns',
-      'damagedRestorations',
-      'backups',
-      'auditLogs',
-      'suppliers',
-      'purchaseOrders',
-      'supplierReturns',
-      'letterheadTemplates',
-      'digitalSignatures',
-    ];
+    // 3. Atomically update saasTenants, record saasDeletedTenants tombstone, and wipe tenantsData/{tenantId} in Firebase RTDB
+    deleteTenantInFirebase(tenantId, updatedTenants).catch(console.warn);
 
-    keysToRemove.forEach((k) => {
+    if (previewTenantId === tenantId) {
+      setPreviewTenantId(null);
+    }
+
+    if (currentTenantId === tenantId || currentTenantIdRef.current === tenantId) {
       try {
-        localStorage.removeItem(getTenantStorageKey(tenantId, k));
-      } catch (e) {
-        console.warn('Failed removing key:', e);
-      }
-    });
-
-    if (currentTenantId === tenantId) {
+        if (typeof window !== 'undefined' && window.location.search) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } catch {}
       setCurrentTenantId(DEFAULT_TENANT.id);
       currentTenantIdRef.current = DEFAULT_TENANT.id;
       try {
@@ -2255,6 +2360,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let unsubPurchaseOrders: (() => void) | undefined;
     let unsubSupplierReturns: (() => void) | undefined;
     let unsubTenants: (() => void) | undefined;
+    let unsubDeletedTenants: (() => void) | undefined;
     let unsubRootFlushMeta: (() => void) | undefined;
 
     try {
@@ -2271,13 +2377,54 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       });
 
+      unsubDeletedTenants = subscribeToFirebaseDeletedTenants(
+        (remoteDeletedMap) => {
+          const deletedIds = mergeRemoteDeletedTenantIds(remoteDeletedMap);
+          if (deletedIds.size > 0) {
+            setTenants((prev) => {
+              const filtered = prev.filter(
+                (t) => t.id === DEFAULT_TENANT.id || t.id === 'tenant-apex-main' || !deletedIds.has(t.id)
+              );
+              if (filtered.length !== prev.length) {
+                const persisted = persistTenantsLocal(filtered);
+                tenantsRef.current = persisted;
+                return persisted;
+              }
+              return prev;
+            });
+
+            if (
+              currentTenantIdRef.current !== DEFAULT_TENANT.id &&
+              currentTenantIdRef.current !== 'tenant-apex-main' &&
+              deletedIds.has(currentTenantIdRef.current)
+            ) {
+              setCurrentTenantId(DEFAULT_TENANT.id);
+              currentTenantIdRef.current = DEFAULT_TENANT.id;
+              try {
+                localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', DEFAULT_TENANT.id);
+              } catch {}
+              loadTenantStateIntoMemory(DEFAULT_TENANT.id);
+            }
+          }
+        },
+        (err) => console.warn('Firebase deleted tenants sync notice:', err)
+      );
+
       unsubTenants = subscribeToFirebaseTenants(
         (remoteTenants) => {
           if (remoteTenants && remoteTenants.length > 0) {
+            const deletedIds = getDeletedTenantIds();
+            let hadDeletedInRemote = false;
+
             setTenants((prev) => {
               const map = new Map<string, Tenant>();
-              prev.forEach((t) => map.set(t.id, t));
+              prev.forEach((t) => {
+                if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) {
+                  map.set(t.id, t);
+                }
+              });
               remoteTenants.forEach((t) => {
+                if (!t || !t.id) return;
                 if (t.id === DEFAULT_TENANT.id || t.id === 'tenant-apex-main') {
                   map.set(DEFAULT_TENANT.id, {
                     ...t,
@@ -2286,15 +2433,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     slug: 'apex-developer',
                     contactEmail: 'apexdevinfo@gmail.com',
                   });
+                } else if (deletedIds.has(t.id)) {
+                  hadDeletedInRemote = true;
                 } else {
                   map.set(t.id, t);
                 }
               });
-              const combined = Array.from(map.values());
-              try {
-                localStorage.setItem(STORAGE_KEY_PREFIX + 'tenants', JSON.stringify(combined));
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}tenant-apex-main_tenants`, JSON.stringify(combined));
-              } catch {}
+
+              const combined = persistTenantsLocal(Array.from(map.values()));
+              tenantsRef.current = combined;
+              if (hadDeletedInRemote) {
+                writeTenantsToFirebase(combined).catch(() => {});
+              }
               return combined;
             });
           }
@@ -2904,6 +3054,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (unsubPurchaseOrders) unsubPurchaseOrders();
       if (unsubSupplierReturns) unsubSupplierReturns();
       if (unsubTenants) unsubTenants();
+      if (unsubDeletedTenants) unsubDeletedTenants();
     };
   }, []);
 

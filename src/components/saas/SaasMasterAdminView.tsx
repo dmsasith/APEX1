@@ -916,8 +916,12 @@ export const SaasMasterAdminView: React.FC = () => {
           confirmLabel="Permanently Delete Workspace"
           isDestructive={true}
           onConfirm={() => {
+            const deletedId = confirmDeleteTenant.id;
             const name = confirmDeleteTenant.companyName;
-            deleteTenant(confirmDeleteTenant.id);
+            deleteTenant(deletedId);
+            if (inspectingTenant?.id === deletedId) setInspectingTenant(null);
+            if (editingPackageTenant?.id === deletedId) setEditingPackageTenant(null);
+            if (editingWorkspaceTenant?.id === deletedId) setEditingWorkspaceTenant(null);
             setConfirmDeleteTenant(null);
             showNotification(`Workspace "${name}" was permanently deleted.`);
           }}
