@@ -290,42 +290,46 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
   };
 
   return (
-    <div className="py-8 sm:py-12 relative z-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-6 sm:py-12 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         {/* ==================== WEB CONTROLS BAR (HIDDEN WHEN PRINTING PDF) ==================== */}
-        <div className="no-print flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="no-print flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 mb-5 sm:mb-6">
           <button
             type="button"
             onClick={onBackToOverview}
-            className="px-4 py-2.5 rounded-xl bg-[#253050] hover:bg-[#2d3a5e] text-white border border-[#dc9750]/40 text-xs font-extrabold flex items-center gap-2 shadow-sm cursor-pointer transition whitespace-nowrap"
+            className="w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#253050] hover:bg-[#2d3a5e] text-white border border-[#dc9750]/40 text-xs font-extrabold flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm cursor-pointer transition whitespace-nowrap"
           >
             <ArrowLeft className="w-4 h-4 text-[#dc9750]" />
-            <span>Back to Platform Overview</span>
+            <span className="hidden sm:inline">Back to Platform </span>
+            <span>Overview</span>
           </button>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={handlePrintPdfManual}
-              className="px-4 py-2.5 rounded-xl bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black text-xs flex items-center gap-2 shadow-md shadow-[#dc9750]/20 cursor-pointer transition whitespace-nowrap"
+              className="w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-md shadow-[#dc9750]/20 cursor-pointer transition whitespace-nowrap"
             >
               <Printer className="w-4 h-4" />
-              <span>Download / Print Full Guide (PDF)</span>
+              <span className="hidden sm:inline">Download / </span>
+              <span>Print Guide (PDF)</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenSignup}
-              className="px-4 py-2.5 rounded-xl bg-[#161d33] hover:bg-[#222c4a] text-white border border-[#dc9750]/40 font-bold text-xs flex items-center gap-2 shadow-md cursor-pointer transition whitespace-nowrap"
+              className="w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#161d33] hover:bg-[#222c4a] text-white border border-[#dc9750]/40 font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-md cursor-pointer transition whitespace-nowrap"
             >
-              <span className="text-[#e5a460] font-black">Start 7-Day Free Trial</span>
+              <span className="text-[#e5a460] font-black">
+                <span className="hidden sm:inline">Start 7-Day </span>Free Trial
+              </span>
               <ArrowRight className="w-3.5 h-3.5 text-[#dc9750]" />
             </button>
           </div>
         </div>
 
         {/* ==================== PRINTABLE & INTERACTIVE MANUAL CONTAINER ==================== */}
-        <div className="printable-document space-y-8">
+        <div className="printable-document space-y-6 sm:space-y-8">
           {/* Official Print-Only Cover Header */}
           <div className="print-only border-b-2 border-slate-900 pb-4 mb-6">
             <div className="flex items-center justify-between">
@@ -345,7 +349,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           </div>
 
           {/* Hero Banner of the User Guide Tab */}
-          <div className="rounded-[28px] bg-[#faf4ec] border border-[#dc9750]/60 shadow-[0_20px_50px_-15px_rgba(8,12,24,0.45)] p-6 sm:p-10 relative overflow-hidden">
+          <div className="rounded-2xl sm:rounded-[28px] bg-[#faf4ec] border border-[#dc9750]/60 shadow-[0_20px_50px_-15px_rgba(8,12,24,0.45)] p-4 sm:p-10 relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#1e2640] via-[#dc9750] to-[#1e2640] no-print" />
 
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">

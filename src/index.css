@@ -5,9 +5,13 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   body {
+    overflow-x: hidden;
+    max-width: 100vw;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Plus Jakarta Sans', system-ui, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     background-color: #eaf2f8;

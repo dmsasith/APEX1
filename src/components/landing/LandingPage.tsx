@@ -179,17 +179,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
       {/* Sticky Architectural Dark Blue (#1e2640) & Desert Sun (#dc9750) Navigation Bar */}
       <header className="sticky top-0 z-40 bg-[#192038]/92 backdrop-blur-2xl border-b border-[#dc9750]/25 shadow-[0_10px_30px_-10px_rgba(10,14,26,0.55)] no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-6">
           {/* Zone 1: Clean Brand Wordmark */}
           <button
             type="button"
             onClick={() => handleSwitchToOverviewSection()}
-            className="flex items-center gap-2.5 whitespace-nowrap shrink-0 cursor-pointer"
+            className="flex items-center gap-2 sm:gap-2.5 whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#dc9750] flex items-center justify-center shadow-md shadow-[#dc9750]/20">
-              <Boxes className="w-5 h-5 text-[#1e2640] stroke-[2.25]" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#dc9750] flex items-center justify-center shadow-md shadow-[#dc9750]/20">
+              <Boxes className="w-4 h-4 sm:w-5 sm:h-5 text-[#1e2640] stroke-[2.25]" />
             </div>
-            <span className="font-black text-lg text-white tracking-tight">Apex Stock</span>
+            <span className="font-black text-base sm:text-lg text-white tracking-tight">Apex Stock</span>
           </button>
 
           {/* Zone 2: Primary Top Tabs & Concise Section Links */}
@@ -244,21 +244,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             </button>
           </nav>
 
-          {/* Zone 3: Workspace Access & Trial Action */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Zone 3: Workspace Access & Trial Action (Mobile Optimized, Zero Clipping) */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <button
               onClick={onOpenLogin}
-              className="px-3.5 py-2 text-xs font-bold text-slate-100 hover:text-white bg-[#25304f]/90 hover:bg-[#2d3a5e] border border-[#dc9750]/35 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-slate-100 hover:text-white bg-[#25304f]/90 hover:bg-[#2d3a5e] border border-[#dc9750]/35 rounded-xl transition flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+              title="Client Login"
             >
               <LogIn className="w-3.5 h-3.5 text-[#dc9750]" />
-              <span>Client Login</span>
+              <span className="hidden sm:inline">Client </span>
+              <span>Login</span>
             </button>
 
             <button
               onClick={() => setIsSignupOpen(true)}
-              className="px-4 py-2 bg-[#dc9750] hover:bg-[#e5a460] text-[#1e2640] font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-[#dc9750]/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-[#dc9750] hover:bg-[#e5a460] text-[#1e2640] font-black rounded-xl text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-[#dc9750]/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             >
-              <span>Start 7-Day Free Trial</span>
+              <span className="hidden sm:inline">Start 7-Day </span>
+              <span>Free Trial</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#1e2640] stroke-[2.5]" />
             </button>
           </div>
@@ -266,12 +269,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       </header>
 
       {/* Mobile / Tablet Quick Top Tab Switcher (Visible below lg breakpoint) */}
-      <div className="lg:hidden relative z-30 max-w-7xl w-full mx-auto px-4 pt-3 no-print">
-        <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[#192038]/90 backdrop-blur-xl border border-[#dc9750]/30 shadow-md">
+      <div className="lg:hidden relative z-30 max-w-7xl w-full mx-auto px-3 sm:px-4 pt-2 sm:pt-3 no-print">
+        <div className="grid grid-cols-2 gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-[#192038]/90 backdrop-blur-xl border border-[#dc9750]/30 shadow-md">
           <button
             type="button"
             onClick={() => handleSwitchToOverviewSection()}
-            className={`py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer whitespace-nowrap ${
+            className={`py-1.5 sm:py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-extrabold transition cursor-pointer whitespace-nowrap text-center ${
               activeLandingTab === 'overview'
                 ? 'bg-[#dc9750] text-[#1e2640] shadow-xs'
                 : 'text-slate-200 hover:text-white'
@@ -282,7 +285,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           <button
             type="button"
             onClick={handleOpenGuideTab}
-            className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
+            className={`py-1.5 sm:py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition cursor-pointer whitespace-nowrap ${
               activeLandingTab === 'guide'
                 ? 'bg-[#dc9750] text-[#1e2640] shadow-xs'
                 : 'text-slate-200 hover:text-white'
@@ -304,25 +307,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       ) : (
         <>
           {/* ==================== HERO SECTION (DARK BLUE #1e2640 + DESERT SUN #dc9750 STAGE) ==================== */}
-          <section className="relative pt-10 pb-16 sm:pt-14 sm:pb-20 z-10">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <section className="relative pt-6 pb-14 sm:pt-14 sm:pb-20 z-10">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 text-center">
               {/* Architectural Dark Blue & Desert Sun Hero Stage */}
-              <div className="relative rounded-[32px] bg-gradient-to-br from-[#253050]/92 via-[#1e2640]/95 to-[#181f36]/96 backdrop-blur-2xl border border-[#dc9750]/35 shadow-[0_28px_64px_-16px_rgba(8,12,24,0.65)] p-6 sm:p-10 lg:p-14 overflow-hidden">
+              <div className="relative rounded-2xl sm:rounded-[32px] bg-gradient-to-br from-[#253050]/92 via-[#1e2640]/95 to-[#181f36]/96 backdrop-blur-2xl border border-[#dc9750]/35 shadow-[0_28px_64px_-16px_rgba(8,12,24,0.65)] p-4 sm:p-10 lg:p-14 overflow-hidden">
                 {/* Warm Desert Sun Specular Accents */}
                 <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#dc9750] to-transparent" />
                 <div className="absolute -top-24 left-1/5 w-96 h-96 rounded-full bg-gradient-to-br from-[#dc9750]/20 via-[#dc9750]/6 to-transparent blur-3xl pointer-events-none" />
                 <div className="absolute -bottom-24 right-1/5 w-96 h-96 rounded-full bg-gradient-to-tl from-[#dc9750]/18 via-[#2f3d66]/25 to-transparent blur-3xl pointer-events-none" />
 
                 {/* Clean Editorial Kicker */}
-                <div className="relative z-10 flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-slate-200 tracking-wide mb-5">
-                  <HardHat className="w-4 h-4 text-[#dc9750]" />
+                <div className="relative z-10 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-bold text-slate-200 tracking-wide mb-4 sm:mb-5">
+                  <HardHat className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#dc9750]" />
                   <span>Built for Construction, EPC, Telecom & Multi-Site Contractors</span>
                   <span aria-hidden="true" className="text-[#dc9750]/60">·</span>
                   <span className="text-[#e8ac6e] font-extrabold">7-Day Unrestricted Free Trial</span>
                 </div>
 
                 {/* High-Impact Display Headline */}
-                <h1 className="relative z-10 text-3xl sm:text-5xl lg:text-[54px] font-black text-white tracking-tight leading-[1.13] max-w-4xl mx-auto text-balance">
+                <h1 className="relative z-10 text-2xl sm:text-5xl lg:text-[54px] font-black text-white tracking-tight leading-[1.18] sm:leading-[1.13] max-w-4xl mx-auto text-balance">
                   Complete Inventory Control Across All Your{' '}
                   <span className="text-[#e5a460]">
                     Warehouses, Project Sites & Field Teams
@@ -330,7 +333,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </h1>
 
                 {/* Clear Subtitle */}
-                <p className="relative z-10 mt-5 text-sm sm:text-base lg:text-lg text-slate-200/95 max-w-3xl mx-auto leading-relaxed font-medium">
+                <p className="relative z-10 mt-3.5 sm:mt-5 text-xs sm:text-base lg:text-lg text-slate-200/95 max-w-3xl mx-auto leading-relaxed font-medium">
                   Stop losing track of construction materials, tools, and site stock across spreadsheets. Manage your{' '}
                   <strong className="text-white font-bold">Central Warehouse</strong>,{' '}
                   <strong className="text-white font-bold">Regional Site Branches</strong>,{' '}
@@ -340,42 +343,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </p>
 
                 {/* 4 Core Operational Pillars (Clean Unboxed Architectural Strip) */}
-                <div className="relative z-10 mt-6 pt-5 border-t border-[#dc9750]/20 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 max-w-4xl mx-auto text-xs font-bold text-slate-200">
+                <div className="relative z-10 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-[#dc9750]/20 flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-2 max-w-4xl mx-auto text-[11px] sm:text-xs font-bold text-slate-200">
                   <span className="flex items-center gap-1.5">
-                    <Warehouse className="w-4 h-4 text-[#dc9750]" />
+                    <Warehouse className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#dc9750]" />
                     <span>Central & Branch Warehouses</span>
                   </span>
                   <span aria-hidden="true" className="hidden sm:inline text-[#dc9750]/50">·</span>
                   <span className="flex items-center gap-1.5">
-                    <Gift className="w-4 h-4 text-[#dc9750]" />
+                    <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#dc9750]" />
                     <span>Client-Supplied Free Materials</span>
                   </span>
                   <span aria-hidden="true" className="hidden sm:inline text-[#dc9750]/50">·</span>
                   <span className="flex items-center gap-1.5">
-                    <Users2 className="w-4 h-4 text-[#dc9750]" />
+                    <Users2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#dc9750]" />
                     <span>Field Crew In-Hand Tracking</span>
                   </span>
                   <span aria-hidden="true" className="hidden sm:inline text-[#dc9750]/50">·</span>
                   <span className="flex items-center gap-1.5">
-                    <FolderKanban className="w-4 h-4 text-[#dc9750]" />
+                    <FolderKanban className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#dc9750]" />
                     <span>Project Usage Reconciliation</span>
                   </span>
                 </div>
 
                 {/* Hero CTAs */}
-                <div className="relative z-10 mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+                <div className="relative z-10 mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3.5 max-w-md sm:max-w-none mx-auto">
                   <button
                     onClick={() => setIsSignupOpen(true)}
-                    className="w-full sm:w-auto px-7 py-3.5 bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black rounded-xl text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-[#dc9750]/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                    className="w-full sm:w-auto px-5 sm:px-7 py-3 sm:py-3.5 bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 sm:gap-2.5 shadow-xl shadow-[#dc9750]/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                   >
                     <span>Start 7-Day Free Trial</span>
-                    <span className="text-[#1e2640]/80 font-bold text-xs">($0 Today)</span>
+                    <span className="text-[#1e2640]/80 font-bold text-[11px] sm:text-xs">($0 Today)</span>
                     <ArrowRight className="w-4 h-4 text-[#1e2640] stroke-[2.5]" />
                   </button>
 
                   <button
                     onClick={onOpenLogin}
-                    className="w-full sm:w-auto px-6 py-3.5 bg-[#161d33] hover:bg-[#222c4a] text-white border border-[#dc9750]/45 font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 transition shadow-md cursor-pointer whitespace-nowrap"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-3 sm:py-3.5 bg-[#161d33] hover:bg-[#222c4a] text-white border border-[#dc9750]/45 font-extrabold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-md cursor-pointer whitespace-nowrap"
                   >
                     <LogIn className="w-4 h-4 text-[#dc9750]" />
                     <span>Client Sign In / Workspace Login</span>
@@ -384,7 +387,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <button
                     type="button"
                     onClick={handleOpenGuideTab}
-                    className="w-full sm:w-auto px-5 py-3.5 bg-[#dc9750]/15 hover:bg-[#dc9750]/25 text-[#f4c694] border border-[#dc9750]/40 font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 transition cursor-pointer whitespace-nowrap"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-3 sm:py-3.5 bg-[#dc9750]/15 hover:bg-[#dc9750]/25 text-[#f4c694] border border-[#dc9750]/40 font-extrabold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer whitespace-nowrap"
                   >
                     <BookOpen className="w-4 h-4 text-[#dc9750]" />
                     <span>Read Full User Guide & PDF</span>
@@ -392,7 +395,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Trust Guarantees (Clean Editorial Inline Metadata) */}
-                <div className="relative z-10 mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-300">
+                <div className="relative z-10 mt-5 sm:mt-6 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-[11px] sm:text-xs font-semibold text-slate-300">
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#dc9750]" />
                     <span>60-Second Workspace Setup</span>
@@ -400,7 +403,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <span aria-hidden="true" className="text-slate-500">·</span>
                   <span className="flex items-center gap-1.5 text-white font-bold">
                     <CreditCard className="w-3.5 h-3.5 text-[#dc9750] shrink-0" />
-                    <span>No Credit Card Required for Trial</span>
+                    <span>No Credit Card Required</span>
                   </span>
                   <span aria-hidden="true" className="text-slate-500">·</span>
                   <span className="tabular-nums">$19.90/mo or $189/yr (Save 21%)</span>
@@ -409,64 +412,64 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Executive Site Operations Preview Console */}
-                <div className="relative z-10 mt-10 rounded-[24px] bg-[#dc9750]/20 p-2 sm:p-3 border border-[#dc9750]/40 shadow-[0_22px_50px_-12px_rgba(8,11,22,0.7)] max-w-5xl mx-auto">
-                  <div className="bg-gradient-to-br from-[#161d33] via-[#1a223b] to-[#13192c] rounded-[18px] border border-[#dc9750]/25 p-4 sm:p-6 text-left relative overflow-hidden">
+                <div className="relative z-10 mt-8 sm:mt-10 rounded-2xl sm:rounded-[24px] bg-[#dc9750]/20 p-2 sm:p-3 border border-[#dc9750]/40 shadow-[0_22px_50px_-12px_rgba(8,11,22,0.7)] max-w-5xl mx-auto">
+                  <div className="bg-gradient-to-br from-[#161d33] via-[#1a223b] to-[#13192c] rounded-xl sm:rounded-[18px] border border-[#dc9750]/25 p-3.5 sm:p-6 text-left relative overflow-hidden">
                     <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#dc9750]/12 blur-3xl pointer-events-none" />
                     {/* Top window bar */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-white/10 mb-5 relative z-10">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 sm:pb-4 border-b border-white/10 mb-4 sm:mb-5 relative z-10">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-[#2c3759]" />
-                        <div className="w-3 h-3 rounded-full bg-[#dc9750]" />
-                        <div className="w-3 h-3 rounded-full bg-emerald-500/90" />
-                        <span className="text-xs text-slate-300 font-mono ml-2">
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#2c3759]" />
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#dc9750]" />
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500/90" />
+                        <span className="text-[11px] sm:text-xs text-slate-300 font-mono ml-1.5 sm:ml-2 truncate max-w-[200px] sm:max-w-none">
                           apex-stock-cloud / site-operations-control
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-300">
-                        <span>Client-Supplied Stock Synced</span>
+                      <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-semibold text-slate-300">
+                        <span>Client Stock Synced</span>
                         <span aria-hidden="true" className="text-slate-500">·</span>
-                        <span className="text-[#e7a662]">Multi-Site Cloud Active</span>
+                        <span className="text-[#e7a662]">Multi-Site Active</span>
                       </div>
                     </div>
 
                     {/* Live Preview KPIs */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 relative z-10">
-                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-3.5 sm:mb-4 relative z-10">
+                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3 sm:p-3.5">
                         <div className="text-[11px] text-slate-300 font-semibold">Central Warehouse Stock</div>
-                        <div className="text-xl font-black text-white mt-0.5 font-mono tabular-nums">
+                        <div className="text-lg sm:text-xl font-black text-white mt-0.5 font-mono tabular-nums">
                           24,580 <span className="text-xs font-normal text-slate-300">units</span>
                         </div>
                         <div className="text-[10px] text-[#e7a662] font-semibold mt-1">Materials & Machinery Fleet</div>
                       </div>
-                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3.5">
+                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3 sm:p-3.5">
                         <div className="text-[11px] text-slate-300 font-semibold">Client-Supplied Stock</div>
-                        <div className="text-xl font-black text-[#e7a662] mt-0.5 font-mono tabular-nums">12,400 m</div>
+                        <div className="text-lg sm:text-xl font-black text-[#e7a662] mt-0.5 font-mono tabular-nums">12,400 m</div>
                         <div className="text-[10px] text-slate-300 mt-1">Free-Issue Project Materials</div>
                       </div>
-                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3.5">
+                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3 sm:p-3.5">
                         <div className="text-[11px] text-slate-300 font-semibold">Active Sites & Crews</div>
-                        <div className="text-xl font-black text-white mt-0.5 font-mono tabular-nums">6 Sites · 18 Crews</div>
+                        <div className="text-lg sm:text-xl font-black text-white mt-0.5 font-mono tabular-nums">6 Sites · 18 Crews</div>
                         <div className="text-[10px] text-emerald-400 font-semibold mt-1">Live In-Hand Custody</div>
                       </div>
-                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3.5">
+                      <div className="bg-[#1e2640]/90 border border-white/10 rounded-xl p-3 sm:p-3.5">
                         <div className="text-[11px] text-slate-300 font-semibold">Project Reconciliations</div>
-                        <div className="text-xl font-black text-emerald-400 mt-0.5 font-mono tabular-nums">100% Audited</div>
+                        <div className="text-lg sm:text-xl font-black text-emerald-400 mt-0.5 font-mono tabular-nums">100% Audited</div>
                         <div className="text-[10px] text-slate-300 mt-1">Multi-Crew BOQ & WBS</div>
                       </div>
                     </div>
 
                     {/* Smart Priority Strip */}
-                    <div className="bg-[#1e2640] border border-[#dc9750]/40 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs relative z-10">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[11px] font-extrabold text-[#e7a662]">
+                    <div className="bg-[#1e2640] border border-[#dc9750]/40 rounded-xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-xs relative z-10">
+                      <div className="flex items-start sm:items-center gap-2">
+                        <span className="text-[11px] font-extrabold text-[#e7a662] shrink-0">
                           Smart Stock Deduction:
                         </span>
                         <span className="text-slate-200 text-[11px]">
-                          Project <strong>HIGHWAY-SEC-04</strong> automatically consumes Client-Supplied Free Materials before company warehouse stock
+                          Project <strong>HIGHWAY-SEC-04</strong> consumes Client-Supplied Free Materials first
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono font-bold text-emerald-400">
-                        Zero Stock Discrepancy ✓
+                      <span className="text-[11px] font-mono font-bold text-emerald-400 shrink-0">
+                        Zero Discrepancy ✓
                       </span>
                     </div>
                   </div>
@@ -478,11 +481,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           {/* ==================== SECTION 1: WHO IS THIS BUILT FOR? (#industries — WARM DESERT SUN ARCHITECTURAL BAND) ==================== */}
           <section
             id="industries"
-            className="py-16 sm:py-22 relative z-10 bg-gradient-to-b from-[#f3e1c8] via-[#f8ede0] to-[#edd6b8] text-[#1e2640] border-y-2 border-[#dc9750]"
+            className="py-12 sm:py-22 relative z-10 bg-gradient-to-b from-[#f3e1c8] via-[#f8ede0] to-[#edd6b8] text-[#1e2640] border-y-2 border-[#dc9750]"
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
               {/* Section Header */}
-              <div className="text-center max-w-3xl mx-auto mb-12">
+              <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
                 <div className="text-xs font-extrabold text-[#9e5c19] tracking-wide mb-2 flex items-center justify-center gap-1.5">
                   <Building2 className="w-4 h-4 text-[#b56b21]" />
                   <span>Target Construction & Engineering Sectors</span>
@@ -496,7 +499,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </div>
 
               {/* 6 Sector Cards Pairing Dark Blue (#1e2640) & Desert Sun (#dc9750) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {industries.map((ind, idx) => {
                   const IconComponent = ind.icon;
                   const isSelected = selectedIndustryIdx === idx;
@@ -504,7 +507,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <div
                       key={ind.title}
                       onClick={() => setSelectedIndustryIdx(idx)}
-                      className={`group relative overflow-hidden rounded-[24px] p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                      className={`group relative overflow-hidden rounded-2xl sm:rounded-[24px] p-4 sm:p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                         isSelected
                           ? 'bg-[#1e2640] text-white border-2 border-[#dc9750] shadow-[0_20px_44px_-12px_rgba(30,38,64,0.38)] -translate-y-0.5'
                           : 'bg-white/92 hover:bg-white text-[#1e2640] border border-[#dc9750]/45 shadow-[0_10px_28px_-10px_rgba(30,38,64,0.12)] hover:border-[#1e2640]'
@@ -592,10 +595,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           {/* ==================== SECTION 2: SYSTEM CAPABILITIES & 4-STEP WORKFLOW (#features — DARK BLUE #1e2640) ==================== */}
           <section
             id="features"
-            className="py-16 sm:py-22 relative z-10"
+            className="py-12 sm:py-22 relative z-10"
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center max-w-3xl mx-auto mb-12">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+              <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
                 <div className="text-xs font-extrabold text-[#e5a460] tracking-wide mb-2">
                   End-to-End Site & Warehouse Capabilities
                 </div>
@@ -608,7 +611,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </div>
 
               {/* 4-Step Industrial Workflow Strip */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10 sm:mb-12">
                 {[
                   {
                     step: '01. Procurement & Intake',
@@ -633,7 +636,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 ].map((item, idx) => (
                   <div
                     key={item.step}
-                    className="relative rounded-2xl bg-[#161d33]/95 text-white p-5 border border-[#dc9750]/35 shadow-lg flex flex-col justify-between"
+                    className="relative rounded-2xl bg-[#161d33]/95 text-white p-4 sm:p-5 border border-[#dc9750]/35 shadow-lg flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -650,8 +653,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </div>
 
               {/* 6 Detailed Feature Cards in Elevated Dark Blue (#253050) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-[22px] p-6 shadow-lg transition duration-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 shadow-lg transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-[#dc9750] text-[#1e2640] flex items-center justify-center mb-4 shadow-sm">
                     <Gift className="w-5 h-5" />
                   </div>
@@ -663,7 +666,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-[22px] p-6 shadow-lg transition duration-200">
+                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 shadow-lg transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-[#161d33] border border-[#dc9750]/40 text-[#dc9750] flex items-center justify-center mb-4">
                     <FolderKanban className="w-5 h-5" />
                   </div>
@@ -675,7 +678,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-[22px] p-6 shadow-lg transition duration-200">
+                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 shadow-lg transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-[#dc9750] text-[#1e2640] flex items-center justify-center mb-4 shadow-sm">
                     <Truck className="w-5 h-5" />
                   </div>
@@ -687,7 +690,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-[22px] p-6 shadow-lg transition duration-200">
+                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 shadow-lg transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-[#161d33] border border-[#dc9750]/40 text-[#dc9750] flex items-center justify-center mb-4">
                     <Send className="w-5 h-5" />
                   </div>
@@ -699,7 +702,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-[22px] p-6 shadow-lg transition duration-200">
+                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 shadow-lg transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-[#dc9750] text-[#1e2640] flex items-center justify-center mb-4 shadow-sm">
                     <Users2 className="w-5 h-5" />
                   </div>
@@ -711,7 +714,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-[22px] p-6 shadow-lg transition duration-200">
+                <div className="bg-[#253050]/90 hover:bg-[#2a375c] border border-[#dc9750]/30 hover:border-[#dc9750]/70 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 shadow-lg transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-[#161d33] border border-[#dc9750]/40 text-[#dc9750] flex items-center justify-center mb-4">
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
@@ -725,9 +728,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </div>
 
               {/* Signature Desert Sun (#dc9750) + Dark Blue (#1e2640) Callout Banner */}
-              <div className="mt-12 rounded-2xl bg-[#dc9750] text-[#1e2640] p-6 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+              <div className="mt-10 sm:mt-12 rounded-2xl bg-[#dc9750] text-[#1e2640] p-5 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
                 <div className="flex items-start sm:items-center gap-3.5 text-left">
-                  <div className="w-12 h-12 rounded-xl bg-[#1e2640] text-[#dc9750] flex items-center justify-center shrink-0 shadow-md">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#1e2640] text-[#dc9750] flex items-center justify-center shrink-0 shadow-md">
                     <BookOpen className="w-5 h-5" />
                   </div>
                   <div>
@@ -753,9 +756,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           </section>
 
           {/* ==================== SECTION 3: MULTI-TENANT CLOUD ARCHITECTURE (#architecture) ==================== */}
-          <section id="architecture" className="py-16 sm:py-20 relative z-10">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="bg-gradient-to-br from-[#161d33] via-[#1a223b] to-[#12182b] rounded-[28px] p-6 sm:p-10 lg:p-12 border border-[#dc9750]/35 shadow-2xl text-white relative overflow-hidden">
+          <section id="architecture" className="py-12 sm:py-20 relative z-10">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+              <div className="bg-gradient-to-br from-[#161d33] via-[#1a223b] to-[#12182b] rounded-2xl sm:rounded-[28px] p-4 sm:p-10 lg:p-12 border border-[#dc9750]/35 shadow-2xl text-white relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#1e2640] via-[#dc9750] to-[#1e2640]" />
                 <div className="absolute top-0 right-0 w-96 h-96 bg-[#dc9750]/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -863,23 +866,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           {/* ==================== SECTION 4: PRICING PLANS (#pricing — DESERT SUN BAND + DARK BLUE VIP FLAGSHIP) ==================== */}
           <section
             id="pricing"
-            className="py-16 sm:py-24 relative z-10 bg-gradient-to-b from-[#f3e1c8] via-[#f9efe2] to-[#edd6b8] text-[#1e2640] border-y-2 border-[#dc9750]"
+            className="py-12 sm:py-24 relative z-10 bg-gradient-to-b from-[#f3e1c8] via-[#f9efe2] to-[#edd6b8] text-[#1e2640] border-y-2 border-[#dc9750]"
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-              <div className="text-center max-w-3xl mx-auto mb-10">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10">
+              <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
                 <div className="text-xs font-extrabold text-[#9e5c19] tracking-wide mb-2">
                   Clear & Transparent Enterprise Pricing
                 </div>
-                <h2 className="text-3xl sm:text-5xl font-black text-[#1e2640] tracking-tight text-balance">
+                <h2 className="text-2xl sm:text-5xl font-black text-[#1e2640] tracking-tight text-balance">
                   Choose the Plan That Fits Your Operations
                 </h2>
-                <p className="text-xs sm:text-sm text-[#2d3859] mt-3 max-w-xl mx-auto font-semibold">
+                <p className="text-xs sm:text-sm text-[#2d3859] mt-2.5 sm:mt-3 max-w-xl mx-auto font-semibold">
                   Start with our unrestricted 7-day free trial ($0 today). Continue seamlessly with flexible monthly billing or our discounted annual VIP plan.
                 </p>
               </div>
 
               {/* 3-Step Onboarding Strip */}
-              <div className="max-w-4xl mx-auto mb-12 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/95 border border-[#dc9750]/50 rounded-2xl p-4 shadow-sm">
+              <div className="max-w-4xl mx-auto mb-10 sm:mb-12 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 bg-white/95 border border-[#dc9750]/50 rounded-2xl p-3 sm:p-4 shadow-sm">
                 <div className="flex items-center gap-3 px-3 py-2">
                   <span className="w-7 h-7 rounded-lg bg-[#1e2640] text-[#dc9750] font-mono text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
                     01
@@ -910,20 +913,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </div>
 
               {/* 3 Pricing Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto items-stretch pt-2 sm:pt-4">
                 {/* Card 1: 7-Day Free Trial */}
-                <div className="bg-white/95 hover:bg-white border border-[#dc9750]/50 rounded-3xl p-8 flex flex-col relative transition-all duration-200 shadow-[0_16px_40px_-12px_rgba(30,38,64,0.12)]">
-                  <div className="mb-6">
+                <div className="bg-white/95 hover:bg-white border border-[#dc9750]/50 rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col relative transition-all duration-200 shadow-[0_16px_40px_-12px_rgba(30,38,64,0.12)]">
+                  <div className="mb-5 sm:mb-6">
                     <div className="text-xs font-bold text-[#526080]">Risk-Free Evaluation</div>
-                    <h3 className="text-2xl font-black text-[#1e2640] mt-2">7-Day Free Trial</h3>
+                    <h3 className="text-xl sm:text-2xl font-black text-[#1e2640] mt-1.5 sm:mt-2">7-Day Free Trial</h3>
                     <p className="text-xs text-[#3a4769] mt-2 leading-relaxed font-medium">
                       Full unrestricted access to evaluate our multi-site inventory & dispatch platform with your team.
                     </p>
                   </div>
 
-                  <div className="mb-8">
+                  <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-black text-[#1e2640] tabular-nums">$0</span>
+                      <span className="text-4xl sm:text-5xl font-black text-[#1e2640] tabular-nums">$0</span>
                       <span className="text-xs font-bold text-[#526080]">/ 7 days free</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-[#9e5c19] font-extrabold mt-2">
@@ -932,7 +935,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
                   </div>
 
-                  <div className="space-y-3.5 mb-8 flex-1 text-xs text-[#1e2640] font-semibold">
+                  <div className="space-y-3 sm:space-y-3.5 mb-6 sm:mb-8 flex-1 text-xs text-[#1e2640] font-semibold">
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-[#b56b21] shrink-0 stroke-[2.5]" />
                       <span>Full access to all Enterprise modules</span>
@@ -969,18 +972,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Card 2: Pro Monthly Plan */}
-                <div className="bg-white border-2 border-[#1e2640] rounded-3xl p-8 flex flex-col relative transition-all duration-200 shadow-[0_18px_44px_-12px_rgba(30,38,64,0.18)]">
-                  <div className="mb-6">
+                <div className="bg-white border-2 border-[#1e2640] rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col relative transition-all duration-200 shadow-[0_18px_44px_-12px_rgba(30,38,64,0.18)]">
+                  <div className="mb-5 sm:mb-6">
                     <div className="text-xs font-extrabold text-[#9e5c19]">Standard Monthly Plan</div>
-                    <h3 className="text-2xl font-black text-[#1e2640] mt-2">Pro Monthly</h3>
+                    <h3 className="text-xl sm:text-2xl font-black text-[#1e2640] mt-1.5 sm:mt-2">Pro Monthly</h3>
                     <p className="text-xs text-[#3a4769] mt-2 leading-relaxed font-medium">
                       Ideal for growing contractors requiring monthly flexibility and continuous multi-site control.
                     </p>
                   </div>
 
-                  <div className="mb-8">
+                  <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-black text-[#1e2640] tabular-nums">$19.90</span>
+                      <span className="text-4xl sm:text-5xl font-black text-[#1e2640] tabular-nums">$19.90</span>
                       <span className="text-xs font-bold text-[#526080]">/ month</span>
                     </div>
                     <div className="text-[11px] text-[#526080] font-semibold mt-2">
@@ -988,7 +991,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
                   </div>
 
-                  <div className="space-y-3.5 mb-8 flex-1 text-xs text-[#1e2640] font-semibold">
+                  <div className="space-y-3 sm:space-y-3.5 mb-6 sm:mb-8 flex-1 text-xs text-[#1e2640] font-semibold">
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-[#b56b21] shrink-0 stroke-[2.5]" />
                       <span className="font-extrabold text-[#1e2640]">All Free Trial features included</span>
@@ -1027,11 +1030,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 {/* Card 3: Pro Annual Plan (DARK BLUE #1e2640 & DESERT SUN #dc9750 FLAGSHIP VIP CARD) */}
                 <div className="relative group flex flex-col transition-all duration-200">
                   {/* Desert Sun Glow Ring */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#dc9750] via-[#ecc08e] to-[#dc9750] rounded-[28px] blur-xs opacity-90 group-hover:opacity-100 transition duration-300" />
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#dc9750] via-[#ecc08e] to-[#dc9750] rounded-2xl sm:rounded-[28px] blur-xs opacity-90 group-hover:opacity-100 transition duration-300" />
 
                   {/* Main Dark Blue (#1e2640) & Desert Sun (#dc9750) Card Container */}
-                  <div className="relative h-full bg-gradient-to-b from-[#1e2640] via-[#181f36] to-[#13192c] rounded-[26px] p-8 flex flex-col border border-[#dc9750]/70 shadow-2xl">
-                    <div className="mb-6 relative z-10">
+                  <div className="relative h-full bg-gradient-to-b from-[#1e2640] via-[#181f36] to-[#13192c] rounded-2xl sm:rounded-[26px] p-5 sm:p-8 flex flex-col border border-[#dc9750]/70 shadow-2xl">
+                    <div className="mb-5 sm:mb-6 relative z-10">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-extrabold text-[#e5a460] flex items-center gap-1.5">
                           <Crown className="w-3.5 h-3.5 text-[#dc9750] fill-[#dc9750]" />
@@ -1039,7 +1042,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                         </span>
                         <span className="text-xs font-black text-emerald-400">Save 21%</span>
                       </div>
-                      <h3 className="text-3xl font-black text-white mt-2 tracking-tight">
+                      <h3 className="text-2xl sm:text-3xl font-black text-white mt-1.5 sm:mt-2 tracking-tight">
                         Pro Annual
                       </h3>
                       <p className="text-xs text-slate-200 mt-2 leading-relaxed">
@@ -1047,9 +1050,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </p>
                     </div>
 
-                    <div className="mb-8 relative z-10">
+                    <div className="mb-6 sm:mb-8 relative z-10">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-5xl sm:text-6xl font-black text-[#e5a460] tabular-nums">
+                        <span className="text-4xl sm:text-6xl font-black text-[#e5a460] tabular-nums">
                           $189.00
                         </span>
                         <span className="text-xs font-bold text-slate-300">/ year</span>
@@ -1123,14 +1126,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           {/* ==================== SECTION 5: FAQ (#faq — DARK BLUE #1e2640) ==================== */}
           <section
             id="faq"
-            className="py-16 sm:py-22 relative z-10"
+            className="py-12 sm:py-22 relative z-10"
           >
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center max-w-2xl mx-auto mb-12">
+            <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8">
+              <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
                 <div className="text-xs font-extrabold text-[#e5a460] tracking-wide mb-2">
                   Frequently Asked Questions
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
                   Everything You Need to Know
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-200 mt-2 font-medium">
@@ -1146,9 +1149,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   >
                     <button
                       onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                      className="w-full px-6 py-4 text-left font-extrabold text-xs sm:text-sm text-white flex justify-between items-center gap-4 cursor-pointer hover:text-[#e5a460] transition"
+                      className="w-full px-4 sm:px-6 py-3.5 sm:py-4 text-left font-extrabold text-xs sm:text-sm text-white flex justify-between items-center gap-3 sm:gap-4 cursor-pointer hover:text-[#e5a460] transition"
                     >
-                      <span>{faq.q}</span>
+                      <span className="leading-snug">{faq.q}</span>
                       <div className="w-7 h-7 rounded-xl bg-[#161d33] border border-[#dc9750]/35 flex items-center justify-center shrink-0">
                         {activeFaq === idx ? (
                           <ChevronUp className="w-4 h-4 text-[#dc9750]" />
@@ -1158,7 +1161,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
                     </button>
                     {activeFaq === idx && (
-                      <div className="px-6 pb-5 text-xs text-slate-200 leading-relaxed border-t border-white/10 pt-3 font-medium">
+                      <div className="px-4 sm:px-6 pb-4 sm:pb-5 text-xs text-slate-200 leading-relaxed border-t border-white/10 pt-3 font-medium">
                         {faq.a}
                       </div>
                     )}
@@ -1167,14 +1170,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               </div>
 
               {/* Quick Help Box */}
-              <div className="mt-10 text-center p-6 bg-[#161d33]/95 border border-[#dc9750]/35 rounded-2xl shadow-lg">
+              <div className="mt-8 sm:mt-10 text-center p-4 sm:p-6 bg-[#161d33]/95 border border-[#dc9750]/35 rounded-2xl shadow-lg">
                 <h4 className="text-sm font-extrabold text-white mb-1">
                   Still have questions or want to read the complete User Guide?
                 </h4>
                 <p className="text-xs text-slate-300 mb-4 font-medium">
                   Browse our step-by-step client documentation or contact our engineering support team anytime.
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-4">
+                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                   <button
                     type="button"
                     onClick={handleOpenGuideTab}
@@ -1198,7 +1201,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       )}
 
       {/* ==================== FOOTER ==================== */}
-      <footer className="mt-auto border-t border-[#dc9750]/25 bg-[#141a2e]/95 backdrop-blur-2xl py-10 px-4 sm:px-6 lg:px-8 relative z-10 no-print">
+      <footer className="mt-auto border-t border-[#dc9750]/25 bg-[#141a2e]/95 backdrop-blur-2xl py-8 sm:py-10 px-3 sm:px-6 lg:px-8 relative z-10 no-print">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#dc9750] flex items-center justify-center shadow-sm">
