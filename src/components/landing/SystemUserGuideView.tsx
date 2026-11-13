@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import {
   ArrowLeft,
-  Printer,
   Download,
   BookOpen,
   Boxes,
@@ -26,6 +25,7 @@ import {
   Lock,
   Upload,
   Sparkles,
+  Globe,
 } from 'lucide-react';
 
 interface SystemUserGuideViewProps {
@@ -33,6 +33,8 @@ interface SystemUserGuideViewProps {
   onOpenSignup: () => void;
   onOpenLogin: () => void;
 }
+
+type GuideLanguage = 'en' | 'si';
 
 interface GuideChapter {
   id: string;
@@ -49,7 +51,20 @@ interface GuideChapter {
   keyOutputs: string[];
 }
 
-const GUIDE_CHAPTERS: GuideChapter[] = [
+interface FormatSlotGuide {
+  code: string;
+  title: string;
+  structure: string;
+  affectsTo: string[];
+}
+
+interface FeatureSummaryGroup {
+  group: string;
+  items: string[];
+}
+
+// ==================== ENGLISH GUIDE CONTENT ====================
+const GUIDE_CHAPTERS_EN: GuideChapter[] = [
   {
     id: 'ch-01',
     number: 'Chapter 01',
@@ -68,12 +83,12 @@ const GUIDE_CHAPTERS: GuideChapter[] = [
       {
         stepTitle: '2. Register Materials & Heavy Machinery (or Bulk Import Excel)',
         detail:
-          'Open "Master Registrations → Item Catalog" to add Consumable Materials (cables, cement, pipes, fittings) and Returnable Machinery/Tools (excavators, generators, fusion splicers) with minimum low-stock alert levels—or import thousands of items at once via Excel/CSV.',
+          'Open "Master Registrations -> Item Catalog" to add Consumable Materials (cables, cement, pipes, fittings) and Returnable Machinery/Tools (excavators, generators, fusion splicers) with minimum low-stock alert levels - or import thousands of items at once via Excel/CSV.',
       },
       {
         stepTitle: '3. Register Field Teams with Auto-Calculated Crew Size & Usage Protection',
         detail:
-          'In "Master Registrations → Teams", enter the Team Leader name (Crew Size automatically starts at 1). Each time you add a Team Member with their NIC/ID number, Crew Size automatically increments (1 Leader + N Members). Duplicate team names are blocked across active and Recycle Bin teams—and if a deleted team name is entered, you can restore and update the existing team in 1 click so past Material Usage history stays 100% unified.',
+          'In "Master Registrations -> Teams", enter the Team Leader name (Crew Size automatically starts at 1). Each time you add a Team Member with their NIC/ID number, Crew Size automatically increments (1 Leader + N Members). Duplicate team names are blocked across active and Recycle Bin teams - and if a deleted team name is entered, you can restore and update the existing team in 1 click so past Material Usage history stays 100% unified.',
       },
       {
         stepTitle: '4. Create Staff Logins (Single Site, Multi-Site, or Central HQ)',
@@ -185,12 +200,12 @@ const GUIDE_CHAPTERS: GuideChapter[] = [
       {
         stepTitle: '3. Automatic Client-Supplied Stock Priority',
         detail:
-          'When logging usage for a client-linked project, the system automatically deducts available Client-Supplied Free Materials first before deducting company-purchased stock—preventing billing disputes.',
+          'When logging usage for a client-linked project, the system automatically deducts available Client-Supplied Free Materials first before deducting company-purchased stock - preventing billing disputes.',
       },
       {
         stepTitle: '4. Team Returns (RV) & Branch-to-HQ Returns (BRM)',
         detail:
-          'Unused surplus materials, empty drums, or returnable machinery are returned from Field Crews to the Site Branch ("Team Returns" — RV) or from a Site Branch back to Central HQ ("Branch Returns" — BRM) with printable return vouchers.',
+          'Unused surplus materials, empty drums, or returnable machinery are returned from Field Crews to the Site Branch ("Team Returns" - RV) or from a Site Branch back to Central HQ ("Branch Returns" - BRM) with printable return vouchers.',
       },
     ],
     keyOutputs: [
@@ -210,7 +225,7 @@ const GUIDE_CHAPTERS: GuideChapter[] = [
     icon: Upload,
     steps: [
       {
-        stepTitle: '1. Open Document Templates → Section Formats (Upload PDF / Image)',
+        stepTitle: '1. Open Document Templates -> Section Formats (Upload PDF / Image)',
         detail:
           'Go to "Document Templates" in the sidebar and open the "Section Formats (Upload PDF / Image)" tab. All company printable documents are grouped into 4 standard Format Slots (FORMAT-01 to FORMAT-04) according to their table structure.',
       },
@@ -250,12 +265,12 @@ const GUIDE_CHAPTERS: GuideChapter[] = [
       {
         stepTitle: '1. Dedicated Plant & Machinery Fleet View',
         detail:
-          'Track heavy machinery, generators, testing instruments, and power tools separately from consumables—know whether an asset is in the Central Yard, at a Site Branch, or with a Field Crew.',
+          'Track heavy machinery, generators, testing instruments, and power tools separately from consumables - know whether an asset is in the Central Yard, at a Site Branch, or with a Field Crew.',
       },
       {
         stepTitle: '2. Global Letterhead & Company Branding Studio',
         detail:
-          'In "Document Templates → Global Letterhead Studio", configure your Company Name, Logo, Address, Header Style, and default Signature Blocks ("Prepared By", "Checked By", "Received By") across all system reports.',
+          'In "Document Templates -> Global Letterhead Studio", configure your Company Name, Logo, Address, Header Style, and default Signature Blocks ("Prepared By", "Checked By", "Received By") across all system reports.',
       },
       {
         stepTitle: '3. Tamper-Proof Audit Trail & Safe Recycle Bin',
@@ -276,16 +291,244 @@ const GUIDE_CHAPTERS: GuideChapter[] = [
   },
 ];
 
-const FORMAT_GROUPS_GUIDE_MATRIX = [
+// ==================== SINHALA GUIDE CONTENT (සිංහල උපදෙස් අත්පොත) ====================
+const GUIDE_CHAPTERS_SI: GuideChapter[] = [
+  {
+    id: 'ch-01',
+    number: '01 වන පරිච්ඡේදය',
+    category: 'setup',
+    categoryLabel: 'මූලික සැකසුම් සහ ලියාපදිංචි කිරීම් (Master Setup)',
+    title: 'ආයතන ගිණුම ආරම්භ කිරීම, ප්‍රධාන නාමාවලිය සහ වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය',
+    summary:
+      'විනාඩියක් ඇතුළත ඔබේ ආයතනයේ Cloud පද්ධතිය සකසාගෙන, භාණ්ඩ සහ යන්ත්‍රෝපකරණ, ශාඛා ගබඩා (Site Branches), වැඩ කණ්ඩායම් (Field Teams), සැපයුම්කරුවන් සහ සේවාදායකයින් (Clients) ලියාපදිංචි කරගන්නා ආකාරය.',
+    icon: Boxes,
+    steps: [
+      {
+        stepTitle: '1. ඔබේ ආයතනයේ Workspace ගිණුම ආරම්භ කිරීම',
+        detail:
+          '"Start 7-Day Free Trial" බටන් එක ක්ලික් කර ඔබේ ආයතනයේ නම, ප්‍රධාන පරිපාලක (Admin) නාමය සහ මුරපදය ඇතුළත් කරන්න. ඔබේ ආයතනයටම වෙන්වූ ආරක්ෂිත Cloud දත්ත පද්ධතිය ක්ෂණිකව සකස් වේ.',
+      },
+      {
+        stepTitle: '2. භාණ්ඩ (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ලියාපදිංචිය හෝ Excel Import කිරීම',
+        detail:
+          '"Master Registrations -> Item Catalog" වෙත ගොස් භාවිතයට ගන්නා අමුද්‍රව්‍ය (Materials - කේබල්, සිමෙන්ති, පයිප්ප ආදිය) සහ නැවත භාරදෙන යන්ත්‍රෝපකරණ (Machinery - ජෙනරේටර්, එක්ස්කැවේටර්, ටූල්ස්) අවම තොග සීමාවන් (Low-stock alerts) සමඟ ඇතුළත් කරන්න. නැතහොත් Excel/CSV ගොනුවක් මගින් භාණ්ඩ දහස් ගණනක් එකවර පද්ධතියට ඇතුළත් කරන්න.',
+      },
+      {
+        stepTitle: '3. වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය, Auto Crew Size සහ Usage දත්ත ආරක්ෂාව',
+        detail:
+          '"Master Registrations -> Teams" තුළදී Team Leader ගේ නම දැමූ විට Crew Size එක ස්වයංක්‍රීයව 1 ලෙස ගණනය වේ. සාමාජිකයින් (Members) ජාතික හැඳුනුම්පත් අංකය (NIC/ID) සමඟ එකතු කරන විට Crew Size එක ඉබේම (1 Leader + සාමාජික ගණන ලෙස) වැඩි වේ. Material Usage දත්ත ආරක්ෂා කිරීම සඳහා එකම නමින් Teams දෙකක් සෑදීම වළක්වා ඇති අතර, කලින් මකා දැමූ (Recycle Bin හි ඇති) Team නමක් නැවත දැමුවහොත් පැරණි Usage ඉතිහාසය නොකැඩෙන සේ එම Team එකම Restore කර Update කිරීමට පද්ධතිය පහසුකම් සලසයි.',
+      },
+      {
+        stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Staff Logins) සහ ශාඛා බලතල සැකසීම',
+        detail:
+          '"User Management" යටතේ ප්‍රධාන ගබඩා භාරකරුවන් සහ ප්‍රාදේශීය වැඩබිම් පරීක්ෂකවරුන් (Site Supervisors) සඳහා ගිණුම් සාදන්න. එක් ශාඛාවකට පමණක් (Single Site), ශාඛා කිහිපයකට (Multi-Site), හෝ සියලුම ශාඛාවලට (Central HQ) අවසර ලබාදිය හැක.',
+      },
+    ],
+    keyOutputs: [
+      'භාණ්ඩ හා යන්ත්‍රෝපකරණ නාමාවලිය සහ Excel Import පහසුකම',
+      'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් සාමාජික සංඛ්‍යාව (Auto Crew Size)',
+      'Team නාමයන් සහ පැරණි Usage දත්ත ආරක්ෂා කිරීමේ පද්ධතිය',
+      'ශාඛා මට්ටමින් සීමා කළ හැකි පරිශීලක ගිණුම් (Branch Security Locks)',
+    ],
+  },
+  {
+    id: 'ch-02',
+    number: '02 වන පරිච්ඡේදය',
+    category: 'warehouse',
+    categoryLabel: 'ප්‍රධාන ගබඩාව, PO / GRN සහ RTV',
+    title: 'ප්‍රධාන ගබඩාව, සැපයුම්කරු ඇණවුම් (PO / GRN), ආපසු යැවීම් (RTV) සහ සේවාදායක නොමිලේ තොග (FOC)',
+    summary:
+      'ආයතනය මිලදී ගන්නා තොග, කොටස් වශයෙන් හෝ සම්පූර්ණයෙන් භාණ්ඩ භාරගැනීමේ පත්‍රිකා (GRN), සැපයුම්කරු වෙත ආපසු යැවීමේ හර සටහන් (RTV / Debit Note), හානි වූ භාණ්ඩ අලුත්වැඩියාව සහ සේවාදායකයා නොමිලේ සපයන (Client FOC) තොග කළමනාකරණය.',
+    icon: Gift,
+    steps: [
+      {
+        stepTitle: '1. නිල සැපයුම්කරු ඇණවුම් පත්‍රිකා (Purchase Orders - PO) නිකුත් කිරීම',
+        detail:
+          '"Supplier Orders (PO)" වෙත ගොස් අනුමත සැපයුම්කරුවන් සඳහා මිල ගණන්, බදු (VAT/Tax), වට්ටම් සහ අනුමත කිරීමේ අත්සන් තීරු 3 සහිත නිල Purchase Order (PO) සාදා A4 පත්‍රිකාවක් ලෙස Print හෝ PDF ලෙස ලබාගන්න.',
+      },
+      {
+        stepTitle: '2. ප්‍රධාන ගබඩාවට භාණ්ඩ භාරගැනීම සහ GRN පත්‍රිකා මුද්‍රණය',
+        detail:
+          'PO ඇණවුමකට අදාළව සම්පූර්ණ වශයෙන් හෝ කොටස් වශයෙන් (Partial Delivery) භාණ්ඩ ලැබුණු විට ඒවා ප්‍රධාන ගබඩාවට භාරගන්න. Supplier Orders සහ Main Stock Inbound History යන දෙකෙහිම ඇති "Print GRN" බටන් එකෙන් නිල GRN වවුචරය මුද්‍රණය කළ හැක.',
+      },
+      {
+        stepTitle: '3. සැපයුම්කරු වෙත භාණ්ඩ ආපසු යැවීම (RTV / Debit Note) සහ Damaged Stock',
+        detail:
+          'ප්‍රමිතියෙන් තොර හෝ වැඩිපුර ලැබුණු භාණ්ඩ ආපසු සැපයුම්කරු වෙත යැවීමේදී "Return to Vendor (RTV) / Debit Note" සහ Gate Pass පත්‍රිකා නිකුත් කරන්න. වැඩබිම්වලදී හානි වූ භාණ්ඩ අලුත්වැඩියා කර නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිත කරන්න.',
+      },
+      {
+        stepTitle: '4. සේවාදායකයා නොමිලේ ලබාදෙන භාණ්ඩ (Client Free Stock - FOC) වෙනම සටහන් කිරීම',
+        detail:
+          'ව්‍යාපෘති සේවාදායකයා (Client) විසින් නොමිලේ ලබාදෙන අමුද්‍රව්‍ය "Client Free Stock" තුළ ලියාපදිංචි කර FOC වවුචරය ලබාගන්න. මේවා ආයතනයේ මුදල් වියදම් වූ තොග සමඟ මිශ්‍ර නොවී වෙනමම ගිණුම්ගත වේ.',
+      },
+    ],
+    keyOutputs: [
+      'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Batch GRN වවුචර්',
+      'Return to Vendor (RTV) Debit Notes සහ Outward Gate Pass පත්‍රිකා',
+      'Client Free Stock (FOC) සහ අලුත්වැඩියා කළ තොග (Damaged Stock) ලෙජරය',
+    ],
+  },
+  {
+    id: 'ch-03',
+    number: '03 වන පරිච්ඡේදය',
+    category: 'operations',
+    categoryLabel: 'ශාඛා හුවමාරු සහ කණ්ඩායම් නිකුත් කිරීම්',
+    title: 'ශාඛා බඩු ඉල්ලුම්පත් (RN), ප්‍රධාන ගබඩා අනුමැතිය සහ වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීම (IN)',
+    summary:
+      'ප්‍රධාන ගබඩාවේ (Central HQ) සිට ප්‍රාදේශීය ශාඛා ගබඩා (Site Yards) වෙතත්, එතැන් සිට වැඩ කණ්ඩායම් (Field Crews) අතටත් ගලායන සියලුම තොග නිවැරදිව පාලනය කරන ආකාරය.',
+    icon: Send,
+    steps: [
+      {
+        stepTitle: '1. ශාඛා මගින් බඩු ඉල්ලුම්පත් (Stock Requisitions - RN) යොමු කිරීම',
+        detail:
+          'ප්‍රාදේශීය වැඩබිම් පරීක්ෂකවරුන් තම ශාඛාවට අවශ්‍ය අමුද්‍රව්‍ය සහ යන්ත්‍රෝපකරණ "Stock Requisitions" හරහා ප්‍රධාන ගබඩාවෙන් ඉල්ලුම් කරයි. "Available Stock Only" බටන් එක මගින් ප්‍රධාන ගබඩාවේ දැනට තොග ඇති භාණ්ඩ පමණක් පෙරා බලාගත හැක.',
+      },
+      {
+        stepTitle: '2. තොග හිඟතා පරීක්ෂාව සහ ප්‍රධාන ගබඩාවෙන් අනුමත කර යැවීම',
+        detail:
+          'ප්‍රධාන ගබඩාව මගින් ඉල්ලුම්පත පරීක්ෂා කරන විට යම් භාණ්ඩයක තොග මදි නම් "Send Available Only" බටන් එකෙන් දැනට ඇති ප්‍රමාණය පමණක් එක ක්ලික් එකකින් අනුමත කර ශාඛාව වෙත නිකුත් කළ හැක.',
+      },
+      {
+        stepTitle: '3. එදිනෙදා වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (Issue to Teams - IN)',
+        detail:
+          '"Issue to Teams" කොටසින් අදාළ වැඩ කණ්ඩායමේ නායකයා (Team Leader) වෙත අමුද්‍රව්‍ය සහ ටූල්ස් (Drum/Batch/Serial විස්තර සහිතව) නිකුත් කර, අත්සන් තැබිය හැකි නිල Issue Note (IN) / Gate Pass පත්‍රිකාව මුද්‍රණය කරගන්න.',
+      },
+      {
+        stepTitle: '4. කණ්ඩායම් ළඟ දැනට පවතින තොග (Team In-Hand Stock) පරීක්ෂාව',
+        detail:
+          '"Team In-Hand Stock" වෙත ගොස් එක් එක් කණ්ඩායම ළඟ දැනට ඉතිරිව ඇති භාණ්ඩ හා යන්ත්‍රෝපකරණ ප්‍රමාණය බලාගත හැකි අතර TSR වාර්තාව මුද්‍රණය කළ හැක. යම් කණ්ඩායමක් ළඟ නැවත භාර නොදුන් තොග (In-Hand Stock) තිබේ නම් එම Team එක අත්වැරදීමකින්වත් Delete කිරීමට පද්ධතිය ඉඩ නොදෙයි.',
+      },
+    ],
+    keyOutputs: [
+      'ශාඛා බඩු ඉල්ලුම්පත් (RN) සහ Available Stock Filter පහසුකම',
+      'අංකිත නිකුත් කිරීමේ පත්‍රිකා (IN) සහ Gate Pass මුද්‍රණය',
+      'වැඩ කණ්ඩායම් ළඟ ඇති තොග (In-Hand Custody) සහ TSR විගණන වාර්තා',
+    ],
+  },
+  {
+    id: 'ch-04',
+    number: '04 වන පරිච්ඡේදය',
+    category: 'projects',
+    categoryLabel: 'ව්‍යාපෘති භාවිතය සහ ආපසු භාරදීම්',
+    title: 'ව්‍යාපෘති අමුද්‍රව්‍ය භාවිතය (PU), Section Templates සහ ඉතිරි තොග ආපසු භාරදීම (RV / BRM)',
+    summary:
+      'වැඩබිම්වල සැබෑ ලෙසම සවි කළ හෝ භාවිත කළ අමුද්‍රව්‍ය ප්‍රමාණයන් ව්‍යාපෘති අනුව සටහන් කිරීම, සේවාදායක තොග පළමුව අඩු කිරීම සහ ඉතිරි භාණ්ඩ ආපසු ගබඩාවට භාරගැනීම.',
+    icon: FolderKanban,
+    steps: [
+      {
+        stepTitle: '1. ව්‍යාපෘති (Projects) සහ BOQ Section Templates සකස් කිරීම',
+        detail:
+          '"Project Registry" තුළ ඔබේ කොන්ත්‍රාත් සහ වැඩබිම් ලියාපදිංචි කර, නිතර භාවිත වන ඉංජිනේරු කොටස් සඳහා Material Templates සාදාගන්න.',
+      },
+      {
+        stepTitle: '2. වැඩ කණ්ඩායම් මගින් ව්‍යාපෘති සඳහා භාණ්ඩ භාවිතය සටහන් කිරීම (PU)',
+        detail:
+          '"Material Usage" හෝ "Site Stock" තුළට ගොස් අදාළ වැඩ කණ්ඩායම විසින් ව්‍යාපෘතියට සැබෑවටම යෙදවූ භාණ්ඩ ප්‍රමාණයන් සටහන් කර නිල Project Usage Voucher (PU) පත්‍රිකාව මුද්‍රණය කරගන්න.',
+      },
+      {
+        stepTitle: '3. සේවාදායක නොමිලේ තොග (Client FOC) ස්වයංක්‍රීයව පළමුව අඩු වීම',
+        detail:
+          'සේවාදායකයෙකුට අදාළ ව්‍යාපෘතියකට භාවිතය සටහන් කරන විට, පළමුව එම සේවාදායකයා නොමිලේ ලබාදුන් තොගයෙන් (Client Free Stock) අඩු වී, ඉතිරිය පමණක් ආයතන තොගයෙන් අඩු වේ.',
+      },
+      {
+        stepTitle: '4. කණ්ඩායම් ආපසු භාරදීම් (RV) සහ ශාඛාවෙන් ප්‍රධාන ගබඩාවට ආපසු යැවීම් (BRM)',
+        detail:
+          'වැඩ අවසන් වූ පසු ඉතිරි වන අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ කණ්ඩායමෙන් ශාඛා ගබඩාවට ("Team Returns" - RV) හෝ ශාඛා ගබඩාවෙන් ප්‍රධාන ගබඩාවට ("Branch Returns" - BRM) නිල Return Voucher සමඟ ආපසු භාරදිය හැක.',
+      },
+    ],
+    keyOutputs: [
+      'Client Free Stock ස්වයංක්‍රීයව පළමුව අඩු කිරීමේ ක්‍රමවේදය',
+      'මුද්‍රණය කළ හැකි Project සහ Site Material Usage වවුචර් (PU)',
+      'Team Return (RV) සහ Branch Return (BRM) නිල ආපසු භාරදීමේ පත්‍රිකා',
+    ],
+  },
+  {
+    id: 'ch-05',
+    number: '05 වන පරිච්ඡේදය',
+    category: 'formats',
+    categoryLabel: 'ආයතනයේ Document Formats සකස් කරන ආකාරය',
+    title: 'Company Document Formats (PDF හෝ Image) Upload කර පද්ධතියට සකස් කරගන්නා ආකාරය',
+    summary:
+      'ඔබේ ආයතනයේ දැනට භාවිත කරන නිල ආකෘති පත්‍ර (PDF හෝ Image) පද්ධතියට Upload කර, අදාළ සියලුම Sections වලින් එම ආකෘතියෙන්ම Print වන සේ සකස් කරගන්නා සම්පූර්ණ පියවර.',
+    icon: Upload,
+    steps: [
+      {
+        stepTitle: '1. Document Templates -> Section Formats (Upload PDF / Image) වෙත පිවිසෙන්න',
+        detail:
+          'වම්පස මෙනුවෙන් "Document Templates" වෙත ගොස් උඩින්ම ඇති "Section Formats (Upload PDF / Image)" ටැබ් එක තෝරන්න. ආයතනයේ සමාන ආකෘතියක් ඇති ලේඛන සියල්ල ප්‍රධාන කාණ්ඩ 4කට (FORMAT-01 සිට FORMAT-04 දක්වා) එහි වෙන් කර ඇත.',
+      },
+      {
+        stepTitle: '2. PDF හෝ Image එක Upload කර "This Format Affects To" පරීක්ෂා කරන්න',
+        detail:
+          'අදාළ Format කාණ්ඩය තුළට ඔබේ ආයතනයේ Format එකේ PDF (.pdf) හෝ Image (.png, .jpg, .webp) ගොනුවක් Upload කරන්න. එවිට පද්ධතිය මගින් එහි උඩ Header/Letterhead කොටස, Brand Color එක, ISO Form Code එක සහ Table/Signature විස්තර ස්වයංක්‍රීයව හඳුනාගෙන සකස් කරගනී. හැම Upload box එකකටම යටින් ඇති "This Format Affects To" කොටසේ එම Format එක බලපාන සියලුම System Sections (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV) පැහැදිලිව පෙන්වයි.',
+      },
+      {
+        stepTitle: '3. Unified Format පහසුකම සහ Live A4 Studio මගින් වෙනස්කම් සිදු කිරීම',
+        detail:
+          'ඔබේ ආයතනයේ FORMAT-01 (නිකුත් කිරීම්/භාවිතයන්) සහ FORMAT-02 (GRN/Returns) යන දෙකටම එකම ආකෘතියක් භාවිත කරන්නේ නම්, "Use Unified Format-01 & 02" බටන් එකෙන් තනි Upload එකකින් Section 10ටම එම Format එක යෙදිය හැක. දකුණු පස ඇති Live A4 Preview එකෙන් Render Mode 3න් එකක් (Header Banner + System Table, Full Page Background Watermark, හෝ Smart Reconstructed Grid) තෝරාගෙන Header Crop %, Table Column Names සහ අත්සන් තීරු (Sign-off Titles) කැමති පරිදි සකසාගත හැක.',
+      },
+      {
+        stepTitle: '4. අදාළ Sections වලින් කෙලින්ම ඔබේ Format එකෙන්ම Print කරගන්න',
+        detail:
+          'මෙසේ සකසාගත් පසු, Stock Requisitions (RN), Issue to Teams (IN), Material Usage (PU), Team Stock (TSR), Supplier Orders (PO / GRN / RTV), Client Free Stock (FOC), හෝ Returns (RV / BRM) යන ඕනෑම Section එකකට ගොස් Print / Save PDF ක්ලික් කළ විට ඔබ Upload කළ ආයතනික Format එකෙන්ම කෙලින්ම Print වේ.',
+      },
+    ],
+    keyOutputs: [
+      'සමාන ආකෘති ගොනු කළ Format Slots 4 (FORMAT-01 සිට FORMAT-04 දක්වා)',
+      'PDF සහ Image වලින් Header Banner සහ Brand Color ස්වයංක්‍රීයව ලබාගැනීම',
+      '"This Format Affects To" මගින් අදාළ වන සියලුම Sections පෙන්වීම',
+      'Live A4 Print Preview සහ Render Modes 3ක් මගින් පූර්ණ පාලනය',
+    ],
+  },
+  {
+    id: 'ch-06',
+    number: '06 වන පරිච්ඡේදය',
+    category: 'admin',
+    categoryLabel: 'යන්ත්‍රෝපකරණ, විගණන වාර්තා සහ Backups',
+    title: 'යන්ත්‍රෝපකරණ කළමනාකරණය, Global Letterhead, Audit Trail සහ Offline Backups',
+    summary:
+      'වටිනා යන්ත්‍රෝපකරණ සහ ටූල්ස් පිළිබඳ පූර්ණ වගවීම, ආයතනික ලෙටර්හෙඩ් සැකසුම්, සියලු ක්‍රියාකාරකම් සටහන් වන Audit Trail සහ ආරක්ෂිත Offline දත්ත Backups.',
+    icon: ShieldCheck,
+    steps: [
+      {
+        stepTitle: '1. යන්ත්‍රෝපකරණ සහ ටූල්ස් සඳහාම වෙන්වූ Plant & Machinery Fleet කොටස',
+        detail:
+          'සාමාන්‍ය අමුද්‍රව්‍ය වලින් වෙන්ව එක්ස්කැවේටර්, ජෙනරේටර්, ටෙස්ටින් මීටර් සහ බල මෙවලම් දැනට ප්‍රධාන ගබඩාවේද, ශාඛාවකද, නැතහොත් කවර වැඩ කණ්ඩායමක් ළඟද යන්න ක්ෂණිකව බලාගන්න.',
+      },
+      {
+        stepTitle: '2. Global Letterhead සහ ආයතනික ලාංඡන (Logo) සැකසුම',
+        detail:
+          '"Document Templates -> Global Letterhead Studio" මගින් ඔබේ ආයතනයේ නම, ලාංඡනය (Logo), ලිපිනය, දුරකථන අංක සහ පොදු අත්සන් තීරු සකසාගන්න.',
+      },
+      {
+        stepTitle: '3. වෙනස් කළ නොහැකි Audit Trail සහ ආරක්ෂිත Recycle Bin',
+        detail:
+          'පද්ධතියේ සිදුවන සෑම තොග ඇතුළත් කිරීමක්, නිකුත් කිරීමක්, වෙනස් කිරීමක් හෝ මකා දැමීමක්ම සිදු කළ නිලධාරියා සහ වේලාව සමඟ "Audit Trail" හි සටහන් වේ. අත්වැරදීමකින් මැකුණු දත්ත "Recycle Bin" මගින් නැවත ලබාගත හැක.',
+      },
+      {
+        stepTitle: '4. එක ක්ලික් එකකින් සම්පූර්ණ JSON Backup සහ Excel වාර්තා ලබාගැනීම',
+        detail:
+          'ඕනෑම මොහොතක සම්පූර්ණ පද්ධතියේම දත්ත Offline JSON Backup ගොනුවක් ලෙස හෝ Multi-Sheet Excel වාර්තාවක් ලෙස බාගත කරගත හැක.',
+      },
+    ],
+    keyOutputs: [
+      'යන්ත්‍රෝපකරණ සහ ටූල්ස් භාරකාරත්ව ලෙජරය (Machinery Custody)',
+      'සම්පූර්ණ Audit Trail වාර්තා සහ ආරක්ෂිත Recycle Bin',
+      '1-Click JSON Backup, Offline Viewer සහ Excel Export පහසුකම',
+    ],
+  },
+];
+
+const FORMAT_GROUPS_MATRIX_EN: FormatSlotGuide[] = [
   {
     code: 'FORMAT-01',
     title: 'Material Requisition, Team Issue & Site Usage Format',
     structure: '3-Column / Item Movement Table + 3 Approval Signatures',
     affectsTo: [
-      'RN — Stock Requisitions (Branch to Central HQ Request)',
-      'IN — Issue to Teams (Daily Field Crew Dispatch & Gate Pass)',
-      'PU — Project & Site Material Usage Vouchers',
-      'TSR — Team In-Hand Stock Balance Audit Report',
+      'RN - Stock Requisitions (Branch to Central HQ Request)',
+      'IN - Issue to Teams (Daily Field Crew Dispatch & Gate Pass)',
+      'PU - Project & Site Material Usage Vouchers',
+      'TSR - Team In-Hand Stock Balance Audit Report',
     ],
   },
   {
@@ -293,10 +536,10 @@ const FORMAT_GROUPS_GUIDE_MATRIX = [
     title: 'Goods Receipt (GRN), Client FOC & Stock Returns Format',
     structure: 'Inbound Delivery / Return Table + Storekeeper Inspection Sign-off (Can be unified with FORMAT-01 in 1 click)',
     affectsTo: [
-      'GRN — Goods Receipt Notes (Supplier PO Delivery & Main Stock Inbound)',
-      'FOC — Client Free-Issue Material Receipt Vouchers',
-      'RV — Team Stock Return Vouchers (Field Crew to Branch Yard)',
-      'BRM — Branch Return to Main Stock (Site Yard to Central HQ)',
+      'GRN - Goods Receipt Notes (Supplier PO Delivery & Main Stock Inbound)',
+      'FOC - Client Free-Issue Material Receipt Vouchers',
+      'RV - Team Stock Return Vouchers (Field Crew to Branch Yard)',
+      'BRM - Branch Return to Main Stock (Site Yard to Central HQ)',
     ],
   },
   {
@@ -304,7 +547,7 @@ const FORMAT_GROUPS_GUIDE_MATRIX = [
     title: 'Official Supplier Purchase Order (PO) Format',
     structure: '5-Column Priced Commercial Schedule + Tax/Discount + Commercial Terms',
     affectsTo: [
-      'PO — Official Commercial Purchase Order (Procurement & PO Management)',
+      'PO - Official Commercial Purchase Order (Procurement & PO Management)',
     ],
   },
   {
@@ -312,13 +555,55 @@ const FORMAT_GROUPS_GUIDE_MATRIX = [
     title: 'Return to Vendor (RTV) & Official Debit Note Format',
     structure: '5-Column Return Valuation Table + Claim Reason + Outward Gate Pass',
     affectsTo: [
-      'RTV — Supplier Return / Official Debit Note Voucher',
-      'GATE-PASS — Supplier Outward Return Dispatch Gate Pass',
+      'RTV - Supplier Return / Official Debit Note Voucher',
+      'GATE-PASS - Supplier Outward Return Dispatch Gate Pass',
     ],
   },
 ];
 
-const FEATURE_SUMMARY_LIST = [
+const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
+  {
+    code: 'FORMAT-01',
+    title: 'අභ්‍යන්තර බඩු ඉල්ලුම්පත්, නිකුත් කිරීම් සහ වැඩබිම් භාවිත ආකෘතිය (Internal Issue, Request & Usage)',
+    structure: 'තීරු 3ක භාණ්ඩ වගුව + අනුමත කිරීමේ අත්සන් තීරු 3 (Prepared / Authorized / Received)',
+    affectsTo: [
+      'RN - Stock Requisitions (ශාඛා මගින් ප්‍රධාන ගබඩාවෙන් බඩු ඉල්ලුම් කරන පත්‍රිකාව)',
+      'IN - Issue to Teams (වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීමේ පත්‍රිකාව / Gate Pass)',
+      'PU - Material Usage (ව්‍යාපෘති සහ වැඩබිම් භාණ්ඩ භාවිත වවුචරය)',
+      'TSR - Team In-Hand Stock (කණ්ඩායම් සතු තොග පරීක්ෂණ වාර්තාව)',
+    ],
+  },
+  {
+    code: 'FORMAT-02',
+    title: 'භාණ්ඩ භාරගැනීම් (GRN), සේවාදායක නොමිලේ තොග (FOC) සහ ආපසු භාරදීමේ ආකෘතිය',
+    structure: 'භාණ්ඩ ලැබීම් / ආපසු භාරදීම් වගුව + ගබඩා පරීක්ෂණ අත්සන් තීරු (අවශ්‍ය නම් FORMAT-01 සමඟ 1-Click එකෙන් ඒකාබද්ධ කළ හැක)',
+    affectsTo: [
+      'GRN - Goods Receipt Notes (සැපයුම්කරු PO භාණ්ඩ ලැබීම් සහ ප්‍රධාන ගබඩා GRN පත්‍රිකාව)',
+      'FOC - Client Free Stock (සේවාදායකයා නොමිලේ සපයන භාණ්ඩ භාරගැනීමේ වවුචරය)',
+      'RV - Team Returns (වැඩ කණ්ඩායම් මගින් ගබඩාවට භාණ්ඩ ආපසු භාරදීමේ වවුචරය)',
+      'BRM - Branch Returns (ශාඛා ගබඩාවෙන් ප්‍රධාන ගබඩාවට භාණ්ඩ ආපසු යැවීමේ පත්‍රිකාව)',
+    ],
+  },
+  {
+    code: 'FORMAT-03',
+    title: 'සැපයුම්කරු භාණ්ඩ ඇණවුම් කිරීමේ නිල ආකෘතිය (Official Purchase Order - PO)',
+    structure: 'මිල ගණන් සහිත තීරු 5ක වගුව + බදු/වට්ටම් + වාණිජ කොන්දේසි සහ අනුමත කිරීමේ අත්සන්',
+    affectsTo: [
+      'PO - Supplier Orders (සැපයුම්කරුවන් වෙත නිකුත් කරන නිල Purchase Order පත්‍රිකාව)',
+    ],
+  },
+  {
+    code: 'FORMAT-04',
+    title: 'සැපයුම්කරු වෙත භාණ්ඩ ආපසු යැවීමේ සහ හර සටහන් ආකෘතිය (RTV / Debit Note)',
+    structure: 'තීරු 5ක ආපසු යැවීමේ වටිනාකම් වගුව + හේතුව + Outward Gate Pass පත්‍රිකාව',
+    affectsTo: [
+      'RTV - Supplier Return / Debit Note (ප්‍රමිතියෙන් තොර/වැඩිපුර භාණ්ඩ සැපයුම්කරුට ආපසු යැවීමේ වවුචරය)',
+      'GATE-PASS - Supplier Outward Return Gate Pass (භාණ්ඩ පිටතට යැවීමේ අවසර පත්‍රය)',
+    ],
+  },
+];
+
+const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
   {
     group: 'Warehouse, Procurement & Inventory',
     items: [
@@ -353,15 +638,70 @@ const FEATURE_SUMMARY_LIST = [
   },
 ];
 
+const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
+  {
+    group: 'ගබඩා කළමනාකරණය සහ ප්‍රසම්පාදනය (Warehouse & Procurement)',
+    items: [
+      'ප්‍රධාන ගබඩාව (Central HQ) සහ සීමාවකින් තොර ප්‍රාදේශීය ශාඛා ගබඩා (Site Yards)',
+      'අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) වෙන් කර හඳුනාගැනීම',
+      'නිල Purchase Orders (PO) සහ කොටස් වශයෙන් ලැබෙන GRN මුද්‍රණය කිරීමේ පහසුකම',
+      'සැපයුම්කරු වෙත ආපසු යැවීමේ (RTV) Debit Notes සහ Outward Gate Pass',
+      'සේවාදායක නොමිලේ තොග (Client FOC) සහ හානි වූ භාණ්ඩ අලුත්වැඩියා ලෙජරය',
+      'Excel / CSV Bulk Import, Multi-Sheet Export සහ අවම තොග අනතුරු ඇඟවීම්',
+    ],
+  },
+  {
+    group: 'වැඩබිම් මෙහෙයුම්, කණ්ඩායම් සහ ව්‍යාපෘති (Teams & Projects)',
+    items: [
+      'Available Stock Filter සහිත ශාඛා බඩු ඉල්ලුම්පත් (RN)',
+      'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් ප්‍රමාණය (Auto Crew Size: 1 Leader + N Members)',
+      'Team නාමයන් දෙවරක් යෙදීම වැළැක්වීම සහ පැරණි Usage දත්ත ආරක්ෂාව',
+      'Drum / Batch / Serial විස්තර සහිතව කණ්ඩායම් වෙත බඩු නිකුත් කිරීම (IN)',
+      'කණ්ඩායම් අත ඇති තොග (In-Hand Stock) පරීක්ෂාව සහ Delete ආරක්ෂාව',
+      'ව්‍යාපෘති භාණ්ඩ භාවිතය (PU) සහ ආපසු භාරදීමේ වවුචර් (RV / BRM)',
+    ],
+  },
+  {
+    group: 'ආයතනික Document Formats සහ ආරක්ෂිත පාලනය (Formats & Security)',
+    items: [
+      'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කර සකසාගැනීමේ පහසුකම',
+      '"This Format Affects To" මගින් එක් එක් Format එකට අදාළ Sections පෙන්වීම',
+      'Live A4 Format Studio (Header Banner, Watermark සහ Smart Grid ක්‍රම 3)',
+      'Single-Site, Multi-Site සහ Central HQ පරිශීලක බලතල පාලනය',
+      'Audit Trail විගණන වාර්තා, Recycle Bin සහ 1-Click JSON Offline Backup',
+    ],
+  },
+];
+
 export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
   onBackToOverview,
   onOpenSignup,
   onOpenLogin,
 }) => {
+  const [guideLang, setGuideLang] = useState<GuideLanguage>('en');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [pdfSuccessMessage, setPdfSuccessMessage] = useState<string | null>(null);
 
-  const filteredChapters = GUIDE_CHAPTERS.filter((ch) => {
+  // Load Noto Sans Sinhala from Google Fonts so Sinhala text on screen & canvas PDF looks super crisp
+  useEffect(() => {
+    const fontId = 'apex-noto-sans-sinhala-font';
+    if (!document.getElementById(fontId)) {
+      const link = document.createElement('link');
+      link.id = fontId;
+      link.rel = 'stylesheet';
+      link.href =
+        'https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700;800&display=swap';
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  const activeChapters = guideLang === 'si' ? GUIDE_CHAPTERS_SI : GUIDE_CHAPTERS_EN;
+  const activeFormatMatrix = guideLang === 'si' ? FORMAT_GROUPS_MATRIX_SI : FORMAT_GROUPS_MATRIX_EN;
+  const activeFeatureList = guideLang === 'si' ? FEATURE_SUMMARY_LIST_SI : FEATURE_SUMMARY_LIST_EN;
+
+  const filteredChapters = activeChapters.filter((ch) => {
     const matchesCat = selectedCategory === 'all' || ch.category === selectedCategory;
     const q = searchQuery.trim().toLowerCase();
     if (!q) return matchesCat;
@@ -372,325 +712,705 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
     return matchesCat && (inTitle || inSteps);
   });
 
-  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [pdfSuccessMessage, setPdfSuccessMessage] = useState<string | null>(null);
+  // ==================== ENGLISH VECTOR A4 PDF GENERATOR ====================
+  const generateEnglishVectorPdf = () => {
+    const pdfSafeText = (raw: string): string =>
+      raw
+        .replace(/\u2192|→/g, '->')
+        .replace(/\u2014|\u2013|—|–/g, ' - ')
+        .replace(/\u2022|\u00B7|•|·/g, '-')
+        .replace(/\u2713|\u2714|✓|✔/g, '[x]')
+        .replace(/[\u201C\u201D“”]/g, '"')
+        .replace(/[\u2018\u2019‘’]/g, "'")
+        .replace(/[^\x20-\x7E\n]/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 
-  const handlePrintPdfManual = () => {
-    setIsDownloadingPdf(true);
-    try {
-      // jsPDF built-in Helvetica only supports standard ASCII/WinAnsi cleanly.
-      // Multi-byte Unicode characters (like →, —, •, ✓) trigger UTF-16 kerning bugs in jsPDF
-      // that stretch letter spacing and push lines outside boxes.
-      const pdfSafeText = (raw: string): string =>
-        raw
-          .replace(/\u2192|→/g, '->')
-          .replace(/\u2014|\u2013|—|–/g, ' - ')
-          .replace(/\u2022|\u00B7|•|·/g, '-')
-          .replace(/\u2713|\u2714|✓|✔/g, '[x]')
-          .replace(/[\u201C\u201D“”]/g, '"')
-          .replace(/[\u2018\u2019‘’]/g, "'")
-          .replace(/[^\x20-\x7E\n]/g, '')
-          .replace(/\s{2,}/g, ' ')
-          .trim();
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
 
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      });
+    const pageW = doc.internal.pageSize.getWidth(); // 210mm
+    const pageH = doc.internal.pageSize.getHeight(); // 297mm
+    const marginX = 14;
+    const contentW = pageW - marginX * 2; // 182mm
+    const innerPadX = 4.5;
+    const innerTextW = contentW - innerPadX * 2 - 2; // 171mm
+    let y = 14;
 
-      const pageW = doc.internal.pageSize.getWidth(); // 210mm
-      const pageH = doc.internal.pageSize.getHeight(); // 297mm
-      const marginX = 14;
-      const contentW = pageW - marginX * 2; // 182mm
-      const innerPadX = 4.5; // 4.5mm left & right padding inside boxes
-      const innerTextW = contentW - innerPadX * 2 - 2; // safe wrapping width inside boxes (171mm)
-      let y = 14;
-
-      const ensureSpace = (neededMm: number) => {
-        if (y + neededMm > pageH - 18) {
-          doc.addPage();
-          // Top mini header on continuation pages
-          doc.setFillColor(30, 38, 64);
-          doc.rect(marginX, 10, contentW, 6.5, 'F');
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7.5);
-          doc.setTextColor(220, 151, 80);
-          doc.text('APEX STOCK - OFFICIAL SYSTEM USER GUIDE & FEATURE HANDBOOK', marginX + 3, 14.5);
-          doc.setTextColor(255, 255, 255);
-          doc.text(`Edition ${new Date().getFullYear()}`, pageW - marginX - 3, 14.5, { align: 'right' });
-          y = 22;
-        }
-      };
-
-      // ==================== COVER HEADER BANNER ====================
-      doc.setFillColor(30, 38, 64); // #1e2640
-      doc.roundedRect(marginX, y, contentW, 28, 3, 3, 'F');
-      doc.setFillColor(220, 151, 80); // #dc9750 accent stripe
-      doc.rect(marginX, y + 26, contentW, 2, 'F');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(220, 151, 80);
-      doc.text('COMPLETE SYSTEM DOCUMENTATION & CLIENT HANDBOOK', marginX + 6, y + 7.5);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
-      doc.text('APEX STOCK - SYSTEM USER GUIDE & FEATURE HANDBOOK', marginX + 6, y + 15.5);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.2);
-      doc.setTextColor(226, 232, 240);
-      doc.text(
-        'Multi-Site Warehouse Inventory, Field Crew Dispatch, Client FOC Stock & Company PDF/Image Format Studio',
-        marginX + 6,
-        y + 22
-      );
-      y += 34;
-
-      // ==================== 6-STAGE OPERATIONAL FLOW SUMMARY ====================
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.setTextColor(30, 38, 64);
-      doc.text('END-TO-END OPERATIONAL FLOW AT A GLANCE (6 CORE STAGES)', marginX, y);
-      y += 4;
-
-      const stages = [
-        'Stage 01: Master & Crew Setup - Register items, site yards, suppliers, clients & field teams (auto crew size: 1 Leader + N Members).',
-        'Stage 02: PO, GRN & RTV - Issue Supplier Purchase Orders (PO), print batch GRN vouchers, log Client Free Stock (FOC) & RTV Debit Notes.',
-        'Stage 03: Branch Transfer - Site branches submit Stock Requisitions (RN); Central HQ checks stock & dispatches to regional yards.',
-        'Stage 04: Field Crew Issue - Issue materials & tools to Crew Leaders (IN / Gate Pass) with live in-hand custody tracking.',
-        'Stage 05: Usage & Returns - Log project material installation (PU - deducts Client Free Stock first) & return surplus (RV / BRM).',
-        'Stage 06: Company Formats - Upload PDF or Image company forms into 4 Format Slots so all sections print in your official layout.',
-      ];
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      const wrappedStages: string[][] = stages.map((stLine) =>
-        doc.splitTextToSize(`- ${pdfSafeText(stLine)}`, innerTextW)
-      );
-      const totalStageLines = wrappedStages.reduce((acc, lines) => acc + lines.length, 0);
-      const stagesBoxH = 5 + totalStageLines * 3.8 + (stages.length - 1) * 1.2;
-
-      doc.setFillColor(250, 244, 236);
-      doc.setDrawColor(220, 151, 80);
-      doc.roundedRect(marginX, y, contentW, stagesBoxH, 2, 2, 'FD');
-
-      let stageY = y + 5;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(30, 38, 64);
-      wrappedStages.forEach((lines) => {
-        doc.text(lines, marginX + innerPadX, stageY);
-        stageY += lines.length * 3.8 + 1.2;
-      });
-      y += stagesBoxH + 6;
-
-      // ==================== STEP-BY-STEP CHAPTERS (01 TO 06) ====================
-      GUIDE_CHAPTERS.forEach((ch) => {
-        ensureSpace(48);
-
-        // Chapter Header Bar
+    const ensureSpace = (neededMm: number) => {
+      if (y + neededMm > pageH - 18) {
+        doc.addPage();
         doc.setFillColor(30, 38, 64);
-        doc.roundedRect(marginX, y, contentW, 8.5, 1.5, 1.5, 'F');
+        doc.rect(marginX, 10, contentW, 6.5, 'F');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
+        doc.setFontSize(7.5);
         doc.setTextColor(220, 151, 80);
-        doc.text(
-          pdfSafeText(`${ch.number.toUpperCase()} | ${ch.categoryLabel.toUpperCase()}`),
-          marginX + innerPadX,
-          y + 5.7
-        );
-        y += 12;
+        doc.text('APEX STOCK - OFFICIAL SYSTEM USER GUIDE & FEATURE HANDBOOK (ENGLISH)', marginX + 3, 14.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`Edition ${new Date().getFullYear()}`, pageW - marginX - 3, 14.5, { align: 'right' });
+        y = 22;
+      }
+    };
 
-        // Chapter Title
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(15, 23, 42);
-        const titleLines = doc.splitTextToSize(pdfSafeText(ch.title), contentW);
-        doc.text(titleLines, marginX, y);
-        y += titleLines.length * 4.5 + 0.5;
+    // Cover Banner
+    doc.setFillColor(30, 38, 64);
+    doc.roundedRect(marginX, y, contentW, 28, 3, 3, 'F');
+    doc.setFillColor(220, 151, 80);
+    doc.rect(marginX, y + 26, contentW, 2, 'F');
 
-        // Chapter Summary
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.2);
-        doc.setTextColor(71, 85, 105);
-        const summaryLines = doc.splitTextToSize(pdfSafeText(ch.summary), contentW);
-        doc.text(summaryLines, marginX, y);
-        y += summaryLines.length * 3.8 + 2.5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(220, 151, 80);
+    doc.text('COMPLETE SYSTEM DOCUMENTATION & CLIENT HANDBOOK (ENGLISH EDITION)', marginX + 6, y + 7.5);
 
-        // Steps
-        ch.steps.forEach((st) => {
-          // Always set exact stepTitle font before splitting stepTitle
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8.6);
-          const stepTitleLines = doc.splitTextToSize(pdfSafeText(st.stepTitle), innerTextW);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text('APEX STOCK - SYSTEM USER GUIDE & FEATURE HANDBOOK', marginX + 6, y + 15.5);
 
-          // Always set exact detail font before splitting detail
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
-          const detailLines = doc.splitTextToSize(pdfSafeText(st.detail), innerTextW);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.2);
+    doc.setTextColor(226, 232, 240);
+    doc.text(
+      'Multi-Site Warehouse Inventory, Field Crew Dispatch, Client FOC Stock & Company PDF/Image Format Studio',
+      marginX + 6,
+      y + 22
+    );
+    y += 34;
 
-          const titleBlockH = stepTitleLines.length * 4;
-          const detailBlockH = detailLines.length * 3.8;
-          const boxH = 4 + titleBlockH + 1.5 + detailBlockH + 3;
-          ensureSpace(boxH + 3);
+    // 6-Stage Flow
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 38, 64);
+    doc.text('END-TO-END OPERATIONAL FLOW AT A GLANCE (6 CORE STAGES)', marginX, y);
+    y += 4;
 
-          doc.setFillColor(253, 250, 245);
-          doc.setDrawColor(220, 151, 80);
-          doc.roundedRect(marginX, y, contentW, boxH, 1.5, 1.5, 'FD');
+    const stages = [
+      'Stage 01: Master & Crew Setup - Register items, site yards, suppliers, clients & field teams (auto crew size: 1 Leader + N Members).',
+      'Stage 02: PO, GRN & RTV - Issue Supplier Purchase Orders (PO), print batch GRN vouchers, log Client Free Stock (FOC) & RTV Debit Notes.',
+      'Stage 03: Branch Transfer - Site branches submit Stock Requisitions (RN); Central HQ checks stock & dispatches to regional yards.',
+      'Stage 04: Field Crew Issue - Issue materials & tools to Crew Leaders (IN / Gate Pass) with live in-hand custody tracking.',
+      'Stage 05: Usage & Returns - Log project material installation (PU - deducts Client Free Stock first) & return surplus (RV / BRM).',
+      'Stage 06: Company Formats - Upload PDF or Image company forms into 4 Format Slots so all sections print in your official layout.',
+    ];
 
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8.6);
-          doc.setTextColor(30, 38, 64);
-          doc.text(stepTitleLines, marginX + innerPadX, y + 4.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const wrappedStages: string[][] = stages.map((stLine) =>
+      doc.splitTextToSize(`- ${pdfSafeText(stLine)}`, innerTextW)
+    );
+    const totalStageLines = wrappedStages.reduce((acc, lines) => acc + lines.length, 0);
+    const stagesBoxH = 5 + totalStageLines * 3.8 + (stages.length - 1) * 1.2;
 
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
-          doc.setTextColor(51, 65, 85);
-          doc.text(detailLines, marginX + innerPadX, y + 4.8 + titleBlockH + 1.2);
+    doc.setFillColor(250, 244, 236);
+    doc.setDrawColor(220, 151, 80);
+    doc.roundedRect(marginX, y, contentW, stagesBoxH, 2, 2, 'FD');
 
-          y += boxH + 2.2;
-        });
+    let stageY = y + 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(30, 38, 64);
+    wrappedStages.forEach((lines) => {
+      doc.text(lines, marginX + innerPadX, stageY);
+      stageY += lines.length * 3.8 + 1.2;
+    });
+    y += stagesBoxH + 6;
 
-        // Key Outputs
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.8);
-        const outputsText = pdfSafeText(`Key Outputs: ${ch.keyOutputs.join('  |  ')}`);
-        const outLines = doc.splitTextToSize(outputsText, contentW);
-        ensureSpace(outLines.length * 3.8 + 5);
-        doc.setTextColor(158, 92, 25);
-        doc.text(outLines, marginX, y + 2.2);
-        y += outLines.length * 3.8 + 5.5;
-      });
+    // Chapters
+    GUIDE_CHAPTERS_EN.forEach((ch) => {
+      ensureSpace(48);
 
-      // ==================== COMPANY FORMAT SLOTS & AFFECTED SECTIONS MATRIX ====================
-      ensureSpace(65);
       doc.setFillColor(30, 38, 64);
       doc.roundedRect(marginX, y, contentW, 8.5, 1.5, 1.5, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(220, 151, 80);
       doc.text(
-        'COMPANY DOCUMENT FORMAT STUDIO - 4 STANDARD FORMAT SLOTS & AFFECTED SECTIONS',
+        pdfSafeText(`${ch.number.toUpperCase()} | ${ch.categoryLabel.toUpperCase()}`),
         marginX + innerPadX,
         y + 5.7
       );
       y += 12;
 
-      FORMAT_GROUPS_GUIDE_MATRIX.forEach((slot) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.8);
-        const slotTitleLines = doc.splitTextToSize(
-          pdfSafeText(`${slot.code}: ${slot.title}`),
-          innerTextW
-        );
-
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(7.8);
-        const structLines = doc.splitTextToSize(
-          pdfSafeText(`Structure: ${slot.structure}`),
-          innerTextW
-        );
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.8);
-        const affectsLines: string[] = [];
-        slot.affectsTo.forEach((a) => {
-          const wrapped = doc.splitTextToSize(pdfSafeText(`- ${a}`), innerTextW - 3);
-          affectsLines.push(...wrapped);
-        });
-
-        const titleH = slotTitleLines.length * 4;
-        const structH = structLines.length * 3.6;
-        const affectsH = affectsLines.length * 3.6;
-        const slotH = 5 + titleH + structH + 4.5 + affectsH + 3.5;
-        ensureSpace(slotH + 3);
-
-        doc.setFillColor(255, 255, 255);
-        doc.setDrawColor(203, 213, 225);
-        doc.roundedRect(marginX, y, contentW, slotH, 1.5, 1.5, 'FD');
-
-        let curY = y + 4.8;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.8);
-        doc.setTextColor(30, 38, 64);
-        doc.text(slotTitleLines, marginX + innerPadX, curY);
-        curY += titleH + 0.5;
-
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(7.8);
-        doc.setTextColor(100, 116, 139);
-        doc.text(structLines, marginX + innerPadX, curY);
-        curY += structH + 1;
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.8);
-        doc.setTextColor(158, 92, 25);
-        doc.text('This Format Affects To (Printed Sections):', marginX + innerPadX, curY);
-        curY += 3.8;
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.8);
-        doc.setTextColor(15, 23, 42);
-        doc.text(affectsLines, marginX + innerPadX + 2, curY);
-
-        y += slotH + 2.5;
-      });
-
-      // ==================== COMPLETE MODULE CHECKLIST ====================
-      ensureSpace(55);
-      y += 2;
-      doc.setFillColor(30, 38, 64);
-      doc.roundedRect(marginX, y, contentW, 8.5, 1.5, 1.5, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(220, 151, 80);
-      doc.text('COMPLETE PLATFORM MODULE & FEATURE CHECKLIST', marginX + innerPadX, y + 5.7);
-      y += 12;
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      const titleLines = doc.splitTextToSize(pdfSafeText(ch.title), contentW);
+      doc.text(titleLines, marginX, y);
+      y += titleLines.length * 4.5 + 0.5;
 
-      FEATURE_SUMMARY_LIST.forEach((group) => {
-        ensureSpace(24);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.2);
+      doc.setTextColor(71, 85, 105);
+      const summaryLines = doc.splitTextToSize(pdfSafeText(ch.summary), contentW);
+      doc.text(summaryLines, marginX, y);
+      y += summaryLines.length * 3.8 + 2.5;
+
+      ch.steps.forEach((st) => {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.8);
+        doc.setFontSize(8.6);
+        const stepTitleLines = doc.splitTextToSize(pdfSafeText(st.stepTitle), innerTextW);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        const detailLines = doc.splitTextToSize(pdfSafeText(st.detail), innerTextW);
+
+        const titleBlockH = stepTitleLines.length * 4;
+        const detailBlockH = detailLines.length * 3.8;
+        const boxH = 4 + titleBlockH + 1.5 + detailBlockH + 3;
+        ensureSpace(boxH + 3);
+
+        doc.setFillColor(253, 250, 245);
+        doc.setDrawColor(220, 151, 80);
+        doc.roundedRect(marginX, y, contentW, boxH, 1.5, 1.5, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.6);
         doc.setTextColor(30, 38, 64);
-        doc.text(pdfSafeText(group.group), marginX, y);
-        y += 4.5;
+        doc.text(stepTitleLines, marginX + innerPadX, y + 4.8);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(51, 65, 85);
-        group.items.forEach((item) => {
-          const itemLines = doc.splitTextToSize(pdfSafeText(`[x]  ${item}`), contentW - 6);
-          ensureSpace(itemLines.length * 3.8 + 1);
-          doc.text(itemLines, marginX + 3, y);
-          y += itemLines.length * 3.8 + 0.6;
-        });
-        y += 2.5;
+        doc.text(detailLines, marginX + innerPadX, y + 4.8 + titleBlockH + 1.2);
+
+        y += boxH + 2.2;
       });
 
-      // ==================== ADD FOOTER & PAGE NUMBERS TO EVERY PAGE ====================
-      const totalPages = doc.getNumberOfPages();
-      for (let p = 1; p <= totalPages; p++) {
-        doc.setPage(p);
-        doc.setDrawColor(203, 213, 225);
-        doc.line(marginX, pageH - 12, pageW - marginX, pageH - 12);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(100, 116, 139);
-        doc.text(
-          'Apex Stock Enterprise SaaS | Official Client User Guide & Feature Handbook | apexdevinfo@gmail.com',
-          marginX,
-          pageH - 7.5
-        );
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Page ${p} of ${totalPages}`, pageW - marginX, pageH - 7.5, { align: 'right' });
-      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.8);
+      const outputsText = pdfSafeText(`Key Outputs: ${ch.keyOutputs.join('  |  ')}`);
+      const outLines = doc.splitTextToSize(outputsText, contentW);
+      ensureSpace(outLines.length * 3.8 + 5);
+      doc.setTextColor(158, 92, 25);
+      doc.text(outLines, marginX, y + 2.2);
+      y += outLines.length * 3.8 + 5.5;
+    });
 
-      doc.save('Apex_Stock_Official_User_Guide_Handbook.pdf');
-      setPdfSuccessMessage('PDF Handbook Downloaded!');
+    // Format Studio Matrix
+    ensureSpace(65);
+    doc.setFillColor(30, 38, 64);
+    doc.roundedRect(marginX, y, contentW, 8.5, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(220, 151, 80);
+    doc.text(
+      'COMPANY DOCUMENT FORMAT STUDIO - 4 STANDARD FORMAT SLOTS & AFFECTED SECTIONS',
+      marginX + innerPadX,
+      y + 5.7
+    );
+    y += 12;
+
+    FORMAT_GROUPS_MATRIX_EN.forEach((slot) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.8);
+      const slotTitleLines = doc.splitTextToSize(
+        pdfSafeText(`${slot.code}: ${slot.title}`),
+        innerTextW
+      );
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.8);
+      const structLines = doc.splitTextToSize(
+        pdfSafeText(`Structure: ${slot.structure}`),
+        innerTextW
+      );
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.8);
+      const affectsLines: string[] = [];
+      slot.affectsTo.forEach((a) => {
+        const wrapped = doc.splitTextToSize(pdfSafeText(`- ${a}`), innerTextW - 3);
+        affectsLines.push(...wrapped);
+      });
+
+      const titleH = slotTitleLines.length * 4;
+      const structH = structLines.length * 3.6;
+      const affectsH = affectsLines.length * 3.6;
+      const slotH = 5 + titleH + structH + 4.5 + affectsH + 3.5;
+      ensureSpace(slotH + 3);
+
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(marginX, y, contentW, slotH, 1.5, 1.5, 'FD');
+
+      let curY = y + 4.8;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.8);
+      doc.setTextColor(30, 38, 64);
+      doc.text(slotTitleLines, marginX + innerPadX, curY);
+      curY += titleH + 0.5;
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(structLines, marginX + innerPadX, curY);
+      curY += structH + 1;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.8);
+      doc.setTextColor(158, 92, 25);
+      doc.text('This Format Affects To (Printed Sections):', marginX + innerPadX, curY);
+      curY += 3.8;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.8);
+      doc.setTextColor(15, 23, 42);
+      doc.text(affectsLines, marginX + innerPadX + 2, curY);
+
+      y += slotH + 2.5;
+    });
+
+    // Checklist
+    ensureSpace(55);
+    y += 2;
+    doc.setFillColor(30, 38, 64);
+    doc.roundedRect(marginX, y, contentW, 8.5, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(220, 151, 80);
+    doc.text('COMPLETE PLATFORM MODULE & FEATURE CHECKLIST', marginX + innerPadX, y + 5.7);
+    y += 12;
+
+    FEATURE_SUMMARY_LIST_EN.forEach((group) => {
+      ensureSpace(24);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.8);
+      doc.setTextColor(30, 38, 64);
+      doc.text(pdfSafeText(group.group), marginX, y);
+      y += 4.5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(51, 65, 85);
+      group.items.forEach((item) => {
+        const itemLines = doc.splitTextToSize(pdfSafeText(`[x]  ${item}`), contentW - 6);
+        ensureSpace(itemLines.length * 3.8 + 1);
+        doc.text(itemLines, marginX + 3, y);
+        y += itemLines.length * 3.8 + 0.6;
+      });
+      y += 2.5;
+    });
+
+    const totalPages = doc.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setDrawColor(203, 213, 225);
+      doc.line(marginX, pageH - 12, pageW - marginX, pageH - 12);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        'Apex Stock Enterprise SaaS | Official Client User Guide & Feature Handbook | apexdevinfo@gmail.com',
+        marginX,
+        pageH - 7.5
+      );
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Page ${p} of ${totalPages}`, pageW - marginX, pageH - 7.5, { align: 'right' });
+    }
+
+    doc.save('Apex_Stock_English_User_Guide_Handbook.pdf');
+  };
+
+  // ==================== SINHALA NATIVE HARFBUZZ CANVAS A4 PDF GENERATOR ====================
+  // Uses the browser's native 2D Canvas text shaper ("Noto Sans Sinhala", "Iskoola Pota", sans-serif)
+  // so every Sinhala vowel sign (කොම්බුව, ඇලපිල්ල, ඉස්පිල්ල, පාපිල්ල) renders with 100% accuracy
+  // and ctx.measureText wraps every line strictly inside its box with zero overflow!
+  const generateSinhalaCanvasPdf = async () => {
+    try {
+      if ((document as any).fonts && (document as any).fonts.ready) {
+        await (document as any).fonts.ready;
+      }
+    } catch {}
+
+    const PAGE_W = 1240; // A4 Portrait at ~150 DPI
+    const PAGE_H = 1754;
+    const MARGIN_X = 76;
+    const CONTENT_W = PAGE_W - MARGIN_X * 2; // 1088px
+    const INNER_PAD_X = 28;
+    const INNER_TEXT_W = CONTENT_W - INNER_PAD_X * 2 - 8; // 1024px safe text width inside boxes
+    const BOTTOM_LIMIT = PAGE_H - 95;
+
+    const fontStack = '"Noto Sans Sinhala", "Iskoola Pota", "Nirmala UI", system-ui, sans-serif';
+    const pages: HTMLCanvasElement[] = [];
+
+    const createPage = (isFirstPage: boolean): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; y: number } => {
+      const canvas = document.createElement('canvas');
+      canvas.width = PAGE_W;
+      canvas.height = PAGE_H;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, PAGE_W, PAGE_H);
+      ctx.textBaseline = 'top';
+
+      if (!isFirstPage) {
+        // Continuation header bar
+        ctx.fillStyle = '#1e2640';
+        ctx.fillRect(MARGIN_X, 52, CONTENT_W, 38);
+        ctx.font = `700 15px ${fontStack}`;
+        ctx.fillStyle = '#dc9750';
+        ctx.fillText('APEX STOCK — නිල සිංහල පරිශීලක උපදෙස් සහ විශේෂාංග අත්පොත', MARGIN_X + 16, 62);
+        return { canvas, ctx, y: 112 };
+      }
+      return { canvas, ctx, y: 68 };
+    };
+
+    const drawRoundedRect = (
+      ctx: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      r: number,
+      fill?: string,
+      stroke?: string,
+      lineWidth: number = 2
+    ) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+      }
+    };
+
+    const wrapTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+      const paragraphs = text.split('\n');
+      const lines: string[] = [];
+      for (const para of paragraphs) {
+        const words = para.trim().split(/\s+/);
+        if (words.length === 0 || (words.length === 1 && words[0] === '')) {
+          lines.push('');
+          continue;
+        }
+        let currentLine = words[0];
+        for (let i = 1; i < words.length; i++) {
+          const word = words[i];
+          const testLine = `${currentLine} ${word}`;
+          if (ctx.measureText(testLine).width <= maxWidth) {
+            currentLine = testLine;
+          } else {
+            lines.push(currentLine);
+            currentLine = word;
+          }
+        }
+        lines.push(currentLine);
+      }
+      return lines;
+    };
+
+    let current = createPage(true);
+    pages.push(current.canvas);
+
+    const ensureSpace = (neededPx: number) => {
+      if (current.y + neededPx > BOTTOM_LIMIT) {
+        current = createPage(false);
+        pages.push(current.canvas);
+      }
+    };
+
+    // ==================== 1. COVER HEADER BANNER ====================
+    drawRoundedRect(current.ctx, MARGIN_X, current.y, CONTENT_W, 165, 16, '#1e2640');
+    current.ctx.fillStyle = '#dc9750';
+    current.ctx.fillRect(MARGIN_X, current.y + 153, CONTENT_W, 12);
+
+    current.ctx.font = `700 17px ${fontStack}`;
+    current.ctx.fillStyle = '#dc9750';
+    current.ctx.fillText('සම්පූර්ණ පද්ධති උපදෙස් සහ විශේෂාංග අත්පොත (SINHALA USER GUIDE)', MARGIN_X + 30, current.y + 24);
+
+    current.ctx.font = `800 30px ${fontStack}`;
+    current.ctx.fillStyle = '#ffffff';
+    current.ctx.fillText('APEX STOCK — නිල සිංහල පරිශීලක අත්පොත', MARGIN_X + 30, current.y + 58);
+
+    current.ctx.font = `500 17px ${fontStack}`;
+    current.ctx.fillStyle = '#e2e8f0';
+    current.ctx.fillText(
+      'ප්‍රධාන ගබඩාව, ශාඛා ගබඩා, වැඩ කණ්ඩායම්, ව්‍යාපෘති සහ Company Document Formats සකස් කරන ආකාරය',
+      MARGIN_X + 30,
+      current.y + 106
+    );
+    current.y += 195;
+
+    // ==================== 2. 6-STAGE OPERATIONAL FLOW ====================
+    current.ctx.font = `800 21px ${fontStack}`;
+    current.ctx.fillStyle = '#1e2640';
+    current.ctx.fillText('පද්ධතිය ක්‍රියාත්මක වන ප්‍රධාන පියවර 6 (Operational Flow at a Glance)', MARGIN_X, current.y);
+    current.y += 32;
+
+    const siStages = [
+      'පියවර 01 (Master Setup): භාණ්ඩ, යන්ත්‍රෝපකරණ, ශාඛා ගබඩා, සැපයුම්කරුවන් සහ වැඩ කණ්ඩායම් (Auto Crew Size සමඟ) ලියාපදිංචි කිරීම.',
+      'පියවර 02 (PO, GRN & RTV): සැපයුම්කරු PO නිකුත් කිරීම, GRN මුද්‍රණය, Client Free Stock (FOC) සහ RTV Debit Notes සටහන් කිරීම.',
+      'පියවර 03 (Branch Transfer): ශාඛා මගින් බඩු ඉල්ලුම්පත් (RN) යොමු කිරීම සහ ප්‍රධාන ගබඩාවෙන් අනුමත කර ශාඛා වෙත යැවීම.',
+      'පියවර 04 (Field Crew Issue): වැඩ කණ්ඩායම් නායකයින් වෙත එදිනෙදා භාණ්ඩ හා ටූල්ස් නිකුත් කිරීම (IN / Gate Pass) සහ In-Hand තොග පරීක්ෂාව.',
+      'පියවර 05 (Usage & Returns): ව්‍යාපෘති සඳහා භාණ්ඩ භාවිතය (PU) සටහන් කිරීම සහ ඉතිරි භාණ්ඩ ආපසු භාරදීම (RV / BRM).',
+      'පියවර 06 (Company Formats): ආයතනයේ PDF හෝ Image ආකෘති පත්‍ර Upload කර සියලුම වවුචර් එම Format එකෙන්ම මුද්‍රණය කරගැනීම.',
+    ];
+
+    current.ctx.font = `600 16.5px ${fontStack}`;
+    const wrappedSiStages = siStages.map((s) => wrapTextLines(current.ctx, `• ${s}`, INNER_TEXT_W));
+    const totalStageLineCount = wrappedSiStages.reduce((acc, l) => acc + l.length, 0);
+    const stageBoxH = 28 + totalStageLineCount * 25 + (siStages.length - 1) * 8;
+
+    drawRoundedRect(current.ctx, MARGIN_X, current.y, CONTENT_W, stageBoxH, 12, '#faf4ec', '#dc9750', 2);
+    let stY = current.y + 16;
+    current.ctx.fillStyle = '#1e2640';
+    wrappedSiStages.forEach((lines) => {
+      lines.forEach((line) => {
+        current.ctx.fillText(line, MARGIN_X + INNER_PAD_X, stY);
+        stY += 25;
+      });
+      stY += 8;
+    });
+    current.y += stageBoxH + 34;
+
+    // ==================== 3. CHAPTERS 01 TO 06 ====================
+    GUIDE_CHAPTERS_SI.forEach((ch) => {
+      ensureSpace(240);
+
+      // Chapter Banner
+      drawRoundedRect(current.ctx, MARGIN_X, current.y, CONTENT_W, 46, 10, '#1e2640');
+      current.ctx.font = `700 17px ${fontStack}`;
+      current.ctx.fillStyle = '#dc9750';
+      current.ctx.fillText(`${ch.number}  |  ${ch.categoryLabel}`, MARGIN_X + INNER_PAD_X, current.y + 13);
+      current.y += 60;
+
+      // Chapter Title
+      current.ctx.font = `800 23px ${fontStack}`;
+      current.ctx.fillStyle = '#0f172a';
+      const chTitleLines = wrapTextLines(current.ctx, ch.title, CONTENT_W);
+      chTitleLines.forEach((l) => {
+        current.ctx.fillText(l, MARGIN_X, current.y);
+        current.y += 31;
+      });
+      current.y += 4;
+
+      // Chapter Summary
+      current.ctx.font = `500 17px ${fontStack}`;
+      current.ctx.fillStyle = '#334155';
+      const chSumLines = wrapTextLines(current.ctx, ch.summary, CONTENT_W);
+      chSumLines.forEach((l) => {
+        current.ctx.fillText(l, MARGIN_X, current.y);
+        current.y += 25;
+      });
+      current.y += 14;
+
+      // Steps
+      ch.steps.forEach((st) => {
+        current.ctx.font = `700 18px ${fontStack}`;
+        const stepTitleLines = wrapTextLines(current.ctx, st.stepTitle, INNER_TEXT_W);
+
+        current.ctx.font = `500 16.5px ${fontStack}`;
+        const stepDetailLines = wrapTextLines(current.ctx, st.detail, INNER_TEXT_W);
+
+        const titleH = stepTitleLines.length * 26;
+        const detailH = stepDetailLines.length * 24;
+        const boxH = 22 + titleH + 8 + detailH + 18;
+
+        ensureSpace(boxH + 16);
+        drawRoundedRect(current.ctx, MARGIN_X, current.y, CONTENT_W, boxH, 10, '#fdfaf5', '#dc9750', 1.8);
+
+        let curStepY = current.y + 14;
+        current.ctx.font = `700 18px ${fontStack}`;
+        current.ctx.fillStyle = '#1e2640';
+        stepTitleLines.forEach((l) => {
+          current.ctx.fillText(l, MARGIN_X + INNER_PAD_X, curStepY);
+          curStepY += 26;
+        });
+
+        curStepY += 6;
+        current.ctx.font = `500 16.5px ${fontStack}`;
+        current.ctx.fillStyle = '#1e293b';
+        stepDetailLines.forEach((l) => {
+          current.ctx.fillText(l, MARGIN_X + INNER_PAD_X, curStepY);
+          curStepY += 24;
+        });
+
+        current.y += boxH + 14;
+      });
+
+      // Key Outputs
+      current.ctx.font = `700 16px ${fontStack}`;
+      const outLines = wrapTextLines(
+        current.ctx,
+        `ප්‍රධාන ප්‍රතිඵල (Key Outputs): ${ch.keyOutputs.join('   |   ')}`,
+        CONTENT_W
+      );
+      ensureSpace(outLines.length * 24 + 28);
+      current.ctx.fillStyle = '#9e5c19';
+      outLines.forEach((l) => {
+        current.ctx.fillText(l, MARGIN_X, current.y + 4);
+        current.y += 24;
+      });
+      current.y += 28;
+    });
+
+    // ==================== 4. COMPANY FORMAT SLOTS MATRIX ====================
+    ensureSpace(320);
+    drawRoundedRect(current.ctx, MARGIN_X, current.y, CONTENT_W, 46, 10, '#1e2640');
+    current.ctx.font = `700 17px ${fontStack}`;
+    current.ctx.fillStyle = '#dc9750';
+    current.ctx.fillText(
+      'COMPANY DOCUMENT FORMAT STUDIO — ආකෘති කාණ්ඩ 4 සහ අදාළ වන Sections (This Format Affects To)',
+      MARGIN_X + INNER_PAD_X,
+      current.y + 13
+    );
+    current.y += 62;
+
+    FORMAT_GROUPS_MATRIX_SI.forEach((slot) => {
+      current.ctx.font = `700 18px ${fontStack}`;
+      const titleLines = wrapTextLines(current.ctx, `${slot.code}: ${slot.title}`, INNER_TEXT_W);
+
+      current.ctx.font = `600 16px ${fontStack}`;
+      const structLines = wrapTextLines(current.ctx, `ව්‍යුහය: ${slot.structure}`, INNER_TEXT_W);
+
+      current.ctx.font = `500 16px ${fontStack}`;
+      const affectsLines: string[] = [];
+      slot.affectsTo.forEach((a) => {
+        affectsLines.push(...wrapTextLines(current.ctx, `✓  ${a}`, INNER_TEXT_W - 12));
+      });
+
+      const boxH =
+        24 +
+        titleLines.length * 26 +
+        structLines.length * 24 +
+        30 +
+        affectsLines.length * 24 +
+        18;
+      ensureSpace(boxH + 16);
+
+      drawRoundedRect(current.ctx, MARGIN_X, current.y, CONTENT_W, boxH, 10, '#ffffff', '#cbd5e1', 2);
+
+      let sy = current.y + 14;
+      current.ctx.font = `700 18px ${fontStack}`;
+      current.ctx.fillStyle = '#1e2640';
+      titleLines.forEach((l) => {
+        current.ctx.fillText(l, MARGIN_X + INNER_PAD_X, sy);
+        sy += 26;
+      });
+
+      sy += 4;
+      current.ctx.font = `600 16px ${fontStack}`;
+      current.ctx.fillStyle = '#475569';
+      structLines.forEach((l) => {
+        current.ctx.fillText(l, MARGIN_X + INNER_PAD_X, sy);
+        sy += 24;
+      });
+
+      sy += 6;
+      current.ctx.font = `700 16px ${fontStack}`;
+      current.ctx.fillStyle = '#9e5c19';
+      current.ctx.fillText('මෙම Format එක අදාළ වන Sections (This Format Affects To):', MARGIN_X + INNER_PAD_X, sy);
+      sy += 25;
+
+      current.ctx.font = `500 16px ${fontStack}`;
+      current.ctx.fillStyle = '#0f172a';
+      affectsLines.forEach((l) => {
+        current.ctx.fillText(l, MARGIN_X + INNER_PAD_X + 10, sy);
+        sy += 24;
+      });
+
+      current.y += boxH + 16;
+    });
+
+    // ==================== 5. FEATURE CHECKLIST ====================
+    ensureSpace(260);
+    current.y += 10;
+    drawRoundedRect(current.ctx, MARGIN_X, current.y, CONTENT_W, 46, 10, '#1e2640');
+    current.ctx.font = `700 17px ${fontStack}`;
+    current.ctx.fillStyle = '#dc9750';
+    current.ctx.fillText('සම්පූර්ණ පද්ධති විශේෂාංග ලැයිස්තුව (Complete Feature Checklist)', MARGIN_X + INNER_PAD_X, current.y + 13);
+    current.y += 62;
+
+    FEATURE_SUMMARY_LIST_SI.forEach((grp) => {
+      ensureSpace(140);
+      current.ctx.font = `700 18px ${fontStack}`;
+      current.ctx.fillStyle = '#1e2640';
+      current.ctx.fillText(grp.group, MARGIN_X, current.y);
+      current.y += 30;
+
+      current.ctx.font = `500 16.5px ${fontStack}`;
+      current.ctx.fillStyle = '#1e293b';
+      grp.items.forEach((itm) => {
+        const lines = wrapTextLines(current.ctx, `✓  ${itm}`, CONTENT_W - 20);
+        ensureSpace(lines.length * 24 + 8);
+        lines.forEach((l) => {
+          current.ctx.fillText(l, MARGIN_X + 14, current.y);
+          current.y += 24;
+        });
+        current.y += 4;
+      });
+      current.y += 16;
+    });
+
+    // ==================== 6. FOOTER & PAGE NUMBERS ON ALL PAGES ====================
+    const totalPages = pages.length;
+    pages.forEach((canvas, idx) => {
+      const ctx = canvas.getContext('2d')!;
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(MARGIN_X, PAGE_H - 68);
+      ctx.lineTo(PAGE_W - MARGIN_X, PAGE_H - 68);
+      ctx.stroke();
+
+      ctx.font = `500 14px ${fontStack}`;
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(
+        'Apex Stock Enterprise SaaS · නිල සිංහල පරිශීලක උපදෙස් අත්පොත · apexdevinfo@gmail.com',
+        MARGIN_X,
+        PAGE_H - 48
+      );
+      ctx.font = `700 14px ${fontStack}`;
+      const pageLabel = `පිටුව ${idx + 1} / ${totalPages}`;
+      const labelW = ctx.measureText(pageLabel).width;
+      ctx.fillText(pageLabel, PAGE_W - MARGIN_X - labelW, PAGE_H - 48);
+    });
+
+    // Pack all rendered A4 pages into a multi-page jsPDF document
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    pages.forEach((canvas, idx) => {
+      if (idx > 0) pdf.addPage();
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    });
+
+    pdf.save('Apex_Stock_Sinhala_User_Guide_Handbook.pdf');
+  };
+
+  const handlePrintPdfManual = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      if (guideLang === 'si') {
+        await generateSinhalaCanvasPdf();
+        setPdfSuccessMessage('සිංහල PDF අත්පොත බාගත විය!');
+      } else {
+        generateEnglishVectorPdf();
+        setPdfSuccessMessage('English PDF Downloaded!');
+      }
       setTimeout(() => setPdfSuccessMessage(null), 4000);
     } catch (err) {
       console.error('Failed to generate User Guide PDF:', err);
@@ -703,44 +1423,85 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
   };
 
   return (
-    <div className="py-6 sm:py-12 relative z-10">
+    <div
+      className="py-6 sm:py-12 relative z-10"
+      style={
+        guideLang === 'si'
+          ? { fontFamily: '"Noto Sans Sinhala", "Iskoola Pota", system-ui, sans-serif' }
+          : undefined
+      }
+    >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        {/* ==================== WEB CONTROLS BAR (HIDDEN WHEN PRINTING PDF) ==================== */}
-        <div className="no-print flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 mb-5 sm:mb-6">
-          <button
-            type="button"
-            onClick={onBackToOverview}
-            className="w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#253050] hover:bg-[#2d3a5e] text-white border border-[#dc9750]/40 text-xs font-extrabold flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm cursor-pointer transition whitespace-nowrap"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#dc9750]" />
-            <span className="hidden sm:inline">Back to Platform </span>
-            <span>Overview</span>
-          </button>
+        {/* ==================== TOP BAR: BACK + LANGUAGE TABS + DOWNLOAD PDF ==================== */}
+        <div className="no-print flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 mb-5 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onBackToOverview}
+              className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-[#253050] hover:bg-[#2d3a5e] text-white border border-[#dc9750]/40 text-xs font-extrabold flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm cursor-pointer transition whitespace-nowrap"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#dc9750]" />
+              <span>{guideLang === 'si' ? 'ප්‍රධාන පිටුවට (Overview)' : 'Back to Platform Overview'}</span>
+            </button>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+            {/* 2-TAB LANGUAGE SWITCHER: ENGLISH GUIDE vs SINHALA GUIDE */}
+            <div className="bg-[#161d33] p-1 rounded-xl border border-[#dc9750]/50 flex items-center gap-1 shadow-md">
+              <button
+                type="button"
+                onClick={() => setGuideLang('en')}
+                className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
+                  guideLang === 'en'
+                    ? 'bg-[#dc9750] text-[#1e2640] shadow-xs'
+                    : 'text-slate-200 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>English Guide</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGuideLang('si')}
+                className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
+                  guideLang === 'si'
+                    ? 'bg-[#dc9750] text-[#1e2640] shadow-xs'
+                    : 'text-slate-200 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Sinhala Guide (සිංහල අත්පොත)</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full lg:w-auto">
             <button
               type="button"
               onClick={handlePrintPdfManual}
               disabled={isDownloadingPdf}
-              className="w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-md shadow-[#dc9750]/20 cursor-pointer transition whitespace-nowrap disabled:opacity-60"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-[#dc9750]/20 cursor-pointer transition whitespace-nowrap disabled:opacity-60"
             >
               <Download className="w-4 h-4" />
               <span>
                 {isDownloadingPdf
-                  ? 'Generating PDF...'
+                  ? guideLang === 'si'
+                    ? 'සිංහල PDF සකසමින්...'
+                    : 'Generating PDF...'
                   : pdfSuccessMessage
                   ? pdfSuccessMessage
-                  : 'Download Guide (PDF)'}
+                  : guideLang === 'si'
+                  ? 'සිංහල Guide එක බාගන්න (PDF)'
+                  : 'Download English Guide (PDF)'}
               </span>
             </button>
 
             <button
               type="button"
               onClick={onOpenSignup}
-              className="w-full sm:w-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#161d33] hover:bg-[#222c4a] text-white border border-[#dc9750]/40 font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-md cursor-pointer transition whitespace-nowrap"
+              className="w-full sm:w-auto px-3.5 sm:px-4 py-2.5 rounded-xl bg-[#161d33] hover:bg-[#222c4a] text-white border border-[#dc9750]/40 font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-md cursor-pointer transition whitespace-nowrap"
             >
               <span className="text-[#e5a460] font-black">
-                <span className="hidden sm:inline">Start 7-Day </span>Free Trial
+                {guideLang === 'si' ? 'දින 7ක නොමිලේ ගිණුම අරඹන්න' : 'Start 7-Day Free Trial'}
               </span>
               <ArrowRight className="w-3.5 h-3.5 text-[#dc9750]" />
             </button>
@@ -754,14 +1515,18 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-slate-950">
-                  APEX STOCK — OFFICIAL SYSTEM USER GUIDE & FEATURE HANDBOOK
+                  {guideLang === 'si'
+                    ? 'APEX STOCK — නිල සිංහල පරිශීලක උපදෙස් සහ විශේෂාංග අත්පොත'
+                    : 'APEX STOCK — OFFICIAL SYSTEM USER GUIDE & FEATURE HANDBOOK'}
                 </h1>
                 <p className="text-xs text-slate-700 mt-1">
-                  Enterprise Cloud Inventory, Multi-Site Yard Operations, Company PDF/Image Format Studio & Field Crew Dispatch
+                  {guideLang === 'si'
+                    ? 'ප්‍රධාන ගබඩාව, ශාඛා ගබඩා, වැඩ කණ්ඩායම්, ව්‍යාපෘති සහ Company PDF/Image Format Studio උපදෙස් මාලාව'
+                    : 'Enterprise Cloud Inventory, Multi-Site Yard Operations, Company PDF/Image Format Studio & Field Crew Dispatch'}
                 </p>
               </div>
               <div className="text-right text-xs text-slate-600 font-mono">
-                <div>Edition: {new Date().getFullYear()} International</div>
+                <div>Edition: {new Date().getFullYear()}</div>
                 <div>apexdevinfo@gmail.com</div>
               </div>
             </div>
@@ -775,21 +1540,33 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               <div className="max-w-3xl">
                 <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-2">
                   <BookOpen className="w-4 h-4 text-[#b56b21]" />
-                  <span>Complete System Documentation & Client Handbook</span>
+                  <span>
+                    {guideLang === 'si'
+                      ? 'සම්පූර්ණ පද්ධති ක්‍රියාවලිය පැහැදිලි කරන සරල සිංහල අත්පොත'
+                      : 'Complete System Documentation & Client Handbook'}
+                  </span>
                 </div>
                 <h1 className="text-2xl sm:text-4xl font-black text-[#1e2640] tracking-tight leading-tight text-balance">
-                  How Apex Stock Works: Step-by-Step User Guide, Document Format Studio & Features
+                  {guideLang === 'si'
+                    ? 'Apex Stock ක්‍රියාත්මක වන ආකාරය: පියවරෙන් පියවර සරල සිංහල උපදෙස් මාලාව'
+                    : 'How Apex Stock Works: Step-by-Step User Guide, Document Format Studio & Features'}
                 </h1>
                 <p className="text-xs sm:text-sm text-[#2d3859] mt-3 leading-relaxed font-medium">
-                  Everything you need to understand how materials, client-supplied stock, heavy machinery, daily crew dispatches, and custom PDF/Image company document formats work across your headquarters, regional site yards, and active projects. Read online below or save this handbook as an A4 PDF.
+                  {guideLang === 'si'
+                    ? 'ඔබේ ප්‍රධාන ගබඩාව (Central Warehouse), ප්‍රාදේශීය ශාඛා ගබඩා (Site Branches), වැඩ කණ්ඩායම් (Field Teams), සේවාදායකයින් නොමිලේ සපයන තොග (Client FOC), යන්ත්‍රෝපකරණ සහ ඔබේ ආයතනයේ PDF/Image Document Formats පද්ධතියට ඇතුළත් කර මුද්‍රණය කරගන්නා ආකාරය මෙහි සරල සිංහලෙන් විස්තර කර ඇත.'
+                    : 'Everything you need to understand how materials, client-supplied stock, heavy machinery, daily crew dispatches, and custom PDF/Image company document formats work across your headquarters, regional site yards, and active projects. Read online below or save this handbook as an A4 PDF.'}
                 </p>
               </div>
 
-              {/* Quick PDF & Trial Box */}
+              {/* Quick PDF & Language Switch Box */}
               <div className="no-print shrink-0 bg-[#1e2640] text-white rounded-2xl p-5 border border-[#dc9750]/50 lg:w-80 shadow-xl">
-                <div className="text-xs font-bold text-[#e5a460]">Share with Your Team or Management</div>
+                <div className="text-xs font-bold text-[#e5a460]">
+                  {guideLang === 'si' ? 'PDF අත්පොතක් ලෙස බාගත කරගන්න' : 'Share with Your Team or Management'}
+                </div>
                 <p className="text-[11px] text-slate-200 mt-1 leading-relaxed">
-                  Save this complete guide as a clean A4 PDF document to review offline with project managers, engineers, or storekeepers.
+                  {guideLang === 'si'
+                    ? 'මෙම සම්පූර්ණ සිංහල උපදෙස් මාලාව A4 PDF ගොනුවක් ලෙස ඔබේ දුරකථනයට හෝ පරිගණකයට බාගත කර කාර්ය මණ්ඩලය සමඟ බෙදාගන්න.'
+                    : 'Save this complete guide as a clean A4 PDF document to review offline with project managers, engineers, or storekeepers.'}
                 </p>
                 <button
                   type="button"
@@ -800,10 +1577,14 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   <Download className="w-4 h-4" />
                   <span>
                     {isDownloadingPdf
-                      ? 'Generating PDF...'
+                      ? guideLang === 'si'
+                        ? 'සිංහල PDF සකසමින්...'
+                        : 'Generating PDF...'
                       : pdfSuccessMessage
                       ? pdfSuccessMessage
-                      : 'Download PDF Handbook'}
+                      : guideLang === 'si'
+                      ? 'සිංහල PDF අත්පොත බාගන්න'
+                      : 'Download English PDF Handbook'}
                   </span>
                 </button>
               </div>
@@ -813,48 +1594,92 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <div className="mt-8 pt-7 border-t border-[#dc9750]/35">
               <div className="text-xs font-extrabold text-[#1e2640] mb-4 flex items-center gap-2">
                 <Layers className="w-4 h-4 text-[#b56b21]" />
-                <span>End-to-End Operational Flow at a Glance (6 Core Stages)</span>
+                <span>
+                  {guideLang === 'si'
+                    ? 'පද්ධතියේ සමස්ත ක්‍රියාවලිය කෙටියෙන් (ප්‍රධාන පියවර 6)'
+                    : 'End-to-End Operational Flow at a Glance (6 Core Stages)'}
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-                {[
-                  {
-                    stage: 'Stage 01',
-                    title: 'Master & Crew Setup',
-                    desc: 'Register items, site yards, suppliers, clients & teams (auto crew size).',
-                    icon: HardHat,
-                  },
-                  {
-                    stage: 'Stage 02',
-                    title: 'PO, GRN & RTV',
-                    desc: 'Issue Supplier POs, print batch GRNs, log Client FOC & Debit Notes.',
-                    icon: ShoppingCart,
-                  },
-                  {
-                    stage: 'Stage 03',
-                    title: 'Branch Transfer',
-                    desc: 'Site branches request stock (RN); Central HQ approves & dispatches.',
-                    icon: Building2,
-                  },
-                  {
-                    stage: 'Stage 04',
-                    title: 'Field Crew Issue',
-                    desc: 'Issue materials & tools to Crew Leaders (IN) with live custody guard.',
-                    icon: Users2,
-                  },
-                  {
-                    stage: 'Stage 05',
-                    title: 'Usage & Returns',
-                    desc: 'Log project usage (PU — client stock first) & return surplus (RV / BRM).',
-                    icon: RotateCcw,
-                  },
-                  {
-                    stage: 'Stage 06',
-                    title: 'Company Formats',
-                    desc: 'Upload PDF/Image company forms to print all vouchers in your layout.',
-                    icon: Upload,
-                  },
-                ].map((item) => {
+                {(guideLang === 'si'
+                  ? [
+                      {
+                        stage: 'පියවර 01',
+                        title: 'මූලික ලියාපදිංචිය',
+                        desc: 'භාණ්ඩ, යන්ත්‍රෝපකරණ, ශාඛා, සැපයුම්කරුවන් සහ Teams (Auto Crew Size) ඇතුළත් කිරීම.',
+                        icon: HardHat,
+                      },
+                      {
+                        stage: 'පියවර 02',
+                        title: 'PO, GRN සහ RTV',
+                        desc: 'සැපයුම්කරු PO නිකුත් කිරීම, GRN මුද්‍රණය, Client FOC සහ RTV හර සටහන්.',
+                        icon: ShoppingCart,
+                      },
+                      {
+                        stage: 'පියවර 03',
+                        title: 'ශාඛා තොග හුවමාරුව',
+                        desc: 'ශාඛා මගින් බඩු ඉල්ලුම් කිරීම (RN) සහ ප්‍රධාන ගබඩාවෙන් ශාඛා වෙත යැවීම.',
+                        icon: Building2,
+                      },
+                      {
+                        stage: 'පියවර 04',
+                        title: 'කණ්ඩායම් නිකුත් කිරීම්',
+                        desc: 'Team Leaders වෙත භාණ්ඩ හා ටූල්ස් නිකුත් කිරීම (IN) සහ අත ඇති තොග පරීක්ෂාව.',
+                        icon: Users2,
+                      },
+                      {
+                        stage: 'පියවර 05',
+                        title: 'භාවිතය සහ Returns',
+                        desc: 'ව්‍යාපෘති භාවිතය (PU) සටහන් කිරීම සහ ඉතිරි භාණ්ඩ ආපසු භාරදීම (RV / BRM).',
+                        icon: RotateCcw,
+                      },
+                      {
+                        stage: 'පියවර 06',
+                        title: 'Company Formats',
+                        desc: 'ආයතනයේ PDF/Image Format එක Upload කර සියලුම වවුචර් එම ආකෘතියෙන් මුද්‍රණය.',
+                        icon: Upload,
+                      },
+                    ]
+                  : [
+                      {
+                        stage: 'Stage 01',
+                        title: 'Master & Crew Setup',
+                        desc: 'Register items, site yards, suppliers, clients & teams (auto crew size).',
+                        icon: HardHat,
+                      },
+                      {
+                        stage: 'Stage 02',
+                        title: 'PO, GRN & RTV',
+                        desc: 'Issue Supplier POs, print batch GRNs, log Client FOC & Debit Notes.',
+                        icon: ShoppingCart,
+                      },
+                      {
+                        stage: 'Stage 03',
+                        title: 'Branch Transfer',
+                        desc: 'Site branches request stock (RN); Central HQ approves & dispatches.',
+                        icon: Building2,
+                      },
+                      {
+                        stage: 'Stage 04',
+                        title: 'Field Crew Issue',
+                        desc: 'Issue materials & tools to Crew Leaders (IN) with live custody guard.',
+                        icon: Users2,
+                      },
+                      {
+                        stage: 'Stage 05',
+                        title: 'Usage & Returns',
+                        desc: 'Log project usage (PU - client stock first) & return surplus (RV / BRM).',
+                        icon: RotateCcw,
+                      },
+                      {
+                        stage: 'Stage 06',
+                        title: 'Company Formats',
+                        desc: 'Upload PDF/Image company forms to print all vouchers in your layout.',
+                        icon: Upload,
+                      },
+                    ]
+                ).map((item) => {
                   const StageIcon = item.icon;
                   return (
                     <div
@@ -884,15 +1709,26 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           <div className="no-print rounded-2xl bg-[#faf4ec] border border-[#dc9750]/50 p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-sm">
             {/* Category Filter Buttons */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-              {[
-                { id: 'all', label: 'All Chapters (06)' },
-                { id: 'setup', label: '01. Setup & Teams' },
-                { id: 'warehouse', label: '02. PO, GRN & RTV' },
-                { id: 'operations', label: '03. Site & Crew Dispatch' },
-                { id: 'projects', label: '04. Projects & Returns' },
-                { id: 'formats', label: '05. Format Upload Studio' },
-                { id: 'admin', label: '06. Machinery & Security' },
-              ].map((tab) => (
+              {(guideLang === 'si'
+                ? [
+                    { id: 'all', label: 'සියලුම පරිච්ඡේද (06)' },
+                    { id: 'setup', label: '01. ලියාපදිංචිය සහ Teams' },
+                    { id: 'warehouse', label: '02. PO, GRN සහ RTV' },
+                    { id: 'operations', label: '03. ශාඛා සහ Crew නිකුත් කිරීම්' },
+                    { id: 'projects', label: '04. ව්‍යාපෘති සහ Returns' },
+                    { id: 'formats', label: '05. Format Upload Studio' },
+                    { id: 'admin', label: '06. යන්ත්‍රෝපකරණ සහ Backups' },
+                  ]
+                : [
+                    { id: 'all', label: 'All Chapters (06)' },
+                    { id: 'setup', label: '01. Setup & Teams' },
+                    { id: 'warehouse', label: '02. PO, GRN & RTV' },
+                    { id: 'operations', label: '03. Site & Crew Dispatch' },
+                    { id: 'projects', label: '04. Projects & Returns' },
+                    { id: 'formats', label: '05. Format Upload Studio' },
+                    { id: 'admin', label: '06. Machinery & Security' },
+                  ]
+              ).map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
@@ -915,7 +1751,11 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search guide (e.g. Format, GRN, Team, RTV)..."
+                placeholder={
+                  guideLang === 'si'
+                    ? 'උපදෙස් සොයන්න (උදා: Format, GRN, Team)...'
+                    : 'Search guide (e.g. Format, GRN, Team, RTV)...'
+                }
                 className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -926,7 +1766,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             {filteredChapters.length === 0 ? (
               <div className="rounded-2xl bg-white/85 border border-slate-200 p-10 text-center">
                 <p className="text-sm font-bold text-slate-800">
-                  No guide sections matched &ldquo;{searchQuery}&rdquo;.
+                  {guideLang === 'si'
+                    ? `"${searchQuery}" සඳහා ගැළපෙන කොටසක් හමු නොවීය.`
+                    : `No guide sections matched "${searchQuery}".`}
                 </p>
                 <button
                   type="button"
@@ -936,7 +1778,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   }}
                   className="mt-3 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer"
                 >
-                  Show All Guide Chapters
+                  {guideLang === 'si' ? 'සියලුම පරිච්ඡේද පෙන්වන්න' : 'Show All Guide Chapters'}
                 </button>
               </div>
             ) : (
@@ -992,7 +1834,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     <div className="mt-5 pt-4 border-t border-[#dc9750]/25 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
                       <span className="font-extrabold text-[#1e2640] flex items-center gap-1.5">
                         <FileText className="w-3.5 h-3.5 text-[#b56b21]" />
-                        <span>Key Outputs & Controls:</span>
+                        <span>
+                          {guideLang === 'si' ? 'ප්‍රධාන ප්‍රතිඵල සහ පාලනයන්:' : 'Key Outputs & Controls:'}
+                        </span>
                       </span>
                       {chapter.keyOutputs.map((out) => (
                         <span key={out} className="flex items-center gap-1.5 font-bold text-[#2d3859]">
@@ -1013,23 +1857,40 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               <div>
                 <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-1.5">
                   <Sparkles className="w-4 h-4 text-[#b56b21]" />
-                  <span>Standard Document Format Reference Guide (PDF / Image Upload)</span>
+                  <span>
+                    {guideLang === 'si'
+                      ? 'ආයතනයේ Document Formats (PDF / Image) Upload කරන ආකාරය පිළිබඳ විශේෂ මාර්ගෝපදේශය'
+                      : 'Standard Document Format Reference Guide (PDF / Image Upload)'}
+                  </span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-[#1e2640] tracking-tight">
-                  How Company Document Format Upload & &ldquo;This Format Affects To&rdquo; Works
+                  {guideLang === 'si'
+                    ? 'Company Format Upload කිරීම සහ "This Format Affects To" ක්‍රියාත්මක වන ආකාරය'
+                    : 'How Company Document Format Upload & "This Format Affects To" Works'}
                 </h2>
                 <p className="text-xs sm:text-sm text-[#2d3859] mt-1 font-medium max-w-4xl">
-                  In <strong>Document Templates → Section Formats (Upload PDF / Image)</strong>, company forms sharing the same structure are grouped into 4 standard slots. Uploading a PDF or Image automatically adapts your company format for printing across every linked section listed under <strong>&ldquo;This Format Affects To&rdquo;</strong>.
+                  {guideLang === 'si' ? (
+                    <>
+                      <strong>Document Templates -&gt; Section Formats (Upload PDF / Image)</strong> තුළදී ඔබේ ආයතනයේ සමාන ව්‍යුහයක් ඇති ආකෘති පත්‍ර ප්‍රධාන කාණ්ඩ 4කට ගොනු කර ඇත. ඔබ PDF එකක් හෝ Image එකක් Upload කළ විට ඊට යටින් ඇති{' '}
+                      <strong>&ldquo;This Format Affects To&rdquo;</strong> කොටසේ පෙන්වන සියලුම Sections වලින් මුද්‍රණය කරන විට එම Format එක ස්වයංක්‍රීයව භාවිත වේ.
+                    </>
+                  ) : (
+                    <>
+                      In <strong>Document Templates -&gt; Section Formats (Upload PDF / Image)</strong>, company forms sharing the same structure are grouped into 4 standard slots. Uploading a PDF or Image automatically adapts your company format for printing across every linked section listed under <strong>&ldquo;This Format Affects To&rdquo;</strong>.
+                    </>
+                  )}
                 </p>
               </div>
               <div className="shrink-0 bg-[#1e2640] text-[#dc9750] px-4 py-2.5 rounded-xl text-xs font-extrabold border border-[#dc9750]/40">
-                Supports PDF (.pdf) & Images (.png, .jpg, .webp)
+                {guideLang === 'si'
+                  ? 'PDF (.pdf) සහ Images (.png, .jpg, .webp) සඳහා සහය දක්වයි'
+                  : 'Supports PDF (.pdf) & Images (.png, .jpg, .webp)'}
               </div>
             </div>
 
             {/* 4 Format Groups Matrix */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-              {FORMAT_GROUPS_GUIDE_MATRIX.map((slot) => (
+              {activeFormatMatrix.map((slot) => (
                 <div
                   key={slot.code}
                   className="rounded-2xl bg-white border border-[#dc9750]/35 p-4 flex flex-col justify-between shadow-2xs"
@@ -1040,7 +1901,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                         {slot.code}
                       </span>
                       <span className="text-[11px] font-bold text-[#9e5c19]">
-                        PDF / Image Upload Slot
+                        {guideLang === 'si' ? 'PDF / Image Upload කාණ්ඩය' : 'PDF / Image Upload Slot'}
                       </span>
                     </div>
                     <h3 className="text-sm font-black text-[#1e2640]">{slot.title}</h3>
@@ -1051,7 +1912,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
 
                   <div className="mt-3.5 pt-3 border-t border-slate-200/80">
                     <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#9e5c19] mb-1.5">
-                      This Format Affects To (Printed Sections):
+                      {guideLang === 'si'
+                        ? 'මෙම Format එක බලපාන Sections (This Format Affects To):'
+                        : 'This Format Affects To (Printed Sections):'}
                     </div>
                     <div className="space-y-1">
                       {slot.affectsTo.map((sec) => (
@@ -1069,21 +1932,39 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             {/* 3 Render Modes Explanation */}
             <div className="mt-5 pt-4 border-t border-[#dc9750]/25 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <div className="rounded-xl bg-white/90 border border-[#dc9750]/25 p-3.5">
-                <div className="font-extrabold text-[#1e2640]">Mode A: Extracted Header Banner + System Table</div>
+                <div className="font-extrabold text-[#1e2640]">
+                  {guideLang === 'si'
+                    ? 'ක්‍රමය A: Extracted Header Banner + System Table'
+                    : 'Mode A: Extracted Header Banner + System Table'}
+                </div>
                 <p className="text-[11px] text-[#334063] mt-1 leading-relaxed">
-                  Crops your uploaded PDF/Image letterhead banner at the top (adjustable 10%–45% crop height) and renders a crisp, brand-colored system table and 3-column signature block below.
+                  {guideLang === 'si'
+                    ? 'ඔබ Upload කළ PDF/Image එකේ උඩ Letterhead/Header කොටස (10%–45% දක්වා උස සීරුමාරු කළ හැක) ලබාගෙන, ඊට යටින් පද්ධතියේ පැහැදිලි වගුව සහ අත්සන් තීරු 3 මුද්‍රණය කරයි.'
+                    : 'Crops your uploaded PDF/Image letterhead banner at the top (adjustable 10%–45% crop height) and renders a crisp, brand-colored system table and 3-column signature block below.'}
                 </p>
               </div>
               <div className="rounded-xl bg-white/90 border border-[#dc9750]/25 p-3.5">
-                <div className="font-extrabold text-[#1e2640]">Mode B: Full Uploaded Form Background Watermark</div>
+                <div className="font-extrabold text-[#1e2640]">
+                  {guideLang === 'si'
+                    ? 'ක්‍රමය B: Full Uploaded Form Background Watermark'
+                    : 'Mode B: Full Uploaded Form Background Watermark'}
+                </div>
                 <p className="text-[11px] text-[#334063] mt-1 leading-relaxed">
-                  Uses your entire uploaded A4 page as the background stationery/watermark and overlays live system data, tables, and signature blocks cleanly on top.
+                  {guideLang === 'si'
+                    ? 'ඔබ Upload කළ සම්පූර්ණ A4 පත්‍රිකාව පසුබිම් ලිපි ශීර්ෂය (Background Stationery) ලෙස තබාගෙන ඒ මත පද්ධතියේ දත්ත සහ වගුව පැහැදිලිව මුද්‍රණය කරයි.'
+                    : 'Uses your entire uploaded A4 page as the background stationery/watermark and overlays live system data, tables, and signature blocks cleanly on top.'}
                 </p>
               </div>
               <div className="rounded-xl bg-white/90 border border-[#dc9750]/25 p-3.5">
-                <div className="font-extrabold text-[#1e2640]">Mode C: Smart Reconstructed Digital Grid</div>
+                <div className="font-extrabold text-[#1e2640]">
+                  {guideLang === 'si'
+                    ? 'ක්‍රමය C: Smart Reconstructed Digital Grid'
+                    : 'Mode C: Smart Reconstructed Digital Grid'}
+                </div>
                 <p className="text-[11px] text-[#334063] mt-1 leading-relaxed">
-                  Reconstructs your form digitally using the extracted brand color, ISO form reference code, custom table column headers, and custom bottom sign-off titles.
+                  {guideLang === 'si'
+                    ? 'ඔබේ ආකෘති පත්‍රයේ Brand Color එක, ISO Form Reference අංකය, වගුවේ තීරු නාමයන් (Column Headers) සහ අත්සන් තීරු ඩිජිටල් ලෙස ප්‍රතිනිර්මාණය කර මුද්‍රණය කරයි.'
+                    : 'Reconstructs your form digitally using the extracted brand color, ISO form reference code, custom table column headers, and custom bottom sign-off titles.'}
                 </p>
               </div>
             </div>
@@ -1095,17 +1976,25 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <div className="lg:col-span-7 rounded-[24px] bg-[#fdfaf5] border border-[#dc9750]/45 p-6 sm:p-8 shadow-md">
               <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-2">
                 <FileSpreadsheet className="w-4 h-4 text-[#b56b21]" />
-                <span>Complete Module & Feature Checklist</span>
+                <span>
+                  {guideLang === 'si'
+                    ? 'සම්පූර්ණ පද්ධති විශේෂාංග ලැයිස්තුව'
+                    : 'Complete Module & Feature Checklist'}
+                </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-[#1e2640] tracking-tight">
-                Everything Included in Every Workspace
+                {guideLang === 'si'
+                  ? 'සෑම ආයතන ගිණුමකටම ඇතුළත් සියලුම පහසුකම්'
+                  : 'Everything Included in Every Workspace'}
               </h2>
               <p className="text-xs text-[#475577] mt-1 font-medium">
-                All modules below are unlocked during your 7-Day Free Trial as well as Pro Monthly and Pro Annual plans.
+                {guideLang === 'si'
+                  ? 'දින 7ක නොමිලේ කාලසීමාව (Free Trial) තුළ මෙන්ම Pro Monthly සහ Pro Annual සැලසුම් යටතේද පහත සියලුම පහසුකම් සම්පූර්ණයෙන්ම විවෘතය.'
+                  : 'All modules below are unlocked during your 7-Day Free Trial as well as Pro Monthly and Pro Annual plans.'}
               </p>
 
               <div className="mt-5 space-y-5">
-                {FEATURE_SUMMARY_LIST.map((sec) => (
+                {activeFeatureList.map((sec) => (
                   <div key={sec.group} className="pt-4 first:pt-0 border-t first:border-t-0 border-[#dc9750]/25">
                     <h3 className="text-xs font-black text-[#1e2640] mb-2.5">{sec.group}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1126,33 +2015,49 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               <div>
                 <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-2">
                   <Lock className="w-4 h-4 text-[#b56b21]" />
-                  <span>Staff Access Control Guide</span>
+                  <span>
+                    {guideLang === 'si' ? 'නිලධාරී බලතල සහ ආරක්ෂාව' : 'Staff Access Control Guide'}
+                  </span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-[#1e2640] tracking-tight">
-                  How Staff Roles Work
+                  {guideLang === 'si' ? 'නිලධාරී ගිණුම් ක්‍රියාත්මක වන ආකාරය' : 'How Staff Roles Work'}
                 </h2>
                 <p className="text-xs text-[#475577] mt-1 font-medium">
-                  Assign tailored access to headquarters executives and regional site storekeepers.
+                  {guideLang === 'si'
+                    ? 'ප්‍රධාන කාර්යාලයේ කළමනාකරුවන්ට සහ ප්‍රාදේශීය වැඩබිම් ගබඩා භාරකරුවන්ට වෙන් වෙන් වශයෙන් බලතල ලබාදිය හැක.'
+                    : 'Assign tailored access to headquarters executives and regional site storekeepers.'}
                 </p>
 
                 <div className="mt-5 space-y-4">
                   <div className="rounded-2xl bg-white border border-[#dc9750]/30 p-4">
                     <div className="flex items-center gap-2 text-xs font-black text-[#1e2640]">
                       <UserCheck className="w-4 h-4 text-[#b56b21]" />
-                      <span>Central HQ Administrator / Store Manager</span>
+                      <span>
+                        {guideLang === 'si'
+                          ? 'ප්‍රධාන කාර්යාල පරිපාලක (Central HQ Admin / Store Manager)'
+                          : 'Central HQ Administrator / Store Manager'}
+                      </span>
                     </div>
                     <p className="text-xs text-[#334063] mt-1.5 leading-relaxed font-medium">
-                      Full visibility across Central Warehouse, Client-Supplied Free Stock, Supplier Purchase Orders (PO/GRN/RTV), Master Registrations, Document Format Studio, all Regional Site Yards, Audit Trails, and System Backups.
+                      {guideLang === 'si'
+                        ? 'ප්‍රධාන ගබඩාව, Client Free Stock, සැපයුම්කරු ඇණවුම් (PO/GRN/RTV), Master Registrations, Document Format Studio, සියලුම ශාඛා ගබඩා, Audit Trail සහ System Backups පිළිබඳ පූර්ණ බලතල හිමිවේ.'
+                        : 'Full visibility across Central Warehouse, Client-Supplied Free Stock, Supplier Purchase Orders (PO/GRN/RTV), Master Registrations, Document Format Studio, all Regional Site Yards, Audit Trails, and System Backups.'}
                     </p>
                   </div>
 
                   <div className="rounded-2xl bg-white border border-[#dc9750]/30 p-4">
                     <div className="flex items-center gap-2 text-xs font-black text-[#1e2640]">
                       <Truck className="w-4 h-4 text-[#1e2640]" />
-                      <span>Site Branch Supervisor / Yard Storekeeper</span>
+                      <span>
+                        {guideLang === 'si'
+                          ? 'ශාඛා වැඩබිම් පරීක්ෂක / ගබඩා භාරකරු (Site Branch Supervisor)'
+                          : 'Site Branch Supervisor / Yard Storekeeper'}
+                      </span>
                     </div>
                     <p className="text-xs text-[#334063] mt-1.5 leading-relaxed font-medium">
-                      Can be locked to a Single Site Branch or assigned to Multiple Specific Site Branches. Can submit Stock Requisitions (RN) to HQ, manage their assigned Site Yard stock, issue items to Field Crews (IN), and log Project Material Usage (PU) & Returns (RV/BRM).
+                      {guideLang === 'si'
+                        ? 'තමන්ට අනුයුක්ත කළ එක් ශාඛාවකට (Single Site) හෝ ශාඛා කිහිපයකට (Multi-Site) පමණක් ප්‍රවේශය සීමා කළ හැක. බඩු ඉල්ලුම්පත් (RN) යොමු කිරීම, ශාඛා තොග පාලනය, වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීම (IN) සහ ව්‍යාපෘති භාවිතයන් (PU) හා Returns (RV/BRM) සටහන් කළ හැක.'
+                        : 'Can be locked to a Single Site Branch or assigned to Multiple Specific Site Branches. Can submit Stock Requisitions (RN) to HQ, manage their assigned Site Yard stock, issue items to Field Crews (IN), and log Project Material Usage (PU) & Returns (RV/BRM).'}
                     </p>
                   </div>
                 </div>
@@ -1166,7 +2071,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     onClick={onOpenSignup}
                     className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-[#1e2640] hover:bg-[#283354] text-[#dc9750] font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap"
                   >
-                    <span>Start 7-Day Free Trial</span>
+                    <span>
+                      {guideLang === 'si' ? 'දින 7ක නොමිලේ ගිණුම අරඹන්න' : 'Start 7-Day Free Trial'}
+                    </span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                   <button
@@ -1174,7 +2081,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     onClick={onOpenLogin}
                     className="w-full sm:w-auto py-3 px-4 rounded-xl bg-white hover:bg-slate-50 text-[#1e2640] border border-[#1e2640]/30 font-bold text-xs cursor-pointer transition whitespace-nowrap"
                   >
-                    Client Login
+                    {guideLang === 'si' ? 'පද්ධතියට පිවිසෙන්න (Login)' : 'Client Login'}
                   </button>
                 </div>
               </div>
