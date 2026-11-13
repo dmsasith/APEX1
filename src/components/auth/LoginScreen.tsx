@@ -225,11 +225,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                         Logging in to Workspace
                       </div>
                       <div className="text-xs font-extrabold text-slate-900">
-                        {tenants.find(
-                          (t) =>
-                            t.slug.toLowerCase() === workspaceCode.toLowerCase() ||
-                            t.id === workspaceCode
-                        )?.companyName || workspaceCode}
+                        {tenants
+                          .filter(
+                            (t) =>
+                              t.slug.toLowerCase() === workspaceCode.toLowerCase() ||
+                              t.id === workspaceCode
+                          )
+                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.companyName ||
+                          workspaceCode}
                       </div>
                     </div>
                   </div>

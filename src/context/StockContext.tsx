@@ -81,6 +81,7 @@ import {
 import {
   subscribeToFirebaseTenants,
   writeTenantsToFirebase,
+  fetchTenantsFromFirebase,
   subscribeToFirebaseDeletedTenants,
   deleteTenantInFirebase,
   subscribeToFirebaseTenantData,
@@ -804,6 +805,32 @@ function persistTenantsLocal(tenantsList: Tenant[]): Tenant[] {
   return clean;
 }
 
+function saveTenantDataLocalOnly<T>(tenantId: string, key: string, data: T) {
+  try {
+    if (
+      tenantId &&
+      tenantId !== DEFAULT_TENANT.id &&
+      tenantId !== 'tenant-apex-main' &&
+      getDeletedTenantIds().has(tenantId)
+    ) {
+      return;
+    }
+
+    if (key === 'tenants' && Array.isArray(data)) {
+      persistTenantsLocal(data as unknown as Tenant[]);
+      return;
+    }
+
+    const tenantKey = getTenantStorageKey(tenantId, key);
+    localStorage.setItem(tenantKey, JSON.stringify(data));
+    if (tenantId === DEFAULT_TENANT.id && key !== 'current_tenant_id') {
+      localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(data));
+    }
+  } catch (err) {
+    console.warn(`Failed to save ${key} locally for tenant ${tenantId}:`, err);
+  }
+}
+
 function saveTenantData<T>(tenantId: string, key: string, data: T) {
   try {
     if (
@@ -821,11 +848,7 @@ function saveTenantData<T>(tenantId: string, key: string, data: T) {
       return;
     }
 
-    const tenantKey = getTenantStorageKey(tenantId, key);
-    localStorage.setItem(tenantKey, JSON.stringify(data));
-    if (tenantId === DEFAULT_TENANT.id && key !== 'current_tenant_id') {
-      localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(data));
-    }
+    saveTenantDataLocalOnly(tenantId, key, data);
     // Realtime sync to Firebase for all tenants (users, sites, config, items, teams, etc.)
     writeTenantDataToFirebase(tenantId, key, data).catch(() => {});
   } catch (err) {
@@ -1027,6 +1050,28 @@ export function sanitizeTenantUsers(tenantId: string, rawUsers: User[], _allTena
   });
 }
 
+function findMatchingTenantsBySlug(tenantsList: Tenant[], slugOrId: string): Tenant[] {
+  const clean = slugOrId.trim().toLowerCase();
+  const cleanAlphaNum = clean.replace(/[^a-z0-9]/g, '');
+  const deletedIds = getDeletedTenantIds();
+  const matches = tenantsList.filter(
+    (t) =>
+      t &&
+      t.id &&
+      (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id)) &&
+      (t.id.toLowerCase() === clean ||
+        t.slug?.toLowerCase() === clean ||
+        t.companyName?.toLowerCase() === clean ||
+        (cleanAlphaNum && t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanAlphaNum))
+  );
+  // Sort newest created first so if duplicate company slugs exist, the most recent workspace is prioritized
+  return matches.sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
+}
+
 export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [tenants, setTenants] = useState<Tenant[]>(() => {
     return getAllSavedTenants();
@@ -1043,18 +1088,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const urlParams = new URLSearchParams(window.location.search);
       const wsSlug = urlParams.get('workspace');
       if (wsSlug) {
-        const clean = wsSlug.trim().toLowerCase();
-        const foundBySlug = loadedTenants.find(
-          (t) =>
-            !deletedIds.has(t.id) &&
-            (t.slug?.toLowerCase() === clean ||
-              t.id?.toLowerCase() === clean ||
-              t.companyName?.toLowerCase() === clean ||
-              t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, ''))
-        );
-        if (foundBySlug) {
-          localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', foundBySlug.id);
-          return foundBySlug.id;
+        const matches = findMatchingTenantsBySlug(loadedTenants, wsSlug);
+        if (matches.length > 0) {
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', matches[0].id);
+          return matches[0].id;
         }
       }
       const storedId = localStorage.getItem(STORAGE_KEY_PREFIX + 'current_tenant_id');
@@ -1068,12 +1105,42 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   });
 
-  const currentTenantIdRef = useRef<string>(currentTenantId);
-  const loadedTenantIdRef = useRef<string>(currentTenantId);
+  // SaaS Tenant Preview State (declared early so activeTenantId can drive all workspace data & links)
+  const [previewTenantId, setPreviewTenantId] = useState<string | null>(null);
+  const activeTenantId = useMemo(() => previewTenantId || currentTenantId, [previewTenantId, currentTenantId]);
+
+  const currentTenantIdRef = useRef<string>(activeTenantId);
+  const loadedTenantIdRef = useRef<string>(activeTenantId);
   const isFlushingRef = useRef<boolean>(false);
+  // Tracks which tenantIds have completed initial Firebase hydration so empty local state never overwrites remote data
+  const hydratedTenantsRef = useRef<Set<string>>(new Set());
+  const isHydratingTenantRef = useRef<boolean>(false);
+  const hydrationSeqRef = useRef<number>(0);
+
   useEffect(() => {
-    currentTenantIdRef.current = currentTenantId;
-  }, [currentTenantId]);
+    currentTenantIdRef.current = activeTenantId;
+  }, [activeTenantId]);
+
+  // Fetch remote tenants list once on mount so fresh browsers with ?workspace=slug discover the workspace immediately
+  useEffect(() => {
+    fetchTenantsFromFirebase()
+      .then((remoteList) => {
+        if (remoteList && remoteList.length > 0) {
+          const deletedIds = getDeletedTenantIds();
+          const map = new Map<string, Tenant>();
+          (tenantsRef.current.length > 0 ? tenantsRef.current : getAllSavedTenants()).forEach((t) => {
+            if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+          });
+          remoteList.forEach((t) => {
+            if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+          });
+          const merged = persistTenantsLocal(Array.from(map.values()));
+          tenantsRef.current = merged;
+          setTenants(merged);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Auto-switch workspace if ?workspace=slug is present in URL
   useEffect(() => {
@@ -1081,37 +1148,39 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const urlParams = new URLSearchParams(window.location.search);
       const wsSlug = urlParams.get('workspace');
       if (wsSlug) {
-        const clean = wsSlug.trim().toLowerCase();
         const allList = tenants.length > 0 ? tenants : getAllSavedTenants();
-        let found = allList.find(
-          (t) =>
-            t.slug?.toLowerCase() === clean ||
-            t.id?.toLowerCase() === clean ||
-            t.companyName?.toLowerCase() === clean ||
-            t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, '')
-        );
+        let matches = findMatchingTenantsBySlug(allList, wsSlug);
 
-        if (!found) {
+        if (matches.length === 0) {
           const fresh = getAllSavedTenants();
-          found = fresh.find(
-            (t) =>
-              t.slug?.toLowerCase() === clean ||
-              t.id?.toLowerCase() === clean ||
-              t.companyName?.toLowerCase() === clean ||
-              t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === clean.replace(/[^a-z0-9]/g, '')
-          );
-          if (found) {
+          matches = findMatchingTenantsBySlug(fresh, wsSlug);
+          if (matches.length > 0) {
             setTenants(fresh);
+          } else {
+            // Fetch live tenants from Firebase if not yet in localStorage
+            fetchTenantsFromFirebase().then((remoteList) => {
+              if (remoteList && remoteList.length > 0) {
+                const deletedIds = getDeletedTenantIds();
+                const merged = persistTenantsLocal(
+                  remoteList.filter((t) => t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id)))
+                );
+                tenantsRef.current = merged;
+                setTenants(merged);
+              }
+            });
           }
         }
 
-        if (found && found.id !== currentTenantIdRef.current) {
-          setCurrentTenantId(found.id);
-          currentTenantIdRef.current = found.id;
+        // Only auto-switch if current active tenant does not already match the requested workspace slug
+        const alreadyMatches = matches.some((m) => m.id === currentTenantIdRef.current);
+        if (matches.length > 0 && !alreadyMatches) {
+          const target = matches[0];
+          setCurrentTenantId(target.id);
+          currentTenantIdRef.current = target.id;
           try {
-            localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', found.id);
+            localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', target.id);
           } catch {}
-          loadTenantStateIntoMemory(found.id);
+          loadTenantStateIntoMemory(target.id);
         }
       }
     }
@@ -1189,7 +1258,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const filtered = sanitizeTenantUsers(
         targetTenantId,
         filterPostFlushRecords(targetTenantId, 'users', prev),
-        tenants
+        tenantsRef.current
       );
       return filtered;
     });
@@ -1218,11 +1287,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   // Helper to sync all collections for any tenantId from Firebase RTDB (respecting flushMeta & deleted tombstones)
-  const syncTenantCollectionsFromFirebase = (targetTenantId: string) => {
+  const syncTenantCollectionsFromFirebase = async (targetTenantId: string): Promise<void> => {
     if (!targetTenantId || isFlushingRef.current) return;
     if (targetTenantId !== DEFAULT_TENANT.id && getDeletedTenantIds().has(targetTenantId)) return;
 
-    (async () => {
+    const seq = ++hydrationSeqRef.current;
+    isHydratingTenantRef.current = true;
+    try {
       // 1. Fetch flushMeta FIRST before merging any collection so pre-flush records can never resurrect
       const remoteFlushMeta = await fetchTenantDataFromFirebase<FlushMeta>(targetTenantId, 'flushMeta');
       if (targetTenantId !== DEFAULT_TENANT.id && getDeletedTenantIds().has(targetTenantId)) return;
@@ -1231,39 +1302,47 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
 
-      fetchTenantDataFromFirebase<User[]>(targetTenantId, 'users').then((remoteUsers) => {
+      const isMaster = targetTenantId === DEFAULT_TENANT.id || targetTenantId === 'tenant-apex-main';
+
+      const syncUsersTask = fetchTenantDataFromFirebase<User[]>(targetTenantId, 'users').then((remoteUsers) => {
+        if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
         if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
-          if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
           setUsers((prev) => {
             const cleanPrev = filterPostFlushRecords(targetTenantId, 'users', prev);
             const cleanRemote = filterPostFlushRecords(targetTenantId, 'users', remoteUsers);
-            const merged = sanitizeTenantUsers(targetTenantId, mergeListsById(cleanPrev, cleanRemote), tenants);
-            saveTenantData(targetTenantId, 'users', merged);
+            const merged = sanitizeTenantUsers(targetTenantId, mergeListsById(cleanPrev, cleanRemote), tenantsRef.current);
+            saveTenantDataLocalOnly(targetTenantId, 'users', merged);
+            if (merged.length > cleanRemote.length) {
+              writeTenantDataToFirebase(targetTenantId, 'users', merged).catch(() => {});
+            }
             return merged;
           });
         }
       });
 
-      fetchTenantDataFromFirebase<Site[]>(targetTenantId, 'sites').then((remoteSites) => {
+      const syncSitesTask = fetchTenantDataFromFirebase<Site[]>(targetTenantId, 'sites').then((remoteSites) => {
+        if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
         if (remoteSites && Array.isArray(remoteSites) && remoteSites.length > 0) {
-          if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
           setSites((prev) => {
             const cleanPrev = filterPostFlushRecords(targetTenantId, 'sites', prev);
             const cleanRemote = filterPostFlushRecords(targetTenantId, 'sites', remoteSites);
             const merged = mergeListsById(cleanPrev, cleanRemote);
-            const finalSites = merged.length > 0 ? merged : INITIAL_SITES;
-            saveTenantData(targetTenantId, 'sites', finalSites);
+            const finalSites = merged.length > 0 ? merged : (isMaster ? INITIAL_SITES : []);
+            saveTenantDataLocalOnly(targetTenantId, 'sites', finalSites);
+            if (finalSites.length > cleanRemote.length) {
+              writeTenantDataToFirebase(targetTenantId, 'sites', finalSites).catch(() => {});
+            }
             return finalSites;
           });
         }
       });
 
-      fetchTenantDataFromFirebase<SystemConfig>(targetTenantId, 'config').then((remoteConfig) => {
+      const syncConfigTask = fetchTenantDataFromFirebase<SystemConfig>(targetTenantId, 'config').then((remoteConfig) => {
+        if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
         if (remoteConfig && remoteConfig.companyName) {
-          if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
           setConfig((prev) => {
-            const merged = { ...remoteConfig, ...prev };
-            saveTenantData(targetTenantId, 'config', merged);
+            const merged = { ...prev, ...remoteConfig };
+            saveTenantDataLocalOnly(targetTenantId, 'config', merged);
             return merged;
           });
         }
@@ -1271,10 +1350,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       const syncCollection = <T extends { id: string }>(
         key: string,
-        setter: React.Dispatch<React.SetStateAction<T[]>>,
-        persistAfterMerge = false
-      ) => {
-        fetchTenantDataFromFirebase<T[]>(targetTenantId, key).then((remote) => {
+        setter: React.Dispatch<React.SetStateAction<T[]>>
+      ): Promise<void> => {
+        return fetchTenantDataFromFirebase<T[]>(targetTenantId, key).then((remote) => {
           if (currentTenantIdRef.current !== targetTenantId || isFlushingRef.current) return;
           if (remote && Array.isArray(remote) && remote.length > 0) {
             const cleanRemote = filterPostFlushRecords(targetTenantId, key, remote);
@@ -1284,89 +1362,216 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setter((prev) => {
               const cleanPrev = filterPostFlushRecords(targetTenantId, key, prev);
               const merged = mergeListsById(cleanPrev, cleanRemote);
-              if (persistAfterMerge) {
-                saveTenantData(targetTenantId, key, merged);
+              saveTenantDataLocalOnly(targetTenantId, key, merged);
+              if (merged.length > cleanRemote.length) {
+                writeTenantDataToFirebase(targetTenantId, key, merged).catch(() => {});
               }
               return merged;
             });
           } else {
-            setter((prev) => filterPostFlushRecords(targetTenantId, key, prev));
+            setter((prev) => {
+              const cleanPrev = filterPostFlushRecords(targetTenantId, key, prev);
+              saveTenantDataLocalOnly(targetTenantId, key, cleanPrev);
+              return cleanPrev;
+            });
           }
         });
       };
 
-      syncCollection<Item>('items', setItems, true);
-      syncCollection<Team>('teams', setTeams, true);
-      syncCollection<MainStockEntry>('mainStockEntries', setMainStockEntries);
-      syncCollection<StockTransferRequest>('stockRequests', setStockRequests);
-      syncCollection<TeamIssue>('teamIssues', setTeamIssues);
-      syncCollection<TeamReturn>('teamReturns', setTeamReturns);
-      syncCollection<Project>('projects', setProjects);
-      syncCollection<ProjectType>('projectTypes', setProjectTypes);
-      syncCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages);
-      syncCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests);
-      syncCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues);
-      syncCollection<BranchReturn>('branchReturns', setBranchReturns);
-      syncCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations);
-      syncCollection<Supplier>('suppliers', setSuppliers);
-      syncCollection<Client>('clients', setClients);
-      syncCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders);
-      syncCollection<SupplierReturn>('supplierReturns', setSupplierReturns);
-    })();
+      await Promise.allSettled([
+        syncUsersTask,
+        syncSitesTask,
+        syncConfigTask,
+        syncCollection<Item>('items', setItems),
+        syncCollection<Team>('teams', setTeams),
+        syncCollection<MainStockEntry>('mainStockEntries', setMainStockEntries),
+        syncCollection<StockTransferRequest>('stockRequests', setStockRequests),
+        syncCollection<TeamIssue>('teamIssues', setTeamIssues),
+        syncCollection<TeamReturn>('teamReturns', setTeamReturns),
+        syncCollection<Project>('projects', setProjects),
+        syncCollection<ProjectType>('projectTypes', setProjectTypes),
+        syncCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages),
+        syncCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests),
+        syncCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues),
+        syncCollection<BranchReturn>('branchReturns', setBranchReturns),
+        syncCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations),
+        syncCollection<Supplier>('suppliers', setSuppliers),
+        syncCollection<Client>('clients', setClients),
+        syncCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders),
+        syncCollection<SupplierReturn>('supplierReturns', setSupplierReturns),
+        syncCollection<AuditLogEntry>('auditLogs', setAuditLogs),
+        syncCollection<StockBackup>('backups', setBackups),
+        syncCollection<LetterheadTemplate>('letterheadTemplates', setLetterheadTemplates),
+        syncCollection<DigitalSignature>('digitalSignatures', setDigitalSignatures),
+      ]);
+
+      if (currentTenantIdRef.current === targetTenantId) {
+        hydratedTenantsRef.current.add(targetTenantId);
+      }
+    } finally {
+      if (hydrationSeqRef.current === seq) {
+        isHydratingTenantRef.current = false;
+      }
+    }
   };
 
   // Realtime Cloud Data Sync for current active tenant (multi-device / Vercel deployment support)
   useEffect(() => {
-    if (!currentTenantId) return;
+    if (!activeTenantId) return;
 
-    syncTenantCollectionsFromFirebase(currentTenantId);
+    syncTenantCollectionsFromFirebase(activeTenantId);
 
     // Realtime listener for tenant flushMeta so other open browser tabs/devices clear immediately on flush
     const unsubFlushMeta = subscribeToFirebaseTenantData<FlushMeta>(
-      currentTenantId,
+      activeTenantId,
       'flushMeta',
       (remoteMeta) => {
         if (
           remoteMeta &&
           typeof remoteMeta === 'object' &&
           typeof remoteMeta.flushedAtMs === 'number' &&
-          currentTenantIdRef.current === currentTenantId
+          currentTenantIdRef.current === activeTenantId
         ) {
-          applyRemoteFlushBarrier(currentTenantId, remoteMeta);
+          applyRemoteFlushBarrier(activeTenantId, remoteMeta);
         }
       }
     );
 
     // Realtime listener for tenant users
     const unsubUsers = subscribeToFirebaseTenantData<User[]>(
-      currentTenantId,
+      activeTenantId,
       'users',
       (remoteUsers) => {
         if (
           remoteUsers &&
           Array.isArray(remoteUsers) &&
-          currentTenantIdRef.current === currentTenantId &&
+          remoteUsers.length > 0 &&
+          currentTenantIdRef.current === activeTenantId &&
           !isFlushingRef.current
         ) {
           setUsers((prev) => {
-            const cleanPrev = filterPostFlushRecords(currentTenantId, 'users', prev);
-            const cleanRemote = filterPostFlushRecords(currentTenantId, 'users', remoteUsers);
-            const merged = sanitizeTenantUsers(currentTenantId, mergeListsById(cleanPrev, cleanRemote), tenants);
-            try {
-              const tenantKey = getTenantStorageKey(currentTenantId, 'users');
-              localStorage.setItem(tenantKey, JSON.stringify(merged));
-            } catch {}
+            const cleanPrev = filterPostFlushRecords(activeTenantId, 'users', prev);
+            const cleanRemote = filterPostFlushRecords(activeTenantId, 'users', remoteUsers);
+            const merged = sanitizeTenantUsers(activeTenantId, mergeListsById(cleanPrev, cleanRemote), tenantsRef.current);
+            saveTenantDataLocalOnly(activeTenantId, 'users', merged);
             return merged;
           });
         }
       }
     );
 
+    // Realtime listener for tenant sites
+    const unsubSites = subscribeToFirebaseTenantData<Site[]>(
+      activeTenantId,
+      'sites',
+      (remoteSites) => {
+        if (
+          remoteSites &&
+          Array.isArray(remoteSites) &&
+          remoteSites.length > 0 &&
+          currentTenantIdRef.current === activeTenantId &&
+          !isFlushingRef.current
+        ) {
+          setSites((prev) => {
+            const cleanPrev = filterPostFlushRecords(activeTenantId, 'sites', prev);
+            const cleanRemote = filterPostFlushRecords(activeTenantId, 'sites', remoteSites);
+            const merged = mergeListsById(cleanPrev, cleanRemote);
+            saveTenantDataLocalOnly(activeTenantId, 'sites', merged);
+            return merged;
+          });
+        }
+      }
+    );
+
+    // Realtime listener for tenant config
+    const unsubConfig = subscribeToFirebaseTenantData<SystemConfig>(
+      activeTenantId,
+      'config',
+      (remoteConfig) => {
+        if (
+          remoteConfig &&
+          typeof remoteConfig === 'object' &&
+          remoteConfig.companyName &&
+          currentTenantIdRef.current === activeTenantId &&
+          !isFlushingRef.current
+        ) {
+          setConfig((prev) => {
+            const merged = { ...prev, ...remoteConfig };
+            saveTenantDataLocalOnly(activeTenantId, 'config', merged);
+            return merged;
+          });
+        }
+      }
+    );
+
+    // Helper for subscribing to any tenant collection in real time
+    const subscribeCollection = <T extends { id: string }>(
+      key: string,
+      setter: React.Dispatch<React.SetStateAction<T[]>>
+    ) => {
+      return subscribeToFirebaseTenantData<T[]>(activeTenantId, key, (remoteList) => {
+        if (
+          remoteList &&
+          Array.isArray(remoteList) &&
+          remoteList.length > 0 &&
+          currentTenantIdRef.current === activeTenantId &&
+          !isFlushingRef.current
+        ) {
+          setter((prev) => {
+            const cleanPrev = filterPostFlushRecords(activeTenantId, key, prev);
+            const cleanRemote = filterPostFlushRecords(activeTenantId, key, remoteList);
+            const merged = mergeListsById(cleanPrev, cleanRemote);
+            saveTenantDataLocalOnly(activeTenantId, key, merged);
+            return merged;
+          });
+        }
+      });
+    };
+
+    const unsubItems = subscribeCollection<Item>('items', setItems);
+    const unsubTeams = subscribeCollection<Team>('teams', setTeams);
+    const unsubProjects = subscribeCollection<Project>('projects', setProjects);
+    const unsubProjectTypes = subscribeCollection<ProjectType>('projectTypes', setProjectTypes);
+    const unsubMainEntries = subscribeCollection<MainStockEntry>('mainStockEntries', setMainStockEntries);
+    const unsubStockRequests = subscribeCollection<StockTransferRequest>('stockRequests', setStockRequests);
+    const unsubTeamIssues = subscribeCollection<TeamIssue>('teamIssues', setTeamIssues);
+    const unsubTeamReturns = subscribeCollection<TeamReturn>('teamReturns', setTeamReturns);
+    const unsubProjectUsages = subscribeCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages);
+    const unsubCrossRequests = subscribeCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests);
+    const unsubClientFreeIssues = subscribeCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues);
+    const unsubBranchReturns = subscribeCollection<BranchReturn>('branchReturns', setBranchReturns);
+    const unsubRestorations = subscribeCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations);
+    const unsubSuppliers = subscribeCollection<Supplier>('suppliers', setSuppliers);
+    const unsubClients = subscribeCollection<Client>('clients', setClients);
+    const unsubPOs = subscribeCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders);
+    const unsubSupplierReturns = subscribeCollection<SupplierReturn>('supplierReturns', setSupplierReturns);
+    const unsubAuditLogs = subscribeCollection<AuditLogEntry>('auditLogs', setAuditLogs);
+
     return () => {
       if (unsubFlushMeta) unsubFlushMeta();
       if (unsubUsers) unsubUsers();
+      if (unsubSites) unsubSites();
+      if (unsubConfig) unsubConfig();
+      if (unsubItems) unsubItems();
+      if (unsubTeams) unsubTeams();
+      if (unsubProjects) unsubProjects();
+      if (unsubProjectTypes) unsubProjectTypes();
+      if (unsubMainEntries) unsubMainEntries();
+      if (unsubStockRequests) unsubStockRequests();
+      if (unsubTeamIssues) unsubTeamIssues();
+      if (unsubTeamReturns) unsubTeamReturns();
+      if (unsubProjectUsages) unsubProjectUsages();
+      if (unsubCrossRequests) unsubCrossRequests();
+      if (unsubClientFreeIssues) unsubClientFreeIssues();
+      if (unsubBranchReturns) unsubBranchReturns();
+      if (unsubRestorations) unsubRestorations();
+      if (unsubSuppliers) unsubSuppliers();
+      if (unsubClients) unsubClients();
+      if (unsubPOs) unsubPOs();
+      if (unsubSupplierReturns) unsubSupplierReturns();
+      if (unsubAuditLogs) unsubAuditLogs();
     };
-  }, [currentTenantId]);
+  }, [activeTenantId]);
 
   // Auto-check and promote queued subscriptions when current plan period expires
   useEffect(() => {
@@ -1447,15 +1652,38 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const saveToStorage = <T,>(key: string, data: T) => {
     if (isFlushingRef.current) return;
-    if (loadedTenantIdRef.current !== currentTenantIdRef.current) return;
-    saveTenantData(currentTenantIdRef.current, key, data);
+    const targetTenantId = currentTenantIdRef.current;
+    if (!targetTenantId || loadedTenantIdRef.current !== targetTenantId) return;
+
+    // While hydrating a tenant from Firebase, do not overwrite local or remote storage with empty fallback arrays
+    if (isHydratingTenantRef.current) {
+      if (Array.isArray(data) && data.length === 0) return;
+      saveTenantDataLocalOnly(targetTenantId, key, data);
+      return;
+    }
+
+    saveTenantDataLocalOnly(targetTenantId, key, data);
+
+    // Only write to Firebase from automatic useEffects AFTER the tenant has completed Firebase hydration,
+    // and never overwrite remote Firebase collections with an empty array [] from a passive state effect
+    if (hydratedTenantsRef.current.has(targetTenantId)) {
+      if (Array.isArray(data) && data.length === 0) {
+        return;
+      }
+      writeTenantDataToFirebase(targetTenantId, key, data).catch(() => {});
+    }
   };
 
   // State variables for current active tenant
-  const isDefaultTenant = currentTenantId === DEFAULT_TENANT.id;
+  const isDefaultTenant = activeTenantId === DEFAULT_TENANT.id;
   const currentTenant = useMemo(() => {
-    return tenants.find((t) => t.id === currentTenantId) || tenants[0] || DEFAULT_TENANT;
-  }, [tenants, currentTenantId]);
+    return (
+      tenants.find((t) => t.id === activeTenantId) ||
+      tenants.find((t) => t.id === currentTenantId) ||
+      tenants[0] ||
+      DEFAULT_TENANT
+    );
+  }, [tenants, activeTenantId, currentTenantId]);
 
   const [config, setConfig] = useState<SystemConfig>(() =>
     loadTenantData(currentTenantId, 'config', isDefaultTenant ? INITIAL_CONFIG : {
@@ -1561,6 +1789,32 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return active;
   });
 
+  // Keep authUser synchronized when users array updates from Firebase (e.g., updated site assignments or role)
+  useEffect(() => {
+    if (!users || users.length === 0) return;
+    try {
+      const savedAuthId = localStorage.getItem(STORAGE_KEY_PREFIX + 'auth_user_id');
+      const targetId = savedAuthId || authUser?.id;
+      if (targetId) {
+        const latestMatch = users.find((u) => u.id === targetId && !u.isDeleted);
+        if (latestMatch) {
+          setAuthUser((prev) => {
+            if (
+              prev?.id === latestMatch.id &&
+              prev?.role === latestMatch.role &&
+              prev?.siteId === latestMatch.siteId &&
+              prev?.fullName === latestMatch.fullName &&
+              JSON.stringify(prev?.siteIds) === JSON.stringify(latestMatch.siteIds)
+            ) {
+              return prev;
+            }
+            return latestMatch;
+          });
+        }
+      }
+    } catch {}
+  }, [users]);
+
   const [viewAsUserId, setViewAsUserId] = useState<string | null>(null);
 
   const viewAsUser = useMemo(() => {
@@ -1600,10 +1854,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Switch memory state when tenant changes
   const loadTenantStateIntoMemory = (tenantId: string) => {
+    isHydratingTenantRef.current = true;
     currentTenantIdRef.current = tenantId;
     loadedTenantIdRef.current = tenantId;
     const isDefault = tenantId === DEFAULT_TENANT.id;
-    const tObj = tenants.find((t) => t.id === tenantId) || DEFAULT_TENANT;
+    const allKnownTenants = tenantsRef.current.length > 0 ? tenantsRef.current : tenants;
+    const tObj = allKnownTenants.find((t) => t.id === tenantId) || DEFAULT_TENANT;
 
     const loadedConfig = loadTenantData<SystemConfig>(tenantId, 'config', isDefault ? INITIAL_CONFIG : {
       companyName: tObj.companyName,
@@ -1628,8 +1884,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const loadedUsers = loadTenantData<User[]>(tenantId, 'users', isDefault ? INITIAL_USERS : []);
 
     const isMaster = isDefault || tenantId === 'tenant-apex-main';
-    const finalUsers = sanitizeTenantUsers(tenantId, loadedUsers, tenants);
-    saveTenantData(tenantId, 'users', finalUsers);
+    const finalUsers = sanitizeTenantUsers(tenantId, loadedUsers, allKnownTenants);
+    if (finalUsers.length > 0) {
+      saveTenantDataLocalOnly(tenantId, 'users', finalUsers);
+    }
 
     const cleanSites = isMaster
       ? loadedSites.filter((s) => !s.id.includes('civilect') && !s.name.toLowerCase().includes('civilect'))
@@ -1684,10 +1942,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setDigitalSignatures(loadedSignatures);
 
     if (isMaster) {
-      saveTenantData(DEFAULT_TENANT.id, 'users', finalUsers);
-      localStorage.setItem(STORAGE_KEY_PREFIX + 'users', JSON.stringify(finalUsers));
-      saveTenantData(DEFAULT_TENANT.id, 'sites', finalSites);
-      localStorage.setItem(STORAGE_KEY_PREFIX + 'sites', JSON.stringify(finalSites));
+      saveTenantDataLocalOnly(DEFAULT_TENANT.id, 'users', finalUsers);
+      saveTenantDataLocalOnly(DEFAULT_TENANT.id, 'sites', finalSites);
     }
 
     const savedAuthId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_PREFIX + 'auth_user_id') : null;
@@ -1706,7 +1962,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const getWorkspaceLoginUrl = (slugOrTenantId?: string): string => {
     const target = slugOrTenantId
-      ? (tenants.find((t) => t.slug === slugOrTenantId || t.id === slugOrTenantId) || currentTenant)
+      ? (tenants.find((t) => t.id === slugOrTenantId || t.slug === slugOrTenantId) || currentTenant)
       : currentTenant;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -1721,39 +1977,75 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let matchedTenant: Tenant | undefined;
     let matchedUser: User | undefined;
 
+    // Ensure we have the latest tenants list (including remote Firebase saasTenants if needed)
+    let allTenants = tenantsRef.current.length > 0 ? tenantsRef.current : getAllSavedTenants();
+    const refreshTenantsFromCloud = async (): Promise<Tenant[]> => {
+      const remoteList = await fetchTenantsFromFirebase();
+      if (remoteList && remoteList.length > 0) {
+        const deletedIds = getDeletedTenantIds();
+        const map = new Map<string, Tenant>();
+        allTenants.forEach((t) => {
+          if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+        });
+        remoteList.forEach((t) => {
+          if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+        });
+        const merged = persistTenantsLocal(Array.from(map.values()));
+        tenantsRef.current = merged;
+        setTenants(merged);
+        allTenants = merged;
+      }
+      return allTenants;
+    };
+
+    const findUserInTenant = async (t: Tenant, termLower: string): Promise<User | undefined> => {
+      const localUsers = loadTenantData<User[]>(
+        t.id,
+        'users',
+        t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+      );
+      const cleanLocal = sanitizeTenantUsers(t.id, localUsers, allTenants);
+      let found = cleanLocal.find(
+        (u) => !u.isDeleted && (u.username.trim().toLowerCase() === termLower || u.fullName.trim().toLowerCase() === termLower)
+      );
+
+      // Always verify/fetch from Firebase RTDB so newly created users or updated passwords/sites are never missed
+      const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
+      if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+        const cleanRemote = sanitizeTenantUsers(
+          t.id,
+          mergeListsById(
+            filterPostFlushRecords(t.id, 'users', cleanLocal),
+            filterPostFlushRecords(t.id, 'users', remoteUsers)
+          ),
+          allTenants
+        );
+        saveTenantDataLocalOnly(t.id, 'users', cleanRemote);
+        const remoteMatch = cleanRemote.find(
+          (u) => !u.isDeleted && (u.username.trim().toLowerCase() === termLower || u.fullName.trim().toLowerCase() === termLower)
+        );
+        if (remoteMatch) {
+          found = remoteMatch;
+        }
+      }
+      return found;
+    };
+
     if (typeof usernameOrUser === 'string') {
       const term = usernameOrUser.trim().toLowerCase();
       const inputPass = (password || '').trim();
 
-      // Check if target workspace was explicitly provided
       const explicitSlug = workspaceSlugOrId?.trim().toLowerCase();
-      let targetTenant: Tenant | undefined;
+      let matchingTenants: Tenant[] = [];
 
       if (explicitSlug) {
-        const cleanSlug = explicitSlug.trim().toLowerCase();
-        targetTenant = tenants.find(
-          (t) =>
-            t.slug?.toLowerCase() === cleanSlug ||
-            t.id?.toLowerCase() === cleanSlug ||
-            t.companyName?.toLowerCase() === cleanSlug ||
-            t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanSlug.replace(/[^a-z0-9]/g, '')
-        );
-
-        if (!targetTenant) {
-          const freshTenants = getAllSavedTenants();
-          targetTenant = freshTenants.find(
-            (t) =>
-              t.slug?.toLowerCase() === cleanSlug ||
-              t.id?.toLowerCase() === cleanSlug ||
-              t.companyName?.toLowerCase() === cleanSlug ||
-              t.slug?.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanSlug.replace(/[^a-z0-9]/g, '')
-          );
-          if (targetTenant) {
-            setTenants(freshTenants);
-          }
+        matchingTenants = findMatchingTenantsBySlug(allTenants, explicitSlug);
+        if (matchingTenants.length === 0) {
+          await refreshTenantsFromCloud();
+          matchingTenants = findMatchingTenantsBySlug(allTenants, explicitSlug);
         }
 
-        if (!targetTenant) {
+        if (matchingTenants.length === 0) {
           return {
             success: false,
             message: `Company workspace "${workspaceSlugOrId}" not found. Please verify your company workspace code.`,
@@ -1761,63 +2053,57 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
 
-      // If a specific workspace was designated:
-      if (targetTenant) {
-        let tUsers = loadTenantData<User[]>(
-          targetTenant.id,
-          'users',
-          targetTenant.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
-        );
-        let cleanTUsers = sanitizeTenantUsers(targetTenant.id, tUsers, tenants);
-        matchedUser = cleanTUsers.find(
-          (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
-        );
+      // If a specific workspace was designated, check all tenants matching that slug/id first
+      if (matchingTenants.length > 0) {
+        // Also refresh cloud tenants if there might be a newer workspace with the same slug
+        await refreshTenantsFromCloud();
+        matchingTenants = findMatchingTenantsBySlug(allTenants, explicitSlug!);
 
-        // Multi-device / Vercel deployment fallback: Fetch tenant users from Firebase RTDB if not in local storage
-        if (!matchedUser) {
-          const remoteUsers = await fetchTenantDataFromFirebase<User[]>(targetTenant.id, 'users');
-          if (remoteUsers && remoteUsers.length > 0) {
-            const cleanRemote = sanitizeTenantUsers(targetTenant.id, remoteUsers, tenants);
-            saveTenantData(targetTenant.id, 'users', cleanRemote);
-            matchedUser = cleanRemote.find(
-              (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
-            );
+        const slugCandidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
+        for (const t of matchingTenants) {
+          const u = await findUserInTenant(t, term);
+          if (u) {
+            const isMaster = t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
+            const expected = isMaster ? 'sasith@123' : (u.password || 'password123').trim();
+            slugCandidates.push({ tenant: t, user: u, expectedPass: expected });
           }
         }
 
-        if (!matchedUser) {
-          return {
-            success: false,
-            message: `User account "${usernameOrUser}" not found in ${targetTenant.companyName} workspace.`,
-          };
-        }
-        matchedTenant = targetTenant;
-      } else {
-        // Collect candidate users across tenants that match the username
-        const candidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
-
-        for (const t of tenants) {
-          let tUsers = loadTenantData<User[]>(
-            t.id,
-            'users',
-            t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
-          );
-          let cleanTUsers = sanitizeTenantUsers(t.id, tUsers, tenants);
-          let found = cleanTUsers.find(
-            (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
-          );
-
-          if (!found) {
-            const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
-            if (remoteUsers && remoteUsers.length > 0) {
-              const cleanRemote = sanitizeTenantUsers(t.id, remoteUsers, tenants);
-              saveTenantData(t.id, 'users', cleanRemote);
-              found = cleanRemote.find(
-                (u) => !u.isDeleted && (u.username.toLowerCase() === term || u.fullName.toLowerCase() === term)
-              );
+        if (slugCandidates.length === 1) {
+          matchedTenant = slugCandidates[0].tenant;
+          matchedUser = slugCandidates[0].user;
+        } else if (slugCandidates.length > 1) {
+          const passMatched = inputPass ? slugCandidates.filter((c) => c.expectedPass === inputPass) : slugCandidates;
+          const chosen = passMatched[0] || slugCandidates[0];
+          matchedTenant = chosen.tenant;
+          matchedUser = chosen.user;
+        } else {
+          // Fallback: if the user wasn't found in the slug-matched tenant, check all other active tenants
+          // (in case the admin created the user in another workspace or Master workspace)
+          for (const t of allTenants) {
+            if (matchingTenants.some((m) => m.id === t.id)) continue;
+            const u = await findUserInTenant(t, term);
+            if (u) {
+              matchedTenant = t;
+              matchedUser = u;
+              break;
             }
           }
 
+          if (!matchedUser || !matchedTenant) {
+            return {
+              success: false,
+              message: `User account "${usernameOrUser}" not found in ${matchingTenants[0].companyName} workspace.`,
+            };
+          }
+        }
+      } else {
+        // No explicit workspace code: search across all tenants (refreshing from cloud if needed)
+        await refreshTenantsFromCloud();
+        const candidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
+
+        for (const t of allTenants) {
+          const found = await findUserInTenant(t, term);
           if (found) {
             const isMaster = t.id === DEFAULT_TENANT.id && (found.username === 'admin' || found.id === 'usr-admin-1');
             const expected = isMaster ? 'sasith@123' : (found.password || 'password123').trim();
@@ -1833,8 +2119,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           matchedTenant = candidates[0].tenant;
           matchedUser = candidates[0].user;
         } else {
-          // Multiple companies have a user with this username (Multi-tenant collision resolution!)
-          // 1. Check if user's entered password matches exactly one candidate
           const passwordMatched = inputPass
             ? candidates.filter((c) => c.expectedPass === inputPass)
             : [];
@@ -1843,7 +2127,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             matchedTenant = passwordMatched[0].tenant;
             matchedUser = passwordMatched[0].user;
           } else if (passwordMatched.length > 1) {
-            // Collision on both username AND password
             const matchedCompanies = passwordMatched.map((c) => `"${c.tenant.companyName}" (${c.tenant.slug})`).join(', ');
             return {
               success: false,
@@ -1855,7 +2138,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               })),
             };
           } else {
-            // Multiple candidates, but none matched password - check current active tenant in session
             const currentTenantCandidate = candidates.find((c) => c.tenant.id === currentTenantIdRef.current);
             if (currentTenantCandidate) {
               matchedTenant = currentTenantCandidate.tenant;
@@ -1871,7 +2153,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
     } else {
-      for (const t of tenants) {
+      for (const t of allTenants) {
         const tUsers = loadTenantData<User[]>(t.id, 'users', t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []);
         const found = tUsers.find((u) => u.id === usernameOrUser.id && !u.isDeleted);
         if (found) {
@@ -1910,26 +2192,32 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
-    // Switch tenant context if different
-    if (matchedTenant.id !== currentTenantId) {
-      setCurrentTenantId(matchedTenant.id);
-      currentTenantIdRef.current = matchedTenant.id;
-      try {
-        localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', matchedTenant.id);
-      } catch (e) {
-        console.warn('Could not save current_tenant_id:', e);
-      }
-      loadTenantStateIntoMemory(matchedTenant.id);
-    }
-
-    setCurrentUser(matchedUser);
-    setIsAuthenticated(true);
+    // Clear any preview mode and switch tenant context
+    setPreviewTenantId(null);
+    setCurrentTenantId(matchedTenant.id);
+    currentTenantIdRef.current = matchedTenant.id;
     try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', matchedTenant.id);
       localStorage.setItem(STORAGE_KEY_PREFIX + 'is_authenticated', 'true');
       localStorage.setItem(STORAGE_KEY_PREFIX + 'auth_user_id', matchedUser.id);
+      if (typeof window !== 'undefined' && window.location.search.includes('workspace=')) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('workspace') !== matchedTenant.slug) {
+          url.searchParams.set('workspace', matchedTenant.slug);
+          window.history.replaceState({}, document.title, url.toString());
+        }
+      }
     } catch (e) {
-      console.warn('Could not save auth state:', e);
+      console.warn('Could not save auth/tenant state:', e);
     }
+
+    loadTenantStateIntoMemory(matchedTenant.id);
+    setCurrentUser(matchedUser);
+    setIsAuthenticated(true);
+
+    // Ensure all remote collections (sites, users, items, teams, projects, stock, etc.) are synced from Firebase
+    await syncTenantCollectionsFromFirebase(matchedTenant.id);
+    setCurrentUser(matchedUser);
 
     return { success: true, message: `Welcome back, ${matchedUser.fullName} (${matchedTenant.companyName})!` };
   };
@@ -1944,29 +2232,26 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // SaaS Tenant Management
-  const [previewTenantId, setPreviewTenantId] = useState<string | null>(null);
-
   const previewTenant = useMemo(() => {
     if (!previewTenantId) return null;
     return tenants.find((t) => t.id === previewTenantId) || null;
   }, [tenants, previewTenantId]);
 
-  const activeTenantId = useMemo(() => {
-    return previewTenantId || currentTenantId;
-  }, [previewTenantId, currentTenantId]);
-
   const setPreviewTenant = (tenant: Tenant | null) => {
     if (!tenant) {
       setPreviewTenantId(null);
+      currentTenantIdRef.current = currentTenantId;
+      loadTenantStateIntoMemory(currentTenantId);
     } else {
       setPreviewTenantId(tenant.id);
+      currentTenantIdRef.current = tenant.id;
       loadTenantStateIntoMemory(tenant.id);
     }
   };
 
   const exitTenantPreview = () => {
     setPreviewTenantId(null);
+    currentTenantIdRef.current = currentTenantId;
     loadTenantStateIntoMemory(currentTenantId);
   };
 
@@ -3240,27 +3525,59 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const syncWithFirebaseNow = async () => {
     setIsFirebaseSyncing(true);
     try {
+      const targetId = currentTenantIdRef.current || activeTenantId;
+      await syncTenantCollectionsFromFirebase(targetId);
+
       await Promise.all([
-        writeItemsToFirebase(items),
-        writeStockRequestsToFirebase(stockRequests),
-        writeMainStockEntriesToFirebase(mainStockEntries),
-        writeSitesToFirebase(sites),
-        writeTeamsToFirebase(teams),
-        writeUsersToFirebase(users),
-        writeTeamIssuesToFirebase(teamIssues),
-        writeTeamReturnsToFirebase(teamReturns),
-        writeProjectsToFirebase(projects),
-        writeProjectUsagesToFirebase(projectUsages),
-        writeBranchReturnsToFirebase(branchReturns),
-        writeBackupsToFirebase(backups),
-        writeAuditLogsToFirebase(auditLogs),
-        writeConfigToFirebase(config),
-        writeLetterheadTemplatesToFirebase(letterheadTemplates),
-        writeDigitalSignaturesToFirebase(digitalSignatures),
-        writeSuppliersToFirebase(suppliers),
-        writePurchaseOrdersToFirebase(purchaseOrders),
-        writeSupplierReturnsToFirebase(supplierReturns),
+        writeTenantDataToFirebase(targetId, 'items', items),
+        writeTenantDataToFirebase(targetId, 'stockRequests', stockRequests),
+        writeTenantDataToFirebase(targetId, 'mainStockEntries', mainStockEntries),
+        writeTenantDataToFirebase(targetId, 'sites', sites),
+        writeTenantDataToFirebase(targetId, 'teams', teams),
+        writeTenantDataToFirebase(targetId, 'users', users),
+        writeTenantDataToFirebase(targetId, 'teamIssues', teamIssues),
+        writeTenantDataToFirebase(targetId, 'teamReturns', teamReturns),
+        writeTenantDataToFirebase(targetId, 'projects', projects),
+        writeTenantDataToFirebase(targetId, 'projectTypes', projectTypes),
+        writeTenantDataToFirebase(targetId, 'projectUsages', projectUsages),
+        writeTenantDataToFirebase(targetId, 'crossProjectRequests', crossProjectRequests),
+        writeTenantDataToFirebase(targetId, 'clientFreeIssues', clientFreeIssues),
+        writeTenantDataToFirebase(targetId, 'branchReturns', branchReturns),
+        writeTenantDataToFirebase(targetId, 'damagedRestorations', damagedRestorations),
+        writeTenantDataToFirebase(targetId, 'backups', backups),
+        writeTenantDataToFirebase(targetId, 'auditLogs', auditLogs),
+        writeTenantDataToFirebase(targetId, 'config', config),
+        writeTenantDataToFirebase(targetId, 'letterheadTemplates', letterheadTemplates),
+        writeTenantDataToFirebase(targetId, 'digitalSignatures', digitalSignatures),
+        writeTenantDataToFirebase(targetId, 'suppliers', suppliers),
+        writeTenantDataToFirebase(targetId, 'clients', clients),
+        writeTenantDataToFirebase(targetId, 'purchaseOrders', purchaseOrders),
+        writeTenantDataToFirebase(targetId, 'supplierReturns', supplierReturns),
       ]);
+
+      if (isMasterWorkspaceActive()) {
+        await Promise.all([
+          writeItemsToFirebase(items),
+          writeStockRequestsToFirebase(stockRequests),
+          writeMainStockEntriesToFirebase(mainStockEntries),
+          writeSitesToFirebase(sites),
+          writeTeamsToFirebase(teams),
+          writeUsersToFirebase(users.filter((u) => !isForeignUser(u))),
+          writeTeamIssuesToFirebase(teamIssues),
+          writeTeamReturnsToFirebase(teamReturns),
+          writeProjectsToFirebase(projects),
+          writeProjectUsagesToFirebase(projectUsages),
+          writeBranchReturnsToFirebase(branchReturns),
+          writeBackupsToFirebase(backups),
+          writeAuditLogsToFirebase(auditLogs),
+          writeConfigToFirebase(config),
+          writeLetterheadTemplatesToFirebase(letterheadTemplates),
+          writeDigitalSignaturesToFirebase(digitalSignatures),
+          writeSuppliersToFirebase(suppliers),
+          writePurchaseOrdersToFirebase(purchaseOrders),
+          writeSupplierReturnsToFirebase(supplierReturns),
+        ]);
+      }
       setFirebaseConnected(true);
     } catch (err) {
       console.error('Manual Firebase sync error:', err);
@@ -3290,18 +3607,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `sup-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       createdAt: new Date().toISOString(),
     };
-    setSuppliers((prev) => [newSupplier, ...prev]);
+    setSuppliers((prev) => {
+      const next = [newSupplier, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'suppliers', next);
+      return next;
+    });
     return newSupplier;
   };
 
   const updateSupplier = (id: string, updates: Partial<Supplier>) => {
-    setSuppliers((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-    );
+    setSuppliers((prev) => {
+      const next = prev.map((s) => (s.id === id ? { ...s, ...updates } : s));
+      saveTenantData(currentTenantIdRef.current, 'suppliers', next);
+      return next;
+    });
   };
 
   const deleteSupplier = (id: string) => {
-    setSuppliers((prev) => prev.filter((s) => s.id !== id));
+    setSuppliers((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'suppliers', next);
+      return next;
+    });
   };
 
   // Client / Principal Management (CRUD)
@@ -3378,18 +3705,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `po-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       createdAt: new Date().toISOString(),
     };
-    setPurchaseOrders((prev) => [newPo, ...prev]);
+    setPurchaseOrders((prev) => {
+      const next = [newPo, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'purchaseOrders', next);
+      return next;
+    });
     return newPo;
   };
 
   const updatePurchaseOrder = (id: string, updates: Partial<PurchaseOrder>) => {
-    setPurchaseOrders((prev) =>
-      prev.map((po) => (po.id === id ? { ...po, ...updates } : po))
-    );
+    setPurchaseOrders((prev) => {
+      const next = prev.map((po) => (po.id === id ? { ...po, ...updates } : po));
+      saveTenantData(currentTenantIdRef.current, 'purchaseOrders', next);
+      return next;
+    });
   };
 
   const deletePurchaseOrder = (id: string) => {
-    setPurchaseOrders((prev) => prev.filter((po) => po.id !== id));
+    setPurchaseOrders((prev) => {
+      const next = prev.filter((po) => po.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'purchaseOrders', next);
+      return next;
+    });
   };
 
   const receivePurchaseOrderToMainStock = (
@@ -3613,7 +3950,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: new Date().toISOString(),
       isDeleted: false,
     };
-    setSupplierReturns((prev) => [newReturn, ...prev]);
+    setSupplierReturns((prev) => {
+      const next = [newReturn, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'supplierReturns', next);
+      return next;
+    });
     addAuditLog(
       'SUPPLIER_RETURN_CREATED',
       newReturn.rtvNumber,
@@ -3624,14 +3965,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateSupplierReturn = (id: string, updates: Partial<SupplierReturn>) => {
-    setSupplierReturns((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
-    );
+    setSupplierReturns((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, ...updates } : r));
+      saveTenantData(currentTenantIdRef.current, 'supplierReturns', next);
+      return next;
+    });
   };
 
   const deleteSupplierReturn = (id: string) => {
     const target = supplierReturns.find((r) => r.id === id);
-    setSupplierReturns((prev) => prev.filter((r) => r.id !== id));
+    setSupplierReturns((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'supplierReturns', next);
+      return next;
+    });
     if (target) {
       addAuditLog(
         'SUPPLIER_RETURN_DELETED',
@@ -3751,6 +4098,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setConfig((prev) => {
       const merged = { ...prev, ...newConfig };
       saveToStorage('config', merged);
+      saveTenantData(currentTenantIdRef.current, 'config', merged);
       return merged;
     });
 
@@ -3798,7 +4146,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       itemCode,
       quantityChanged,
     };
-    setAuditLogs((prev) => [newEntry, ...prev]);
+    setAuditLogs((prev) => {
+      const next = [newEntry, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'auditLogs', next);
+      return next;
+    });
   };
 
   // Active Letterhead Template & Management
@@ -4531,6 +4883,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ): { added: number; updated: number } => {
     let added = 0;
     let updated = 0;
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
     setProjects((prev) => {
       const copy = [...prev];
       rows.forEach((r) => {
@@ -4552,7 +4906,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       });
       saveToStorage('projects', copy);
-      writeProjectsToFirebase(copy).catch((err) => console.warn('Failed direct Firebase projects write:', err));
+      saveTenantData(activeTenantId, 'projects', copy);
+      if (isMaster) {
+        writeProjectsToFirebase(copy).catch((err) => console.warn('Failed direct Firebase projects write:', err));
+      }
       return copy;
     });
     addAuditLog('PROJECT_CREATED', 'BULK-IMPORT', 'Project Office', `Imported projects from CSV/Excel: ${added} added, ${updated} updated.`);
@@ -4920,7 +5277,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: new Date().toISOString(),
       isDeleted: false,
     };
-    setProjectTypes((prev) => [...prev, newPt]);
+    setProjectTypes((prev) => {
+      const next = [...prev, newPt];
+      saveTenantData(currentTenantIdRef.current, 'projectTypes', next);
+      return next;
+    });
     addAuditLog(
       'PROJECT_CREATED',
       newPt.id,
@@ -4931,16 +5292,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateProjectType = (id: string, updates: Partial<ProjectType>) => {
-    setProjectTypes((prev) =>
-      prev.map((pt) => (pt.id === id ? { ...pt, ...updates } : pt))
-    );
+    setProjectTypes((prev) => {
+      const next = prev.map((pt) => (pt.id === id ? { ...pt, ...updates } : pt));
+      saveTenantData(currentTenantIdRef.current, 'projectTypes', next);
+      return next;
+    });
     if (updates.name) {
-      setProjects((prev) =>
-        prev.map((p) => (p.projectTypeId === id ? { ...p, projectTypeName: updates.name } : p))
-      );
-      setProjectUsages((prev) =>
-        prev.map((pu) => (pu.projectTypeId === id ? { ...pu, projectTypeName: updates.name } : pu))
-      );
+      setProjects((prev) => {
+        const next = prev.map((p) => (p.projectTypeId === id ? { ...p, projectTypeName: updates.name } : p));
+        saveTenantData(currentTenantIdRef.current, 'projects', next);
+        return next;
+      });
+      setProjectUsages((prev) => {
+        const next = prev.map((pu) => (pu.projectTypeId === id ? { ...pu, projectTypeName: updates.name } : pu));
+        saveTenantData(currentTenantIdRef.current, 'projectUsages', next);
+        return next;
+      });
     }
     addAuditLog(
       'PROJECT_UPDATED',
@@ -4951,7 +5318,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteProjectType = (id: string) => {
-    setProjectTypes((prev) => prev.filter((pt) => pt.id !== id));
+    setProjectTypes((prev) => {
+      const next = prev.filter((pt) => pt.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'projectTypes', next);
+      return next;
+    });
     addAuditLog(
       'PROJECT_DELETED',
       id,
@@ -4964,9 +5335,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     projectTypeId: string,
     templateItems: ProjectTypeTemplateItem[]
   ) => {
-    setProjectTypes((prev) =>
-      prev.map((pt) => (pt.id === projectTypeId ? { ...pt, templateItems } : pt))
-    );
+    setProjectTypes((prev) => {
+      const next = prev.map((pt) => (pt.id === projectTypeId ? { ...pt, templateItems } : pt));
+      saveTenantData(currentTenantIdRef.current, 'projectTypes', next);
+      return next;
+    });
     const pt = projectTypes.find((p) => p.id === projectTypeId);
     addAuditLog(
       'TEMPLATE_UPDATED',
@@ -5249,9 +5622,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Restore Mechanism
   const restoreItem = (id: string) => {
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : i))
-    );
+    setItems((prev) => {
+      const updated = prev.map((i) => (i.id === id ? { ...i, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : i));
+      saveTenantData(currentTenantIdRef.current, 'items', updated);
+      return updated;
+    });
     const itm = items.find((i) => i.id === id);
     addAuditLog(
       'MASTER_ITEM_RESTORED',
@@ -5263,9 +5638,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const restoreSite = (id: string) => {
-    setSites((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : s))
-    );
+    setSites((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : s));
+      saveTenantData(currentTenantIdRef.current, 'sites', updated);
+      return updated;
+    });
     const site = sites.find((s) => s.id === id);
     addAuditLog(
       'MASTER_SITE_RESTORED',
@@ -5296,9 +5673,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const restoreTeam = (id: string) => {
-    setTeams((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : t))
-    );
+    setTeams((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : t));
+      saveTenantData(currentTenantIdRef.current, 'teams', updated);
+      return updated;
+    });
     const team = teams.find((t) => t.id === id);
     addAuditLog(
       'MASTER_TEAM_RESTORED',
@@ -5309,9 +5688,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const restoreProject = (id: string) => {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : p))
-    );
+    setProjects((prev) => {
+      const updated = prev.map((p) => (p.id === id ? { ...p, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : p));
+      saveTenantData(currentTenantIdRef.current, 'projects', updated);
+      return updated;
+    });
     const proj = projects.find((p) => p.id === id);
     addAuditLog(
       'PROJECT_CREATED',
@@ -5334,7 +5715,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Permanent Delete Mechanism
   const permanentlyDeleteItem = (id: string) => {
     const itm = items.find((i) => i.id === id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    setItems((prev) => {
+      const updated = prev.filter((i) => i.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'items', updated);
+      return updated;
+    });
     addAuditLog(
       'MASTER_ITEM_PERMANENTLY_DELETED',
       itm?.itemCode || id,
@@ -5478,7 +5863,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const permanentlyDeleteProject = (id: string) => {
     const proj = projects.find((p) => p.id === id);
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setProjects((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'projects', updated);
+      return updated;
+    });
     addAuditLog(
       'RECORD_DELETED',
       proj?.projectId || id,
@@ -5500,8 +5889,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const emptyRecycleBin = () => {
     const count = recycleBinItems.length;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
-    setItems((prev) => prev.filter((i) => !i.isDeleted));
-    setSites((prev) => prev.filter((s) => !s.isDeleted));
+    setItems((prev) => {
+      const updated = prev.filter((i) => !i.isDeleted);
+      saveTenantData(activeTenantId, 'items', updated);
+      return updated;
+    });
+    setSites((prev) => {
+      const updated = prev.filter((s) => !s.isDeleted);
+      saveTenantData(activeTenantId, 'sites', updated);
+      return updated;
+    });
     setUsers((prev) => {
       const updated = prev.filter((u) => !u.isDeleted);
       saveTenantData(activeTenantId, 'users', updated);
@@ -5511,8 +5908,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return updated;
     });
-    setTeams((prev) => prev.filter((t) => !t.isDeleted));
-    setProjects((prev) => prev.filter((p) => !p.isDeleted));
+    setTeams((prev) => {
+      const updated = prev.filter((t) => !t.isDeleted);
+      saveTenantData(activeTenantId, 'teams', updated);
+      return updated;
+    });
+    setProjects((prev) => {
+      const updated = prev.filter((p) => !p.isDeleted);
+      saveTenantData(activeTenantId, 'projects', updated);
+      return updated;
+    });
 
     addAuditLog(
       'MASTER_ITEM_PERMANENTLY_DELETED',
@@ -5526,28 +5931,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const clearMainStockReceipts = () => {
     const count = mainStockEntries.length;
     setMainStockEntries([]);
-    saveToStorage('mainStockEntries', []);
+    saveTenantData(currentTenantIdRef.current, 'mainStockEntries', []);
     addAuditLog('MAIN_STOCK_RECEIPT', 'CLEAR-INBOUND', 'Main Central Warehouse', `Cleared all ${count} inbound purchase/manual receipt entries.`);
   };
 
   const clearStockRequests = () => {
     const count = stockRequests.length;
     setStockRequests([]);
-    saveToStorage('stockRequests', []);
+    saveTenantData(currentTenantIdRef.current, 'stockRequests', []);
     addAuditLog('SITE_REQUEST_CREATED', 'CLEAR-REQUESTS', 'All Sites', `Cleared all ${count} inter-branch transfer requisition notes.`);
   };
 
   const clearTeamIssues = () => {
     const count = teamIssues.length;
     setTeamIssues([]);
-    saveToStorage('teamIssues', []);
+    saveTenantData(currentTenantIdRef.current, 'teamIssues', []);
     addAuditLog('TEAM_ISSUE_DISPATCHED', 'CLEAR-ISSUES', 'All Sites', `Cleared all ${count} field dispatch issue notes.`);
   };
 
   const clearTeamReturns = () => {
     const count = teamReturns.length;
     setTeamReturns([]);
-    saveToStorage('teamReturns', []);
+    saveTenantData(currentTenantIdRef.current, 'teamReturns', []);
     addAuditLog('TEAM_RETURN_LOGGED', 'CLEAR-RETURNS', 'All Sites', `Cleared all ${count} field team return vouchers.`);
   };
 
@@ -5562,7 +5967,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       details: 'Audit trail history cleared.',
     };
     setAuditLogs([resetLog]);
-    saveToStorage('auditLogs', [resetLog]);
+    saveTenantData(currentTenantIdRef.current, 'auditLogs', [resetLog]);
   };
 
   const clearAllItems = () => {
@@ -5570,7 +5975,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const deletedBy = currentUser?.fullName || 'Administrator';
     setItems((prev) => {
       const updated = prev.map((i) => ({ ...i, isDeleted: true, deletedAt: timestamp, deletedBy }));
-      saveToStorage('items', updated);
+      saveTenantData(currentTenantIdRef.current, 'items', updated);
       return updated;
     });
     addAuditLog('MASTER_ITEM_SOFT_DELETED', 'CLEAR-ITEMS', 'Main Central Warehouse', 'Moved all active items to Recycle Bin.');
@@ -5581,7 +5986,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const deletedBy = currentUser?.fullName || 'Administrator';
     setSites((prev) => {
       const updated = prev.map((s) => (s.isMainWarehouse ? s : { ...s, isDeleted: true, deletedAt: timestamp, deletedBy }));
-      saveToStorage('sites', updated);
+      saveTenantData(currentTenantIdRef.current, 'sites', updated);
       return updated;
     });
     addAuditLog('MASTER_SITE_SOFT_DELETED', 'CLEAR-SITES', 'All Sites', 'Moved all site branches (except Central Main) to Recycle Bin.');
@@ -5592,7 +5997,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const deletedBy = currentUser?.fullName || 'Administrator';
     setTeams((prev) => {
       const updated = prev.map((t) => ({ ...t, isDeleted: true, deletedAt: timestamp, deletedBy }));
-      saveToStorage('teams', updated);
+      saveTenantData(currentTenantIdRef.current, 'teams', updated);
       return updated;
     });
     addAuditLog('MASTER_TEAM_SOFT_DELETED', 'CLEAR-TEAMS', 'Field Base', 'Moved all field teams to Recycle Bin.');
@@ -5601,7 +6006,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const clearAllUsers = () => {
     setUsers((prev) => {
       const updated = prev.filter((u) => u.username === 'admin' || isSuperAdmin(u.role));
-      saveToStorage('users', updated);
       saveTenantData(currentTenantIdRef.current, 'users', updated);
       const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
       if (isMaster) {
@@ -5617,7 +6021,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const entry = mainStockEntries.find((e) => e.id === id);
     setMainStockEntries((prev) => {
       const updated = prev.filter((e) => e.id !== id);
-      saveToStorage('mainStockEntries', updated);
+      saveTenantData(currentTenantIdRef.current, 'mainStockEntries', updated);
       return updated;
     });
     if (entry) {
@@ -5634,7 +6038,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const req = stockRequests.find((r) => r.id === id);
     setStockRequests((prev) => {
       const updated = prev.filter((r) => r.id !== id);
-      saveToStorage('stockRequests', updated);
+      saveTenantData(currentTenantIdRef.current, 'stockRequests', updated);
       return updated;
     });
     if (req) {
@@ -5652,7 +6056,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const issue = teamIssues.find((i) => i.id === id);
     setTeamIssues((prev) => {
       const updated = prev.filter((i) => i.id !== id);
-      saveToStorage('teamIssues', updated);
+      saveTenantData(currentTenantIdRef.current, 'teamIssues', updated);
       return updated;
     });
     if (issue) {
@@ -5670,7 +6074,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const ret = teamReturns.find((r) => r.id === id);
     setTeamReturns((prev) => {
       const updated = prev.filter((r) => r.id !== id);
-      saveToStorage('teamReturns', updated);
+      saveTenantData(currentTenantIdRef.current, 'teamReturns', updated);
       return updated;
     });
     if (ret) {
@@ -5687,7 +6091,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const deleteAuditLog = (id: string) => {
     setAuditLogs((prev) => {
       const updated = prev.filter((l) => l.id !== id);
-      saveToStorage('auditLogs', updated);
+      saveTenantData(currentTenantIdRef.current, 'auditLogs', updated);
       return updated;
     });
   };
@@ -5702,7 +6106,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       timestamp: new Date().toISOString(),
       receivedBy: currentUser?.fullName || 'Arthur Vance',
     };
-    setMainStockEntries((prev) => [newEntry, ...prev]);
+    setMainStockEntries((prev) => {
+      const next = [newEntry, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'mainStockEntries', next);
+      return next;
+    });
 
     const item = items.find((i) => i.id === newEntry.itemId);
     addAuditLog(
@@ -5730,7 +6138,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       requestedDate: new Date().toISOString(),
       requestedBy: currentUser?.fullName || 'Branch Admin',
     };
-    setStockRequests((prev) => [newRequest, ...prev]);
+    setStockRequests((prev) => {
+      const next = [newRequest, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      return next;
+    });
 
     const site = sites.find((s) => s.id === newRequest.siteId);
     addAuditLog(
@@ -5747,8 +6159,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     approvedItems: Array<{ itemId: string; approvedQty: number }>,
     approvalNotes?: string
   ) => {
-    setStockRequests((prev) =>
-      prev.map((req) => {
+    setStockRequests((prev) => {
+      const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         const updatedItems = req.items.map((itemRow) => {
           const match = approvedItems.find((a) => a.itemId === itemRow.itemId);
@@ -5759,14 +6171,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
         return {
           ...req,
-          status: 'Approved / In-Transit',
+          status: 'Approved / In-Transit' as const,
           approvalDate: new Date().toISOString(),
           approvedBy: currentUser?.fullName || 'Arthur Vance',
           approvalNotes,
           items: updatedItems,
         };
-      })
-    );
+      });
+      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      return next;
+    });
 
     const targetReq = stockRequests.find((r) => r.id === requestId);
     const site = sites.find((s) => s.id === targetReq?.siteId);
@@ -5779,18 +6193,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const rejectStockRequest = (requestId: string, notes?: string) => {
-    setStockRequests((prev) =>
-      prev.map((req) => {
+    setStockRequests((prev) => {
+      const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         return {
           ...req,
-          status: 'Rejected',
+          status: 'Rejected' as const,
           approvalDate: new Date().toISOString(),
           approvedBy: currentUser?.fullName || 'Arthur Vance',
           approvalNotes: notes || 'Rejected by Main Branch Admin',
         };
-      })
-    );
+      });
+      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      return next;
+    });
 
     const targetReq = stockRequests.find((r) => r.id === requestId);
     const site = sites.find((s) => s.id === targetReq?.siteId);
@@ -5808,14 +6224,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const itemMaster = items.find((i) => i.id === itemId);
     const updatedItems = targetReq.items.filter((i) => i.itemId !== itemId);
 
-    setStockRequests((prev) =>
-      prev.map((req) => {
+    setStockRequests((prev) => {
+      const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         if (updatedItems.length === 0) {
           return {
             ...req,
             items: [],
-            status: 'Rejected',
+            status: 'Rejected' as const,
             approvalDate: new Date().toISOString(),
             approvedBy: currentUser?.fullName || 'Main Branch Admin',
             approvalNotes: 'All items removed due to stock unavailability.',
@@ -5825,8 +6241,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ...req,
           items: updatedItems,
         };
-      })
-    );
+      });
+      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      return next;
+    });
 
     const site = sites.find((s) => s.id === targetReq.siteId);
     addAuditLog(
@@ -5843,8 +6261,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     receivedItems: Array<{ itemId: string; receivedQty: number }>,
     acceptanceNotes?: string
   ) => {
-    setStockRequests((prev) =>
-      prev.map((req) => {
+    setStockRequests((prev) => {
+      const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         const updatedItems = req.items.map((itemRow) => {
           const match = receivedItems.find((r) => r.itemId === itemRow.itemId);
@@ -5856,14 +6274,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
         return {
           ...req,
-          status: 'Accepted',
+          status: 'Accepted' as const,
           acceptanceDate: new Date().toISOString(),
           acceptedBy: currentUser?.fullName || 'Branch Admin',
           acceptanceNotes,
           items: updatedItems,
         };
-      })
-    );
+      });
+      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      return next;
+    });
 
     const targetReq = stockRequests.find((r) => r.id === requestId);
     const site = sites.find((s) => s.id === targetReq?.siteId);
@@ -5888,7 +6308,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       issueDate: new Date().toISOString(),
       issuedBy: currentUser?.fullName || 'Branch Admin',
     };
-    setTeamIssues((prev) => [newIssue, ...prev]);
+    setTeamIssues((prev) => {
+      const next = [newIssue, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'teamIssues', next);
+      return next;
+    });
 
     const team = teams.find((t) => t.id === newIssue.teamId);
     const site = sites.find((s) => s.id === newIssue.siteId);
@@ -5924,7 +6348,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       returnDate: new Date().toISOString(),
       returnedBy: currentUser?.fullName || 'Branch Admin',
     };
-    setTeamReturns((prev) => [newReturn, ...prev]);
+    setTeamReturns((prev) => {
+      const next = [newReturn, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'teamReturns', next);
+      return next;
+    });
 
     const team = teams.find((t) => t.id === newReturn.teamId);
     const site = sites.find((s) => s.id === newReturn.siteId);
@@ -5969,7 +6397,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       supervisorOrLeaderName: leaderName,
       loggedBy: currentUser?.fullName || 'Field Supervisor',
     };
-    setProjectUsages((prev) => [newUsage, ...prev]);
+    setProjectUsages((prev) => {
+      const next = [newUsage, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'projectUsages', next);
+      return next;
+    });
 
     const totalQty = newUsage.items.reduce((sum, i) => sum + i.quantity, 0);
     addAuditLog(
@@ -6179,9 +6611,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateProjectUsage = (id: string, updates: Partial<ProjectMaterialUsage>) => {
-    setProjectUsages((prev) =>
-      prev.map((pu) => (pu.id === id ? { ...pu, ...updates } : pu))
-    );
+    setProjectUsages((prev) => {
+      const next = prev.map((pu) => (pu.id === id ? { ...pu, ...updates } : pu));
+      saveTenantData(currentTenantIdRef.current, 'projectUsages', next);
+      return next;
+    });
     const pu = projectUsages.find((u) => u.id === id);
     if (pu) {
       addAuditLog(
@@ -6195,7 +6629,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const deleteProjectUsage = (id: string) => {
     const pu = projectUsages.find((u) => u.id === id);
-    setProjectUsages((prev) => prev.filter((u) => u.id !== id));
+    setProjectUsages((prev) => {
+      const next = prev.filter((u) => u.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'projectUsages', next);
+      return next;
+    });
     if (pu) {
       addAuditLog(
         'RECORD_DELETED',
@@ -6210,6 +6648,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const count = projectUsages.length;
     setProjectUsages([]);
     saveToStorage('projectUsages', []);
+    saveTenantData(currentTenantIdRef.current, 'projectUsages', []);
     addAuditLog('RECORD_DELETED', 'CLEAR-USAGES', 'Project Office', `Cleared all ${count} project material usage records.`);
   };
 
@@ -6239,7 +6678,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       returnDate: new Date().toISOString(),
       returnedBy: currentUser?.fullName || 'Branch Admin',
     };
-    setBranchReturns((prev) => [newBranchReturn, ...prev]);
+    setBranchReturns((prev) => {
+      const next = [newBranchReturn, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'branchReturns', next);
+      return next;
+    });
 
     const item = items.find((i) => i.id === data.itemId);
     addAuditLog(
@@ -6255,7 +6698,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const deleteBranchReturn = (id: string) => {
     const br = branchReturns.find((b) => b.id === id);
-    setBranchReturns((prev) => prev.filter((b) => b.id !== id));
+    setBranchReturns((prev) => {
+      const next = prev.filter((b) => b.id !== id);
+      saveTenantData(currentTenantIdRef.current, 'branchReturns', next);
+      return next;
+    });
     if (br) {
       addAuditLog('RECORD_DELETED', br.branchReturnNumber, 'Main Central Warehouse', `Deleted branch return to main record: ${br.branchReturnNumber}`);
     }
@@ -6265,6 +6712,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const count = branchReturns.length;
     setBranchReturns([]);
     saveToStorage('branchReturns', []);
+    saveTenantData(currentTenantIdRef.current, 'branchReturns', []);
     addAuditLog('RECORD_DELETED', 'CLEAR-BRANCH-RETURNS', 'Main Central Warehouse', `Cleared all ${count} branch stock return records.`);
   };
 
@@ -6322,9 +6770,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       isDeleted: false,
     };
 
-    const next = [newRestoration, ...damagedRestorations];
-    setDamagedRestorations(next);
-    saveToStorage('damagedRestorations', next);
+    setDamagedRestorations((prev) => {
+      const next = [newRestoration, ...prev];
+      saveToStorage('damagedRestorations', next);
+      saveTenantData(currentTenantIdRef.current, 'damagedRestorations', next);
+      return next;
+    });
 
     addAuditLog(
       'DAMAGED_STOCK_RESTORED',
@@ -6393,6 +6844,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updated = [newBackup, ...backups];
     setBackups(updated);
     saveToStorage('backups', updated);
+    saveTenantData(currentTenantIdRef.current, 'backups', updated);
     addAuditLog(
       'BACKUP_CREATED',
       `BACKUP-#${backupNumber}`,
@@ -6475,6 +6927,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const filtered = prev.filter((b) => !b.name.includes(`[Daily Auto-Backup] ${todayStr}`));
       const updated = [autoBackup, ...filtered];
       saveToStorage('backups', updated);
+      saveTenantData(currentTenantIdRef.current, 'backups', updated);
       return updated;
     });
 
@@ -6645,6 +7098,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setBackups((prev) => {
       const next = prev.filter((b) => b.id !== backupId);
       saveToStorage('backups', next);
+      saveTenantData(currentTenantIdRef.current, 'backups', next);
       return next;
     });
     if (backup) {

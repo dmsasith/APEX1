@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { getThemeConfig } from '../utils/themeUtils';
-import { isSuperAdmin } from '../types';
+import { isSuperAdmin, isCentralOrAllSiteAdmin } from '../types';
 
 interface SidebarProps {
   currentTab: string;
@@ -38,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout, config, currentTenant } = useStock();
   const currentTheme = getThemeConfig(config?.themeId || config?.logoColor || 'emerald');
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
+  const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
   // Grouped Navigation Items in Logical Operations Workflow Flow
@@ -51,15 +52,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           badge: totalLowStockAlertsCount > 0 ? `${totalLowStockAlertsCount}` : undefined,
           badgeColor: 'bg-red-500 text-white',
         },
-        ...(isCentralAdmin
-          ? [
-              {
-                id: 'registrations',
-                label: 'Master Registrations',
-                icon: Database,
-              },
-            ]
-          : []),
+        {
+          id: 'registrations',
+          label: 'Master Registrations',
+          icon: Database,
+        },
       ],
     },
     {
@@ -75,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           label: 'Client Free Stock (FOC)',
           icon: Gift,
         },
-        ...(isCentralAdmin
+        ...(canAccessProcurement
           ? [
               {
                 id: 'procurement',

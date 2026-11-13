@@ -965,6 +965,25 @@ export async function writeTenantsToFirebase(tenants: Tenant[]): Promise<void> {
   }
 }
 
+export async function fetchTenantsFromFirebase(): Promise<Tenant[]> {
+  try {
+    const snap = await get(ref(rtdb, 'saasTenants'));
+    if (snap.exists()) {
+      const val = snap.val();
+      const list = normalizeFirebaseList<Tenant>(val);
+      if (list.length > 0) return list;
+    }
+    const fallbackSnap = await get(ref(rtdb, 'tenantsData/tenant-apex-main/tenants'));
+    if (fallbackSnap.exists()) {
+      return normalizeFirebaseList<Tenant>(fallbackSnap.val());
+    }
+    return [];
+  } catch (err) {
+    console.warn('Failed to fetch saasTenants from Firebase:', err);
+    return [];
+  }
+}
+
 export function subscribeToFirebaseDeletedTenants(
   onData: (deletedMap: Record<string, number>) => void,
   onError?: (err: Error) => void

@@ -100,7 +100,7 @@ export function isUserAllSites(
   user?: Pick<User, 'siteId' | 'siteIds' | 'role' | 'username'> | null
 ): boolean {
   if (!user) return false;
-  if (user.username === 'admin' || isSuperAdmin(user.role)) return true;
+  if (user.username === 'admin' || isCentralOrAllSiteAdmin(user.role)) return true;
   if (user.siteId === 'all') return true;
   if (Array.isArray(user.siteIds) && user.siteIds.includes('all')) return true;
   return false;

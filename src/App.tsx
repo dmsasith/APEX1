@@ -58,7 +58,7 @@ import { DeveloperPortalGateway } from './components/saas/DeveloperPortalGateway
 import { BranchDirectoryView } from './components/directory/BranchDirectoryView';
 import { useStock } from './context/StockContext';
 import { getThemeConfig } from './utils/themeUtils';
-import { isSuperAdmin } from './types';
+import { isSuperAdmin, isCentralOrAllSiteAdmin } from './types';
 
 function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void } = {}) {
   const [currentTab, setCurrentTab] = useState('dashboard');
@@ -66,6 +66,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
   const { config, currentUser, currentTenant, pendingRequestsCount } = useStock();
   const theme = getThemeConfig(config?.themeId || config?.logoColor);
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
+  const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
   useEffect(() => {
@@ -82,10 +83,10 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
 
   const allMobileModules = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ...(isCentralAdmin ? [{ id: 'registrations', label: 'Master Setup', icon: Database }] : []),
+    { id: 'registrations', label: 'Master Setup', icon: Database },
     { id: 'main-stock', label: '1. Main Stock', icon: Boxes },
     { id: 'client-free-stock', label: 'Client Free Stock', icon: Gift },
-    ...(isCentralAdmin ? [{ id: 'procurement', label: 'Supplier PO', icon: ShoppingCart }] : []),
+    ...(canAccessProcurement ? [{ id: 'procurement', label: 'Supplier PO', icon: ShoppingCart }] : []),
     { id: 'items', label: 'Items & Catalog', icon: FileSpreadsheet },
     { id: 'requests', label: '2. Site Requests', icon: ArrowRightLeft },
     { id: 'site-stock', label: 'Branch Stock', icon: Building2 },
@@ -324,7 +325,13 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
 
 function AppRoot() {
   const { isAuthenticated, authUser, currentTenant, exitTenantPreview, exitViewAsMode, switchToMasterStock } = useStock();
-  const [unauthView, setUnauthView] = useState<'landing' | 'login'>('landing');
+  const [unauthView, setUnauthView] = useState<'landing' | 'login'>(() => {
+    if (typeof window !== 'undefined') {
+      const urlWs = new URLSearchParams(window.location.search).get('workspace')?.trim();
+      if (urlWs) return 'login';
+    }
+    return 'landing';
+  });
   const [developerPortalChoice, setDeveloperPortalChoice] = useState<'pending' | 'saas' | 'stock'>(() => {
     try {
       const saved = sessionStorage.getItem('apex_developer_portal_choice');
