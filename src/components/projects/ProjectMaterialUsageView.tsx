@@ -32,12 +32,14 @@ import {
   Lock,
   Shield,
   Gift,
+  ScanLine,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
   ProjectMaterialUsage,
   ProjectUsageItemRow,
   ProjectType,
+  Item,
   isSuperAdmin,
   isCentralOrAllSiteAdmin,
   isUserAllSites,
@@ -47,6 +49,12 @@ import {
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import {
+  useUsbBarcodeScanner,
+  matchItemByScannedCode,
+  playScanBeep,
+} from '../../utils/barcodeUtils';
 
 interface ItemEntryRow {
   itemId: string;
@@ -83,6 +91,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
     getClientFreeStockBalance,
     getProjectFreeStockList,
     activeClients,
+    config,
   } = useStock();
 
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
@@ -91,6 +100,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'log' | 'history' | 'reconciliation'>('log');
   const [selectedUsageForPrint, setSelectedUsageForPrint] = useState<ProjectMaterialUsage | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
@@ -259,6 +269,45 @@ export const ProjectMaterialUsageView: React.FC = () => {
     const unselected = activeItems.find((itm) => !itemRows.some((r) => r.itemId === itm.id));
     setItemRows([...itemRows, { itemId: unselected?.id || activeItems[0]?.id || '', quantity: '' }]);
   };
+
+  const handleBarcodeScannedUsageItem = (item: Item) => {
+    setErrorMsg('');
+    setItemRows((prev) => {
+      const existingIdx = prev.findIndex((r) => r.itemId === item.id);
+      if (existingIdx !== -1) {
+        const next = [...prev];
+        const curQty = Number(next[existingIdx].quantity) || 0;
+        next[existingIdx] = { ...next[existingIdx], quantity: curQty + 1 };
+        return next;
+      }
+      if (prev.length === 1 && (!prev[0].itemId || prev[0].quantity === '')) {
+        return [{ itemId: item.id, quantity: 1 }];
+      }
+      return [...prev, { itemId: item.id, quantity: 1 }];
+    });
+    if (item.isProjectReserved && item.reservedProjectId) {
+      setProjectEntryMode('existing');
+      setSelectedProjectId(item.reservedProjectId);
+    }
+    setSuccessToast(`Scanned & added to Project Usage: [${item.itemCode}] ${item.itemName}`);
+  };
+
+  useUsbBarcodeScanner({
+    enabled: activeTab === 'log' && !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
+    minLength: 3,
+    maxInterKeyLatencyMs: config.usbScanMaxLatencyMs || 55,
+    ignoreInputs: true,
+    onScan: (raw) => {
+      const matched = matchItemByScannedCode(activeItems, raw);
+      if (matched) {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(true);
+        handleBarcodeScannedUsageItem(matched);
+      } else {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+        setErrorMsg(`No catalog item matched scanned barcode "${raw}".`);
+      }
+    },
+  });
 
   const handleRemoveItemRow = (idx: number) => {
     if (itemRows.length <= 1) return;
@@ -1247,14 +1296,26 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       Standard section template items pre-loaded below. Enter actual quantities used or add extra items.
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddItemRow}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 transition cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+ Add Extra Item</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    {config.barcodeEnabled !== false && (
+                      <button
+                        type="button"
+                        onClick={() => setScannerOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition cursor-pointer shadow-xs"
+                      >
+                        <ScanLine className="w-3.5 h-3.5" />
+                        <span>Scan Barcode (USB / Mobile)</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAddItemRow}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 transition cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Add Extra Item</span>
+                    </button>
+                  </div>
                 </div>
 
                 {eligibleItems.length === 0 && (
@@ -2107,6 +2168,19 @@ export const ProjectMaterialUsageView: React.FC = () => {
         confirmLabel={confirmState.confirmLabel}
         onConfirm={confirmState.onConfirm}
         onCancel={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        mode="select"
+        siteId={selectedSiteId}
+        title="Scan Barcode to Log Project Material Usage"
+        subtitle="Scan via USB Gun or Mobile Camera — adds or increments item in Step 4"
+        onSelectItem={(item) => {
+          handleBarcodeScannedUsageItem(item);
+        }}
       />
     </div>
   );

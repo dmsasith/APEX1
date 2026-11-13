@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, Check, Package, X, AlertTriangle } from 'lucide-react';
+import { Search, ChevronDown, Check, X, Barcode } from 'lucide-react';
 import { Item } from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatNumber } from '../../utils/exportUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { matchItemByScannedCode, playScanBeep, useUsbBarcodeScanner } from '../../utils/barcodeUtils';
 
 interface SearchableItemSelectProps {
   selectedItemId: string;
@@ -23,7 +25,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   selectedItemId,
   onSelectItem,
   siteId,
-  placeholder = 'Search & select item by code or assembly description...',
+  placeholder = 'Search & select item by code, barcode, or assembly description...',
   disabled = false,
   required = false,
   className = '',
@@ -37,8 +39,11 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'Material' | 'Machinery'>(defaultClassification);
   const [onlyAvailable, setOnlyAvailable] = useState<boolean>(onlyAvailableStock);
+  const [showScannerModal, setShowScannerModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const barcodeEnabled = config.barcodeEnabled !== false;
 
   useEffect(() => {
     if (defaultClassification) {
@@ -75,7 +80,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
     }
   };
 
-  // Filter items based on query, type tab, and stock availability
+  // Filter items based on query (including barcode!), type tab, and stock availability
   const filteredItems = activeItems.filter((i) => {
     const isMach = isMachineryItem(i);
     if (selectedType === 'Material' && isMach) return false;
@@ -90,10 +95,29 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
     if (!q) return true;
     return (
       i.itemCode.toLowerCase().includes(q) ||
+      (i.barcode && i.barcode.toLowerCase().includes(q)) ||
       i.itemName.toLowerCase().includes(q) ||
       i.category.toLowerCase().includes(q) ||
       (i.description && i.description.toLowerCase().includes(q))
     );
+  });
+
+  // Listen to USB HID scanner when dropdown is open
+  useUsbBarcodeScanner({
+    enabled: isOpen && barcodeEnabled && config.usbScannerEnabled !== false,
+    maxLatencyMs: config.usbScanMaxLatencyMs || 60,
+    captureInInputs: true,
+    onScan: (code) => {
+      const found = matchItemByScannedCode(code, activeItems);
+      if (found) {
+        playScanBeep('success', config.barcodeBeepEnabled !== false);
+        onSelectItem(found);
+        setIsOpen(false);
+        setSearchQuery('');
+      } else {
+        playScanBeep('error', config.barcodeBeepEnabled !== false);
+      }
+    },
   });
 
   // Close dropdown on click outside
@@ -173,6 +197,21 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         )}
 
         <div className="flex items-center gap-1.5 shrink-0 text-slate-400 ml-2">
+          {barcodeEnabled && !disabled && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+                setShowScannerModal(true);
+              }}
+              className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center gap-1 transition cursor-pointer shadow-2xs"
+              title="Scan Barcode via USB Gun or Mobile Phone Camera"
+            >
+              <Barcode className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Scan</span>
+            </button>
+          )}
           {selectedItem && !disabled && (
             <button
               type="button"
@@ -267,15 +306,33 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
             </span>
           </div>
 
-          {/* Search Box */}
+          {/* Search & Scan Box */}
           <div className="p-2.5 border-b border-slate-200 bg-white flex items-center gap-2">
             <Search className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
             <input
               ref={inputRef}
               type="text"
-              placeholder={`Filter ${selectedType === 'Machinery' ? 'machinery & equipment' : selectedType === 'Material' ? 'materials' : 'items'} by code, name, category...`}
+              placeholder={`Search or scan ${selectedType === 'Machinery' ? 'machinery' : selectedType === 'Material' ? 'materials' : 'items'} by barcode, code, name...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  const exactMatch = matchItemByScannedCode(searchQuery.trim(), activeItems);
+                  if (exactMatch) {
+                    e.preventDefault();
+                    playScanBeep('success', config.barcodeBeepEnabled !== false);
+                    onSelectItem(exactMatch);
+                    setIsOpen(false);
+                    setSearchQuery('');
+                  } else if (filteredItems.length === 1) {
+                    e.preventDefault();
+                    playScanBeep('success', config.barcodeBeepEnabled !== false);
+                    onSelectItem(filteredItems[0]);
+                    setIsOpen(false);
+                    setSearchQuery('');
+                  }
+                }
+              }}
               className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs sm:text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none placeholder:text-slate-400 font-medium"
             />
             {searchQuery && (
@@ -285,6 +342,20 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                 className="text-slate-400 hover:text-slate-700 text-xs px-2 py-1 font-bold cursor-pointer rounded"
               >
                 ✕
+              </button>
+            )}
+            {barcodeEnabled && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  setShowScannerModal(true);
+                }}
+                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                title="Open USB / Mobile Camera Barcode Scanner"
+              >
+                <Barcode className="w-3.5 h-3.5" />
+                <span>Camera / USB</span>
               </button>
             )}
           </div>
@@ -318,6 +389,12 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                         <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md shrink-0 border border-slate-200">
                           {item.itemCode}
                         </span>
+                        {item.barcode && item.barcode !== item.itemCode && (
+                          <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 inline-flex items-center gap-1">
+                            <Barcode className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>{item.barcode}</span>
+                          </span>
+                        )}
                         {isMach ? (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 shrink-0 border border-amber-200">
                             🚜 Machinery
@@ -382,6 +459,18 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
           </div>
         </div>
       )}
+
+      <BarcodeScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        mode="select"
+        siteId={siteId}
+        onScanItem={(item) => {
+          onSelectItem(item);
+          setIsOpen(false);
+          setSearchQuery('');
+        }}
+      />
     </div>
   );
 };

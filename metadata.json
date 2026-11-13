@@ -1,6 +1,6 @@
 {
   "name": "Apex Stock & Site Management System",
   "description": "Enterprise stock & inventory management system for central warehouse, site branches, field team daily dispatch, approvals, returns, and live tracking.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

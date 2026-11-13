@@ -104,9 +104,10 @@ export const SAMPLE_TEMPLATE_ROWS: ExcelItemRow[] = [
  * and standard inventory columns.
  */
 export const downloadSampleExcelTemplate = () => {
-  const data = SAMPLE_TEMPLATE_ROWS.map((row) => ({
+  const data = SAMPLE_TEMPLATE_ROWS.map((row, idx) => ({
     'Item No': row.itemNo,
     'Unit Designation': row.itemCode,
+    'Barcode / EAN': row.barcode || `APX-${String(100001 + idx)}`,
     'Description of Assembly Unit': row.itemName,
     'Unit': row.unit,
     'Category': row.category,
@@ -121,6 +122,7 @@ export const downloadSampleExcelTemplate = () => {
   worksheet['!cols'] = [
     { wch: 10 }, // Item No
     { wch: 20 }, // Unit Designation
+    { wch: 22 }, // Barcode / EAN
     { wch: 45 }, // Description of Assembly Unit
     { wch: 12 }, // Unit
     { wch: 35 }, // Category
@@ -143,6 +145,7 @@ export const exportItemsToExcel = (items: Item[], filename = 'Master_Items_Catal
   const data = items.map((item, index) => ({
     'Item No': index + 1,
     'Unit Designation (Code)': item.itemCode,
+    'Barcode / EAN': item.barcode || item.itemCode,
     'Item Name / Assembly Unit': item.itemName,
     'Category': item.category,
     'Unit': item.unit,
@@ -157,6 +160,7 @@ export const exportItemsToExcel = (items: Item[], filename = 'Master_Items_Catal
   worksheet['!cols'] = [
     { wch: 10 },
     { wch: 24 },
+    { wch: 22 },
     { wch: 45 },
     { wch: 30 },
     { wch: 12 },
@@ -241,6 +245,7 @@ export const parseExcelItemsFile = async (
 
           // Map headers flexibly by normalized key
           let itemCode = '';
+          let barcode = '';
           let itemName = '';
           let unit = '';
           let category = '';
@@ -253,8 +258,18 @@ export const parseExcelItemsFile = async (
             const normKey = normalizeKey(rawKey);
             const valStr = String(rawVal).trim();
 
-            // Match Unit Designation / Item Code
+            // Match Barcode / EAN / UPC
             if (
+              normKey.includes('barcode') ||
+              normKey === 'ean' ||
+              normKey === 'ean13' ||
+              normKey === 'upc' ||
+              normKey === 'skubarcode'
+            ) {
+              barcode = valStr;
+            }
+            // Match Unit Designation / Item Code
+            else if (
               normKey.includes('unitdesignat') ||
               normKey.includes('designat') ||
               normKey.includes('itemcode') ||
@@ -365,6 +380,7 @@ export const parseExcelItemsFile = async (
           parsedRows.push({
             itemNo,
             itemCode: upperCode,
+            barcode: barcode ? barcode.trim().toUpperCase() : undefined,
             itemName,
             unit: unit || 'Pcs',
             category: category || 'Assembly Units (Manholes & Handholes)',

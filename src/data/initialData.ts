@@ -49,6 +49,14 @@ export const INITIAL_CONFIG: SystemConfig = {
   address: 'Apex Software Engineering & Logistics Hub',
   phone: '+94 77 123 4567',
   email: 'apexdevinfo@gmail.com',
+  barcodeEnabled: true,
+  usbScannerEnabled: true,
+  mobileCameraScannerEnabled: true,
+  barcodeAutoSelect: true,
+  barcodeBeepEnabled: true,
+  barcodeSymbology: 'CODE128',
+  barcodePrefix: 'APX-',
+  usbScanMaxLatencyMs: 60,
 };
 
 export const INITIAL_SITES: Site[] = [

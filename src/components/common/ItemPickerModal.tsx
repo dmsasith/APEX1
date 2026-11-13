@@ -17,10 +17,17 @@ import {
   ChevronRight,
   ShoppingCart,
   CornerDownLeft,
+  ScanLine,
 } from 'lucide-react';
 import { Item } from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatNumber } from '../../utils/exportUtils';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
+import {
+  useUsbBarcodeScanner,
+  matchItemByScannedCode,
+  playScanBeep,
+} from '../../utils/barcodeUtils';
 
 export interface SelectedItemEntry {
   item: Item;
@@ -71,10 +78,61 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
   const [selectionMap, setSelectionMap] = useState<Map<string, { item: Item; quantity: number; unitCost: number }>>(
     new Map()
   );
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanToast, setScanToast] = useState<string | null>(null);
 
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleBarcodeMatchedItem = (matched: Item) => {
+    setSelectionMap((prev) => {
+      const next = new Map(prev);
+      if (mode === 'single') {
+        next.clear();
+        next.set(matched.id, {
+          item: matched,
+          quantity: defaultQuantity,
+          unitCost: matched.unitPrice || 0,
+        });
+        return next;
+      }
+
+      const existing = next.get(matched.id);
+      if (existing) {
+        next.set(matched.id, {
+          ...existing,
+          quantity: existing.quantity + 1,
+        });
+      } else {
+        next.set(matched.id, {
+          item: matched,
+          quantity: defaultQuantity,
+          unitCost: matched.unitPrice || 0,
+        });
+      }
+      return next;
+    });
+    setScanToast(`Scanned & selected: [${matched.itemCode}] ${matched.itemName}`);
+    setTimeout(() => setScanToast(null), 3200);
+  };
+
+  useUsbBarcodeScanner({
+    enabled: isOpen && !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
+    minLength: 3,
+    maxInterKeyLatencyMs: config.usbScanMaxLatencyMs || 55,
+    ignoreInputs: false,
+    onScan: (raw) => {
+      const matched = matchItemByScannedCode(activeItems, raw);
+      if (matched) {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(true);
+        handleBarcodeMatchedItem(matched);
+      } else {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+        setSearchQuery(raw);
+      }
+    },
+  });
 
   // Target site details if provided
   const targetSite = useMemo(() => {
@@ -127,10 +185,11 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
         // Query search
         if (q) {
           const matchCode = item.itemCode.toLowerCase().includes(q);
+          const matchBarcode = item.barcode?.toLowerCase().includes(q);
           const matchName = item.itemName.toLowerCase().includes(q);
           const matchCat = item.category.toLowerCase().includes(q);
           const matchDesc = item.description?.toLowerCase().includes(q);
-          if (!matchCode && !matchName && !matchCat && !matchDesc) return false;
+          if (!matchCode && !matchBarcode && !matchName && !matchCat && !matchDesc) return false;
         }
 
         // Category filter
@@ -326,6 +385,23 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {scanToast && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{scanToast}</span>
+              </span>
+            )}
+            {config.barcodeEnabled !== false && (
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                title="Scan Barcode via USB Gun or Mobile Camera"
+              >
+                <ScanLine className="w-4 h-4" />
+                <span>Scan Barcode</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -644,6 +720,12 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
                         <span className="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200 group-hover:border-slate-300">
                           {item.itemCode}
                         </span>
+                        {item.barcode && (
+                          <div className="text-[10px] font-mono text-emerald-700 mt-1 flex items-center gap-1">
+                            <ScanLine className="w-2.5 h-2.5 shrink-0" />
+                            <span>{item.barcode}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Item Name & Specs */}
@@ -844,6 +926,29 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
           </div>
         </div>
       </div>
+
+      <BarcodeScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        mode="select"
+        siteId={siteId}
+        title="Scan Barcode to Select Item"
+        subtitle="Scan with a USB Barcode Gun or Mobile Phone Camera to add/select in the catalog picker"
+        onSelectItem={(item) => {
+          handleBarcodeMatchedItem(item);
+          if (mode === 'single' && config.barcodeAutoSelect !== false) {
+            onConfirm([
+              {
+                item,
+                quantity: defaultQuantity,
+                unitCost: item.unitPrice || 0,
+              },
+            ]);
+            setScannerOpen(false);
+            onClose();
+          }
+        }}
+      />
     </div>
   );
 };

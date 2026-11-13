@@ -13,6 +13,7 @@ import {
   Clock,
   Briefcase,
   Lock,
+  ScanLine,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -27,6 +28,12 @@ import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { StockBalanceCell } from '../common/LowStockIndicator';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import {
+  useUsbBarcodeScanner,
+  matchItemByScannedCode,
+  playScanBeep,
+} from '../../utils/barcodeUtils';
 
 export const IssueToTeamsView: React.FC = () => {
   const {
@@ -42,9 +49,11 @@ export const IssueToTeamsView: React.FC = () => {
     issueStockToTeam,
     clearTeamIssues,
     deleteTeamIssue,
+    config,
   } = useStock();
 
   const [selectedIssueForPrint, setSelectedIssueForPrint] = useState<TeamIssue | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // In-app confirmation modal state
   const [confirmState, setConfirmState] = useState<{
@@ -119,23 +128,32 @@ export const IssueToTeamsView: React.FC = () => {
     const query = searchItemQuery.toLowerCase();
     const matches =
       i.itemCode.toLowerCase().includes(query) ||
+      (i.barcode && i.barcode.toLowerCase().includes(query)) ||
       i.itemName.toLowerCase().includes(query) ||
       i.category.toLowerCase().includes(query);
     return matches;
   });
 
-  // "+" Plus button to add item to dispatch list
-  const handleAddItemToDispatch = (item: Item) => {
+  // "+" Plus button or Barcode Scan to add/increment item in dispatch list
+  const handleAddItemToDispatch = (item: Item, fromBarcodeScan = false) => {
     setErrorMessage('');
-    const existing = dispatchItemsList.find((r) => r.itemId === item.id);
-    if (existing) {
-      setErrorMessage(`Item ${item.itemCode} is already in the dispatch list.`);
-      return;
-    }
-
     const siteStock = getSiteItemStock(selectedSiteId, item.id);
     if (siteStock.availableBalance <= 0) {
       setErrorMessage(`Cannot add ${item.itemCode}: zero stock balance at this site branch.`);
+      return;
+    }
+
+    const existing = dispatchItemsList.find((r) => r.itemId === item.id);
+    if (existing) {
+      if (fromBarcodeScan) {
+        const nextQty = Math.min(existing.quantity + 1, siteStock.availableBalance);
+        setDispatchItemsList((prev) =>
+          prev.map((r) => (r.itemId === item.id ? { ...r, quantity: nextQty } : r))
+        );
+        setSuccessToast(`Scanned ${item.itemCode}: Quantity updated to ${nextQty} ${item.unit}.`);
+        return;
+      }
+      setErrorMessage(`Item ${item.itemCode} is already in the dispatch list.`);
       return;
     }
 
@@ -143,11 +161,31 @@ export const IssueToTeamsView: React.FC = () => {
       ...prev,
       {
         itemId: item.id,
-        quantity: Math.min(10, siteStock.availableBalance),
+        quantity: fromBarcodeScan ? 1 : Math.min(10, siteStock.availableBalance),
       },
     ]);
+    if (fromBarcodeScan) {
+      setSuccessToast(`Scanned & added to dispatch: [${item.itemCode}] ${item.itemName}`);
+    }
     setSearchItemQuery('');
   };
+
+  useUsbBarcodeScanner({
+    enabled: !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
+    minLength: 3,
+    maxInterKeyLatencyMs: config.usbScanMaxLatencyMs || 55,
+    ignoreInputs: true,
+    onScan: (raw) => {
+      const matched = matchItemByScannedCode(activeItems, raw);
+      if (matched) {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(true);
+        handleAddItemToDispatch(matched, true);
+      } else {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+        setErrorMessage(`No item matched scanned barcode "${raw}".`);
+      }
+    },
+  });
 
   const handleRemoveDispatchItem = (itemId: string) => {
     setDispatchItemsList((prev) => prev.filter((r) => r.itemId !== itemId));
@@ -397,16 +435,28 @@ export const IssueToTeamsView: React.FC = () => {
             </div>
           </div>
 
-          {/* Search Items in Site Inventory with "+" Button */}
+          {/* Search Items in Site Inventory with "+" Button & Barcode Scanner */}
           <div className="pt-2 border-t border-slate-100">
-            <label className="block text-xs font-semibold text-slate-800 mb-1.5">
-              Search Site Inventory (Click <span className="text-emerald-700 font-bold">+</span> to Add to Dispatch):
-            </label>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-800">
+                Search or Scan Site Inventory (Click <span className="text-emerald-700 font-bold">+</span> to Add):
+              </label>
+              {config.barcodeEnabled !== false && (
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <ScanLine className="w-3.5 h-3.5" />
+                  <span>Scan Barcode (USB / Mobile)</span>
+                </button>
+              )}
+            </div>
             <div className="relative mb-2 w-full min-w-[220px]">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by code (e.g. CBL, ST) or item description..."
+                placeholder="Search by code, barcode, or item description..."
                 value={searchItemQuery}
                 onChange={(e) => setSearchItemQuery(e.target.value)}
                 className="w-full pl-9 pr-8 py-2.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
@@ -742,6 +792,19 @@ export const IssueToTeamsView: React.FC = () => {
         confirmLabel={confirmState.confirmLabel}
         onConfirm={confirmState.onConfirm}
         onClose={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        mode="select"
+        siteId={selectedSiteId}
+        title="Scan Barcode to Dispatch Item to Team"
+        subtitle="Scan via USB Gun or Mobile Camera — adds or increments item in the dispatch manifest"
+        onSelectItem={(item) => {
+          handleAddItemToDispatch(item, true);
+        }}
       />
     </div>
   );

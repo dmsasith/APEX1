@@ -22,6 +22,7 @@ import {
   LogOut,
   Zap,
   FileSpreadsheet,
+  Barcode,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { ConfirmModal } from './common/ConfirmModal';
@@ -30,6 +31,7 @@ import { SubscriptionModal } from './subscription/SubscriptionModal';
 import { UserProfileModal } from './auth/UserProfileModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';
 import { SystemConfigModal } from './common/SystemConfigModal';
+import { BarcodeScannerModal } from './common/BarcodeScannerModal';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
 import { isCentralOrAllSiteAdmin, isSuperAdmin, isUserAllSites, getUserAssignedSiteIds } from '../types';
 
@@ -105,6 +107,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showBarcodeLookupModal, setShowBarcodeLookupModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -478,6 +481,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
             {/* Status & Scope (Right-aligned with Action Buttons & Main Workspace) */}
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {config.barcodeEnabled !== false && (
+                <button
+                  type="button"
+                  onClick={() => setShowBarcodeLookupModal(true)}
+                  className="h-8 flex items-center gap-1.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap"
+                  title="Scan Barcode via USB Gun or Mobile Phone Camera to check live stock"
+                >
+                  <Barcode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Scan Barcode</span>
+                </button>
+              )}
+
               <div className="h-8 flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-3 text-slate-600 shadow-2xs whitespace-nowrap">
                 <Layers className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>
@@ -550,6 +565,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
       <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
       <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <EmailVerificationModal isOpen={showEmailVerifyModal} onClose={() => setShowEmailVerifyModal(false)} />
+      <BarcodeScannerModal
+        isOpen={showBarcodeLookupModal}
+        onClose={() => setShowBarcodeLookupModal(false)}
+        mode="lookup"
+        title="Live Inventory Barcode Lookup (USB & Mobile)"
+        subtitle="Scan any item via USB Barcode Gun or Mobile Phone Camera to inspect stock balances"
+      />
     </>
   );
 };

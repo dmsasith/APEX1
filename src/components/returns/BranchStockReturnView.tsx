@@ -12,6 +12,7 @@ import {
   Clock,
   ArrowRight,
   Boxes,
+  ScanLine,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -25,6 +26,12 @@ import {
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import {
+  useUsbBarcodeScanner,
+  matchItemByScannedCode,
+  playScanBeep,
+} from '../../utils/barcodeUtils';
 
 export const BranchStockReturnView: React.FC = () => {
   const {
@@ -38,12 +45,14 @@ export const BranchStockReturnView: React.FC = () => {
     returnStockFromBranchToMain,
     clearBranchReturns,
     deleteBranchReturn,
+    config,
   } = useStock();
 
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   const [selectedReturnForPrint, setSelectedReturnForPrint] = useState<BranchReturn | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [filterBranchId, setFilterBranchId] = useState('all');
 
@@ -94,6 +103,31 @@ export const BranchStockReturnView: React.FC = () => {
   const currentSelectedItemEntry = availableStockItems.find((e) => e.item.id === selectedItemId);
   const activeSelectedItem = currentSelectedItemEntry || availableStockItems[0];
   const activeItemId = selectedItemId || activeSelectedItem?.item.id || '';
+
+  useUsbBarcodeScanner({
+    enabled: !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
+    minLength: 3,
+    maxInterKeyLatencyMs: config.usbScanMaxLatencyMs || 55,
+    ignoreInputs: true,
+    onScan: (raw) => {
+      const matched = matchItemByScannedCode(activeItems, raw);
+      if (matched) {
+        const entry = availableStockItems.find((e) => e.item.id === matched.id);
+        if (entry) {
+          if (config.barcodeBeepEnabled !== false) playScanBeep(true);
+          setSelectedItemId(matched.id);
+          setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, entry.availableBalance) : 1));
+          setSuccessToast(`Scanned & selected for branch return: [${matched.itemCode}] ${matched.itemName}`);
+        } else {
+          if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+          setErrorMsg(`Item [${matched.itemCode}] ${matched.itemName} has 0 available balance at this branch.`);
+        }
+      } else {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+        setErrorMsg(`No catalog item matched scanned barcode "${raw}".`);
+      }
+    },
+  });
 
   const handleSiteChange = (newSiteId: string) => {
     setSelectedSiteId(newSiteId);
@@ -272,9 +306,21 @@ export const BranchStockReturnView: React.FC = () => {
 
               {/* Item Selection (ONLY ITEMS WITH AVAILABLE STOCK > 0) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Item to Return (Available Stock Only) *
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Item to Return (Available Stock Only) *
+                  </label>
+                  {config.barcodeEnabled !== false && (
+                    <button
+                      type="button"
+                      onClick={() => setScannerOpen(true)}
+                      className="px-2.5 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <ScanLine className="w-3 h-3" />
+                      <span>Scan Barcode</span>
+                    </button>
+                  )}
+                </div>
                 <select
                   value={activeItemId}
                   onChange={(e) => {
@@ -611,6 +657,26 @@ export const BranchStockReturnView: React.FC = () => {
         confirmLabel={confirmState.confirmLabel}
         onConfirm={confirmState.onConfirm}
         onCancel={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        mode="select"
+        siteId={selectedSiteId}
+        title="Scan Barcode for Branch Stock Return"
+        subtitle="Scan via USB Gun or Mobile Camera to select an item from branch inventory"
+        onSelectItem={(item) => {
+          const entry = availableStockItems.find((e) => e.item.id === item.id);
+          if (entry) {
+            setSelectedItemId(item.id);
+            setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, entry.availableBalance) : 1));
+            setSuccessToast(`Scanned & selected for branch return: [${item.itemCode}] ${item.itemName}`);
+          } else {
+            setErrorMsg(`Item [${item.itemCode}] ${item.itemName} has 0 available balance at this branch.`);
+          }
+        }}
       />
     </div>
   );

@@ -29,6 +29,8 @@ import {
   Target,
   Briefcase,
   Handshake,
+  ScanLine,
+  Printer,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -55,6 +57,9 @@ import {
   STANDARD_MACHINERY_UNITS,
 } from '../../utils/itemTypeUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
+import { generateUniqueBarcode } from '../../utils/barcodeUtils';
 
 interface MasterRegistrationsViewProps {
   initialTab?: 'items' | 'sites' | 'users' | 'teams' | 'clients';
@@ -160,6 +165,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   // --- ITEM FORM STATE ---
   const [itemClassification, setItemClassification] = useState<'Material' | 'Machinery'>('Material');
   const [itemCode, setItemCode] = useState('');
+  const [itemBarcode, setItemBarcode] = useState('');
   const [itemName, setItemName] = useState('');
   const [itemCategory, setItemCategory] = useState('Electrical & Power');
   const [itemUnit, setItemUnit] = useState('pcs');
@@ -171,6 +177,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [projectSearchQuery, setProjectSearchQuery] = useState('');
   const [editProjectSearchQuery, setEditProjectSearchQuery] = useState('');
   const [itemReservationFilter, setItemReservationFilter] = useState<'all' | 'general' | 'reserved'>('all');
+  const [barcodeScanTarget, setBarcodeScanTarget] = useState<'create' | 'edit' | null>(null);
+  const [labelPrintItems, setLabelPrintItems] = useState<Item[] | null>(null);
 
   // --- DYNAMIC MACHINERY CATEGORIES STATE (ADMIN) ---
   const [customMachineryCategories, setCustomMachineryCategories] = useState<string[]>(() => {
@@ -250,6 +258,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     addItem(
       {
         itemCode: upperCode,
+        barcode: itemBarcode.trim() || undefined,
         itemName: itemName.trim(),
         category: itemCategory.trim(),
         itemType: itemClassification,
@@ -262,6 +271,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
     showToast(`Master Item ${upperCode} registered successfully!`);
     setItemCode('');
+    setItemBarcode('');
     setItemName('');
     setInitialReceivedQty('');
     setReservedProjectId('none');
@@ -525,6 +535,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   // --- FORM FIELD CLEAR HANDLERS ---
   const handleClearItemForm = () => {
     setItemCode('');
+    setItemBarcode('');
     setItemName('');
     setItemCategory('Electrical & Power');
     setItemUnit('pcs');
@@ -1146,6 +1157,46 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Barcode / EAN (USB &amp; Mobile Scanner)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setItemBarcode(
+                          generateUniqueBarcode(
+                            itemCode || 'ITEM',
+                            activeItems.length + 1,
+                            config.barcodePrefix || 'APX-'
+                          )
+                        )
+                      }
+                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      Auto-Generate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBarcodeScanTarget('create')}
+                      className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <ScanLine className="w-3 h-3" />
+                      <span>Scan</span>
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Optional — auto-generated if left blank or scan existing barcode..."
+                  value={itemBarcode}
+                  onChange={(e) => setItemBarcode(e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item Name *</label>
                 <input
                   type="text"
@@ -1453,29 +1504,50 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </button>
             </div>
 
-            {isCentralAdmin && (
-              <div className="flex items-center gap-2">
-                {selectedItemIds.length > 0 && (
-                  <button
-                    onClick={handleBulkDeleteItems}
-                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Selected ({selectedItemIds.length})</span>
-                  </button>
-                )}
-                {activeItems.length > 0 && (
-                  <button
-                    onClick={handleClearAllItems}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                    title="Move all active items to Recycle Bin"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Clear All</span>
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {activeItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLabelPrintItems(
+                      selectedItemIds.length > 0
+                        ? activeItems.filter((i) => selectedItemIds.includes(i.id))
+                        : activeItems
+                    )
+                  }
+                  className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Print Barcode Sticker Labels"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>
+                    Print Labels ({selectedItemIds.length > 0 ? selectedItemIds.length : activeItems.length})
+                  </span>
+                </button>
+              )}
+              {isCentralAdmin && (
+                <>
+                  {selectedItemIds.length > 0 && (
+                    <button
+                      onClick={handleBulkDeleteItems}
+                      className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Selected ({selectedItemIds.length})</span>
+                    </button>
+                  )}
+                  {activeItems.length > 0 && (
+                    <button
+                      onClick={handleClearAllItems}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Move all active items to Recycle Bin"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Clear All</span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
             <div className="overflow-x-auto flex-1 max-h-[500px]">
@@ -1534,7 +1606,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             />
                           </td>
                           <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                            {i.itemCode}
+                            <div>{i.itemCode}</div>
+                            {i.barcode && (
+                              <div className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                                <ScanLine className="w-2.5 h-2.5 shrink-0" />
+                                <span>{i.barcode}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-semibold whitespace-normal break-words" title={i.itemName}>
                             <div>{i.itemName}</div>
@@ -1553,26 +1631,36 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             {formatNumber(mainStock.availableBalance)}
                           </td>
                           <td className="py-3 px-3 text-right whitespace-nowrap">
-                            {isCentralAdmin ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  onClick={() => setEditingItem({ ...i })}
-                                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                                  title="Edit Item"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteItem(i)}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                                  title="Move to Recycle Bin (Soft Delete)"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 font-medium">Read-Only</span>
-                            )}
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setLabelPrintItems([i])}
+                                className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                                title="Print Barcode Label"
+                              >
+                                <ScanLine className="w-3.5 h-3.5" />
+                              </button>
+                              {isCentralAdmin ? (
+                                <>
+                                  <button
+                                    onClick={() => setEditingItem({ ...i })}
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                    title="Edit Item"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteItem(i)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                    title="Move to Recycle Bin (Soft Delete)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 font-medium">Read-Only</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -3012,6 +3100,47 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   onChange={(e) => setEditingItem({ ...editingItem, itemCode: e.target.value.toUpperCase() })}
                   className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   required
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Barcode / EAN (USB &amp; Mobile Scanner)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingItem({
+                          ...editingItem,
+                          barcode: generateUniqueBarcode(
+                            editingItem.itemCode,
+                            activeItems.findIndex((x) => x.id === editingItem.id) + 1,
+                            config.barcodePrefix || 'APX-'
+                          ),
+                        })
+                      }
+                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      Auto-Generate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBarcodeScanTarget('edit')}
+                      className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <ScanLine className="w-3 h-3" />
+                      <span>Scan</span>
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Enter or scan barcode..."
+                  value={editingItem.barcode || ''}
+                  onChange={(e) => setEditingItem({ ...editingItem, barcode: e.target.value.toUpperCase() })}
+                  className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                 />
               </div>
 
@@ -4556,6 +4685,39 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         onConfirm={confirmState.onConfirm}
         onClose={closeConfirm}
       />
+
+      {/* Barcode Scanner Modal for Item Registration / Edit */}
+      <BarcodeScannerModal
+        isOpen={barcodeScanTarget !== null}
+        onClose={() => setBarcodeScanTarget(null)}
+        mode="captureRaw"
+        title="Scan Manufacturer or Item Barcode"
+        subtitle="Scan with your USB Barcode Gun or Mobile Phone Camera to assign to this item"
+        onCaptureRawCode={(rawCode) => {
+          if (barcodeScanTarget === 'create') {
+            setItemBarcode(rawCode.toUpperCase());
+            showToast(`Captured barcode "${rawCode.toUpperCase()}" for new item.`);
+          } else if (barcodeScanTarget === 'edit' && editingItem) {
+            setEditingItem({ ...editingItem, barcode: rawCode.toUpperCase() });
+            showToast(`Assigned barcode "${rawCode.toUpperCase()}" to ${editingItem.itemCode}.`);
+          }
+          setBarcodeScanTarget(null);
+        }}
+      />
+
+      {/* Barcode Label Print Modal */}
+      {labelPrintItems && (
+        <BarcodeLabelModal
+          isOpen={true}
+          onClose={() => setLabelPrintItems(null)}
+          items={labelPrintItems}
+          title={
+            labelPrintItems.length === 1
+              ? `Print Barcode Label — ${labelPrintItems[0].itemCode}`
+              : `Print Catalog Barcode Labels (${labelPrintItems.length} Items)`
+          }
+        />
+      )}
     </div>
   );
 };

@@ -20,6 +20,8 @@ import {
   ArrowRight,
   Database,
   Lock,
+  ScanLine,
+  Printer,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { Item, ExcelItemRow, ImportResult, isSuperAdmin } from '../../types';
@@ -37,6 +39,9 @@ import {
   STANDARD_MATERIAL_UNITS,
 } from '../../utils/itemTypeUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
+import { generateUniqueBarcode } from '../../utils/barcodeUtils';
 
 interface ItemsManagementViewProps {
   initialType?: 'all' | 'Material' | 'Machinery';
@@ -86,6 +91,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newItemType, setNewItemType] = useState<'Material' | 'Machinery'>('Material');
   const [newItemCode, setNewItemCode] = useState('');
+  const [newItemBarcode, setNewItemBarcode] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('Assembly Units (Manholes & Handholes)');
   const [newItemUnit, setNewItemUnit] = useState('Pcs');
@@ -95,6 +101,10 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
 
   // Edit Item Modal
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+
+  // Barcode Scanner & Label Printing Modals
+  const [scannerTarget, setScannerTarget] = useState<'search' | 'create' | 'edit' | null>(null);
+  const [labelPrintItems, setLabelPrintItems] = useState<Item[] | null>(null);
 
   // Toast & Notifications
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -133,6 +143,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
     const matchesSearch =
       !q ||
       item.itemCode.toLowerCase().includes(q) ||
+      (item.barcode && item.barcode.toLowerCase().includes(q)) ||
       item.itemName.toLowerCase().includes(q) ||
       item.category.toLowerCase().includes(q) ||
       (item.description && item.description.toLowerCase().includes(q));
@@ -211,6 +222,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
 
     addItem({
       itemCode: codeUpper,
+      barcode: newItemBarcode.trim() || undefined,
       itemName: newItemName.trim(),
       category: newItemCategory.trim(),
       itemType: newItemType,
@@ -223,6 +235,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
     showToast(`Master Item ${codeUpper} created successfully!`);
     setShowCreateModal(false);
     setNewItemCode('');
+    setNewItemBarcode('');
     setNewItemName('');
     setNewItemDesc('');
   };
@@ -326,6 +339,17 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
             >
               <FileSpreadsheet className="w-4 h-4 text-slate-600" />
               <span>Export Catalog ({activeItems.length})</span>
+            </button>
+
+            {/* Print Barcode Labels */}
+            <button
+              type="button"
+              onClick={() => setLabelPrintItems(filteredItems.length > 0 ? filteredItems : activeItems)}
+              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Print Code-128 / Code-39 Barcode Sticker Sheet for items"
+            >
+              <Printer className="w-4 h-4 text-indigo-600" />
+              <span>Print Barcode Labels ({filteredItems.length})</span>
             </button>
 
             {/* Manual Add Item (Central Admin Only) */}
@@ -505,23 +529,36 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
         {/* Search Box and Category Filter Row */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
           {/* Search Box - 2-inch min width and full width on mobile */}
-          <div className="relative w-full sm:w-80 md:w-96 min-w-[220px]">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by Item Code, Name, Specs, Category..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
-            />
-            {searchQuery && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-80 md:w-96 min-w-[220px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by Item Code, Barcode, Name, Specs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 text-xs font-bold cursor-pointer"
+                  title="Clear Search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {config.barcodeEnabled !== false && (
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 text-xs font-bold cursor-pointer"
-                title="Clear Search"
+                onClick={() => setScannerTarget('search')}
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
+                title="Scan Barcode via USB Gun or Mobile Camera to find item"
               >
-                ✕
+                <ScanLine className="w-4 h-4" />
+                <span>Scan Barcode</span>
               </button>
             )}
           </div>
@@ -614,6 +651,12 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                             </span>
                           )}
                         </div>
+                        {item.barcode && (
+                          <div className="mt-1 flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-700">
+                            <ScanLine className="w-3 h-3 shrink-0" />
+                            <span>{item.barcode}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="py-2.5 px-2.5 text-slate-800 font-medium whitespace-normal break-words leading-tight">
                         <div>{item.itemName}</div>
@@ -648,26 +691,34 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                         </span>
                       </td>
                       <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        {isCentralAdmin ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => setEditingItem({ ...item })}
-                              className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                              title="Edit Item Details"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteItem(item)}
-                              className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                              title="Move to Recycle Bin"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setLabelPrintItems([item])}
+                            className="p-1 rounded text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors cursor-pointer"
+                            title="Print Barcode Sticker for this Item"
+                          >
+                            <ScanLine className="w-3.5 h-3.5" />
+                          </button>
+                          {isCentralAdmin && (
+                            <>
+                              <button
+                                onClick={() => setEditingItem({ ...item })}
+                                className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                                title="Edit Item Details"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteItem(item)}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="Move to Recycle Bin"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -941,6 +992,46 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
               </div>
 
               <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Barcode / EAN / Scanner Code (USB &amp; Mobile)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewItemBarcode(
+                          generateUniqueBarcode(
+                            newItemCode || 'ITEM',
+                            items.length + 1,
+                            config.barcodePrefix || 'APX-'
+                          )
+                        )
+                      }
+                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      Auto-Generate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScannerTarget('create')}
+                      className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <ScanLine className="w-3 h-3" />
+                      <span>Scan Code</span>
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Leave blank to auto-generate or scan existing manufacturer barcode..."
+                  value={newItemBarcode}
+                  onChange={(e) => setNewItemBarcode(e.target.value.toUpperCase())}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Description / Item Name *
                 </label>
@@ -1153,6 +1244,47 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
               </div>
 
               <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Barcode / EAN / Scanner Code
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingItem({
+                          ...editingItem,
+                          barcode: generateUniqueBarcode(
+                            editingItem.itemCode,
+                            items.findIndex((x) => x.id === editingItem.id) + 1,
+                            config.barcodePrefix || 'APX-'
+                          ),
+                        })
+                      }
+                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      Auto-Generate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScannerTarget('edit')}
+                      className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <ScanLine className="w-3 h-3" />
+                      <span>Scan Code</span>
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Enter or scan barcode..."
+                  value={editingItem.barcode || ''}
+                  onChange={(e) => setEditingItem({ ...editingItem, barcode: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Description of Assembly Unit / Item Name</label>
                 <input
                   type="text"
@@ -1294,6 +1426,50 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
         onConfirm={confirmState.onConfirm}
         onClose={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
       />
+
+      {/* Universal Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={scannerTarget !== null}
+        onClose={() => setScannerTarget(null)}
+        mode={scannerTarget === 'search' ? 'select' : 'captureRaw'}
+        title={
+          scannerTarget === 'search'
+            ? 'Scan Barcode to Filter Catalog'
+            : 'Scan Manufacturer or Label Barcode'
+        }
+        subtitle="Use your USB Barcode Gun or Mobile Phone Camera"
+        onSelectItem={(item) => {
+          setSearchQuery(item.itemCode);
+          setScannerTarget(null);
+          showToast(`Located item: [${item.itemCode}] ${item.itemName}`);
+        }}
+        onCaptureRawCode={(rawCode) => {
+          if (scannerTarget === 'create') {
+            setNewItemBarcode(rawCode.toUpperCase());
+            showToast(`Captured barcode "${rawCode.toUpperCase()}" for new item.`);
+          } else if (scannerTarget === 'edit' && editingItem) {
+            setEditingItem({ ...editingItem, barcode: rawCode.toUpperCase() });
+            showToast(`Assigned barcode "${rawCode.toUpperCase()}" to ${editingItem.itemCode}.`);
+          } else if (scannerTarget === 'search') {
+            setSearchQuery(rawCode);
+          }
+          setScannerTarget(null);
+        }}
+      />
+
+      {/* Printable Barcode Sticker Sheet Modal */}
+      {labelPrintItems && (
+        <BarcodeLabelModal
+          isOpen={true}
+          onClose={() => setLabelPrintItems(null)}
+          items={labelPrintItems}
+          title={
+            labelPrintItems.length === 1
+              ? `Print Barcode Label — ${labelPrintItems[0].itemCode}`
+              : `Print Catalog Barcode Labels (${labelPrintItems.length} Items)`
+          }
+        />
+      )}
     </div>
   );
 };

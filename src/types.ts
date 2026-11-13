@@ -54,6 +54,15 @@ export interface SystemConfig {
   bankBranchSwift?: string;
   bankQrImage?: string;
   usdToLkrRate?: number; // USD to LKR conversion rate (e.g. 332.64)
+  // Barcode & Scanner Settings (USB HID + Mobile Camera + Firebase Sync)
+  barcodeEnabled?: boolean;
+  usbScannerEnabled?: boolean;
+  mobileCameraScannerEnabled?: boolean;
+  barcodeAutoSelect?: boolean;
+  barcodeBeepEnabled?: boolean;
+  barcodeSymbology?: 'CODE128' | 'CODE39' | 'EAN13';
+  barcodePrefix?: string;
+  usbScanMaxLatencyMs?: number;
 }
 
 export interface Site {
@@ -182,6 +191,7 @@ export function isUserAssignedToSite(
 export interface Item {
   id: string;
   itemCode: string;
+  barcode?: string; // Dedicated 1D/2D barcode (EAN-13, Code-128, UPC, QR, or custom SKU barcode)
   itemName: string;
   category: string;
   itemType?: 'Material' | 'Machinery'; // Dedicated classification: Material (consumable) vs Machinery/Equipment
@@ -201,6 +211,7 @@ export interface Item {
 export interface ExcelItemRow {
   itemNo?: number | string;
   itemCode: string;
+  barcode?: string;
   itemName: string;
   category?: string;
   itemType?: 'Material' | 'Machinery';

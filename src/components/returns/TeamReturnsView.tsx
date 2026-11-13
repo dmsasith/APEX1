@@ -10,6 +10,7 @@ import {
   FileCheck,
   Trash2,
   Lock,
+  ScanLine,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -23,6 +24,12 @@ import {
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import {
+  useUsbBarcodeScanner,
+  matchItemByScannedCode,
+  playScanBeep,
+} from '../../utils/barcodeUtils';
 
 export const TeamReturnsView: React.FC = () => {
   const {
@@ -39,10 +46,12 @@ export const TeamReturnsView: React.FC = () => {
     returnStockFromTeam,
     clearTeamReturns,
     deleteTeamReturn,
+    config,
   } = useStock();
 
   const [selectedReturnForPrint, setSelectedReturnForPrint] = useState<TeamReturn | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // In-app confirmation modal state
   const [confirmState, setConfirmState] = useState<{
@@ -98,6 +107,31 @@ export const TeamReturnsView: React.FC = () => {
   const eligibleItems = teamInHand?.items.filter((i) => i.currentInHand > 0) || [];
 
   const [selectedItemId, setSelectedItemId] = useState<string>(eligibleItems[0]?.itemId || '');
+
+  useUsbBarcodeScanner({
+    enabled: !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
+    minLength: 3,
+    maxInterKeyLatencyMs: config.usbScanMaxLatencyMs || 55,
+    ignoreInputs: true,
+    onScan: (raw) => {
+      const matched = matchItemByScannedCode(activeItems, raw);
+      if (matched) {
+        const held = eligibleItems.find((e) => e.itemId === matched.id);
+        if (held) {
+          if (config.barcodeBeepEnabled !== false) playScanBeep(true);
+          setSelectedItemId(matched.id);
+          setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, held.currentInHand) : 1));
+          setSuccessToast(`Scanned & selected for return: [${matched.itemCode}] ${matched.itemName}`);
+        } else {
+          if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+          setErrorMsg(`Item [${matched.itemCode}] ${matched.itemName} has 0 in-hand balance for the selected team.`);
+        }
+      } else {
+        if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+        setErrorMsg(`No catalog item matched scanned barcode "${raw}".`);
+      }
+    },
+  });
 
   // Handle Team Change
   const handleTeamChange = (newTeamId: string) => {
@@ -284,9 +318,21 @@ export const TeamReturnsView: React.FC = () => {
 
             {/* In-Hand Items Selector for Selected Team */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Select Item to Return (Only items held by team) *
-              </label>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Select Item to Return (Only items held by team) *
+                </label>
+                {config.barcodeEnabled !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setScannerOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <ScanLine className="w-3.5 h-3.5" />
+                    <span>Scan Barcode</span>
+                  </button>
+                )}
+              </div>
               {eligibleItems.length === 0 ? (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500 italic">
                   This field team currently has 0 items in-hand to return.
@@ -632,6 +678,26 @@ export const TeamReturnsView: React.FC = () => {
         confirmLabel={confirmState.confirmLabel}
         onConfirm={confirmState.onConfirm}
         onClose={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        mode="select"
+        siteId={selectedSiteId}
+        title="Scan Barcode for Team Material Return"
+        subtitle="Scan via USB Gun or Mobile Camera to select an item held by the field team"
+        onSelectItem={(item) => {
+          const held = eligibleItems.find((e) => e.itemId === item.id);
+          if (held) {
+            setSelectedItemId(item.id);
+            setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, held.currentInHand) : 1));
+            setSuccessToast(`Scanned & selected for return: [${item.itemCode}] ${item.itemName}`);
+          } else {
+            setErrorMsg(`Item [${item.itemCode}] ${item.itemName} has 0 in-hand balance for the selected team.`);
+          }
+        }}
       />
     </div>
   );

@@ -51,6 +51,7 @@ import {
   getUserAssignedSiteIds,
 } from '../types';
 import { DEFAULT_SECTION_FORMATS } from '../utils/formatAnalyzerUtils';
+import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
 import {
   INITIAL_CONFIG,
   INITIAL_SITES,
@@ -248,6 +249,8 @@ interface StockContextType {
   addTeam: (team: Omit<Team, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>) => Team;
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>) => Project;
   bulkImportItems: (rows: ExcelItemRow[], mode: 'sync' | 'append' | 'replace') => ImportResult;
+  findItemByBarcode: (scannedCode: string) => Item | undefined;
+  autoGenerateMissingBarcodes: () => { updatedCount: number };
   bulkImportProjects: (rows: Array<Omit<Project, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>>) => { added: number; updated: number };
 
   // Master Updates (CRUD - Edit)
@@ -4220,10 +4223,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (existingIndex >= 0) {
       // If item code already exists, update rather than duplicating
       const prev = items[existingIndex];
+      const finalBarcode =
+        itemData.barcode?.trim().toUpperCase() ||
+        prev.barcode ||
+        generateUniqueBarcode(upperCode, config.barcodePrefix || 'APX-', items);
       savedItem = {
         ...prev,
         ...itemData,
         itemCode: upperCode,
+        barcode: finalBarcode,
         isDeleted: false,
         deletedAt: undefined,
       };
@@ -4241,13 +4249,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         'MASTER_ITEM_CREATED',
         savedItem.itemCode,
         'Main Central Warehouse',
-        `Master item updated: ${savedItem.itemCode} - ${savedItem.itemName} (${savedItem.unit})`,
+        `Master item updated: ${savedItem.itemCode} [Barcode: ${savedItem.barcode}] - ${savedItem.itemName} (${savedItem.unit})`,
         savedItem.itemCode
       );
     } else {
+      const finalBarcode =
+        itemData.barcode?.trim().toUpperCase() ||
+        generateUniqueBarcode(upperCode, config.barcodePrefix || 'APX-', items);
       savedItem = {
         ...itemData,
         itemCode: upperCode,
+        barcode: finalBarcode,
         id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         createdAt: new Date().toISOString(),
         isDeleted: false,
@@ -4265,7 +4277,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         'MASTER_ITEM_CREATED',
         savedItem.itemCode,
         'Main Central Warehouse',
-        `Master item registered: ${savedItem.itemCode} - ${savedItem.itemName} (${savedItem.unit})`,
+        `Master item registered: ${savedItem.itemCode} [Barcode: ${savedItem.barcode}] - ${savedItem.itemName} (${savedItem.unit})`,
         savedItem.itemCode
       );
     }
@@ -4298,6 +4310,49 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return savedItem;
   };
 
+  const findItemByBarcode = (scannedCode: string): Item | undefined => {
+    return matchItemByScannedCode(scannedCode, activeItems);
+  };
+
+  const autoGenerateMissingBarcodes = (): { updatedCount: number } => {
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    let updatedCount = 0;
+    const prefix = config.barcodePrefix || 'APX-';
+
+    setItems((prevItems) => {
+      const next = prevItems.map((item) => {
+        if (!item.isDeleted && (!item.barcode || !item.barcode.trim())) {
+          updatedCount++;
+          return {
+            ...item,
+            barcode: generateUniqueBarcode(item.itemCode, prefix, prevItems),
+          };
+        }
+        return item;
+      });
+
+      if (updatedCount > 0) {
+        saveTenantData(activeTenantId, 'items', next);
+        const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+        if (isMaster) {
+          writeItemsToFirebase(next).catch(console.warn);
+        }
+      }
+      return next;
+    });
+
+    if (updatedCount > 0) {
+      addAuditLog(
+        'MASTER_ITEM_UPDATED',
+        'BARCODE-SYNC',
+        'Main Central Warehouse',
+        `Auto-generated and synced barcodes to Firebase for ${updatedCount} catalog item(s).`
+      );
+    }
+
+    return { updatedCount };
+  };
+
   const bulkImportItems = (
     rows: ExcelItemRow[],
     mode: 'sync' | 'append' | 'replace'
@@ -4307,6 +4362,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let skipped = 0;
     const errors: string[] = [];
     const now = new Date().toISOString();
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
 
     if (!rows || rows.length === 0) {
       return { added: 0, updated: 0, skipped: 0, total: 0, errors: ['No item rows provided for import.'] };
@@ -4347,6 +4403,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const prev = currentItems[existingIndex];
             currentItems[existingIndex] = {
               ...prev,
+              barcode:
+                row.barcode?.trim().toUpperCase() ||
+                prev.barcode ||
+                generateUniqueBarcode(code, config.barcodePrefix || 'APX-', currentItems),
               itemName: name,
               category: row.category?.trim() || prev.category,
               unit: row.unit?.trim() || prev.unit,
@@ -4367,6 +4427,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           const newItem: Item = {
             id: `item-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
             itemCode: code,
+            barcode:
+              row.barcode?.trim().toUpperCase() ||
+              generateUniqueBarcode(code, config.barcodePrefix || 'APX-', currentItems),
             itemName: name,
             category: row.category?.trim() || 'Assembly Units (Manholes & Handholes)',
             unit: row.unit?.trim() || 'Pcs',
@@ -4381,8 +4444,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       });
 
+      saveTenantData(activeTenantId, 'items', currentItems);
       saveToStorage('items', currentItems);
-      writeItemsToFirebase(currentItems).catch((err) => console.warn('Failed direct Firebase items write:', err));
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeItemsToFirebase(currentItems).catch((err) => console.warn('Failed direct Firebase items write:', err));
+      }
       return currentItems;
     });
 
@@ -7108,6 +7175,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addTeam,
         addProject,
         bulkImportItems,
+        findItemByBarcode,
+        autoGenerateMissingBarcodes,
         bulkImportProjects,
         updateSite,
         updateUser,
