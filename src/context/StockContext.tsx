@@ -5374,8 +5374,33 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const permanentlyDeleteTeam = (id: string) => {
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const team = teams.find((t) => t.id === id);
-    setTeams((prev) => prev.filter((t) => t.id !== id));
+    const hasLedgerHistory =
+      teamIssues.some((iss) => iss.teamId === id) ||
+      projectUsages.some((u) => u.teamId === id) ||
+      teamReturns.some((ret) => ret.teamId === id);
+
+    if (hasLedgerHistory) {
+      // Preserve soft-deleted state so historical Issue/Usage/Return vouchers never lose their team reference
+      addAuditLog(
+        'MASTER_TEAM_SOFT_DELETED',
+        team?.teamName || id,
+        'Field Base',
+        `Team "${team?.teamName}" retained in archived state because it is linked to historical material issue/usage records`
+      );
+      return;
+    }
+
+    setTeams((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
     addAuditLog(
       'MASTER_TEAM_PERMANENTLY_DELETED',
       team?.teamName || id,

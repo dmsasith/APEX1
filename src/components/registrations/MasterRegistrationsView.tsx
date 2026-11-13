@@ -67,6 +67,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     activeSites,
     activeUsers,
     activeItems,
+    teams,
     activeTeams,
     activeProjects,
     projects,
@@ -82,6 +83,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     softDeleteSite,
     softDeleteUser,
     softDeleteTeam,
+    restoreTeam,
     permanentlyDeleteUser,
     bulkSoftDeleteItems,
     bulkSoftDeleteSites,
@@ -92,6 +94,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     clearAllUsers,
     clearAllTeams,
     getMainWarehouseStock,
+    getTeamInHandStock,
+    teamIssues,
+    projectUsages,
+    teamReturns,
     activeClients,
     clients,
     addClient,
@@ -436,13 +442,70 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   const handleCreateTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamName.trim() || !teamLeaderName.trim()) return;
+    const trimmedName = teamName.trim();
+    const trimmedLeader = teamLeaderName.trim();
+    if (!trimmedName || !trimmedLeader) return;
+
+    const normalizedName = trimmedName.toLowerCase();
+
+    // 1. Block duplicate active team names
+    const existingActiveTeam = activeTeams.find(
+      (t) => t.teamName.trim().toLowerCase() === normalizedName
+    );
+    if (existingActiveTeam) {
+      showToast(
+        `Team name "${trimmedName}" is already registered as an active team. Please use a unique team name to protect material usage & stock ledger records.`
+      );
+      return;
+    }
 
     const totalCrew = teamMembers.length + 1;
 
+    // 2. Check if a deleted team with the same name exists in the Recycle Bin
+    const deletedMatchingTeam = teams.find(
+      (t) => t.isDeleted && t.teamName.trim().toLowerCase() === normalizedName
+    );
+    if (deletedMatchingTeam) {
+      const hasHistory =
+        teamIssues.some((iss) => iss.teamId === deletedMatchingTeam.id) ||
+        projectUsages.some((u) => u.teamId === deletedMatchingTeam.id) ||
+        teamReturns.some((ret) => ret.teamId === deletedMatchingTeam.id);
+
+      setConfirmState({
+        isOpen: true,
+        title: `Team "${trimmedName}" Exists in Recycle Bin`,
+        message: hasHistory
+          ? `A previously deleted team named "${deletedMatchingTeam.teamName}" already has historical Material Issue / Usage records linked to its Team ID. Creating a second team with the same name is blocked to prevent splitting usage history. Would you like to restore the existing team and update its leader & crew roster instead?`
+          : `A deleted team named "${deletedMatchingTeam.teamName}" already exists in the Recycle Bin. To prevent duplicate team records, would you like to restore that team and update its details instead?`,
+        confirmLabel: 'Restore & Update Existing Team',
+        onConfirm: () => {
+          restoreTeam(deletedMatchingTeam.id);
+          updateTeam(deletedMatchingTeam.id, {
+            teamName: trimmedName,
+            teamLeaderName: trimmedLeader,
+            teamLeaderIdNumber: teamLeaderIdNumber.trim() || undefined,
+            assignedSiteId: assignedSiteId || activeSites[0]?.id,
+            contactPhone: contactPhone.trim() || deletedMatchingTeam.contactPhone || '+1 (555) 789-0000',
+            crewSize: totalCrew,
+            members: teamMembers,
+          });
+          showToast(
+            `Restored & updated existing team "${trimmedName}" with all historical usage data preserved!`
+          );
+          setTeamName('');
+          setTeamLeaderName('');
+          setTeamLeaderIdNumber('');
+          setContactPhone('');
+          setCrewSize(1);
+          setTeamMembers([]);
+        },
+      });
+      return;
+    }
+
     addTeam({
-      teamName: teamName.trim(),
-      teamLeaderName: teamLeaderName.trim(),
+      teamName: trimmedName,
+      teamLeaderName: trimmedLeader,
       teamLeaderIdNumber: teamLeaderIdNumber.trim() || undefined,
       assignedSiteId: assignedSiteId || activeSites[0]?.id,
       contactPhone: contactPhone.trim() || '+1 (555) 789-0000',
@@ -450,7 +513,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       members: teamMembers,
     });
 
-    showToast(`Field Team "${teamName}" registered (Crew Size: ${totalCrew} — 1 Leader + ${teamMembers.length} Member${teamMembers.length === 1 ? '' : 's'})!`);
+    showToast(`Field Team "${trimmedName}" registered (Crew Size: ${totalCrew} — 1 Leader + ${teamMembers.length} Member${teamMembers.length === 1 ? '' : 's'})!`);
     setTeamName('');
     setTeamLeaderName('');
     setTeamLeaderIdNumber('');
@@ -533,12 +596,26 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleSaveTeamEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTeam) return;
+    const trimmedName = editingTeam.teamName.trim();
+    if (!trimmedName) return;
+
+    const duplicateTeam = teams.find(
+      (t) => t.id !== editingTeam.id && t.teamName.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (duplicateTeam) {
+      showToast(
+        `Team name "${trimmedName}" is already used by another ${duplicateTeam.isDeleted ? 'archived (Recycle Bin)' : 'active'} team. Duplicate team names are blocked to protect material usage history.`
+      );
+      return;
+    }
+
     const autoCrewSize = (editingTeam.members?.length || 0) + 1;
     updateTeam(editingTeam.id, {
       ...editingTeam,
+      teamName: trimmedName,
       crewSize: autoCrewSize,
     });
-    showToast(`Field Team "${editingTeam.teamName}" updated (Crew Size: ${autoCrewSize}).`);
+    showToast(`Field Team "${trimmedName}" updated (Crew Size: ${autoCrewSize}).`);
     setEditingTeam(null);
   };
 
@@ -591,10 +668,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleBulkDeleteTeams = () => {
+    const teamsWithStock = selectedTeamIds
+      .map((id) => activeTeams.find((t) => t.id === id))
+      .filter((t): t is Team => Boolean(t && getTeamInHandStock(t.id).totalUnitsHeld > 0));
+
+    if (teamsWithStock.length > 0) {
+      showToast(
+        `Cannot delete ${teamsWithStock.map((t) => `"${t.teamName}"`).join(', ')} while they still hold unreturned In-Hand Stock. Please log usage or return stock first.`
+      );
+      return;
+    }
+
     setConfirmState({
       isOpen: true,
       title: `Move ${selectedTeamIds.length} Team(s) to Recycle Bin?`,
-      message: `Are you sure you want to move ${selectedTeamIds.length} selected field teams to the Recycle Bin?`,
+      message: `Are you sure you want to move ${selectedTeamIds.length} selected field teams to the Recycle Bin? Historical material usage records will remain safely preserved.`,
       confirmLabel: `Move (${selectedTeamIds.length}) to Recycle Bin`,
       onConfirm: () => {
         bulkSoftDeleteTeams(selectedTeamIds);
@@ -649,10 +737,18 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleDeleteTeam = (t: Team) => {
+    const inHandSummary = getTeamInHandStock(t.id);
+    if (inHandSummary.totalUnitsHeld > 0) {
+      showToast(
+        `Cannot delete team "${t.teamName}" because they currently hold ${inHandSummary.totalUnitsHeld} unit(s) of unreturned In-Hand Stock (${inHandSummary.distinctItemsCount} item type(s)). Please log material usage or return stock first.`
+      );
+      return;
+    }
+
     setConfirmState({
       isOpen: true,
       title: `Move Team "${t.teamName}" to Recycle Bin?`,
-      message: `Are you sure you want to move field team "${t.teamName}" (Leader: ${t.teamLeaderName}) to the Recycle Bin?`,
+      message: `Are you sure you want to move field team "${t.teamName}" (Leader: ${t.teamLeaderName}) to the Recycle Bin? All past material usage & issue records for this team will remain safely preserved.`,
       confirmLabel: 'Move to Recycle Bin',
       onConfirm: () => {
         softDeleteTeam(t.id);
