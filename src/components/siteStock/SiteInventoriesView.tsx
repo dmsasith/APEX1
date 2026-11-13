@@ -53,7 +53,7 @@ export const SiteInventoriesView: React.FC = () => {
     getClientFreeStockBalance,
   } = useStock();
 
-  const allBranchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const allBranchSites = activeSites;
   const canViewAllBranches = isCentralOrAllSiteAdmin(currentUser.role) || isUserAllSites(currentUser);
   const branchSites = canViewAllBranches
     ? allBranchSites

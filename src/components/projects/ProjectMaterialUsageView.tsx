@@ -124,7 +124,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const isAllSitesUser = isUserAllSites(currentUser) || isCentralOrAllSiteAdmin(currentUser.role);
   const isSiteRestricted = !isAllSitesUser;
   const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
-  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const branchSites = activeSites;
   const allowedSites = isSiteRestricted
     ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;

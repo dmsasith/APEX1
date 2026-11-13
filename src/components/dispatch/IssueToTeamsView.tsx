@@ -74,8 +74,8 @@ export const IssueToTeamsView: React.FC = () => {
   const isSiteRestricted = !isAllSitesUser;
   const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
 
-  // Filter sites for dispatch: If restricted, ONLY their assigned site(s) are available.
-  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  // Filter sites for dispatch: If restricted, ONLY their assigned site(s) are available; otherwise all activeSites (including Main Branch).
+  const branchSites = activeSites;
   const allowedSites = isSiteRestricted
     ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;

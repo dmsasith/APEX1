@@ -71,7 +71,7 @@ export const TeamReturnsView: React.FC = () => {
   const isSiteRestricted = !isAllSitesUser;
   const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
 
-  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const branchSites = activeSites;
   const allowedSites = isSiteRestricted
     ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
