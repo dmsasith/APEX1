@@ -195,7 +195,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               <span>Branch Staff & Field Teams Directory</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl">
-              Inspect registered company branches, assigned branch managers and supervisors, field teams, and complete member rosters with verified ID/NIC numbers. Select any branch below to view its full personnel and print official reports.
+              Inspect registered company branches, assigned branch managers and supervisors, field teams, and complete team members with verified ID/NIC numbers. Select any branch below to view its full personnel and print official reports.
             </p>
           </div>
 
@@ -207,7 +207,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>Export Roster (Excel)</span>
+              <span>Export Members (Excel)</span>
             </button>
             <button
               type="button"
@@ -274,7 +274,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               onChange={(e) => setSelectedSiteId(e.target.value)}
               className="px-3 py-2 bg-slate-50 hover:bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent flex-1 max-w-md transition-all shadow-2xs"
             >
-              <option value="all">🏢 All Branches & Yards (Full Company Roster)</option>
+              <option value="all">🏢 All Branches & Yards (All Members)</option>
               {activeSites.map((site) => {
                 const teamCount = activeTeams.filter((t) => t.assignedSiteId === site.id).length;
                 return (

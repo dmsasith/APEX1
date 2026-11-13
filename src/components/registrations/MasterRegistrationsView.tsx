@@ -485,7 +485,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         isOpen: true,
         title: `Team "${trimmedName}" Exists in Recycle Bin`,
         message: hasHistory
-          ? `A previously deleted team named "${deletedMatchingTeam.teamName}" already has historical Material Issue / Usage records linked to its Team ID. Creating a second team with the same name is blocked to prevent splitting usage history. Would you like to restore the existing team and update its leader & crew roster instead?`
+          ? `A previously deleted team named "${deletedMatchingTeam.teamName}" already has historical Material Issue / Usage records linked to its Team ID. Creating a second team with the same name is blocked to prevent splitting usage history. Would you like to restore the existing team and update its leader & crew members instead?`
           : `A deleted team named "${deletedMatchingTeam.teamName}" already exists in the Recycle Bin. To prevent duplicate team records, would you like to restore that team and update its details instead?`,
         confirmLabel: 'Restore & Update Existing Team',
         onConfirm: () => {
@@ -2619,7 +2619,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
                 <div>
                   <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                    Field Operations & Roster
+                    Field Operations & Members
                   </div>
                   <h2 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">
                     Register Field Work Team
@@ -2627,7 +2627,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
               </div>
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                Crew Roster
+                Crew Members
               </span>
             </div>
 
@@ -2691,12 +2691,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </select>
               </div>
 
-              {/* Dynamic Team Members Roster with Individual Names and ID Numbers */}
+              {/* Dynamic Team Members with Individual Names and ID Numbers */}
               <div className="border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/80 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
                     <Users2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Team Members & ID Roster ({teamMembers.length})</span>
+                    <span>Team Members ({teamMembers.length})</span>
                   </label>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                     Add names & ID numbers
@@ -2886,7 +2886,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   No Active Field Teams Registered
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-                  Use the Field Work Team registration panel on the left to register your field squads, team leaders, and member NIC rosters.
+                  Use the Field Work Team registration panel on the left to register your field squads, team leaders, and team members.
                 </p>
               </div>
             ) : (
@@ -3016,11 +3016,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             </div>
                           </div>
 
-                          {/* Member Roster Sub-list */}
+                          {/* Team Members Sub-list */}
                           {hasMembers ? (
                             <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
                               <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                <span>Registered Crew Roster</span>
+                                <span>Registered Crew Members</span>
                                 <span className="font-mono tabular-nums">{t.members!.length} Members</span>
                               </div>
                               <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
@@ -3042,13 +3042,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             </div>
                           ) : (
                             <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
-                              <span>Individual NIC roster not logged</span>
+                              <span>Individual member details not logged</span>
                               <button
                                 type="button"
                                 onClick={() => setEditingTeam({ ...t })}
                                 className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
                               >
-                                + Add Roster
+                                + Add Member
                               </button>
                             </div>
                           )}
@@ -4407,12 +4407,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </select>
               </div>
 
-              {/* Edit Team Members Roster */}
+              {/* Edit Team Members */}
               <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 bg-slate-50/80 dark:bg-slate-800/40 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                     <Users2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Team Members Roster ({editingTeam.members?.length || 0})</span>
+                    <span>Team Members ({editingTeam.members?.length || 0})</span>
                   </label>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Names & ID / NIC numbers</span>
                 </div>
@@ -4486,7 +4486,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   </div>
                 ) : (
                   <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center py-1">
-                    No members roster added yet.
+                    No team members added yet.
                   </p>
                 )}
               </div>
