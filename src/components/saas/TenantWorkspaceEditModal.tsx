@@ -118,7 +118,7 @@ export const TenantWorkspaceEditModal: React.FC<TenantWorkspaceEditModalProps> =
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Admin Contact Email * (විද්‍යුත් තැපෑල)
+              Admin Contact Email *
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

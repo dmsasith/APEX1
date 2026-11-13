@@ -260,7 +260,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
               }`}
             >
               <Check className={`w-3.5 h-3.5 ${onlyAvailable ? 'text-white' : 'text-slate-400'}`} />
-              <span>Available Stock Only (තොග ඇති පමණක්)</span>
+              <span>Available Stock Only</span>
             </button>
             <span className="text-[11px] text-slate-500 font-medium">
               Showing {filteredItems.length} items

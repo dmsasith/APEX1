@@ -11,7 +11,7 @@ export interface FormatGroupDefinition {
   groupId: DocumentFormatGroupId;
   groupCode: string;
   title: string;
-  sinhalaTitle: string;
+  subtitle: string;
   description: string;
   badgeColor: string;
   affectedSections: AffectedSectionInfo[];
@@ -22,7 +22,7 @@ export const COMPANY_FORMAT_GROUPS: FormatGroupDefinition[] = [
     groupId: 'REQUISITION_ISSUE_USAGE',
     groupCode: 'FORMAT-01',
     title: 'Material Requisition, Team Issue & Site Usage Format',
-    sinhalaTitle: 'බඩු ඉල්ලුම්පත්, නිකුත් කිරීම් සහ වැඩබිම් භාවිත වවුචර් ආකෘතිය (RN / IN / PU / TSR)',
+    subtitle: 'Internal Requisitions, Team Dispatches & Site Usage Vouchers (RN / IN / PU / TSR)',
     description:
       'Common standard voucher format used for internal stock transfer requests, daily field team dispatches/gate passes, project/site material usage logs, and team in-hand stock balance audits.',
     badgeColor: 'emerald',
@@ -63,7 +63,7 @@ export const COMPANY_FORMAT_GROUPS: FormatGroupDefinition[] = [
     groupId: 'RECEIPT_RETURN_FOC',
     groupCode: 'FORMAT-02',
     title: 'Goods Receipt (GRN), Client FOC & Stock Returns Format',
-    sinhalaTitle: 'භාණ්ඩ භාරගැනීම් (GRN / FOC) සහ ආපසු භාරදීමේ ආකෘතිය (GRN / FOC / RV / BRM)',
+    subtitle: 'Warehouse Goods Receipts (GRN), Client FOC & Stock Return Vouchers (GRN / FOC / RV / BRM)',
     description:
       'Common standard format used when receiving goods into the warehouse (GRN), logging client free-issue materials (FOC), returning items from field teams (RV), or returning branch stock to Central Yard (BRM).',
     badgeColor: 'blue',
@@ -104,7 +104,7 @@ export const COMPANY_FORMAT_GROUPS: FormatGroupDefinition[] = [
     groupId: 'PURCHASE_ORDER',
     groupCode: 'FORMAT-03',
     title: 'Official Supplier Purchase Order (PO) Format',
-    sinhalaTitle: 'සැපයුම්කරුවන්ගෙන් භාණ්ඩ ඇණවුම් කිරීමේ නිල ආකෘතිය (Purchase Order - PO)',
+    subtitle: 'Commercial Supplier Purchase Orders & Priced Schedules (PO)',
     description:
       'Commercial Purchase Order format with Vendor/Ship-To blocks, unit rates, VAT/Tax & discount calculations, terms & conditions, and 3-column commercial approval signatures.',
     badgeColor: 'indigo',
@@ -121,7 +121,7 @@ export const COMPANY_FORMAT_GROUPS: FormatGroupDefinition[] = [
     groupId: 'SUPPLIER_RETURN_DEBIT_NOTE',
     groupCode: 'FORMAT-04',
     title: 'Return to Vendor (RTV) & Official Debit Note Format',
-    sinhalaTitle: 'සැපයුම්කරු වෙත භාණ්ඩ ආපසු යැවීමේ සහ හර සටහන් ආකෘතිය (RTV / Debit Note & Gate Pass)',
+    subtitle: 'Supplier Return to Vendor (RTV), Official Debit Notes & Outward Gate Passes',
     description:
       'Official Debit Note & Return to Vendor (RTV) format for defective/excess supplier deliveries, including financial claim summary, transporter/vehicle details, and outward Gate Pass.',
     badgeColor: 'amber',

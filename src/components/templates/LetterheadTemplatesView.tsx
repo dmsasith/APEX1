@@ -705,7 +705,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                           {group.title}
                         </h3>
                         <p className="text-xs font-semibold text-emerald-800 mt-0.5">
-                          {group.sinhalaTitle}
+                          {group.subtitle}
                         </p>
                         <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                           {group.description}

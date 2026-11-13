@@ -1053,7 +1053,6 @@ export const StockRequestsView: React.FC = () => {
                     >
                       <CheckCircle className={`w-3.5 h-3.5 ${onlyAvailableInModal ? 'text-white' : 'text-slate-400'}`} />
                       <span>Available Stock Only</span>
-                      <span className="text-[10px] opacity-90 font-normal hidden sm:inline">(තොග ඇති පමණක්)</span>
                     </button>
 
                     {/* 2-Tab Switcher */}
@@ -1121,7 +1120,7 @@ export const StockRequestsView: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
-                        <strong>Available Stock Filter Active:</strong> Only items with positive stock in Central Warehouse are shown in dropdowns. (මධ්‍යම ගබඩාවේ තොග ඇති බඩු පමණක් පෙන්වයි)
+                        <strong>Available Stock Filter Active:</strong> Only items with positive stock in Central Warehouse are shown in dropdowns.
                       </span>
                     </div>
                     <button
@@ -1419,12 +1418,9 @@ export const StockRequestsView: React.FC = () => {
                         <AlertTriangle className="w-3 h-3 text-amber-700" />
                         <span>Central Stock Shortage</span>
                       </span>
-                      <span className="text-[11px] font-bold text-rose-800">
-                        මධ්‍යම ගබඩාවේ තොග හිඟයක්:
-                      </span>
                       {shortageSummary.outOfStockCount > 0 && (
                         <span className="inline-flex items-center text-[11px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded border border-rose-200">
-                          🔴 {shortageSummary.outOfStockCount} Out of Stock (තොග නැත)
+                          🔴 {shortageSummary.outOfStockCount} Out of Stock
                         </span>
                       )}
                       {shortageSummary.partialStockCount > 0 && (
@@ -1443,7 +1439,7 @@ export const StockRequestsView: React.FC = () => {
                         title="Auto-cap all approved quantities to available stock"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                        <span>⚡ Send Available Only (තිබෙන ප්‍රමාණය පමණක්)</span>
+                        <span>⚡ Send Available Only</span>
                       </button>
 
                       {shortageSummary.outOfStockCount > 0 && (
@@ -1454,7 +1450,7 @@ export const StockRequestsView: React.FC = () => {
                           title="Remove all items with 0 stock from this requisition note"
                         >
                           <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                          <span>🗑️ Remove Out-of-Stock (නැති බඩු ඉවත් කරන්න)</span>
+                          <span>🗑️ Remove Out-of-Stock</span>
                         </button>
                       )}
 
@@ -1462,7 +1458,7 @@ export const StockRequestsView: React.FC = () => {
                         type="button"
                         onClick={() => {
                           setShowRejectInline(true);
-                          setRejectionReason('Requested items currently unavailable or out of stock at Central Warehouse (තොග නොමැත)');
+                          setRejectionReason('Requested items currently unavailable or out of stock at Central Warehouse');
                         }}
                         className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
                         title="Reject this requisition"
@@ -1517,7 +1513,7 @@ export const StockRequestsView: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-[11px] font-bold text-rose-900 mr-1">Quick Reasons:</span>
                     {[
-                      'Requested items out of stock at Central Warehouse (තොග නැත)',
+                      'Requested items out of stock at Central Warehouse',
                       'Insufficient inventory - pending supplier replenishment',
                       'Duplicate requisition note',
                       'Project on hold / cancelled by management',
@@ -1761,13 +1757,13 @@ export const StockRequestsView: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setShowRejectInline(true);
-                      setRejectionReason(approvalNotes || 'Requested items unavailable at Central Warehouse (තොග නැත)');
+                      setRejectionReason(approvalNotes || 'Requested items unavailable at Central Warehouse');
                     }}
                     className="w-full sm:w-auto px-3.5 py-2 rounded-lg text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     title="Reject this requisition with reason"
                   >
                     <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Reject Entire Request (ප්‍රතික්ෂේප කරන්න)</span>
+                    <span>Reject Entire Request</span>
                   </button>
                 ) : (
                   <div />
