@@ -43,11 +43,14 @@ import {
   ClientFreeIssueItemRow,
   Client,
   AuditAction,
+  DocumentFormatGroupId,
+  SectionFormatConfig,
   isSuperAdmin,
   normalizeRole,
   isUserAllSites,
   getUserAssignedSiteIds,
 } from '../types';
+import { DEFAULT_SECTION_FORMATS } from '../utils/formatAnalyzerUtils';
 import {
   INITIAL_CONFIG,
   INITIAL_SITES,
@@ -455,6 +458,10 @@ interface StockContextType {
   updateDigitalSignatures: (signatures: DigitalSignature[]) => void;
   addDigitalSignature: (signature: Omit<DigitalSignature, 'id' | 'createdAt'>) => DigitalSignature;
   deleteDigitalSignature: (id: string) => void;
+  sectionFormats: Record<DocumentFormatGroupId, SectionFormatConfig>;
+  updateSectionFormat: (groupId: DocumentFormatGroupId, config: SectionFormatConfig) => void;
+  resetSectionFormat: (groupId: DocumentFormatGroupId) => void;
+  getEffectiveSectionFormat: (groupId: DocumentFormatGroupId) => SectionFormatConfig;
 
   // SaaS Multi-Tenancy & Subscriptions
   tenants: Tenant[];
@@ -3838,6 +3845,85 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditLog('OTHER', id, 'System', `Deleted Letterhead Template`);
   };
 
+  // Section-Specific Document Formats (stored inside activeTemplate.sectionFormats for automatic Firebase & Tenant Sync)
+  const sectionFormats = useMemo<Record<DocumentFormatGroupId, SectionFormatConfig>>(() => {
+    const saved = activeTemplate?.sectionFormats || {};
+    return {
+      REQUISITION_ISSUE_USAGE: {
+        ...DEFAULT_SECTION_FORMATS.REQUISITION_ISSUE_USAGE,
+        ...(saved.REQUISITION_ISSUE_USAGE || {}),
+      },
+      RECEIPT_RETURN_FOC: {
+        ...DEFAULT_SECTION_FORMATS.RECEIPT_RETURN_FOC,
+        ...(saved.RECEIPT_RETURN_FOC || {}),
+      },
+      PURCHASE_ORDER: {
+        ...DEFAULT_SECTION_FORMATS.PURCHASE_ORDER,
+        ...(saved.PURCHASE_ORDER || {}),
+      },
+      SUPPLIER_RETURN_DEBIT_NOTE: {
+        ...DEFAULT_SECTION_FORMATS.SUPPLIER_RETURN_DEBIT_NOTE,
+        ...(saved.SUPPLIER_RETURN_DEBIT_NOTE || {}),
+      },
+    };
+  }, [activeTemplate]);
+
+  const updateSectionFormat = (groupId: DocumentFormatGroupId, fmtConfig: SectionFormatConfig) => {
+    const updatedFormats: Partial<Record<DocumentFormatGroupId, SectionFormatConfig>> = {
+      ...(activeTemplate?.sectionFormats || {}),
+      [groupId]: {
+        ...fmtConfig,
+        groupId,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+    const updatedTpl: LetterheadTemplate = {
+      ...activeTemplate,
+      sectionFormats: updatedFormats,
+    };
+    setLetterheadTemplates((prev) =>
+      prev.map((t) => (t.id === updatedTpl.id ? updatedTpl : t))
+    );
+    addAuditLog(
+      'TEMPLATE_UPDATED',
+      groupId,
+      'System',
+      `Updated Document Format for ${fmtConfig.groupName}${fmtConfig.uploadedFileName ? ` (File: ${fmtConfig.uploadedFileName})` : ''}`
+    );
+  };
+
+  const resetSectionFormat = (groupId: DocumentFormatGroupId) => {
+    const defaultCfg = DEFAULT_SECTION_FORMATS[groupId];
+    const updatedFormats: Partial<Record<DocumentFormatGroupId, SectionFormatConfig>> = {
+      ...(activeTemplate?.sectionFormats || {}),
+      [groupId]: {
+        ...defaultCfg,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+    const updatedTpl: LetterheadTemplate = {
+      ...activeTemplate,
+      sectionFormats: updatedFormats,
+    };
+    setLetterheadTemplates((prev) =>
+      prev.map((t) => (t.id === updatedTpl.id ? updatedTpl : t))
+    );
+    addAuditLog(
+      'TEMPLATE_UPDATED',
+      groupId,
+      'System',
+      `Reset Document Format for ${defaultCfg.groupName} to system standard`
+    );
+  };
+
+  const getEffectiveSectionFormat = (groupId: DocumentFormatGroupId): SectionFormatConfig => {
+    const primary = sectionFormats[groupId] || DEFAULT_SECTION_FORMATS[groupId];
+    if (primary.linkedToGroupId && sectionFormats[primary.linkedToGroupId]) {
+      return sectionFormats[primary.linkedToGroupId];
+    }
+    return primary;
+  };
+
   const updateDigitalSignatures = (signatures: DigitalSignature[]) => {
     setDigitalSignatures(signatures);
   };
@@ -7098,6 +7184,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateDigitalSignatures,
         addDigitalSignature,
         deleteDigitalSignature,
+        sectionFormats,
+        updateSectionFormat,
+        resetSectionFormat,
+        getEffectiveSectionFormat,
         suppliers,
         activeSuppliers,
         addSupplier,

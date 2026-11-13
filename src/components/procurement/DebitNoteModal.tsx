@@ -32,11 +32,13 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { config, activeTemplate } = useStock();
+  const { config, activeTemplate, getEffectiveSectionFormat } = useStock();
   const printAreaRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen || !supplierReturn) return null;
+
+  const rtvFormat = getEffectiveSectionFormat('SUPPLIER_RETURN_DEBIT_NOTE');
 
   const handlePrint = () => {
     if (!printAreaRef.current) return;
@@ -119,8 +121,18 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
           <div className="flex items-center gap-2">
             <RotateCcw className="w-5 h-5 text-amber-400" />
             <div>
-              <h2 className="text-sm font-bold tracking-tight">Return to Vendor (RTV) & Official Debit Note</h2>
-              <p className="text-[11px] text-slate-300 font-medium">Voucher #{supplierReturn.rtvNumber} · {supplierReturn.supplierName}</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold tracking-tight">Return to Vendor (RTV) & Official Debit Note</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  FORMAT-04 {rtvFormat.isCustomUploaded ? '• Custom Format Active' : '• Standard Format'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 font-medium">
+                Voucher #{supplierReturn.rtvNumber} · {supplierReturn.supplierName}
+                {rtvFormat.uploadedFileName && (
+                  <span className="ml-2 text-emerald-300">(Ref: {rtvFormat.uploadedFileName})</span>
+                )}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -166,39 +178,69 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
             className="bg-white border border-slate-300 shadow-md p-6 sm:p-10 max-w-3xl w-full text-slate-900 font-sans print:shadow-none print:border-none print:p-0"
             style={{ minHeight: '1000px' }}
           >
-            {/* Letterhead Header */}
-            <div className="border-b-2 border-slate-900 pb-4 mb-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-950">
-                    {activeTemplate?.companyName || config.companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
-                  </h1>
-                  <p className="text-[11px] text-slate-600 leading-tight mt-1 max-w-xl">
-                    {activeTemplate?.subtitle ||
-                      'Civil Contractors, Telecommunication Engineers, Transport Services, Heavy Equipment & Logistics Operations'}
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    {activeTemplate?.address || config.address || 'Central Logistics Yard & Operations Hub'}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 mt-0.5">
-                    <span><strong>Tel:</strong> {activeTemplate?.tel || config.phone || '+94 11 2549590'}</span>
-                    <span><strong>Email:</strong> {activeTemplate?.email || config.email || 'apexdevinfo@gmail.com'}</span>
+            {/* Letterhead Header (Uploaded Header Banner OR Standard Company Header) */}
+            {rtvFormat.isCustomUploaded &&
+            (rtvFormat.renderMode === 'uploaded_header_banner' || rtvFormat.renderMode === 'full_page_stationery') &&
+            (rtvFormat.uploadedHeaderBannerDataUrl || rtvFormat.uploadedFileDataUrl) ? (
+              <div className="border-b-2 border-slate-900 pb-3 mb-5">
+                <img
+                  src={rtvFormat.uploadedHeaderBannerDataUrl || rtvFormat.uploadedFileDataUrl}
+                  alt="Uploaded Company RTV Header"
+                  className="w-full max-h-[185px] object-contain mx-auto mb-2"
+                />
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                  <div
+                    className="inline-block text-white font-black text-xs uppercase px-3 py-1 rounded tracking-wider"
+                    style={{ backgroundColor: rtvFormat.accentColor || '#0f172a' }}
+                  >
+                    {rtvFormat.customMainTitle || 'DEBIT NOTE / RETURN TO VENDOR (RTV)'}
                   </div>
+                  <div>{getStatusBadge()}</div>
                 </div>
+              </div>
+            ) : (
+              <div
+                className="border-b-2 pb-4 mb-5"
+                style={{ borderColor: rtvFormat.accentColor || '#0f172a' }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h1
+                      className="text-xl sm:text-2xl font-black uppercase tracking-tight"
+                      style={{ color: rtvFormat.accentColor || '#0f172a' }}
+                    >
+                      {activeTemplate?.companyName || config.companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
+                    </h1>
+                    <p className="text-[11px] text-slate-600 leading-tight mt-1 max-w-xl">
+                      {activeTemplate?.subtitle ||
+                        'Civil Contractors, Telecommunication Engineers, Transport Services, Heavy Equipment & Logistics Operations'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {activeTemplate?.address || config.address || 'Central Logistics Yard & Operations Hub'}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 mt-0.5">
+                      <span><strong>Tel:</strong> {activeTemplate?.tel || config.phone || '+94 11 2549590'}</span>
+                      <span><strong>Email:</strong> {activeTemplate?.email || config.email || 'apexdevinfo@gmail.com'}</span>
+                    </div>
+                  </div>
 
-                <div className="text-right shrink-0">
-                  <div className="inline-block bg-slate-950 text-white font-black text-sm uppercase px-3 py-1.5 rounded tracking-wider">
-                    DEBIT NOTE
-                  </div>
-                  <div className="text-[11px] font-bold text-amber-700 mt-1 uppercase">
-                    RETURN TO VENDOR (RTV)
-                  </div>
-                  <div className="mt-2 text-right">
-                    {getStatusBadge()}
+                  <div className="text-right shrink-0">
+                    <div
+                      className="inline-block text-white font-black text-sm uppercase px-3 py-1.5 rounded tracking-wider"
+                      style={{ backgroundColor: rtvFormat.accentColor || '#0f172a' }}
+                    >
+                      {rtvFormat.customMainTitle || 'DEBIT NOTE'}
+                    </div>
+                    <div className="text-[11px] font-bold text-amber-700 mt-1 uppercase">
+                      RETURN TO VENDOR (RTV)
+                    </div>
+                    <div className="mt-2 text-right">
+                      {getStatusBadge()}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Document Info & Supplier Details Box */}
             <div className="grid grid-cols-2 gap-4 mb-6 text-xs">
@@ -260,13 +302,26 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
             <div className="mb-6">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-900 text-white text-[11px] uppercase tracking-wider">
-                    <th className="py-2.5 px-3 font-semibold text-center w-10">#</th>
+                  <tr
+                    className="text-white text-[11px] uppercase tracking-wider"
+                    style={{ backgroundColor: rtvFormat.accentColor || '#0f172a' }}
+                  >
+                    <th className="py-2.5 px-3 font-semibold text-center w-10">
+                      {rtvFormat.colItemNoLabel || '#'}
+                    </th>
                     <th className="py-2.5 px-3 font-semibold w-24">Item Code</th>
-                    <th className="py-2.5 px-3 font-semibold">Description & Defect Reason</th>
-                    <th className="py-2.5 px-3 font-semibold text-right w-20">Quantity</th>
-                    <th className="py-2.5 px-3 font-semibold text-right w-24">Rate ({config.currencySymbol})</th>
-                    <th className="py-2.5 px-3 font-semibold text-right w-28">Debit Amount ({config.currencySymbol})</th>
+                    <th className="py-2.5 px-3 font-semibold">
+                      {rtvFormat.colDescriptionLabel || 'Description & Defect Reason'}
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right w-20">
+                      {rtvFormat.colQtyLabel || 'Quantity'}
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right w-24">
+                      {rtvFormat.colSecondaryLabel || 'Rate'} ({config.currencySymbol})
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right w-28">
+                      {rtvFormat.colRemarksLabel || 'Debit Amount'} ({config.currencySymbol})
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 border-x border-b border-slate-200">
@@ -375,7 +430,7 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
                 <div className="h-12 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-800 font-semibold text-[11px]">
                   {supplierReturn.preparedBy || 'Storekeeper'}
                 </div>
-                <div className="font-bold text-slate-800">Prepared By</div>
+                <div className="font-bold text-slate-800">{rtvFormat.signPreparedLabel || 'Prepared By'}</div>
                 <div className="text-[10px] text-slate-500">Storekeeper / Yard In-Charge</div>
               </div>
 
@@ -383,7 +438,7 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
                 <div className="h-12 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-800 font-semibold text-[11px]">
                   {supplierReturn.approvedBy || activeTemplate?.approvedBy || 'Operations Head'}
                 </div>
-                <div className="font-bold text-slate-800">Authorized By</div>
+                <div className="font-bold text-slate-800">{rtvFormat.signApprovedLabel || 'Authorized By'}</div>
                 <div className="text-[10px] text-slate-500">Procurement / Logistics Manager</div>
               </div>
 
@@ -391,14 +446,18 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
                 <div className="h-12 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
                   Signature & Company Rubber Stamp
                 </div>
-                <div className="font-bold text-slate-800">Supplier Acknowledgment</div>
+                <div className="font-bold text-slate-800">{rtvFormat.signThirdLabel || 'Supplier Acknowledgment'}</div>
                 <div className="text-[10px] text-slate-500">Receiver Name, Date & Seal</div>
               </div>
             </div>
 
             {/* Footer Disclaimer */}
-            <div className="mt-8 pt-3 border-t border-slate-200 text-center text-[10px] text-slate-400">
-              This Debit Note serves as an official accounting claim against delivered stock. Goods returned remain the property of the vendor pending credit note issuance or authorized replacement. Generated by {config.systemName || 'Apex Stock Management System'}.
+            <div className="mt-8 pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 gap-2">
+              <span>Form Ref: {rtvFormat.formRefCode || 'PROC-RTV-DN-009'}</span>
+              <span className="text-center">
+                {rtvFormat.termsAndConditionsText ||
+                  `This Debit Note serves as an official accounting claim against delivered stock. Generated by ${config.systemName || 'Apex Stock Management System'}.`}
+              </span>
             </div>
           </div>
         </div>

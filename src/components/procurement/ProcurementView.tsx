@@ -41,6 +41,7 @@ import {
   PurchaseOrder,
   PurchaseOrderItem,
   PurchaseOrderStatus,
+  GoodsReceiptRecord,
   SupplierReturn,
   SupplierReturnStatus,
   SettlementType,
@@ -50,6 +51,7 @@ import { getThemeConfig } from '../../utils/themeUtils';
 import { formatNumber, formatDate, formatDateTime } from '../../utils/exportUtils';
 import { exportElementToPdf, printHtmlElement } from '../../utils/printUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { SupplierReturnModal } from './SupplierReturnModal';
 import { DebitNoteModal } from './DebitNoteModal';
 import { SettleReturnModal } from './SettleReturnModal';
@@ -79,8 +81,10 @@ export const ProcurementView: React.FC = () => {
     dispatchSupplierReturn,
     activeProjects,
     projects,
+    getEffectiveSectionFormat,
   } = useStock();
 
+  const poFormat = getEffectiveSectionFormat('PURCHASE_ORDER');
   const theme = getThemeConfig(config?.themeId || config?.logoColor);
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
@@ -102,6 +106,10 @@ export const ProcurementView: React.FC = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<PurchaseOrder | null>(null);
   const [printingOrder, setPrintingOrder] = useState<PurchaseOrder | null>(null);
+  const [printingGrnBatch, setPrintingGrnBatch] = useState<{
+    po: PurchaseOrder;
+    grn: GoodsReceiptRecord;
+  } | null>(null);
 
   // Partial Goods Receipt Note (GRN) Modal State
   const [showGrnModal, setShowGrnModal] = useState(false);
@@ -2264,9 +2272,20 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                               </span>
                             )}
                           </div>
-                          <span className="text-slate-500 text-[11px] font-normal">
-                            {formatDate(grn.receiptDate)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500 text-[11px] font-normal">
+                              {formatDate(grn.receiptDate)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setPrintingGrnBatch({ po: viewingOrder, grn })}
+                              className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                              title="Print or Download Official GRN Voucher"
+                            >
+                              <Printer className="w-3 h-3" />
+                              <span>Print GRN</span>
+                            </button>
+                          </div>
                         </div>
                         <div className="text-[11px] text-slate-600 mb-1.5">
                           Received By: <strong className="text-slate-700">{grn.receivedBy}</strong>
@@ -2673,32 +2692,70 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
       <div className="hidden">
         {printingOrder && (
           <div id="printable-purchase-order" className="p-10 bg-white text-slate-900 max-w-[850px] mx-auto font-sans leading-relaxed">
-            {/* Header */}
-            <div className="flex justify-between items-start border-b-2 border-slate-900 pb-5 mb-6">
-              <div>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                  {config.companyName || 'APEX DEVELOPER (PVT) LTD'}
-                </h1>
-                <p className="text-xs text-slate-600 mt-1 max-w-md">
-                  {config.address || 'Apex Software Engineering & Logistics Hub, Colombo, Sri Lanka.'}
-                </p>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Tel: {config.phone || '+94 11 2549590'} • Email: {config.email || 'apexdevinfo@gmail.com'}
-                </p>
+            {/* Header (Either Uploaded Header Banner OR Dynamic Company Header) */}
+            {poFormat.isCustomUploaded &&
+            (poFormat.renderMode === 'uploaded_header_banner' || poFormat.renderMode === 'full_page_stationery') &&
+            (poFormat.uploadedHeaderBannerDataUrl || poFormat.uploadedFileDataUrl) ? (
+              <div
+                className="border-b-2 pb-4 mb-6"
+                style={{ borderColor: poFormat.accentColor || '#0f172a' }}
+              >
+                <img
+                  src={poFormat.uploadedHeaderBannerDataUrl || poFormat.uploadedFileDataUrl}
+                  alt="Uploaded Company PO Header"
+                  className="w-full max-h-[185px] object-contain mx-auto mb-3"
+                />
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                  <div
+                    className="inline-block text-white px-4 py-1 text-sm font-black uppercase tracking-wider rounded"
+                    style={{ backgroundColor: poFormat.accentColor || '#0f172a' }}
+                  >
+                    {poFormat.customMainTitle || 'PURCHASE ORDER'}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-base font-mono font-black text-slate-900 mr-3">
+                      #{printingOrder.poNumber}
+                    </span>
+                    <span className="text-xs text-slate-600">Date: {printingOrder.orderDate}</span>
+                  </div>
+                </div>
               </div>
+            ) : (
+              <div
+                className="flex justify-between items-start border-b-2 pb-5 mb-6"
+                style={{ borderColor: poFormat.accentColor || '#0f172a' }}
+              >
+                <div>
+                  <h1
+                    className="text-2xl font-black tracking-tight uppercase"
+                    style={{ color: poFormat.accentColor || '#0f172a' }}
+                  >
+                    {activeTemplate?.companyName || config.companyName || 'APEX DEVELOPER (PVT) LTD'}
+                  </h1>
+                  <p className="text-xs text-slate-600 mt-1 max-w-md">
+                    {activeTemplate?.address || config.address || 'Apex Software Engineering & Logistics Hub, Colombo, Sri Lanka.'}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Tel: {activeTemplate?.tel || config.phone || '+94 11 2549590'} • Email: {activeTemplate?.email || config.email || 'apexdevinfo@gmail.com'}
+                  </p>
+                </div>
 
-              <div className="text-right">
-                <div className="inline-block bg-slate-900 text-white px-4 py-1 text-sm font-black uppercase tracking-wider rounded">
-                  PURCHASE ORDER
-                </div>
-                <div className="text-lg font-mono font-black text-slate-900 mt-2">
-                  #{printingOrder.poNumber}
-                </div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  Date: {printingOrder.orderDate}
+                <div className="text-right">
+                  <div
+                    className="inline-block text-white px-4 py-1 text-sm font-black uppercase tracking-wider rounded"
+                    style={{ backgroundColor: poFormat.accentColor || '#0f172a' }}
+                  >
+                    {poFormat.customMainTitle || 'PURCHASE ORDER'}
+                  </div>
+                  <div className="text-lg font-mono font-black text-slate-900 mt-2">
+                    #{printingOrder.poNumber}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Date: {printingOrder.orderDate}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Vendor & Ship-To Grid */}
             <div className="grid grid-cols-2 gap-6 mb-6">
@@ -2728,7 +2785,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                   SHIP TO / DESTINATION
                 </div>
                 <div className="text-sm font-bold text-slate-900">
-                  {config.companyName || 'COMTEC SYSTEMS (PVT) LTD'} - MAIN STOCK
+                  {activeTemplate?.companyName || config.companyName || 'COMTEC SYSTEMS (PVT) LTD'} - MAIN STOCK
                 </div>
                 <div className="text-xs text-slate-600 mt-1">{printingOrder.deliveryLocation}</div>
                 <div className="text-xs text-slate-600 mt-1">
@@ -2743,14 +2800,21 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
             {/* Line Items Table */}
             <div className="border border-slate-300 rounded overflow-hidden mb-6">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
+                <thead
+                  className="font-bold border-b border-slate-300"
+                  style={
+                    poFormat.gridStyle === 'modern_corporate'
+                      ? { backgroundColor: poFormat.accentColor || '#0f172a', color: '#ffffff' }
+                      : { backgroundColor: '#f1f5f9', color: '#1e293b' }
+                  }
+                >
                   <tr>
-                    <th className="py-2.5 px-3 w-10">#</th>
-                    <th className="py-2.5 px-3">Item Code & Material Description</th>
-                    <th className="py-2.5 px-3 w-20 text-center">Unit</th>
-                    <th className="py-2.5 px-3 w-20 text-center">Qty</th>
-                    <th className="py-2.5 px-3 w-28 text-right">Unit Price</th>
-                    <th className="py-2.5 px-3 w-32 text-right">Amount ({config.currencySymbol})</th>
+                    <th className="py-2.5 px-3 w-10">{poFormat.colItemNoLabel || '#'}</th>
+                    <th className="py-2.5 px-3">{poFormat.colDescriptionLabel || 'Item Code & Material Description'}</th>
+                    <th className="py-2.5 px-3 w-20 text-center">{poFormat.colUnitLabel || 'Unit'}</th>
+                    <th className="py-2.5 px-3 w-20 text-center">{poFormat.colQtyLabel || 'Qty'}</th>
+                    <th className="py-2.5 px-3 w-28 text-right">{poFormat.colSecondaryLabel || 'Unit Price'}</th>
+                    <th className="py-2.5 px-3 w-32 text-right">{poFormat.colRemarksLabel || 'Amount'} ({config.currencySymbol})</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -2803,24 +2867,28 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
             {/* Special Instructions */}
             <div className="border border-slate-200 rounded p-3 mb-8 text-xs text-slate-600">
               <strong className="text-slate-800">TERMS & SPECIAL CONDITIONS:</strong>
-              <p className="mt-0.5">{printingOrder.notes || 'Goods must be supplied strictly in accordance with specified standards. Delivery note & test certificates must accompany all shipments.'}</p>
+              <p className="mt-0.5">
+                {printingOrder.notes ||
+                  poFormat.termsAndConditionsText ||
+                  'Goods must be supplied strictly in accordance with specified standards. Delivery note & test certificates must accompany all shipments.'}
+              </p>
             </div>
 
             {/* Signatures */}
             <div className="grid grid-cols-3 gap-6 pt-6 border-t border-slate-300 text-center text-xs">
               <div>
-                <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-400 text-[10px]">
+                <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-600 font-semibold text-[10px]">
                   {printingOrder.preparedBy}
                 </div>
-                <div className="font-bold text-slate-800">Prepared By</div>
+                <div className="font-bold text-slate-800">{poFormat.signPreparedLabel || 'Prepared By'}</div>
                 <div className="text-[10px] text-slate-500">Central Warehouse Store</div>
               </div>
 
               <div>
-                <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-400 text-[10px]">
-                  Authorized Signature
+                <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-600 font-semibold text-[10px]">
+                  {printingOrder.approvedBy || activeTemplate?.approvedBy || 'Authorized Signature'}
                 </div>
-                <div className="font-bold text-slate-800">Approved By</div>
+                <div className="font-bold text-slate-800">{poFormat.signApprovedLabel || 'Approved By'}</div>
                 <div className="text-[10px] text-slate-500">Procurement / Project Director</div>
               </div>
 
@@ -2828,13 +2896,42 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                 <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-400 text-[10px]">
                   Sign & Date
                 </div>
-                <div className="font-bold text-slate-800">Supplier Acknowledgment</div>
+                <div className="font-bold text-slate-800">{poFormat.signThirdLabel || 'Supplier Acknowledgment'}</div>
                 <div className="text-[10px] text-slate-500">Stamp & Delivery Acceptance</div>
               </div>
+            </div>
+
+            <div className="mt-6 pt-2 border-t border-slate-200 flex items-center justify-between text-[9px] text-slate-400 font-mono">
+              <span>Form Ref: {poFormat.formRefCode || 'PROC-PO-STD-001'}</span>
+              <span>Generated via {config.systemName || 'Apex Stock Management System'}</span>
             </div>
           </div>
         )}
       </div>
+
+      {/* ------------------ MODAL: PRINTABLE GRN VOUCHER ------------------ */}
+      {printingGrnBatch && (
+        <PrintableDocumentModal
+          isOpen={!!printingGrnBatch}
+          onClose={() => setPrintingGrnBatch(null)}
+          formatGroupOverride="RECEIPT_RETURN_FOC"
+          title="GOODS RECEIPT NOTE (GRN) - INBOUND DELIVERY VOUCHER"
+          documentNumber={printingGrnBatch.grn.grnNumber}
+          documentDate={printingGrnBatch.grn.receiptDate}
+          recipientLabel="SUPPLIER & PO REFERENCE"
+          recipientName={`${printingGrnBatch.po.supplierName} (PO: ${printingOrder?.poNumber || printingGrnBatch.po.poNumber})`}
+          recipientSubDetails={`Delivery Note / Invoice: ${printingGrnBatch.grn.deliveryNoteNo || 'N/A'} | Received By: ${printingGrnBatch.grn.receivedBy}`}
+          notes={printingGrnBatch.grn.notes || `Official Goods Receipt Note credited to Central Main Stock against Purchase Order ${printingGrnBatch.po.poNumber}.`}
+          items={printingGrnBatch.grn.itemsReceived.map((it) => ({
+            itemCode: it.itemCode,
+            itemName: it.itemName,
+            category: 'Inbound GRN',
+            quantity: it.quantityReceived,
+            unit: it.unit,
+            remarks: `PO: ${printingGrnBatch.po.poNumber}`,
+          }))}
+        />
+      )}
 
       {/* ------------------ MODAL: SUPPLIER RETURN (CREATE/EDIT) ------------------ */}
       {showReturnModal && (

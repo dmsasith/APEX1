@@ -13,9 +13,10 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatDateTime, formatDate, formatNumber } from '../../utils/exportUtils';
-import { StockTransferRequest, TeamIssue, TeamReturn, TeamInHandSummary, LetterheadTemplate } from '../../types';
+import { StockTransferRequest, TeamIssue, TeamReturn, TeamInHandSummary, LetterheadTemplate, DocumentFormatGroupId } from '../../types';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
+import { COMPANY_FORMAT_GROUPS } from '../../utils/formatAnalyzerUtils';
 
 type DocType =
   | { type: 'REQUEST_NOTE'; data: StockTransferRequest }
@@ -29,6 +30,7 @@ export interface PrintableDocumentItem {
   category?: string;
   quantity: number;
   unit?: string;
+  remarks?: string;
 }
 
 export interface PrintableDocumentModalProps {
@@ -43,6 +45,7 @@ export interface PrintableDocumentModalProps {
   recipientSubDetails?: string;
   notes?: string;
   items?: PrintableDocumentItem[];
+  formatGroupOverride?: DocumentFormatGroupId;
 }
 
 export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
@@ -57,9 +60,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
   recipientSubDetails,
   notes,
   items: customItems,
+  formatGroupOverride,
 }) => {
   const {
-    config,
     sites,
     items,
     teams,
@@ -69,6 +72,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     setActiveTemplateId,
     updateLetterheadTemplate,
     digitalSignatures,
+    getEffectiveSectionFormat,
   } = useStock();
 
   // Selected template for this print session
@@ -77,6 +81,33 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     letterheadTemplates.find((t) => t.id === currentTemplateId) ||
     contextActiveTemplate ||
     letterheadTemplates[0];
+
+  // Determine which Company Format Group applies to this document
+  const detectedGroupId: DocumentFormatGroupId = (() => {
+    if (formatGroupOverride) return formatGroupOverride;
+    if (document) {
+      if (document.type === 'RETURN_VOUCHER') return 'RECEIPT_RETURN_FOC';
+      return 'REQUISITION_ISSUE_USAGE';
+    }
+    const upperNum = (documentNumber || '').toUpperCase();
+    const upperTitle = (title || '').toUpperCase();
+    if (
+      upperNum.startsWith('GRN') ||
+      upperNum.startsWith('FOC') ||
+      upperNum.startsWith('BRM') ||
+      upperNum.startsWith('RV') ||
+      upperTitle.includes('RETURN') ||
+      upperTitle.includes('FREE-ISSUE') ||
+      upperTitle.includes('RECEIPT') ||
+      upperTitle.includes('GRN')
+    ) {
+      return 'RECEIPT_RETURN_FOC';
+    }
+    return 'REQUISITION_ISSUE_USAGE';
+  })();
+
+  const effectiveFormat = getEffectiveSectionFormat(detectedGroupId);
+  const formatGroupMeta = COMPANY_FORMAT_GROUPS.find((g) => g.groupId === effectiveFormat.groupId) || COMPANY_FORMAT_GROUPS[0];
 
   // Live Sheet & Signer Customizer Drawer toggle
   const [showSignerEditor, setShowSignerEditor] = useState<boolean>(false);
@@ -278,20 +309,43 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     });
   };
 
+  // Dynamic Table Styling from effectiveFormat
+  const isModernGrid = effectiveFormat.gridStyle === 'modern_corporate';
+  const isMinimalGrid = effectiveFormat.gridStyle === 'minimal_iso';
+  const tableHeaderStyle: React.CSSProperties = isModernGrid
+    ? { backgroundColor: effectiveFormat.accentColor || '#0f172a', color: '#ffffff' }
+    : isMinimalGrid
+    ? { backgroundColor: '#f8fafc', color: '#0f172a', borderBottom: `2px solid ${effectiveFormat.accentColor || '#0f172a'}` }
+    : { backgroundColor: '#f1f5f9', color: '#000000' };
+
+  const colNo = effectiveFormat.colItemNoLabel || 'Item No';
+  const colDesc = effectiveFormat.colDescriptionLabel || 'Item Description';
+  const colUnit = effectiveFormat.colUnitLabel || 'Unit';
+  const colQty = effectiveFormat.colQtyLabel || 'Quantity';
+  const colSec = effectiveFormat.colSecondaryLabel || 'Category';
+  const colRem = effectiveFormat.colRemarksLabel || 'Remarks / Condition';
+
   // Render items table based on document type
   const renderTableAndBody = () => {
     if (!document) {
-      const displayTitle = title || 'OFFICIAL INVENTORY VOUCHER';
+      const displayTitle = effectiveFormat.customMainTitle || title || 'OFFICIAL INVENTORY VOUCHER';
       return (
         <div className="space-y-4">
           <div className="text-center my-2">
-            <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
+            <h2
+              className="text-sm font-extrabold uppercase tracking-wide inline-block px-4 py-1 rounded"
+              style={
+                isModernGrid
+                  ? { backgroundColor: effectiveFormat.accentColor || '#0f172a', color: '#ffffff' }
+                  : { color: effectiveFormat.accentColor || '#0f172a' }
+              }
+            >
               {displayTitle}
             </h2>
           </div>
 
           {(recipientName || recipientLabel || notes) && (
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded border border-slate-200 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900 mb-0.5">
                   {recipientLabel || 'RECIPIENT / DESTINATION'}:
@@ -309,16 +363,16 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           <div className="border border-black">
             <table className="w-full text-[10.5px] border-collapse">
               <thead>
-                <tr className="bg-slate-100 text-black font-bold text-center border-b border-black">
-                  <th className="py-1 px-1.5 w-[6%] border-r border-black font-extrabold">Item No</th>
-                  <th className="py-1 px-2 w-[42%] text-left border-r border-black font-extrabold">Item Description</th>
-                  <th className="py-1 px-1 w-[12%] border-r border-black font-extrabold">Category</th>
-                  <th className="py-1 px-1 w-[8%] border-r border-black font-extrabold">Unit</th>
-                  <th className="py-1 px-1.5 w-[16%] border-r border-black font-extrabold text-right">Quantity</th>
-                  <th className="py-1 px-2 w-[16%] text-left font-extrabold">Remarks / Condition</th>
+                <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
+                  <th className="py-1.5 px-1.5 w-[7%] border-r border-black/40 font-extrabold">{colNo}</th>
+                  <th className="py-1.5 px-2 w-[41%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
+                  <th className="py-1.5 px-1 w-[14%] border-r border-black/40 font-extrabold">{colSec}</th>
+                  <th className="py-1.5 px-1 w-[8%] border-r border-black/40 font-extrabold">{colUnit}</th>
+                  <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">{colQty}</th>
+                  <th className="py-1.5 px-2 w-[16%] text-left font-extrabold">{colRem}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black text-black">
+              <tbody className="divide-y divide-black text-black bg-white/90">
                 {!customItems || customItems.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-4 text-center text-slate-500 italic">
@@ -336,7 +390,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                       <td className="py-1 px-1 text-center border-r border-black text-slate-600">{item.category || 'General'}</td>
                       <td className="py-1 px-1 text-center font-mono border-r border-black">{item.unit || 'Nos'}</td>
                       <td className="py-1 px-1.5 text-right font-mono font-bold border-r border-black">{formatNumber(item.quantity)}</td>
-                      <td className="py-1 px-2 text-left text-slate-600 text-[10px]">Standard / Issued</td>
+                      <td className="py-1 px-2 text-left text-slate-600 text-[10px]">{item.remarks || 'Verified / Logged'}</td>
                     </tr>
                   ))
                 )}
@@ -354,12 +408,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
         return (
           <div className="space-y-4">
             <div className="text-center my-2">
-              <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
-                MATERIAL REQUISITION & TRANSFER NOTE
+              <h2
+                className="text-sm font-extrabold uppercase tracking-wide inline-block px-4 py-1 rounded"
+                style={
+                  isModernGrid
+                    ? { backgroundColor: effectiveFormat.accentColor || '#0f172a', color: '#ffffff' }
+                    : { color: effectiveFormat.accentColor || '#0f172a' }
+                }
+              >
+                {effectiveFormat.customMainTitle || 'MATERIAL REQUISITION & TRANSFER NOTE'}
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded border border-slate-200 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">SOURCE WAREHOUSE:</div>
                 <div>Main Central Warehouse (HQ Logistics)</div>
@@ -379,16 +440,16 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             <div className="border border-black">
               <table className="w-full text-[10.5px] border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 text-black font-bold text-center border-b border-black">
-                    <th className="py-1 px-1.5 w-[6%] border-r border-black font-extrabold">Item No</th>
-                    <th className="py-1 px-2 w-[42%] text-left border-r border-black font-extrabold">Material Description</th>
-                    <th className="py-1 px-1 w-[8%] border-r border-black font-extrabold">Unit</th>
-                    <th className="py-1 px-1.5 w-[14%] border-r border-black font-extrabold text-right">Requested Qty</th>
-                    <th className="py-1 px-1.5 w-[14%] border-r border-black font-extrabold text-right">Approved Qty</th>
-                    <th className="py-1 px-1.5 w-[16%] text-right font-extrabold">Received Qty</th>
+                  <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
+                    <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
+                    <th className="py-1.5 px-2 w-[42%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
+                    <th className="py-1.5 px-1 w-[8%] border-r border-black/40 font-extrabold">{colUnit}</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Requested Qty</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Approved Qty</th>
+                    <th className="py-1.5 px-1.5 w-[16%] text-right font-extrabold">Received Qty</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black text-black">
+                <tbody className="divide-y divide-black text-black bg-white/90">
                   {req.items.map((row, idx) => {
                     const itm = items.find((i) => i.id === row.itemId);
                     return (
@@ -434,12 +495,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
         return (
           <div className="space-y-4">
             <div className="text-center my-2">
-              <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
-                DAILY FIELD DISPATCH & ISSUE NOTE
+              <h2
+                className="text-sm font-extrabold uppercase tracking-wide inline-block px-4 py-1 rounded"
+                style={
+                  isModernGrid
+                    ? { backgroundColor: effectiveFormat.accentColor || '#0f172a', color: '#ffffff' }
+                    : { color: effectiveFormat.accentColor || '#0f172a' }
+                }
+              >
+                {effectiveFormat.customMainTitle || 'DAILY FIELD DISPATCH & ISSUE NOTE'}
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded border border-slate-200 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">ISSUED TO FIELD TEAM:</div>
                 <div className="font-bold text-slate-900">{team?.teamName}</div>
@@ -457,15 +525,15 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             <div className="border border-black">
               <table className="w-full text-[10.5px] border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 text-black font-bold text-center border-b border-black">
-                    <th className="py-1 px-1.5 w-[6%] border-r border-black font-extrabold">Item No</th>
-                    <th className="py-1 px-2 w-[48%] text-left border-r border-black font-extrabold">Material Description</th>
-                    <th className="py-1 px-1 w-[10%] border-r border-black font-extrabold">Unit</th>
-                    <th className="py-1 px-1.5 w-[18%] border-r border-black font-extrabold text-right">Dispatched Qty</th>
-                    <th className="py-1 px-2 w-[18%] text-left font-extrabold">Remarks / Custody</th>
+                  <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
+                    <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
+                    <th className="py-1.5 px-2 w-[48%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
+                    <th className="py-1.5 px-1 w-[10%] border-r border-black/40 font-extrabold">{colUnit}</th>
+                    <th className="py-1.5 px-1.5 w-[18%] border-r border-black/40 font-extrabold text-right">{colQty}</th>
+                    <th className="py-1.5 px-2 w-[18%] text-left font-extrabold">{colRem}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black text-black">
+                <tbody className="divide-y divide-black text-black bg-white/90">
                   {iss.items.map((row, idx) => {
                     const itm = items.find((i) => i.id === row.itemId);
                     return (
@@ -503,12 +571,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
         return (
           <div className="space-y-4">
             <div className="text-center my-2">
-              <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
-                TEAM STOCK RETURN VOUCHER (TO BRANCH YARD)
+              <h2
+                className="text-sm font-extrabold uppercase tracking-wide inline-block px-4 py-1 rounded"
+                style={
+                  isModernGrid
+                    ? { backgroundColor: effectiveFormat.accentColor || '#0f172a', color: '#ffffff' }
+                    : { color: effectiveFormat.accentColor || '#0f172a' }
+                }
+              >
+                {effectiveFormat.customMainTitle || 'TEAM STOCK RETURN VOUCHER (TO BRANCH YARD)'}
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded border border-slate-200 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">RETURNING FIELD TEAM:</div>
                 <div className="font-bold text-slate-900">{team?.teamName}</div>
@@ -524,16 +599,16 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             <div className="border border-black">
               <table className="w-full text-[10.5px] border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 text-black font-bold text-center border-b border-black">
-                    <th className="py-1 px-1.5 w-[6%] border-r border-black font-extrabold">Item No</th>
-                    <th className="py-1 px-2 w-[44%] text-left border-r border-black font-extrabold">Material Description</th>
-                    <th className="py-1 px-1 w-[8%] border-r border-black font-extrabold">Unit</th>
-                    <th className="py-1 px-1.5 w-[14%] border-r border-black font-extrabold text-right">Returned Qty</th>
-                    <th className="py-1 px-1.5 w-[14%] border-r border-black font-extrabold text-center">Condition</th>
-                    <th className="py-1 px-2 w-[14%] text-left font-extrabold">Reason / Action</th>
+                  <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
+                    <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
+                    <th className="py-1.5 px-2 w-[44%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
+                    <th className="py-1.5 px-1 w-[8%] border-r border-black/40 font-extrabold">{colUnit}</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">{colQty}</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-center">{colSec}</th>
+                    <th className="py-1.5 px-2 w-[14%] text-left font-extrabold">{colRem}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black text-black">
+                <tbody className="divide-y divide-black text-black bg-white/90">
                   {(() => {
                     const itm = items.find((i) => i.id === ret.itemId);
                     return (
@@ -564,12 +639,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
         return (
           <div className="space-y-4">
             <div className="text-center my-2">
-              <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
-                FIELD TEAM IN-HAND STOCK BALANCE AUDIT
+              <h2
+                className="text-sm font-extrabold uppercase tracking-wide inline-block px-4 py-1 rounded"
+                style={
+                  isModernGrid
+                    ? { backgroundColor: effectiveFormat.accentColor || '#0f172a', color: '#ffffff' }
+                    : { color: effectiveFormat.accentColor || '#0f172a' }
+                }
+              >
+                {effectiveFormat.customMainTitle || 'FIELD TEAM IN-HAND STOCK BALANCE AUDIT'}
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded border border-slate-200 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">AUDITED FIELD TEAM:</div>
                 <div className="font-bold text-slate-900">{rep.team.teamName}</div>
@@ -585,16 +667,16 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             <div className="border border-black">
               <table className="w-full text-[10.5px] border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 text-black font-bold text-center border-b border-black">
-                    <th className="py-1 px-1.5 w-[6%] border-r border-black font-extrabold">#</th>
-                    <th className="py-1 px-2 w-[44%] text-left border-r border-black font-extrabold">Item Description</th>
-                    <th className="py-1 px-1 w-[8%] border-r border-black font-extrabold">Unit</th>
-                    <th className="py-1 px-1.5 w-[14%] border-r border-black font-extrabold text-right">Total Issued</th>
-                    <th className="py-1 px-1.5 w-[14%] border-r border-black font-extrabold text-right">Total Returned</th>
-                    <th className="py-1 px-1.5 w-[14%] text-right font-extrabold">In Hand Balance</th>
+                  <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
+                    <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
+                    <th className="py-1.5 px-2 w-[44%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
+                    <th className="py-1.5 px-1 w-[8%] border-r border-black/40 font-extrabold">{colUnit}</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Total Issued</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Total Returned</th>
+                    <th className="py-1.5 px-1.5 w-[14%] text-right font-extrabold">In Hand Balance</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black text-black">
+                <tbody className="divide-y divide-black text-black bg-white/90">
                   {rep.items.map((row, idx) => (
                     <tr key={row.itemId} className="h-6">
                       <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
@@ -625,9 +707,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           <div className="flex items-center gap-3">
             <FileText className="w-5 h-5 text-emerald-400" />
             <div>
-              <div className="font-bold text-sm">Official Voucher Print Preview</div>
+              <div className="font-bold text-sm flex items-center gap-2">
+                <span>Official Voucher Print Preview</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  {formatGroupMeta.groupCode} {effectiveFormat.isCustomUploaded ? '• Custom Format Active' : '• Standard Format'}
+                </span>
+              </div>
               <div className="text-[10px] text-slate-300">
                 Template: <strong className="text-emerald-300">{activeTemplate.templateName}</strong>
+                {effectiveFormat.uploadedFileName && (
+                  <span className="ml-2 text-amber-300 font-semibold">
+                    (Uploaded Ref: {effectiveFormat.uploadedFileName})
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -706,6 +798,12 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           </div>
         </div>
 
+        {statusNotice && (
+          <div className="no-print bg-emerald-950 text-emerald-200 px-5 py-2 text-xs font-semibold border-b border-emerald-800 flex items-center justify-between">
+            <span>{statusNotice}</span>
+          </div>
+        )}
+
         {/* CUSTOMIZE SIGNERS & DESIGNATIONS INLINE DRAWER (Non-print) */}
         {showSignerEditor && (
           <div className="no-print bg-amber-50 border-b border-amber-200 p-4 text-xs space-y-3">
@@ -726,7 +824,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Prepared By Signer & Designation */}
               <div className="bg-white p-2.5 rounded border border-amber-200 space-y-2">
-                <div className="font-bold text-slate-800 text-[11px]">Prepared / Checked By:</div>
+                <div className="font-bold text-slate-800 text-[11px]">
+                  {effectiveFormat.signPreparedLabel || 'Prepared / Checked By'}:
+                </div>
                 <input
                   type="text"
                   value={customPreparedBy}
@@ -757,7 +857,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
               {/* Approved By Signer & Designation */}
               <div className="bg-white p-2.5 rounded border border-amber-200 space-y-2">
-                <div className="font-bold text-slate-800 text-[11px]">Approved By:</div>
+                <div className="font-bold text-slate-800 text-[11px]">
+                  {effectiveFormat.signApprovedLabel || 'Approved By'}:
+                </div>
                 <input
                   type="text"
                   value={customApprovedBy}
@@ -829,74 +931,114 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
         <div className="p-6 sm:p-8 overflow-y-auto printable-document bg-white">
           <div
             id="letterhead-printable-area"
-            className="printable-voucher-sheet text-black font-sans leading-tight max-w-[820px] mx-auto bg-white"
+            className="printable-voucher-sheet text-black font-sans leading-tight max-w-[820px] mx-auto bg-white relative"
           >
-            {/* 1. COMTEC SYSTEMS LETTERHEAD BANNER */}
-            <div className="text-center pb-2">
-              <div className="flex items-center justify-center gap-3 mb-1">
-                {/* Oval / Monogram text or Logo Image */}
-                {activeTemplate.logoType === 'image' && activeTemplate.logoImage ? (
+            {/* Optional Full-Page Stationery Background Overlay */}
+            {effectiveFormat.isCustomUploaded &&
+              effectiveFormat.renderMode === 'full_page_stationery' &&
+              effectiveFormat.uploadedFileDataUrl && (
+                <div className="pointer-events-none mb-3 border border-slate-200 rounded overflow-hidden">
                   <img
-                    src={activeTemplate.logoImage}
-                    alt="Company Logo"
-                    className="h-9 max-w-[120px] object-contain"
+                    src={effectiveFormat.uploadedHeaderBannerDataUrl || effectiveFormat.uploadedFileDataUrl}
+                    alt="Uploaded Company Format Header"
+                    className="w-full max-h-[190px] object-contain mx-auto bg-white"
                   />
-                ) : (
-                  <div className="w-10 h-7 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-black tracking-widest uppercase">
-                    {activeTemplate.logoText || 'COM'}
-                  </div>
-                )}
-                <h1 className="text-xl sm:text-2xl font-black font-serif tracking-tight text-black uppercase">
-                  {activeTemplate.companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
-                </h1>
+                </div>
+              )}
+
+            {/* 1. HEADER BANNER (Either Uploaded Header Banner OR Dynamic Company Letterhead) */}
+            {effectiveFormat.isCustomUploaded &&
+            effectiveFormat.renderMode === 'uploaded_header_banner' &&
+            effectiveFormat.uploadedHeaderBannerDataUrl ? (
+              <div className="pb-2 mb-2 border-b-2 border-black">
+                <img
+                  src={effectiveFormat.uploadedHeaderBannerDataUrl}
+                  alt="Company Uploaded Format Header"
+                  className="w-full max-h-[180px] object-contain mx-auto"
+                />
               </div>
-
-              <p className="text-[9px] sm:text-[9.5px] leading-tight text-slate-900 max-w-2xl mx-auto font-sans font-medium">
-                {activeTemplate.subtitle ||
-                  'Civil Contractors, Telecommunication Engineers and Transport Services, Building Maintenance, and Earth movers, Road Contractors, J.C.B.Backhoe Loader, Boom Truck, Drum Truck, Lories, Excavators, Forklift for Hire. Building Material suppliers.'}
-              </p>
-
-              <div className="flex justify-between items-start text-[9.5px] font-sans font-medium text-slate-900 mt-2 px-2 border-t pt-1">
-                <div className="text-left space-y-0.5">
-                  <div>
-                    Tel: <span className="font-mono">{activeTemplate.tel || '+94 11 2549590'}</span>
+            ) : !(
+                effectiveFormat.isCustomUploaded &&
+                effectiveFormat.renderMode === 'full_page_stationery' &&
+                effectiveFormat.uploadedFileDataUrl
+              ) ? (
+              <>
+                <div className="text-center pb-2">
+                  <div className="flex items-center justify-center gap-3 mb-1">
+                    {activeTemplate.logoType === 'image' && activeTemplate.logoImage ? (
+                      <img
+                        src={activeTemplate.logoImage}
+                        alt="Company Logo"
+                        className="h-9 max-w-[120px] object-contain"
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black tracking-widest uppercase"
+                        style={{ backgroundColor: effectiveFormat.accentColor || '#000000' }}
+                      >
+                        {activeTemplate.logoText || 'COM'}
+                      </div>
+                    )}
+                    <h1
+                      className="text-xl sm:text-2xl font-black font-serif tracking-tight uppercase"
+                      style={{ color: effectiveFormat.accentColor || '#000000' }}
+                    >
+                      {activeTemplate.companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
+                    </h1>
                   </div>
-                  <div>
-                    Fax: <span className="font-mono">{activeTemplate.fax || '+94 11 2549591'}</span>
-                  </div>
-                  <div>
-                    E-mail: <span className="font-mono underline">{activeTemplate.email || 'apexdevinfo@gmail.com'}</span>
+
+                  <p className="text-[9px] sm:text-[9.5px] leading-tight text-slate-900 max-w-2xl mx-auto font-sans font-medium">
+                    {activeTemplate.subtitle ||
+                      'Civil Contractors, Telecommunication Engineers and Transport Services, Building Maintenance, and Earth movers, Road Contractors, J.C.B.Backhoe Loader, Boom Truck, Drum Truck, Lories, Excavators, Forklift for Hire. Building Material suppliers.'}
+                  </p>
+
+                  <div className="flex justify-between items-start text-[9.5px] font-sans font-medium text-slate-900 mt-2 px-2 border-t pt-1">
+                    <div className="text-left space-y-0.5">
+                      <div>
+                        Tel: <span className="font-mono">{activeTemplate.tel || '+94 11 2549590'}</span>
+                      </div>
+                      <div>
+                        Fax: <span className="font-mono">{activeTemplate.fax || '+94 11 2549591'}</span>
+                      </div>
+                      <div>
+                        E-mail: <span className="font-mono underline">{activeTemplate.email || 'apexdevinfo@gmail.com'}</span>
+                      </div>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <div>{activeTemplate.address || 'No: 36, Udumulla, Malgama Road, Himbutana, Mulleriyawa.'}</div>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right space-y-0.5">
-                  <div>{activeTemplate.address || 'No: 36, Udumulla, Malgama Road, Himbutana, Mulleriyawa.'}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t-2 border-black my-1.5"></div>
+                <div
+                  className="border-t-2 my-1.5"
+                  style={{ borderColor: effectiveFormat.accentColor || '#000000' }}
+                ></div>
+              </>
+            ) : null}
 
             {/* 2. THREE-BOX METADATA BAR */}
-            <div className="border border-black flex items-stretch text-xs divide-x divide-black my-2">
-              <div className="w-1/3 p-1.5 flex items-center justify-between">
-                <span className="font-bold text-[11px]">DATE OF DOC:</span>
-                <span className="font-mono font-bold text-xs">{customDate || new Date().toISOString().split('T')[0]}</span>
+            {effectiveFormat.showMetadataThreeBox !== false && (
+              <div className="border border-black flex items-stretch text-xs divide-x divide-black my-2">
+                <div className="w-1/3 p-1.5 flex items-center justify-between">
+                  <span className="font-bold text-[11px]">DATE OF DOC:</span>
+                  <span className="font-mono font-bold text-xs">{customDate || new Date().toISOString().split('T')[0]}</span>
+                </div>
+                <div className="w-1/3 p-1.5 text-center flex items-center justify-center font-bold">
+                  <span className="mr-1">DOCUMENT NO -</span>
+                  <span className="font-mono font-black text-xs underline">{customDocNumber}</span>
+                </div>
+                <div className="w-1/3 p-1 text-center font-bold text-[11px] leading-tight flex flex-col justify-center">
+                  <div className="font-mono text-black font-extrabold">{customProjectCode || 'QP 2B'}</div>
+                  <div className="text-red-700 font-black uppercase text-[10px] tracking-wide">{customSiteLocation || 'MATALE'}</div>
+                </div>
               </div>
-              <div className="w-1/3 p-1.5 text-center flex items-center justify-center font-bold">
-                <span className="mr-1">DOCUMENT NO -</span>
-                <span className="font-mono font-black text-xs underline">{customDocNumber}</span>
-              </div>
-              <div className="w-1/3 p-1 text-center font-bold text-[11px] leading-tight flex flex-col justify-center">
-                <div className="font-mono text-black font-extrabold">{customProjectCode || 'QP 2B'}</div>
-                <div className="text-red-700 font-black uppercase text-[10px] tracking-wide">{customSiteLocation || 'MATALE'}</div>
-              </div>
-            </div>
+            )}
 
             {/* 3. DYNAMIC CONTENT & TABLE */}
             {renderTableAndBody()}
 
             {/* 4. APPROVAL & SIGN-OFF MATRIX WITH DYNAMIC NAMES & DESIGNATIONS */}
-            <div className="border border-black text-[10px] mt-4">
+            <div className="border border-black text-[10px] mt-4 bg-white/95">
               <table className="w-full border-collapse">
                 <tbody>
                   {/* Row 1: Prepared & Checked By */}
@@ -906,7 +1048,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                       <div className="font-mono font-bold">{customDate || new Date().toISOString().split('T')[0]}</div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
-                      <div className="text-[9px] text-slate-600 font-bold">Prepaired & Checked By</div>
+                      <div className="text-[9px] text-slate-600 font-bold">
+                        {effectiveFormat.signPreparedLabel || 'Prepared & Checked By'}
+                      </div>
                       {prepSig && (
                         <div className="h-8 flex items-center justify-start my-0.5">
                           <img
@@ -933,13 +1077,15 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   </tr>
 
                   {/* Row 2: Approved by */}
-                  <tr className="border-b border-black">
+                  <tr className={effectiveFormat.showIsoRevisionFooter !== false ? 'border-b border-black' : ''}>
                     <td className="w-1/4 p-1.5 font-bold border-r border-black">
                       <div className="text-[9px] text-slate-500 font-sans">Date</div>
                       <div className="font-mono font-bold">{customDate || new Date().toISOString().split('T')[0]}</div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
-                      <div className="text-[9px] text-slate-600 font-bold">Approved by</div>
+                      <div className="text-[9px] text-slate-600 font-bold">
+                        {effectiveFormat.signApprovedLabel || 'Approved By'}
+                      </div>
                       {apprSig && (
                         <div className="h-8 flex items-center justify-start my-0.5">
                           <img
@@ -966,57 +1112,63 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   </tr>
 
                   {/* Row 3: Issue No & Revision Matrix */}
-                  <tr>
-                    <td colSpan={2} className="p-1 border-r border-black">
-                      <div className="grid grid-cols-2 text-[9px] gap-x-2">
-                        <div>
-                          Issue NO: <strong className="font-mono">{customIssueNo || activeTemplate.issueNo || '01'}</strong>
+                  {effectiveFormat.showIsoRevisionFooter !== false && (
+                    <tr>
+                      <td colSpan={2} className="p-1 border-r border-black">
+                        <div className="grid grid-cols-2 text-[9px] gap-x-2">
+                          <div>
+                            Issue NO: <strong className="font-mono">{customIssueNo || activeTemplate.issueNo || '01'}</strong>
+                          </div>
+                          <div>
+                            Date Of Issue: <span className="font-mono">{customDate || new Date().toISOString().split('T')[0]}</span>
+                          </div>
+                          <div>
+                            Revision No: <strong className="font-mono">{customRevisionNo || activeTemplate.revisionNo || '00'}</strong>
+                          </div>
+                          <div>
+                            Date of Rev: <span className="font-mono">{customDate || new Date().toISOString().split('T')[0]}</span>
+                          </div>
                         </div>
-                        <div>
-                          Date Of Issue: <span className="font-mono">{customDate || new Date().toISOString().split('T')[0]}</span>
+                      </td>
+                      <td className="p-1 border-r border-black">
+                        <div className="text-[8.5px] text-slate-500">
+                          {effectiveFormat.signThirdLabel || 'Reviewed By'}
                         </div>
-                        <div>
-                          Revision No: <strong className="font-mono">{customRevisionNo || activeTemplate.revisionNo || '00'}</strong>
+                        {revSig && (
+                          <div className="h-5 flex items-center justify-start my-0.2">
+                            <img
+                              src={revSig.signatureDataUrl}
+                              alt="Reviewed Signature"
+                              className="max-h-4 max-w-[80px] object-contain mix-blend-multiply"
+                            />
+                          </div>
+                        )}
+                        <div className="font-bold text-[9.5px]">{customReviewedBy || activeTemplate.reviewedBy || 'Dissanayake'}</div>
+                      </td>
+                      <td className="p-1">
+                        <div className="text-[8.5px] text-slate-500">
+                          {effectiveFormat.signApprovedLabel || 'Approved BY'}
                         </div>
-                        <div>
-                          Date of Rev: <span className="font-mono">{customDate || new Date().toISOString().split('T')[0]}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-1 border-r border-black">
-                      <div className="text-[8.5px] text-slate-500">Reviewed By</div>
-                      {revSig && (
-                        <div className="h-5 flex items-center justify-start my-0.2">
-                          <img
-                            src={revSig.signatureDataUrl}
-                            alt="Reviewed Signature"
-                            className="max-h-4 max-w-[80px] object-contain mix-blend-multiply"
-                          />
-                        </div>
-                      )}
-                      <div className="font-bold text-[9.5px]">{customReviewedBy || activeTemplate.reviewedBy || 'Dissanayake'}</div>
-                    </td>
-                    <td className="p-1">
-                      <div className="text-[8.5px] text-slate-500">Approved BY</div>
-                      {apprSig && (
-                        <div className="h-5 flex items-center justify-start my-0.2">
-                          <img
-                            src={apprSig.signatureDataUrl}
-                            alt="Approved Signature"
-                            className="max-h-4 max-w-[80px] object-contain mix-blend-multiply"
-                          />
-                        </div>
-                      )}
-                      <div className="font-bold text-[9.5px]">{customApprovedBy || activeTemplate.approvedBy || 'Arthur Vance'}</div>
-                    </td>
-                  </tr>
+                        {apprSig && (
+                          <div className="h-5 flex items-center justify-start my-0.2">
+                            <img
+                              src={apprSig.signatureDataUrl}
+                              alt="Approved Signature"
+                              className="max-h-4 max-w-[80px] object-contain mix-blend-multiply"
+                            />
+                          </div>
+                        )}
+                        <div className="font-bold text-[9.5px]">{customApprovedBy || activeTemplate.approvedBy || 'Arthur Vance'}</div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Bottom Form ID Print Watermark */}
             <div className="flex justify-between items-center text-[8px] text-slate-500 font-mono mt-2 pt-1 border-t border-slate-200">
-              <span>Form Ref: CTS-MAT-REQ-022 / QP 2B {customSiteLocation}</span>
+              <span>Form Ref: {effectiveFormat.formRefCode || 'CTS-MAT-REQ-022 / QP 2B'} • {customSiteLocation}</span>
               <span>Generated via Apex Stock Management System · {activeTemplate.companyName}</span>
             </div>
           </div>

@@ -640,6 +640,55 @@ export interface TeamInHandSummary {
   distinctItemsCount: number;
 }
 
+export type DocumentFormatGroupId =
+  | 'REQUISITION_ISSUE_USAGE'
+  | 'RECEIPT_RETURN_FOC'
+  | 'PURCHASE_ORDER'
+  | 'SUPPLIER_RETURN_DEBIT_NOTE';
+
+export type FormatRenderMode =
+  | 'smart_reconstructed'
+  | 'uploaded_header_banner'
+  | 'full_page_stationery';
+
+export type FormatGridStyle =
+  | 'classic_bordered'
+  | 'modern_corporate'
+  | 'minimal_iso';
+
+export interface SectionFormatConfig {
+  groupId: DocumentFormatGroupId;
+  groupName: string;
+  isCustomUploaded: boolean;
+  uploadedFileName?: string;
+  uploadedFileType?: 'image' | 'pdf';
+  uploadedFileDataUrl?: string; // Optimized full page preview image data URL
+  uploadedHeaderBannerDataUrl?: string; // Cropped top header banner image data URL
+  headerCropHeightPercent?: number; // Default 20 (%)
+  renderMode: FormatRenderMode;
+  gridStyle: FormatGridStyle;
+  accentColor: string;
+  formRefCode: string;
+  customMainTitle?: string;
+  showMetadataThreeBox: boolean;
+  showIsoRevisionFooter: boolean;
+  // Custom Table Column Header Labels
+  colItemNoLabel: string;
+  colDescriptionLabel: string;
+  colUnitLabel: string;
+  colQtyLabel: string;
+  colSecondaryLabel: string;
+  colRemarksLabel: string;
+  // Custom Sign-Off Labels
+  signPreparedLabel: string;
+  signApprovedLabel: string;
+  signThirdLabel: string;
+  termsAndConditionsText?: string;
+  linkedToGroupId?: DocumentFormatGroupId | '';
+  extractedSummary?: string;
+  updatedAt: string;
+}
+
 export interface LetterheadTemplate {
   id: string;
   templateName: string;
@@ -663,6 +712,7 @@ export interface LetterheadTemplate {
   preparedBy?: string;
   paperSize?: string;
   orientation?: string;
+  sectionFormats?: Partial<Record<DocumentFormatGroupId, SectionFormatConfig>>;
 }
 
 export interface DigitalSignature {

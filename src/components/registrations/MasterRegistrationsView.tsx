@@ -361,7 +361,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [teamLeaderIdNumber, setTeamLeaderIdNumber] = useState('');
   const [assignedSiteId, setAssignedSiteId] = useState(activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id);
   const [contactPhone, setContactPhone] = useState('');
-  const [crewSize, setCrewSize] = useState<number | ''>(8);
+  const [crewSize, setCrewSize] = useState<number>(1);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Team Member scratchpad inputs
@@ -384,7 +384,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     };
     const updated = [...teamMembers, newMember];
     setTeamMembers(updated);
-    setCrewSize(updated.length + 1); // Team Leader + Members
+    setCrewSize(updated.length + 1); // 1 Team Leader + Members
     setNewMemberName('');
     setNewMemberIdNumber('');
     setNewMemberPhone('');
@@ -393,7 +393,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleRemoveTeamMember = (memberId: string) => {
     const updated = teamMembers.filter((m) => m.id !== memberId);
     setTeamMembers(updated);
-    setCrewSize(updated.length + 1);
+    setCrewSize(updated.length + 1); // 1 Team Leader + Remaining Members
   };
 
   // Edit Team modal member scratchpad
@@ -438,7 +438,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     e.preventDefault();
     if (!teamName.trim() || !teamLeaderName.trim()) return;
 
-    const totalCrew = teamMembers.length > 0 ? teamMembers.length + 1 : (Number(crewSize) || 1);
+    const totalCrew = teamMembers.length + 1;
 
     addTeam({
       teamName: teamName.trim(),
@@ -450,12 +450,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       members: teamMembers,
     });
 
-    showToast(`Field Team "${teamName}" registered with ${teamMembers.length} member(s)!`);
+    showToast(`Field Team "${teamName}" registered (Crew Size: ${totalCrew} — 1 Leader + ${teamMembers.length} Member${teamMembers.length === 1 ? '' : 's'})!`);
     setTeamName('');
     setTeamLeaderName('');
     setTeamLeaderIdNumber('');
     setContactPhone('');
-    setCrewSize(8);
+    setCrewSize(1);
     setTeamMembers([]);
   };
 
@@ -497,7 +497,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     setTeamLeaderIdNumber('');
     setAssignedSiteId(activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id);
     setContactPhone('');
-    setCrewSize(8);
+    setCrewSize(1);
     setTeamMembers([]);
     setNewMemberName('');
     setNewMemberIdNumber('');
@@ -533,8 +533,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleSaveTeamEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTeam) return;
-    updateTeam(editingTeam.id, editingTeam);
-    showToast(`Field Team "${editingTeam.teamName}" updated.`);
+    const autoCrewSize = (editingTeam.members?.length || 0) + 1;
+    updateTeam(editingTeam.id, {
+      ...editingTeam,
+      crewSize: autoCrewSize,
+    });
+    showToast(`Field Team "${editingTeam.teamName}" updated (Crew Size: ${autoCrewSize}).`);
     setEditingTeam(null);
   };
 
@@ -2601,21 +2605,22 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Crew Size ({teamMembers.length > 0 ? 'Auto-Calculated' : 'Persons'})
+                    Crew Size (Auto)
                   </label>
                   <input
                     type="number"
                     min="1"
-                    value={teamMembers.length > 0 ? teamMembers.length + 1 : crewSize}
-                    onChange={(e) => setCrewSize(e.target.value === '' ? '' : Number(e.target.value))}
-                    disabled={teamMembers.length > 0}
-                    className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-mono tabular-nums bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all disabled:opacity-60"
+                    value={teamMembers.length + 1}
+                    readOnly
+                    disabled
+                    title="Automatically calculated: 1 Team Leader + added Team Members"
+                    className="w-full px-4 py-2.5 border border-emerald-200/90 dark:border-emerald-800/60 rounded-2xl text-xs font-mono tabular-nums font-bold bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 focus:outline-none transition-all cursor-not-allowed"
                   />
-                  {teamMembers.length > 0 && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                      1 Leader + {teamMembers.length} Members
-                    </span>
-                  )}
+                  <span className="block mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {teamMembers.length === 0
+                      ? '1 Team Leader Only'
+                      : `1 Leader + ${teamMembers.length} Member${teamMembers.length === 1 ? '' : 's'}`}
+                  </span>
                 </div>
 
                 <div>
@@ -4263,14 +4268,20 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Crew Size (Persons)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Crew Size (Auto)</label>
                   <input
                     type="number"
                     min="1"
-                    value={editingTeam.crewSize}
-                    onChange={(e) => setEditingTeam({ ...editingTeam, crewSize: Number(e.target.value) || 1 })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    value={(editingTeam.members?.length || 0) + 1}
+                    readOnly
+                    disabled
+                    className="w-full px-3.5 py-2.5 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs font-mono font-bold bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 focus:outline-none transition-all cursor-not-allowed"
                   />
+                  <span className="block mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {(editingTeam.members?.length || 0) === 0
+                      ? '1 Team Leader Only'
+                      : `1 Leader + ${editingTeam.members?.length || 0} Member${(editingTeam.members?.length || 0) === 1 ? '' : 's'}`}
+                  </span>
                 </div>
 
                 <div>

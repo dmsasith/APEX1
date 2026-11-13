@@ -64,6 +64,7 @@ export const MainStockView: React.FC = () => {
 
   // Return voucher print modal
   const [selectedReturnForPrint, setSelectedReturnForPrint] = useState<BranchReturn | null>(null);
+  const [selectedEntryForPrint, setSelectedEntryForPrint] = useState<(typeof mainStockEntries)[0] | null>(null);
 
   // Returns from site filtering
   const [returnedSiteFilter, setReturnedSiteFilter] = useState('all');
@@ -1524,18 +1525,27 @@ export const MainStockView: React.FC = () => {
                           {entry.receivedBy}
                         </td>
                         <td className="py-3 px-3 text-right whitespace-nowrap">
-                          {isCentralAdmin ? (
+                          <div className="inline-flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => handleDeleteEntry(entry)}
-                              className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                              title="Delete receipt record"
+                              onClick={() => setSelectedEntryForPrint(entry)}
+                              className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Print Official GRN / Stock Receipt Voucher"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Printer className="w-3 h-3" />
+                              <span>Print GRN</span>
                             </button>
-                          ) : (
-                            <span className="text-slate-300 text-xs">—</span>
-                          )}
+                            {isCentralAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEntry(entry)}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="Delete receipt record"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1880,6 +1890,7 @@ export const MainStockView: React.FC = () => {
         <PrintableDocumentModal
           isOpen={!!selectedReturnForPrint}
           onClose={() => setSelectedReturnForPrint(null)}
+          formatGroupOverride="RECEIPT_RETURN_FOC"
           title="INTER-BRANCH RETURN TO CENTRAL YARD NOTE"
           documentNumber={selectedReturnForPrint.branchReturnNumber}
           documentDate={selectedReturnForPrint.returnDate}
@@ -1894,6 +1905,37 @@ export const MainStockView: React.FC = () => {
               category: items.find((i) => i.id === selectedReturnForPrint.itemId)?.category || 'General Equipment',
               quantity: selectedReturnForPrint.quantity,
               unit: items.find((i) => i.id === selectedReturnForPrint.itemId)?.unit || 'Nos',
+            },
+          ]}
+        />
+      )}
+
+      {/* Inbound Stock Receipt / GRN Printable Document Modal */}
+      {selectedEntryForPrint && (
+        <PrintableDocumentModal
+          isOpen={!!selectedEntryForPrint}
+          onClose={() => setSelectedEntryForPrint(null)}
+          formatGroupOverride="RECEIPT_RETURN_FOC"
+          title="GOODS RECEIPT NOTE (GRN) - CENTRAL WAREHOUSE INBOUND VOUCHER"
+          documentNumber={selectedEntryForPrint.referenceNo}
+          documentDate={selectedEntryForPrint.timestamp}
+          recipientLabel="SUPPLIER / ORIGIN SOURCE"
+          recipientName={selectedEntryForPrint.supplier || 'Approved Vendor'}
+          recipientSubDetails={`Entry Type: ${selectedEntryForPrint.entryType} | Received By: ${selectedEntryForPrint.receivedBy}${
+            selectedEntryForPrint.reservedProjectName ? ` | Reserved Project: ${selectedEntryForPrint.reservedProjectName}` : ''
+          }`}
+          notes={
+            selectedEntryForPrint.notes ||
+            `Inbound stock receipt logged into Central Main Warehouse. Unit Cost: ${config.currencySymbol}${Number(selectedEntryForPrint.unitCost).toFixed(2)}`
+          }
+          items={[
+            {
+              itemCode: items.find((i) => i.id === selectedEntryForPrint.itemId)?.itemCode || 'CODE',
+              itemName: items.find((i) => i.id === selectedEntryForPrint.itemId)?.itemName || 'Material Item',
+              category: items.find((i) => i.id === selectedEntryForPrint.itemId)?.category || 'General Stock',
+              quantity: selectedEntryForPrint.quantity,
+              unit: items.find((i) => i.id === selectedEntryForPrint.itemId)?.unit || 'Nos',
+              remarks: `${config.currencySymbol}${formatNumber(Math.round(selectedEntryForPrint.quantity * selectedEntryForPrint.unitCost))}`,
             },
           ]}
         />
