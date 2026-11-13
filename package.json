@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --outfile=server.js --external:express",
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --outfile=server.js --external:express --external:vite",
     "start": "node server.js",
     "build:single": "vite build && node scripts/inline-bundle.js",
     "preview": "vite preview",
@@ -13,7 +13,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
+    "@google/genai": "^3.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "dotenv": "^17.2.3",

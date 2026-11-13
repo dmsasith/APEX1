@@ -56,6 +56,7 @@ import { AdminPreviewBanner } from './components/common/AdminPreviewBanner';
 import { TenantPreviewBanner } from './components/common/TenantPreviewBanner';
 import { DeveloperPortalGateway } from './components/saas/DeveloperPortalGateway';
 import { BranchDirectoryView } from './components/directory/BranchDirectoryView';
+import { AiSupportChatWidget } from './components/support/AiSupportChatWidget';
 import { useStock } from './context/StockContext';
 import { getThemeConfig } from './utils/themeUtils';
 import { isSuperAdmin, isCentralOrAllSiteAdmin } from './types';
@@ -319,6 +320,9 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
           </div>
         </div>
       )}
+
+      {/* Floating AI System Support Chat Widget */}
+      <AiSupportChatWidget currentTab={currentTab} />
     </div>
   );
 }
