@@ -51,6 +51,22 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
       // Users assigned to this site (supports single site, multiple sites, and linked supervisors)
       const siteUsers = activeUsers.filter((u) => isUserAssignedToSite(u, site, activeSites));
 
+      const rawSup = (site.supervisorName || '').trim();
+      const matchedSupUser = activeUsers.find(
+        (u) =>
+          (site.supervisorUserId && u.id === site.supervisorUserId) ||
+          (rawSup &&
+            rawSup.toLowerCase() !== 'arthur vance' &&
+            rawSup.toLowerCase() !== 'unassigned' &&
+            u.fullName.trim().toLowerCase() === rawSup.toLowerCase())
+      );
+      const displaySupervisorName =
+        matchedSupUser?.fullName ||
+        siteUsers[0]?.fullName ||
+        (rawSup && rawSup.toLowerCase() !== 'arthur vance' && rawSup.toLowerCase() !== 'unassigned'
+          ? rawSup
+          : 'Unassigned');
+
       // Filter teams by search query
       const matchingTeams = siteTeams.filter((team) => {
         if (!searchLower) return true;
@@ -69,7 +85,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
 
         const matchesSite =
           site.name.toLowerCase().includes(searchLower) ||
-          site.supervisorName.toLowerCase().includes(searchLower) ||
+          displaySupervisorName.toLowerCase().includes(searchLower) ||
           site.location.toLowerCase().includes(searchLower);
 
         return matchesTeam || matchesMember || matchesSite;
@@ -84,6 +100,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
       return {
         site,
         siteUsers,
+        displaySupervisorName,
         teams: matchingTeams,
         allSiteTeamsCount: siteTeams.length,
         totalPersonnel: totalTeamPersonnel,
@@ -92,7 +109,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
       if (!searchLower) return true;
       const siteMatches =
         data.site.name.toLowerCase().includes(searchLower) ||
-        data.site.supervisorName.toLowerCase().includes(searchLower) ||
+        data.displaySupervisorName.toLowerCase().includes(searchLower) ||
         data.site.location.toLowerCase().includes(searchLower);
       return siteMatches || data.teams.length > 0;
     });
@@ -110,13 +127,13 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
   const handleExportCsv = () => {
     const rows: Record<string, unknown>[] = [];
 
-    branchData.forEach(({ site, teams, siteUsers }) => {
+    branchData.forEach(({ site, teams, siteUsers, displaySupervisorName }) => {
       if (teams.length === 0) {
         rows.push({
           'Branch Name': site.name,
           'Branch Location': site.location,
           'Branch Type': site.isMainWarehouse ? 'Main Warehouse / HQ' : 'Site Branch Yard',
-          'Supervisor / Manager': site.supervisorName,
+          'Supervisor / Manager': displaySupervisorName,
           'Supervisor Phone': site.contactNumber,
           'Assigned Staff Admins': siteUsers.map((u) => `${u.fullName} (${u.role})`).join('; ') || 'None',
           'Team Name': 'No Teams Assigned',
@@ -133,7 +150,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
             'Branch Name': site.name,
             'Branch Location': site.location,
             'Branch Type': site.isMainWarehouse ? 'Main Warehouse / HQ' : 'Site Branch Yard',
-            'Supervisor / Manager': site.supervisorName,
+            'Supervisor / Manager': displaySupervisorName,
             'Supervisor Phone': site.contactNumber,
             'Assigned Staff Admins': siteUsers.map((u) => `${u.fullName} (${u.role})`).join('; ') || 'None',
             'Team Name': team.teamName,
@@ -151,7 +168,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                 'Branch Name': site.name,
                 'Branch Location': site.location,
                 'Branch Type': site.isMainWarehouse ? 'Main Warehouse / HQ' : 'Site Branch Yard',
-                'Supervisor / Manager': site.supervisorName,
+                'Supervisor / Manager': displaySupervisorName,
                 'Supervisor Phone': site.contactNumber,
                 'Assigned Staff Admins': siteUsers.map((u) => `${u.fullName} (${u.role})`).join('; ') || 'None',
                 'Team Name': team.teamName,
@@ -395,7 +412,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
         </div>
       ) : (
         <div className="space-y-6">
-          {branchData.map(({ site, siteUsers, teams, allSiteTeamsCount, totalPersonnel }) => (
+          {branchData.map(({ site, siteUsers, displaySupervisorName, teams, allSiteTeamsCount, totalPersonnel }) => (
             <div
               key={site.id}
               className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden break-inside-avoid"
@@ -437,7 +454,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                     <div className="text-[10px] uppercase font-bold text-slate-500">Branch Supervisor</div>
                     <div className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
                       <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{site.supervisorName || 'Unassigned'}</span>
+                      <span>{displaySupervisorName}</span>
                     </div>
                   </div>
                   <div className="h-7 w-px bg-slate-200" />
@@ -454,34 +471,31 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-100 text-xs">
                 <div className="flex items-center gap-2 mb-2 font-bold text-slate-800 text-[11px] uppercase tracking-wider">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Branch Management & Assigned System Personnel ({siteUsers.length + 1})</span>
+                  <span>Branch Management & Assigned System Personnel ({siteUsers.length})</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  {/* Supervisor Card */}
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900">{site.supervisorName || 'Site Supervisor'}</div>
-                      <div className="text-[10px] text-emerald-700 font-semibold">Designated Branch Manager</div>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold text-slate-500">{site.contactNumber}</span>
+                {siteUsers.length === 0 ? (
+                  <div className="text-slate-400 text-[11px] italic py-1">
+                    No registered system users assigned to this branch yet.
                   </div>
-
-                  {/* System Users assigned to this branch */}
-                  {siteUsers.map((user) => (
-                    <div
-                      key={user.id}
-                      className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-between"
-                    >
-                      <div className="truncate mr-2">
-                        <div className="font-bold text-slate-900 truncate">{user.fullName}</div>
-                        <div className="text-[10px] text-slate-500 font-medium truncate">@{user.username}</div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {/* Registered System Users assigned to this branch */}
+                    {siteUsers.map((user) => (
+                      <div
+                        key={user.id}
+                        className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-between"
+                      >
+                        <div className="truncate mr-2">
+                          <div className="font-bold text-slate-900 truncate">{user.fullName}</div>
+                          <div className="text-[10px] text-slate-500 font-medium truncate">@{user.username}</div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
+                          {user.role}
+                        </span>
                       </div>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
-                        {user.role}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Teams & Complete Member Rosters */}

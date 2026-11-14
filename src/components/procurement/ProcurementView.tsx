@@ -2344,7 +2344,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                   <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Ship To (Central Stock)</div>
                   <div className="font-bold text-slate-900">{config.companyName || 'Comtec Systems (Pvt) Ltd'}</div>
                   <div className="text-slate-600">{viewingOrder.deliveryLocation}</div>
-                  <div className="text-slate-500 mt-1">Recipient: Arthur Vance / Central Warehouse Store</div>
+                  <div className="text-slate-500 mt-1">Recipient: Central Warehouse Store</div>
                 </div>
               </div>
 

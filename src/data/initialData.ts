@@ -64,7 +64,7 @@ export const INITIAL_SITES: Site[] = [
     id: 'site-main',
     name: 'Main Central Warehouse',
     isMainWarehouse: true,
-    supervisorName: 'Arthur Vance',
+    supervisorName: 'Sasith Dissanayake',
     location: 'Central Logistics Yard',
     contactNumber: '+94 77 123 4567',
     createdAt: new Date().toISOString(),
@@ -148,7 +148,7 @@ export const DEFAULT_LETTERHEAD_TEMPLATES = [
     issueNo: '01',
     revisionNo: '00',
     reviewedBy: 'Sasith Dissanayake',
-    approvedBy: 'Arthur Vance',
+    approvedBy: 'Sasith Dissanayake',
     preparedBy: 'Sasith Dissanayake',
     paperSize: 'a4',
     orientation: 'portrait'
@@ -170,7 +170,7 @@ export const DEFAULT_LETTERHEAD_TEMPLATES = [
     issueNo: '01',
     revisionNo: '01',
     reviewedBy: 'K. Perera',
-    approvedBy: 'Arthur Vance',
+    approvedBy: 'Sasith Dissanayake',
     preparedBy: 'K. Perera',
     paperSize: 'a4',
     orientation: 'portrait'
@@ -178,14 +178,6 @@ export const DEFAULT_LETTERHEAD_TEMPLATES = [
 ];
 
 export const DEFAULT_DIGITAL_SIGNATURES = [
-  {
-    id: 'sig-arthur',
-    name: 'Arthur Vance',
-    role: 'Central Project Engineer',
-    department: 'Central Logistics & Procurement',
-    signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="70" viewBox="0 0 220 70"><path d="M20,48 C35,20 45,15 55,30 C65,45 70,48 85,25 C100,2 105,50 120,40 C135,30 150,22 170,42 C185,55 195,30 205,38 M40,32 L85,28 M110,45 C125,58 140,58 160,50" fill="none" stroke="%230f2b5c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    createdAt: '2026-01-01'
-  },
   {
     id: 'sig-dissanayake',
     name: 'Dissanayake',

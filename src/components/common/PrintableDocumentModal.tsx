@@ -140,7 +140,11 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
       setCustomDesigneePrepared(activeTemplate.designeePrepared || 'Site In-Charge / Store Keeper');
       setCustomDepartmentPrepared(activeTemplate.departmentPrepared || 'Civil & Telecom Operations');
 
-      setCustomApprovedBy(activeTemplate.approvedBy || 'Arthur Vance');
+      setCustomApprovedBy(
+        activeTemplate.approvedBy && activeTemplate.approvedBy !== 'Arthur Vance'
+          ? activeTemplate.approvedBy
+          : 'Sasith Dissanayake'
+      );
       setCustomDesigneeApproved(activeTemplate.designeeApproved || 'Central Project Engineer');
       setCustomDepartmentApproved(activeTemplate.departmentApproved || 'Central Logistics & Procurement');
 
@@ -1095,7 +1099,11 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                           />
                         </div>
                       )}
-                      <div className="font-bold text-[11px] text-slate-900">{customApprovedBy || 'Arthur Vance'}</div>
+                      <div className="font-bold text-[11px] text-slate-900">
+                        {customApprovedBy && customApprovedBy !== 'Arthur Vance'
+                          ? customApprovedBy
+                          : 'Sasith Dissanayake'}
+                      </div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
                       <div className="text-[9px] text-slate-600 font-bold">Designee</div>
@@ -1158,7 +1166,12 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             />
                           </div>
                         )}
-                        <div className="font-bold text-[9.5px]">{customApprovedBy || activeTemplate.approvedBy || 'Arthur Vance'}</div>
+                        <div className="font-bold text-[9.5px]">
+                          {(customApprovedBy && customApprovedBy !== 'Arthur Vance' ? customApprovedBy : '') ||
+                            (activeTemplate.approvedBy && activeTemplate.approvedBy !== 'Arthur Vance'
+                              ? activeTemplate.approvedBy
+                              : 'Sasith Dissanayake')}
+                        </div>
                       </td>
                     </tr>
                   )}

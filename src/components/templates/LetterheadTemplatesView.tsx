@@ -146,7 +146,7 @@ export const LetterheadTemplatesView: React.FC = () => {
       setIssueNo(tpl.issueNo || '01');
       setRevisionNo(tpl.revisionNo || '00');
       setReviewedBy(tpl.reviewedBy || 'Dissanayake');
-      setApprovedBy(tpl.approvedBy || 'Arthur Vance');
+      setApprovedBy(tpl.approvedBy && tpl.approvedBy !== 'Arthur Vance' ? tpl.approvedBy : 'Sasith Dissanayake');
       setPreparedBy(tpl.preparedBy || tpl.reviewedBy || 'Dissanayake');
     }
   }, [selectedTemplateId, letterheadTemplates]);
@@ -366,7 +366,7 @@ export const LetterheadTemplatesView: React.FC = () => {
       issueNo: '01',
       revisionNo: '00',
       reviewedBy: 'Site In-Charge',
-      approvedBy: 'Arthur Vance',
+      approvedBy: 'Sasith Dissanayake',
       preparedBy: 'Store Keeper',
       paperSize: 'a4',
       orientation: 'portrait',
@@ -1426,7 +1426,9 @@ export const LetterheadTemplatesView: React.FC = () => {
                             className="h-6 object-contain my-0.5 mix-blend-multiply"
                           />
                         )}
-                        <div className="font-bold text-slate-900">{approvedBy || 'Arthur Vance'}</div>
+                        <div className="font-bold text-slate-900">
+                          {approvedBy && approvedBy !== 'Arthur Vance' ? approvedBy : 'Sasith Dissanayake'}
+                        </div>
                         <div className="text-[9px] text-slate-600">{designeeApproved}</div>
                       </div>
                       <div className="p-2">

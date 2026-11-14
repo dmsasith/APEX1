@@ -1203,10 +1203,16 @@ export function sanitizeTenantSites(tenantId: string, rawSites: Site[], allTenan
       (typeof s.id === 'string' && s.id.endsWith('-main'));
     if (seenIds.has(s.id)) continue;
     seenIds.add(s.id);
+    const cleanedSupName =
+      (s.supervisorName || '').trim().toLowerCase() === 'arthur vance'
+        ? isMaster && isMain
+          ? 'Sasith Dissanayake'
+          : ''
+        : s.supervisorName;
     deduped.push(
       isMain
-        ? { ...s, isMainWarehouse: true, isDeleted: false }
-        : s
+        ? { ...s, supervisorName: cleanedSupName, isMainWarehouse: true, isDeleted: false }
+        : { ...s, supervisorName: cleanedSupName }
     );
   }
 
@@ -4050,13 +4056,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       quantityReceived: number;
       unit: string;
     }> = [];
+    const newMainStockBatchEntries: MainStockEntry[] = [];
 
     let totalBatchUnits = 0;
     let itemsCreditedCount = 0;
 
     if (batchReceipt && Array.isArray(batchReceipt.items)) {
       // Partial or custom batch receipt mode
-      batchReceipt.items.forEach((batchItem) => {
+      batchReceipt.items.forEach((batchItem, batchIdx) => {
         const itemIdx = updatedItems.findIndex((it) => it.itemId === batchItem.itemId);
         if (itemIdx >= 0) {
           const currentItem = updatedItems[itemIdx];
@@ -4074,8 +4081,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               receivedQuantity: newReceivedTotal,
             };
 
-            // Credit Central Main Stock for this specific batch
-            addMainStockEntry({
+            newMainStockBatchEntries.push({
+              id: `mse-${Date.now()}-${batchIdx}-${Math.random().toString(36).substring(2, 7)}`,
+              timestamp: nowIso,
+              receivedBy: receiverName,
               entryType: 'Purchase',
               referenceNo: `${po.poNumber} (${batchGrnNumber})`,
               supplier: po.supplierName,
@@ -4111,7 +4120,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             receivedQuantity: it.quantity,
           };
 
-          addMainStockEntry({
+          newMainStockBatchEntries.push({
+            id: `mse-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+            timestamp: nowIso,
+            receivedBy: receiverName,
             entryType: 'Purchase',
             referenceNo: `${po.poNumber} (${batchGrnNumber})`,
             supplier: po.supplierName,
@@ -4143,6 +4155,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         message: 'No quantities were entered for this delivery batch. Please enter received quantities greater than 0.',
         count: 0,
       };
+    }
+
+    // Atomically insert all received PO line items into Central Main Stock in a single batch
+    if (newMainStockBatchEntries.length > 0) {
+      setMainStockEntries((prev) => {
+        const next = [...newMainStockBatchEntries, ...prev];
+        setTimeout(() => {
+          saveTenantData(currentTenantIdRef.current, 'mainStockEntries', next);
+          if (isMasterWorkspaceActive()) {
+            writeMainStockEntriesToFirebase(next).catch(() => {});
+          }
+        }, 0);
+        return next;
+      });
     }
 
     // Determine new overall PO status
@@ -4196,6 +4222,79 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       newStatus,
     };
   };
+
+  // Auto-reconcile any received Purchase Order line items that may have been dropped due to earlier same-millisecond ID collisions
+  useEffect(() => {
+    if (isFlushingRef.current || !purchaseOrders || purchaseOrders.length === 0) return;
+
+    const missingEntriesToRestore: MainStockEntry[] = [];
+
+    purchaseOrders.forEach((po) => {
+      if (po.isDeleted) return;
+      if (po.status !== 'Received into Main Stock' && po.status !== 'Partially Received') return;
+
+      (po.items || []).forEach((poItem, idx) => {
+        const expectedReceived =
+          Number(
+            poItem.receivedQuantity !== undefined
+              ? poItem.receivedQuantity
+              : po.status === 'Received into Main Stock'
+              ? poItem.quantity
+              : 0
+          ) || 0;
+
+        if (expectedReceived <= 0) return;
+
+        // Sum existing mainStockEntries linked to this PO and this itemId
+        const loggedForPoItem = mainStockEntries
+          .filter(
+            (e) =>
+              e.itemId === poItem.itemId &&
+              e.referenceNo &&
+              e.referenceNo.toUpperCase().includes(po.poNumber.toUpperCase())
+          )
+          .reduce((sum, e) => sum + Number(e.quantity || 0), 0);
+
+        const missingQty = expectedReceived - loggedForPoItem;
+        if (missingQty > 0) {
+          const grnRef =
+            po.receiptHistory && po.receiptHistory.length > 0
+              ? po.receiptHistory[0].grnNumber
+              : `GRN-${po.poNumber}-0001`;
+          missingEntriesToRestore.push({
+            id: `mse-po-sync-${po.id}-${poItem.itemId}-${idx}`,
+            timestamp: po.receivedDate || po.createdAt || new Date().toISOString(),
+            receivedBy: po.receivedBy || 'Central Store In-Charge',
+            entryType: 'Purchase',
+            referenceNo: `${po.poNumber} (${grnRef})`,
+            supplier: po.supplierName,
+            itemId: poItem.itemId,
+            quantity: missingQty,
+            unitCost: poItem.unitPrice || 0,
+            notes: `Goods receipt against PO #${po.poNumber} (${grnRef}).`,
+            reservedProjectId: po.reservedProjectId,
+            reservedProjectName: po.reservedProjectName,
+          });
+        }
+      });
+    });
+
+    if (missingEntriesToRestore.length > 0) {
+      setMainStockEntries((prev) => {
+        const existingIds = new Set(prev.map((e) => e.id));
+        const uniqueNew = missingEntriesToRestore.filter((e) => !existingIds.has(e.id));
+        if (uniqueNew.length === 0) return prev;
+        const next = [...uniqueNew, ...prev];
+        setTimeout(() => {
+          saveTenantData(currentTenantIdRef.current, 'mainStockEntries', next);
+          if (isMasterWorkspaceActive()) {
+            writeMainStockEntriesToFirebase(next).catch(() => {});
+          }
+        }, 0);
+        return next;
+      });
+    }
+  }, [purchaseOrders, mainStockEntries]);
 
   const closePurchaseOrderRemainder = (
     poId: string,
@@ -4587,6 +4686,57 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditLog('OTHER', id, 'System', `Deleted Digital Signature`);
   };
 
+  // Auto-clean any legacy persisted "Arthur Vance" demo references from sites, letterheadTemplates, and digitalSignatures
+  useEffect(() => {
+    if (isFlushingRef.current) return;
+    const targetTenantId = currentTenantIdRef.current || currentTenantId;
+    const isMaster = targetTenantId === DEFAULT_TENANT.id || targetTenantId === 'tenant-apex-main';
+
+    if (sites.some((s) => (s.supervisorName || '').trim().toLowerCase() === 'arthur vance')) {
+      setSites((prev) => {
+        const next = prev.map((s) => {
+          if ((s.supervisorName || '').trim().toLowerCase() !== 'arthur vance') return s;
+          return {
+            ...s,
+            supervisorName: isMaster && s.isMainWarehouse ? 'Sasith Dissanayake' : '',
+            updatedAt: new Date().toISOString(),
+          };
+        });
+        saveTenantData(targetTenantId, 'sites', next);
+        if (isMaster) {
+          writeSitesToFirebase(next).catch(() => {});
+        }
+        return next;
+      });
+    }
+
+    if (letterheadTemplates.some((t) => (t.approvedBy || '').trim().toLowerCase() === 'arthur vance')) {
+      setLetterheadTemplates((prev) => {
+        const next = prev.map((t) =>
+          (t.approvedBy || '').trim().toLowerCase() === 'arthur vance'
+            ? { ...t, approvedBy: 'Sasith Dissanayake' }
+            : t
+        );
+        saveTenantData(targetTenantId, 'letterheadTemplates', next);
+        return next;
+      });
+    }
+
+    if (
+      digitalSignatures.some(
+        (sig) => sig.id === 'sig-arthur' || (sig.name || '').trim().toLowerCase() === 'arthur vance'
+      )
+    ) {
+      setDigitalSignatures((prev) => {
+        const next = prev.filter(
+          (sig) => sig.id !== 'sig-arthur' && (sig.name || '').trim().toLowerCase() !== 'arthur vance'
+        );
+        saveTenantData(targetTenantId, 'digitalSignatures', next);
+        return next;
+      });
+    }
+  }, [sites, letterheadTemplates, digitalSignatures, currentTenantId]);
+
   // Demo Data Reset and Clear
   const resetAllData = () => {
     setConfig(INITIAL_CONFIG);
@@ -4925,7 +5075,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (initialReceivedQty && initialReceivedQty > 0) {
       const entryRef = `INIT-${savedItem.itemCode}`;
       const newEntry: MainStockEntry = {
-        id: `mse-${Date.now()}`,
+        id: `mse-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
         timestamp: new Date().toISOString(),
         entryType: 'Manual Entry',
         referenceNo: entryRef,
@@ -4934,7 +5084,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         quantity: initialReceivedQty,
         unitCost: savedItem.unitPrice,
         notes: 'Initial received stock during item registration',
-        receivedBy: currentUser?.fullName || 'Arthur Vance',
+        receivedBy: currentUser?.fullName || 'Sasith Dissanayake',
       };
       setMainStockEntries((prev) => [newEntry, ...prev]);
       addAuditLog(
@@ -6477,13 +6627,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ): MainStockEntry => {
     const newEntry: MainStockEntry = {
       ...entryData,
-      id: `mse-${Date.now()}`,
+      id: `mse-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       timestamp: new Date().toISOString(),
-      receivedBy: currentUser?.fullName || 'Arthur Vance',
+      receivedBy: currentUser?.fullName || 'Sasith Dissanayake',
     };
     setMainStockEntries((prev) => {
       const next = [newEntry, ...prev];
-      saveTenantData(currentTenantIdRef.current, 'mainStockEntries', next);
+      setTimeout(() => {
+        saveTenantData(currentTenantIdRef.current, 'mainStockEntries', next);
+        if (isMasterWorkspaceActive()) {
+          writeMainStockEntriesToFirebase(next).catch(() => {});
+        }
+      }, 0);
       return next;
     });
 
@@ -6555,7 +6710,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           status: 'Approved / In-Transit' as const,
           approvalDate: nowIso,
           updatedAt: nowIso,
-          approvedBy: currentUser?.fullName || 'Arthur Vance',
+          approvedBy: currentUser?.fullName || 'Sasith Dissanayake',
           approvalNotes,
           items: updatedItems,
         };
@@ -6589,7 +6744,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           status: 'Rejected' as const,
           approvalDate: nowIso,
           updatedAt: nowIso,
-          approvedBy: currentUser?.fullName || 'Arthur Vance',
+          approvedBy: currentUser?.fullName || 'Sasith Dissanayake',
           approvalNotes: notes || 'Rejected by Main Branch Admin',
         };
       });
@@ -7937,9 +8092,40 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       sites.filter((s) => s.isMainWarehouse).map((s) => s.id)
     );
 
-    const companyReceived = mainStockEntries
+    const loggedCompanyReceived = mainStockEntries
       .filter((entry) => entry.itemId === itemId)
       .reduce((sum, entry) => sum + Number(entry.quantity || 0), 0);
+
+    // Ensure any received PO line items not yet synced in mainStockEntries are also counted
+    let unloggedPoReceived = 0;
+    purchaseOrders
+      .filter((po) => !po.isDeleted && (po.status === 'Received into Main Stock' || po.status === 'Partially Received'))
+      .forEach((po) => {
+        const poItem = (po.items || []).find((it) => it.itemId === itemId);
+        if (!poItem) return;
+        const expected =
+          Number(
+            poItem.receivedQuantity !== undefined
+              ? poItem.receivedQuantity
+              : po.status === 'Received into Main Stock'
+              ? poItem.quantity
+              : 0
+          ) || 0;
+        if (expected <= 0) return;
+        const loggedForThisPo = mainStockEntries
+          .filter(
+            (e) =>
+              e.itemId === itemId &&
+              e.referenceNo &&
+              e.referenceNo.toUpperCase().includes(po.poNumber.toUpperCase())
+          )
+          .reduce((s, e) => s + Number(e.quantity || 0), 0);
+        if (expected > loggedForThisPo) {
+          unloggedPoReceived += expected - loggedForThisPo;
+        }
+      });
+
+    const companyReceived = loggedCompanyReceived + unloggedPoReceived;
 
     const focReceived = clientFreeIssues
       .filter((entry) => !entry.isDeleted)
