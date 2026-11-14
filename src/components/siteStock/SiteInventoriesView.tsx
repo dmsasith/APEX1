@@ -53,7 +53,8 @@ export const SiteInventoriesView: React.FC = () => {
     getClientFreeStockBalance,
   } = useStock();
 
-  const allBranchSites = activeSites;
+  const nonMainBranchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const allBranchSites = nonMainBranchSites.length > 0 ? nonMainBranchSites : activeSites;
   const canViewAllBranches = isCentralOrAllSiteAdmin(currentUser.role) || isUserAllSites(currentUser);
   const branchSites = canViewAllBranches
     ? allBranchSites
@@ -71,7 +72,18 @@ export const SiteInventoriesView: React.FC = () => {
 
   const selectedSite = activeSites.find((s) => s.id === selectedSiteId) || sites.find((s) => s.id === selectedSiteId);
 
-  // Site-Specific FOC Client Materials
+  // Site-Specific Approved / Accepted FOC Stock Requests
+  const siteFocRequests = useMemo(() => {
+    if (!selectedSiteId) return [];
+    return (stockRequests || []).filter(
+      (req) =>
+        req.siteId === selectedSiteId &&
+        (req.status === 'Approved / In-Transit' || req.status === 'Accepted') &&
+        (req.requestCategory === 'foc' || Boolean(req.focProjectId))
+    );
+  }, [stockRequests, selectedSiteId]);
+
+  // Site-Specific Direct FOC Client Materials Vouchers
   const siteFocMaterials = useMemo(() => {
     if (!selectedSite) return [];
     return (clientFreeIssues || []).filter((v) => {
@@ -80,6 +92,8 @@ export const SiteInventoriesView: React.FC = () => {
       return matchLocation;
     });
   }, [clientFreeIssues, selectedSite]);
+
+  const totalSiteFocRecordsCount = siteFocRequests.length + siteFocMaterials.length;
   
   // Inventory filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -361,7 +375,7 @@ export const SiteInventoriesView: React.FC = () => {
             }`}
           >
             <span className="text-indigo-600">🎁</span>
-            <span>Client FOC Materials ({siteFocMaterials.length})</span>
+            <span>Client FOC Materials ({totalSiteFocRecordsCount})</span>
           </button>
 
           <button
@@ -656,12 +670,29 @@ export const SiteInventoriesView: React.FC = () => {
                             {item.itemCode}
                           </td>
                           <td className="py-3 px-4 text-slate-800 font-medium max-w-xs">
-                            {item.itemName}
+                            <div>{item.itemName}</div>
+                            {stock.focReceived > 0 && (
+                              <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                  🎁 Client FOC: {formatNumber(stock.focReceived)} {item.unit}
+                                </span>
+                                {stock.normalReceived > 0 && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    📦 Normal: {formatNumber(stock.normalReceived)} {item.unit}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-slate-600 whitespace-nowrap">{item.category}</td>
                           <td className="py-3 px-3 text-center text-slate-600 font-medium">{item.unit}</td>
-                          <td className="py-3 px-3 text-right font-mono text-slate-600">
-                            {formatNumber(stock.received)}
+                          <td className="py-3 px-3 text-right font-mono text-slate-700 font-semibold">
+                            <div>{formatNumber(stock.received)}</div>
+                            {stock.focReceived > 0 && (
+                              <div className="text-[10px] text-indigo-700 font-sans font-bold">
+                                🎁 {formatNumber(stock.focReceived)} FOC
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-right font-mono text-emerald-700 font-medium">
                             +{formatNumber(stock.returned)}
@@ -702,16 +733,16 @@ export const SiteInventoriesView: React.FC = () => {
                   Client Free-Issue (FOC) Materials at {selectedSite?.name}
                 </h3>
                 <p className="text-xs text-indigo-800">
-                  Client-supplied free-issue materials stored at this site yard. Maintained separately from standard company warehouse stock.
+                  Client-supplied free-issue materials approved & transferred to this site yard for assigned Main or Individual Projects.
                 </p>
               </div>
             </div>
             <span className="px-3 py-1 bg-white text-indigo-900 border border-indigo-300 rounded-lg text-xs font-bold font-mono">
-              {siteFocMaterials.length} Entry(ies)
+              {totalSiteFocRecordsCount} Record(s)
             </span>
           </div>
 
-          {siteFocMaterials.length === 0 ? (
+          {totalSiteFocRecordsCount === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center mx-auto mb-3 text-xl">
                 🎁
@@ -720,11 +751,94 @@ export const SiteInventoriesView: React.FC = () => {
                 No Client FOC Materials Assigned to {selectedSite?.name}
               </h3>
               <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                No client free-issue material shipments have been registered to this site yard location yet. Register FOC shipments from Main Stock &gt; Client FOC Materials.
+                No client free-issue material requisitions or shipments have been approved for this site branch yet. Request FOC stock from 2. Site Requests &gt; Client Free Stock Request.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Approved / Accepted FOC Stock Transfer Requests */}
+              {siteFocRequests.map((req) => (
+                <div key={req.id} className="bg-white border border-indigo-200 rounded-xl p-5 shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-bold text-xs bg-indigo-900 text-white px-2.5 py-1 rounded">
+                        {req.requestNoteNumber}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-300 uppercase">
+                        {req.focProjectScope === 'main' ? '🏢 Under Main Project' : '📄 Individual Project'}
+                      </span>
+                      {req.focProjectName && (
+                        <span className="text-xs font-bold text-slate-900">
+                          Project: <span className="text-indigo-700">{req.focProjectCode ? `[${req.focProjectCode}] ` : ''}{req.focProjectName}</span>
+                        </span>
+                      )}
+                      {req.focClientName && (
+                        <>
+                          <span aria-hidden="true" className="text-slate-300">·</span>
+                          <span className="text-xs text-slate-600">Client: <strong>{req.focClientName}</strong></span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                        {req.status}
+                      </span>
+                      <span className="text-xs text-slate-500 font-mono">
+                        {formatDateTime(req.approvalDate || req.requestedDate)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3">Item Code</th>
+                          <th className="py-2.5 px-3">Material Description</th>
+                          <th className="py-2.5 px-3 text-center">Unit</th>
+                          <th className="py-2.5 px-3 text-right">Approved / Received at Site</th>
+                          <th className="py-2.5 px-3 text-right">Available in Site Yard</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {req.items.map((row, idx) => {
+                          const itm = items.find((i) => i.id === row.itemId);
+                          const siteStk = getSiteItemStock(selectedSiteId, row.itemId);
+                          const qty =
+                            req.status === 'Accepted'
+                              ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
+                              : (row.approvedQty ?? row.requestedQty);
+                          return (
+                            <tr key={idx} className="bg-white">
+                              <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                {itm?.itemCode || 'ITEM'}
+                              </td>
+                              <td className="py-2.5 px-3 font-medium text-slate-800">
+                                {itm?.itemName || 'Material Item'}
+                              </td>
+                              <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
+                                +{formatNumber(qty)} {itm?.unit}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
+                                {formatNumber(siteStk.availableBalance)} {itm?.unit}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {req.purpose && (
+                    <div className="text-xs text-slate-500 italic">
+                      Purpose: &ldquo;{req.purpose}&rdquo;
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Direct FOC Vouchers Stored at Site */}
               {siteFocMaterials.map((foc) => (
                 <div key={foc.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">

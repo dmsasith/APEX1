@@ -22,8 +22,8 @@ export const StockBalanceCell: React.FC<StockBalanceCellProps> = ({
   const isLow = unallocated ? false : explicitIsLow !== undefined ? explicitIsLow : balance <= threshold;
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center gap-1.5 font-mono tabular-nums">
+    <div className="inline-flex flex-col items-end text-right ml-auto">
+      <div className="flex items-center justify-end gap-1.5 font-mono tabular-nums">
         {unallocated ? (
           <span className="text-slate-400 font-medium text-xs bg-slate-100 border border-slate-200 px-2 py-0.5 rounded inline-flex items-center gap-1">
             <span>0 {unit}</span>
@@ -35,8 +35,8 @@ export const StockBalanceCell: React.FC<StockBalanceCellProps> = ({
             <span>{formatNumber(balance)} {unit}</span>
           </span>
         ) : (
-          <span className="text-slate-800 font-semibold text-sm">
-            {formatNumber(balance)} {unit}
+          <span className="text-emerald-800 bg-emerald-50/80 border border-emerald-200/80 px-2.5 py-0.5 rounded-md font-bold text-sm inline-flex items-center gap-1">
+            <span>{formatNumber(balance)} {unit}</span>
           </span>
         )}
       </div>

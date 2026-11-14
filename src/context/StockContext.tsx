@@ -363,9 +363,12 @@ interface StockContextType {
   clearClientFreeIssues: () => void;
   getClientFreeStockBalance: (projectId: string, itemId: string) => {
     totalReceived: number;
+    dispatchedToSites: number;
+    centralWarehouseAvailable: number;
     totalUsed: number;
     directUsed: number;
     remainingBalance: number;
+    uninstalledProjectBalance: number;
     rootProjectId: string;
     rootProjectName: string;
     isSubProjectPool: boolean;
@@ -376,9 +379,12 @@ interface StockContextType {
     itemName: string;
     unit: string;
     totalReceived: number;
+    dispatchedToSites: number;
+    centralWarehouseAvailable: number;
     totalUsed: number;
     directUsed: number;
     remainingBalance: number;
+    uninstalledProjectBalance: number;
     rootProjectId: string;
     rootProjectName: string;
     isSubProjectPool: boolean;
@@ -426,7 +432,11 @@ interface StockContextType {
   // Inventory Calculations
   getMainWarehouseStock: (itemId: string) => {
     totalReceived: number;
+    companyReceived: number;
+    focReceived: number;
     dispatched: number;
+    companyDispatched: number;
+    focDispatched: number;
     availableBalance: number;
     threshold: number;
     isLowStock: boolean;
@@ -434,6 +444,8 @@ interface StockContextType {
   };
   getSiteItemStock: (siteId: string, itemId: string) => {
     received: number;
+    normalReceived: number;
+    focReceived: number;
     returned: number;
     issued: number;
     availableBalance: number;
@@ -1372,8 +1384,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [tenants]);
 
-  // Helper to safely merge local and remote collections by ID, respecting updatedAt timestamps when present
+  // Helper to safely merge local and remote collections by ID, respecting updatedAt timestamps and workflow status progression
   const mergeListsById = <T extends { id: string; updatedAt?: string }>(localList: T[], remoteList: T[]): T[] => {
+    const getStatusRank = (obj: any): number => {
+      const s = obj?.status;
+      if (s === 'Accepted' || s === 'Rejected') return 3;
+      if (s === 'Approved / In-Transit') return 2;
+      if (s === 'Pending Approval' || s === 'Pending Admin Review') return 1;
+      return 0;
+    };
+    const getEffectiveTimeMs = (obj: any): number => {
+      const ts = obj?.updatedAt || obj?.acceptanceDate || obj?.approvalDate || obj?.requestedDate || obj?.createdAt;
+      if (!ts) return 0;
+      const ms = new Date(ts).getTime();
+      return Number.isNaN(ms) ? 0 : ms;
+    };
+
     const map = new Map<string, T>();
     (remoteList || []).forEach((item) => {
       if (item && item.id) map.set(item.id, item);
@@ -1383,12 +1409,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const existing = map.get(item.id);
         if (!existing) {
           map.set(item.id, item);
-        } else if (existing.updatedAt && item.updatedAt) {
-          const remoteMs = new Date(existing.updatedAt).getTime();
-          const localMs = new Date(item.updatedAt).getTime();
-          map.set(item.id, remoteMs > localMs ? { ...item, ...existing } : { ...existing, ...item });
         } else {
-          map.set(item.id, { ...existing, ...item });
+          const remoteRank = getStatusRank(existing);
+          const localRank = getStatusRank(item);
+          if (localRank !== remoteRank) {
+            map.set(item.id, localRank > remoteRank ? { ...existing, ...item } : { ...item, ...existing });
+          } else {
+            const remoteMs = getEffectiveTimeMs(existing);
+            const localMs = getEffectiveTimeMs(item);
+            if (remoteMs > 0 && localMs > 0 && remoteMs !== localMs) {
+              map.set(item.id, remoteMs > localMs ? { ...item, ...existing } : { ...existing, ...item });
+            } else {
+              map.set(item.id, { ...existing, ...item });
+            }
+          }
         }
       }
     });
@@ -1773,7 +1807,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 
     // Helper for subscribing to any tenant collection in real time
-    const subscribeCollection = <T extends { id: string }>(
+    const subscribeCollection = <T extends { id: string; updatedAt?: string }>(
       key: string,
       setter: React.Dispatch<React.SetStateAction<T[]>>
     ) => {
@@ -1789,9 +1823,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setter((prev) => {
               const cleanPrev = filterPostFlushRecords(activeTenantId, key, prev);
               const cleanRemote = filterPostFlushRecords(activeTenantId, key, remoteList);
-              const merged = hydratedTenantsRef.current.has(activeTenantId)
-                ? cleanRemote
-                : mergeListsById(cleanPrev, cleanRemote);
+              const merged = mergeListsById(cleanPrev, cleanRemote);
               saveTenantDataLocalOnly(activeTenantId, key, merged);
               return merged;
             });
@@ -6473,19 +6505,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ): StockTransferRequest => {
     const nextNum = stockRequests.length + 1;
     const requestNoteNumber = `RN-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
+    const nowIso = new Date().toISOString();
     const newRequest: StockTransferRequest = {
       ...data,
       id: `req-${Date.now()}`,
       requestNoteNumber,
       status: 'Pending Approval',
-      requestedDate: new Date().toISOString(),
+      requestedDate: nowIso,
+      updatedAt: nowIso,
       requestedBy: currentUser?.fullName || 'Branch Admin',
     };
-    setStockRequests((prev) => {
-      const next = [newRequest, ...prev];
-      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
-      return next;
-    });
+    const nextRequests = [newRequest, ...stockRequests];
+    setStockRequests(nextRequests);
+    saveTenantData(currentTenantIdRef.current, 'stockRequests', nextRequests);
+    if (isMasterWorkspaceActive()) {
+      writeStockRequestsToFirebase(nextRequests).catch(() => {});
+    }
 
     const site = sites.find((s) => s.id === newRequest.siteId);
     addAuditLog(
@@ -6502,26 +6537,35 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     approvedItems: Array<{ itemId: string; approvedQty: number }>,
     approvalNotes?: string
   ) => {
+    const nowIso = new Date().toISOString();
     setStockRequests((prev) => {
       const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         const updatedItems = req.items.map((itemRow) => {
           const match = approvedItems.find((a) => a.itemId === itemRow.itemId);
+          const approvedQtyVal = match ? Number(match.approvedQty) : Number(itemRow.requestedQty);
           return {
             ...itemRow,
-            approvedQty: match ? match.approvedQty : itemRow.requestedQty,
+            approvedQty: approvedQtyVal,
+            receivedQty: approvedQtyVal,
           };
         });
         return {
           ...req,
           status: 'Approved / In-Transit' as const,
-          approvalDate: new Date().toISOString(),
+          approvalDate: nowIso,
+          updatedAt: nowIso,
           approvedBy: currentUser?.fullName || 'Arthur Vance',
           approvalNotes,
           items: updatedItems,
         };
       });
-      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      setTimeout(() => {
+        saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+        if (isMasterWorkspaceActive()) {
+          writeStockRequestsToFirebase(next).catch(() => {});
+        }
+      }, 0);
       return next;
     });
 
@@ -6531,23 +6575,30 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       'SITE_REQUEST_APPROVED',
       targetReq?.requestNoteNumber || 'RN-REQ',
       site?.name || 'Site',
-      `Main Branch approved transfer request. Status changed to In-Transit.`
+      `Main Branch approved transfer request. Stock deducted from Central Pool and allocated to ${site?.name || 'Site'}.`
     );
   };
 
   const rejectStockRequest = (requestId: string, notes?: string) => {
+    const nowIso = new Date().toISOString();
     setStockRequests((prev) => {
       const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         return {
           ...req,
           status: 'Rejected' as const,
-          approvalDate: new Date().toISOString(),
+          approvalDate: nowIso,
+          updatedAt: nowIso,
           approvedBy: currentUser?.fullName || 'Arthur Vance',
           approvalNotes: notes || 'Rejected by Main Branch Admin',
         };
       });
-      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      setTimeout(() => {
+        saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+        if (isMasterWorkspaceActive()) {
+          writeStockRequestsToFirebase(next).catch(() => {});
+        }
+      }, 0);
       return next;
     });
 
@@ -6566,6 +6617,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!targetReq) return;
     const itemMaster = items.find((i) => i.id === itemId);
     const updatedItems = targetReq.items.filter((i) => i.itemId !== itemId);
+    const nowIso = new Date().toISOString();
 
     setStockRequests((prev) => {
       const next = prev.map((req) => {
@@ -6575,17 +6627,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             ...req,
             items: [],
             status: 'Rejected' as const,
-            approvalDate: new Date().toISOString(),
+            approvalDate: nowIso,
+            updatedAt: nowIso,
             approvedBy: currentUser?.fullName || 'Main Branch Admin',
             approvalNotes: 'All items removed due to stock unavailability.',
           };
         }
         return {
           ...req,
+          updatedAt: nowIso,
           items: updatedItems,
         };
       });
-      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      setTimeout(() => {
+        saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+        if (isMasterWorkspaceActive()) {
+          writeStockRequestsToFirebase(next).catch(() => {});
+        }
+      }, 0);
       return next;
     });
 
@@ -6604,12 +6663,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     receivedItems: Array<{ itemId: string; receivedQty: number }>,
     acceptanceNotes?: string
   ) => {
+    const nowIso = new Date().toISOString();
     setStockRequests((prev) => {
       const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         const updatedItems = req.items.map((itemRow) => {
           const match = receivedItems.find((r) => r.itemId === itemRow.itemId);
-          const received = match !== undefined ? match.receivedQty : (itemRow.approvedQty ?? itemRow.requestedQty);
+          const received = match !== undefined ? Number(match.receivedQty) : Number(itemRow.approvedQty ?? itemRow.requestedQty);
           return {
             ...itemRow,
             receivedQty: received,
@@ -6618,13 +6678,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return {
           ...req,
           status: 'Accepted' as const,
-          acceptanceDate: new Date().toISOString(),
+          acceptanceDate: nowIso,
+          updatedAt: nowIso,
           acceptedBy: currentUser?.fullName || 'Branch Admin',
           acceptanceNotes,
           items: updatedItems,
         };
       });
-      saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+      setTimeout(() => {
+        saveTenantData(currentTenantIdRef.current, 'stockRequests', next);
+        if (isMasterWorkspaceActive()) {
+          writeStockRequestsToFirebase(next).catch(() => {});
+        }
+      }, 0);
       return next;
     });
 
@@ -6908,6 +6974,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ? projects.find((p) => p.id === targetProj.parentProjectId && !p.isDeleted)
         : undefined;
     const rootProjectId = parentProj ? parentProj.id : (targetProj?.parentProjectId || projectId);
+    const rootProjObj = parentProj || projects.find((p) => p.id === rootProjectId);
     const rootProjectName =
       parentProj?.projectName || targetProj?.parentProjectName || targetProj?.projectName || 'Project';
     const childSubProjects = projects.filter((p) => !p.isDeleted && p.parentProjectId === rootProjectId);
@@ -6922,11 +6989,80 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...childSubProjects.map((sp) => sp.id),
     ]);
 
+    const familyNamesLower = new Set<string>(
+      [
+        rootProjObj?.projectName,
+        rootProjObj?.projectId,
+        targetProj?.projectName,
+        targetProj?.projectId,
+        ...childSubProjects.flatMap((sp) => [sp.projectName, sp.projectId]),
+      ]
+        .filter(Boolean)
+        .map((s) => String(s).trim().toLowerCase())
+    );
+
     const totalReceived = clientFreeIssues
       .filter((e) => !e.isDeleted && (familyIds.has(e.projectId) || (e.parentProjectId && e.parentProjectId === rootProjectId)))
       .reduce((sum, entry) => {
         const row = entry.items.find((it) => it.itemId === itemId);
         return sum + (row ? Number(row.quantity) || 0 : 0);
+      }, 0);
+
+    // Check if this item is only stocked in this single root project's FOC pool (and has 0 company GRN stock)
+    const companyGrnReceivedForItem = mainStockEntries
+      .filter((e) => e.itemId === itemId)
+      .reduce((sum, e) => sum + Number(e.quantity || 0), 0);
+
+    const otherFocProjectsWithItem = clientFreeIssues.some(
+      (e) =>
+        !e.isDeleted &&
+        !familyIds.has(e.projectId) &&
+        e.parentProjectId !== rootProjectId &&
+        e.items.some((it) => it.itemId === itemId && Number(it.quantity) > 0)
+    );
+
+    const isItemExclusiveToThisFocPool =
+      totalReceived > 0 && companyGrnReceivedForItem === 0 && !otherFocProjectsWithItem;
+
+    const dispatchedToSites = stockRequests
+      .filter((req) => {
+        if (req.status !== 'Approved / In-Transit' && req.status !== 'Accepted') return false;
+        const hasItem = req.items.some((i) => i.itemId === itemId);
+        if (!hasItem) return false;
+
+        // 1. Explicit project match on request
+        if (req.focProjectId) {
+          return familyIds.has(req.focProjectId) || req.focProjectId === rootProjectId;
+        }
+
+        // 2. Request purpose mentions this project name or code (e.g. "SIG CLUSTER")
+        if (req.purpose) {
+          const purposeLower = req.purpose.trim().toLowerCase();
+          for (const pName of familyNamesLower) {
+            if (pName.length >= 3 && purposeLower.includes(pName)) {
+              return true;
+            }
+          }
+        }
+
+        // 3. Request marked as FOC without projectId or item only exists in this project's FOC pool
+        if (req.requestCategory === 'foc' && totalReceived > 0 && !otherFocProjectsWithItem) {
+          return true;
+        }
+        if (isItemExclusiveToThisFocPool) {
+          return true;
+        }
+
+        return false;
+      })
+      .reduce((sum, req) => {
+        const row = req.items.find((i) => i.itemId === itemId);
+        if (!row) return sum;
+        const qty =
+          req.status === 'Accepted'
+            ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
+            : (row.approvedQty ?? row.requestedQty);
+        return sum + Number(qty || 0);
       }, 0);
 
     const totalUsed = projectUsages
@@ -6943,12 +7079,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return sum + (row ? Number(row.quantity) || 0 : 0);
       }, 0);
 
-    const remainingBalance = Math.max(0, totalReceived - totalUsed);
+    const centralWarehouseAvailable = Math.max(0, totalReceived - Math.max(dispatchedToSites, totalUsed));
+    const uninstalledProjectBalance = Math.max(0, totalReceived - totalUsed);
+    const remainingBalance = centralWarehouseAvailable;
+
     return {
       totalReceived,
+      dispatchedToSites,
+      centralWarehouseAvailable,
       totalUsed,
       directUsed,
       remainingBalance,
+      uninstalledProjectBalance,
       rootProjectId,
       rootProjectName,
       isSubProjectPool,
@@ -7048,9 +7190,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         itemName: info.itemName,
         unit: info.unit,
         totalReceived: info.totalReceived,
+        dispatchedToSites: balance.dispatchedToSites,
+        centralWarehouseAvailable: balance.centralWarehouseAvailable,
         totalUsed: balance.totalUsed,
         directUsed: balance.directUsed,
         remainingBalance: balance.remainingBalance,
+        uninstalledProjectBalance: balance.uninstalledProjectBalance,
         rootProjectId: balance.rootProjectId,
         rootProjectName: balance.rootProjectName,
         isSubProjectPool: balance.isSubProjectPool,
@@ -7792,43 +7937,63 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       sites.filter((s) => s.isMainWarehouse).map((s) => s.id)
     );
 
-    const totalReceived = mainStockEntries
+    const companyReceived = mainStockEntries
       .filter((entry) => entry.itemId === itemId)
-      .reduce((sum, entry) => sum + Number(entry.quantity), 0);
+      .reduce((sum, entry) => sum + Number(entry.quantity || 0), 0);
+
+    const focReceived = clientFreeIssues
+      .filter((entry) => !entry.isDeleted)
+      .reduce((sum, entry) => {
+        const row = entry.items.find((it) => it.itemId === itemId);
+        return sum + (row ? Number(row.quantity) || 0 : 0);
+      }, 0);
+
+    const totalReceived = companyReceived + focReceived;
 
     // Only good/restocked returns add back to available main stock
     const goodBranchReturnsToMain = branchReturns
       .filter((br) => br.itemId === itemId && !br.isDeleted && br.condition === 'Good / Restock')
-      .reduce((sum, br) => sum + Number(br.quantity), 0);
+      .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
 
     // Good returns from teams assigned directly to Main Warehouse
     const goodTeamReturnsToMain = teamReturns
       .filter((ret) => mainWarehouseSiteIds.has(ret.siteId) && ret.itemId === itemId && ret.condition === 'Good / Restock')
-      .reduce((sum, ret) => sum + Number(ret.quantity), 0);
+      .reduce((sum, ret) => sum + Number(ret.quantity || 0), 0);
 
     // Units repaired from damaged stock and restored back to main stock
     const restoredFromDamaged = damagedRestorations
       .filter((dr) => dr.itemId === itemId && !dr.isDeleted)
-      .reduce((sum, dr) => sum + Number(dr.quantity), 0);
+      .reduce((sum, dr) => sum + Number(dr.quantity || 0), 0);
 
-    const dispatchedToBranches = stockRequests
+    let companyDispatched = 0;
+    let focDispatched = 0;
+
+    stockRequests
       .filter((req) => req.status === 'Approved / In-Transit' || req.status === 'Accepted')
-      .reduce((sum, req) => {
+      .forEach((req) => {
         const row = req.items.find((i) => i.itemId === itemId);
-        if (!row) return sum;
-        const qty =
+        if (!row) return;
+        const qty = Number(
           req.status === 'Accepted'
             ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
-            : (row.approvedQty ?? row.requestedQty);
-        return sum + Number(qty);
-      }, 0);
+            : (row.approvedQty ?? row.requestedQty)
+        ) || 0;
+
+        if (req.requestCategory === 'foc' || (companyReceived === 0 && focReceived > 0)) {
+          focDispatched += qty;
+        } else {
+          companyDispatched += qty;
+        }
+      });
+
+    const dispatchedToBranches = companyDispatched + focDispatched;
 
     const dispatchedToMainTeams = teamIssues
       .filter((iss) => mainWarehouseSiteIds.has(iss.siteId))
       .reduce((sum, iss) => {
         const row = iss.items.find((i) => i.itemId === itemId);
         if (!row) return sum;
-        return sum + Number(row.quantity);
+        return sum + Number(row.quantity || 0);
       }, 0);
 
     const dispatched = dispatchedToBranches + dispatchedToMainTeams;
@@ -7844,7 +8009,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       )
       .reduce((sum, sr) => {
         const row = sr.items.find((i) => i.itemId === itemId);
-        return sum + (row ? Number(row.quantity) : 0);
+        return sum + (row ? Number(row.quantity || 0) : 0);
       }, 0);
 
     const availableBalance = Math.max(
@@ -7861,7 +8026,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return {
       totalReceived,
+      companyReceived,
+      focReceived,
       dispatched,
+      companyDispatched,
+      focDispatched,
       returnedToSuppliers,
       availableBalance,
       threshold,
@@ -7876,12 +8045,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const mainStk = getMainWarehouseStock(itemId);
       const returnedFromMainTeams = teamReturns
         .filter((ret) => ret.siteId === siteId && ret.itemId === itemId && ret.condition === 'Good / Restock')
-        .reduce((sum, ret) => sum + Number(ret.quantity), 0);
+        .reduce((sum, ret) => sum + Number(ret.quantity || 0), 0);
       const goodBranchReturnsToMain = branchReturns
         .filter((br) => br.itemId === itemId && !br.isDeleted && br.condition === 'Good / Restock')
-        .reduce((sum, br) => sum + Number(br.quantity), 0);
+        .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
       return {
         received: mainStk.totalReceived,
+        normalReceived: mainStk.companyReceived,
+        focReceived: mainStk.focReceived,
         returned: returnedFromMainTeams + goodBranchReturnsToMain,
         issued: mainStk.dispatched,
         availableBalance: mainStk.availableBalance,
@@ -7894,29 +8065,77 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const item = items.find((i) => i.id === itemId);
     const threshold = item?.lowStockThreshold ?? config.defaultLowStockThreshold;
 
-    const received = stockRequests
-      .filter((req) => req.siteId === siteId && req.status === 'Accepted')
-      .reduce((sum, req) => {
+    let normalReceived = 0;
+    let focReceived = 0;
+
+    // Count BOTH 'Approved / In-Transit' and 'Accepted' stock requests so approved stock immediately reflects at the Site Branch
+    stockRequests
+      .filter(
+        (req) =>
+          req.siteId === siteId &&
+          (req.status === 'Approved / In-Transit' || req.status === 'Accepted')
+      )
+      .forEach((req) => {
         const row = req.items.find((i) => i.itemId === itemId);
-        if (!row) return sum;
-        return sum + Number(row.receivedQty ?? row.approvedQty ?? row.requestedQty);
-      }, 0);
+        if (!row) return;
+        const qty =
+          Number(
+            req.status === 'Accepted'
+              ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
+              : (row.approvedQty ?? row.requestedQty)
+          ) || 0;
+        if (req.requestCategory === 'foc' || req.focProjectId) {
+          focReceived += qty;
+        } else {
+          normalReceived += qty;
+        }
+      });
+
+    // Also include any Client Free-Issue entries directly assigned to this site branch's storageLocation
+    if (targetSite?.name) {
+      const siteNameLower = targetSite.name.trim().toLowerCase();
+      clientFreeIssues
+        .filter(
+          (v) =>
+            !v.isDeleted &&
+            v.storageLocation &&
+            v.storageLocation.trim().toLowerCase() === siteNameLower
+        )
+        .forEach((v) => {
+          const row = v.items.find((it) => it.itemId === itemId);
+          if (row) {
+            focReceived += Number(row.quantity || 0);
+          }
+        });
+    }
+
+    const received = normalReceived + focReceived;
 
     const returned = teamReturns
       .filter((ret) => ret.siteId === siteId && ret.itemId === itemId && ret.condition === 'Good / Restock')
-      .reduce((sum, ret) => sum + Number(ret.quantity), 0);
+      .reduce((sum, ret) => sum + Number(ret.quantity || 0), 0);
 
-    const issued = teamIssues
+    const teamIssuedAtSite = teamIssues
       .filter((iss) => iss.siteId === siteId)
       .reduce((sum, iss) => {
         const row = iss.items.find((i) => i.itemId === itemId);
         if (!row) return sum;
-        return sum + Number(row.quantity);
+        return sum + Number(row.quantity || 0);
       }, 0);
+
+    const projectUsedAtSite = projectUsages
+      .filter((pu) => !pu.isDeleted && pu.siteId === siteId)
+      .reduce((sum, pu) => {
+        const row = pu.items.find((i) => i.itemId === itemId);
+        if (!row) return sum;
+        return sum + Number(row.quantity || 0);
+      }, 0);
+
+    const issued = Math.max(teamIssuedAtSite, projectUsedAtSite);
 
     const returnedToMain = branchReturns
       .filter((br) => (br.fromSiteId === siteId || br.siteId === siteId) && br.itemId === itemId && !br.isDeleted)
-      .reduce((sum, br) => sum + Number(br.quantity), 0);
+      .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
 
     const returnedToSuppliersFromSite = supplierReturns
       .filter(
@@ -7929,7 +8148,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       )
       .reduce((sum, sr) => {
         const row = sr.items.find((i) => i.itemId === itemId);
-        return sum + (row ? Number(row.quantity) : 0);
+        return sum + (row ? Number(row.quantity || 0) : 0);
       }, 0);
 
     const availableBalance = Math.max(0, received + returned - issued - returnedToMain - returnedToSuppliersFromSite);
@@ -7938,6 +8157,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return {
       received,
+      normalReceived,
+      focReceived,
       returned,
       issued,
       availableBalance,

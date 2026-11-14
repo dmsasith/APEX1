@@ -11,6 +11,7 @@ interface SearchableItemSelectProps {
   selectedItemId: string;
   onSelectItem: (item: Item) => void;
   siteId?: string; // If provided, shows that site's available stock. Otherwise shows main warehouse stock.
+  focProjectId?: string; // If provided, shows that project's Central FOC Warehouse available balance
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
@@ -25,6 +26,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   selectedItemId,
   onSelectItem,
   siteId,
+  focProjectId,
   placeholder = 'Search & select item by code, barcode, or assembly description...',
   disabled = false,
   required = false,
@@ -34,7 +36,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   onlyAvailableStock = false,
   onToggleAvailableOnly,
 }) => {
-  const { activeItems, getMainWarehouseStock, getSiteItemStock, config } = useStock();
+  const { activeItems, getMainWarehouseStock, getSiteItemStock, getClientFreeStockBalance, config } = useStock();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'Material' | 'Machinery'>(defaultClassification);
@@ -63,44 +65,65 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   const machineryCount = activeItems.filter((i) => isMachineryItem(i)).length;
 
   const getItemStockInfo = (itemId: string) => {
-    if (siteId && siteId !== 'all') {
+    if (focProjectId) {
+      const focStock = getClientFreeStockBalance(focProjectId, itemId);
+      return {
+        available: focStock.centralWarehouseAvailable,
+        totalFocReceived: focStock.totalReceived,
+        isLow: focStock.totalReceived > 0 && focStock.centralWarehouseAvailable <= 0,
+        label: 'Project FOC HQ Pool',
+        isFocMode: true,
+      };
+    } else if (siteId && siteId !== 'all') {
       const siteStock = getSiteItemStock(siteId, itemId);
       return {
         available: siteStock.availableBalance,
+        totalFocReceived: 0,
         isLow: siteStock.isLowStock,
         label: 'Site Yard Stock',
+        isFocMode: false,
       };
     } else {
       const mainStock = getMainWarehouseStock(itemId);
       return {
         available: mainStock.availableBalance,
+        totalFocReceived: 0,
         isLow: mainStock.isLowStock,
         label: 'Central Main Stock',
+        isFocMode: false,
       };
     }
   };
 
   // Filter items based on query (including barcode!), type tab, and stock availability
-  const filteredItems = activeItems.filter((i) => {
-    const isMach = isMachineryItem(i);
-    if (selectedType === 'Material' && isMach) return false;
-    if (selectedType === 'Machinery' && !isMach) return false;
+  const filteredItems = activeItems
+    .filter((i) => {
+      const isMach = isMachineryItem(i);
+      if (selectedType === 'Material' && isMach) return false;
+      if (selectedType === 'Machinery' && !isMach) return false;
 
-    if (onlyAvailable) {
-      const stock = getItemStockInfo(i.id);
-      if (stock.available <= 0) return false;
-    }
+      if (onlyAvailable) {
+        const stock = getItemStockInfo(i.id);
+        if (stock.available <= 0) return false;
+      }
 
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      i.itemCode.toLowerCase().includes(q) ||
-      (i.barcode && i.barcode.toLowerCase().includes(q)) ||
-      i.itemName.toLowerCase().includes(q) ||
-      i.category.toLowerCase().includes(q) ||
-      (i.description && i.description.toLowerCase().includes(q))
-    );
-  });
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        i.itemCode.toLowerCase().includes(q) ||
+        (i.barcode && i.barcode.toLowerCase().includes(q)) ||
+        i.itemName.toLowerCase().includes(q) ||
+        i.category.toLowerCase().includes(q) ||
+        (i.description && i.description.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (!focProjectId) return 0;
+      const aFoc = getItemStockInfo(a.id);
+      const bFoc = getItemStockInfo(b.id);
+      if (bFoc.available !== aFoc.available) return bFoc.available - aFoc.available;
+      return bFoc.totalFocReceived - aFoc.totalFocReceived;
+    });
 
   // Listen to USB HID scanner when dropdown is open
   useUsbBarcodeScanner({
@@ -181,13 +204,15 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                   className={`ml-auto shrink-0 px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
                     stock.available === 0
                       ? 'bg-red-50 text-red-600 border border-red-200'
+                      : stock.isFocMode
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                       : stock.isLow
                       ? 'bg-amber-50 text-amber-700 border border-amber-200'
                       : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   }`}
                   title={`${stock.label}: ${formatNumber(stock.available)} ${selectedItem.unit}`}
                 >
-                  {formatNumber(stock.available)} {selectedItem.unit}
+                  {stock.isFocMode ? `FOC: ${formatNumber(stock.available)} ${selectedItem.unit}` : `${formatNumber(stock.available)} ${selectedItem.unit}`}
                 </span>
               );
             })()}
@@ -435,12 +460,14 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                             className={`px-2.5 py-1 rounded-md font-mono text-xs font-bold inline-block ${
                               stock.available === 0
                                 ? 'bg-red-50 text-red-700 border border-red-200'
+                                : stock.isFocMode
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                 : stock.isLow
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             }`}
                           >
-                            {formatNumber(stock.available)} {item.unit}
+                            {stock.isFocMode ? `FOC: ${formatNumber(stock.available)} ${item.unit}` : `${formatNumber(stock.available)} ${item.unit}`}
                           </span>
                           <div className="text-[10px] text-slate-400 mt-0.5 font-medium">
                             {stock.label}

@@ -313,20 +313,28 @@ export const ClientFreeIssueView: React.FC = () => {
       });
     });
 
-    // Calculate total consumed from client stock across each root project family
+    // Calculate total dispatched to site branches and total consumed from client stock across each root project family
+    let totalUnitsDispatchedToSites = 0;
     let totalUnitsInstalled = 0;
+    let totalCentralAvailable = 0;
     rootProjectSet.forEach((rootId) => {
       const stockList = getProjectFreeStockList(rootId);
       stockList.forEach((row) => {
+        totalUnitsDispatchedToSites += row.dispatchedToSites;
         totalUnitsInstalled += row.totalUsed;
+        totalCentralAvailable += row.centralWarehouseAvailable;
       });
     });
 
-    const netRemaining = Math.max(0, totalUnitsReceived - totalUnitsInstalled);
+    const netRemaining =
+      rootProjectSet.size > 0
+        ? totalCentralAvailable
+        : Math.max(0, totalUnitsReceived - Math.max(totalUnitsDispatchedToSites, totalUnitsInstalled));
 
     return {
       totalVouchers: activeVouchers.length,
       totalUnitsReceived,
+      totalUnitsDispatchedToSites,
       totalUnitsInstalled,
       netRemaining,
       assignedProjectsCount: rootProjectSet.size,
@@ -378,14 +386,16 @@ export const ClientFreeIssueView: React.FC = () => {
       const isMainProject = p.projectScope === 'main' || childSubProjects.length > 0;
       const freeStockItems = getProjectFreeStockList(p.id);
       const totalRecv = freeStockItems.reduce((acc, it) => acc + it.totalReceived, 0);
+      const totalDispatched = freeStockItems.reduce((acc, it) => acc + it.dispatchedToSites, 0);
       const totalUsed = freeStockItems.reduce((acc, it) => acc + it.totalUsed, 0);
-      const totalRem = freeStockItems.reduce((acc, it) => acc + it.remainingBalance, 0);
+      const totalRem = freeStockItems.reduce((acc, it) => acc + it.centralWarehouseAvailable, 0);
       return {
         project: p,
         isMainProject,
         childSubProjects,
         items: freeStockItems,
         totalRecv,
+        totalDispatched,
         totalUsed,
         totalRem,
       };
@@ -630,7 +640,7 @@ export const ClientFreeIssueView: React.FC = () => {
         </div>
 
         {/* Executive KPI Cards */}
-        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-800/80">
+        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-800/80">
           <div className="bg-slate-950/60 backdrop-blur-md p-3.5 sm:p-4 rounded-xl border border-slate-800">
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
               <span>Client Dispatches</span>
@@ -646,7 +656,7 @@ export const ClientFreeIssueView: React.FC = () => {
 
           <div className="bg-slate-950/60 backdrop-blur-md p-3.5 sm:p-4 rounded-xl border border-slate-800">
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
-              <span>Total Received</span>
+              <span>Total Received (FOC)</span>
               <Boxes className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
@@ -659,6 +669,19 @@ export const ClientFreeIssueView: React.FC = () => {
 
           <div className="bg-slate-950/60 backdrop-blur-md p-3.5 sm:p-4 rounded-xl border border-slate-800">
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+              <span>Dispatched to Sites</span>
+              <TrendingDown className="w-4 h-4 text-sky-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-sky-300 font-mono">
+              {formatNumber(kpis.totalUnitsDispatchedToSites)}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              Approved & sent to site branches
+            </div>
+          </div>
+
+          <div className="bg-slate-950/60 backdrop-blur-md p-3.5 sm:p-4 rounded-xl border border-slate-800">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
               <span>Installed on Projects</span>
               <TrendingDown className="w-4 h-4 text-amber-400" />
             </div>
@@ -666,20 +689,20 @@ export const ClientFreeIssueView: React.FC = () => {
               {formatNumber(kpis.totalUnitsInstalled)}
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              Auto-deducted field installation
+              Logged field installation
             </div>
           </div>
 
           <div className="bg-slate-950/60 backdrop-blur-md p-3.5 sm:p-4 rounded-xl border border-slate-800">
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
-              <span>Remaining Balance</span>
+              <span>Central Pool Balance</span>
               <Clock className="w-4 h-4 text-cyan-400" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-cyan-400 font-mono">
               {formatNumber(kpis.netRemaining)}
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              Available in warehouse yards
+              Available in Main Warehouse Pool
             </div>
           </div>
         </div>
@@ -802,7 +825,7 @@ export const ClientFreeIssueView: React.FC = () => {
               <div className="space-y-4">
                 {projectSummaries
                   .filter((p) => p.items.length > 0)
-                  .map(({ project, isMainProject, childSubProjects, items: freeItems, totalRecv, totalUsed, totalRem }) => (
+                  .map(({ project, isMainProject, childSubProjects, items: freeItems, totalRecv, totalDispatched, totalUsed, totalRem }) => (
                     <div
                       key={project.id}
                       className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs hover:border-indigo-300 transition-all"
@@ -838,19 +861,26 @@ export const ClientFreeIssueView: React.FC = () => {
                             <span>Total Free Materials: <strong className="text-slate-700">{freeItems.length} lines</strong></span>
                             {isMainProject && (
                               <span className="text-indigo-700 font-semibold">
-                                • Sub-Project usage automatically deducts from this Main Project pool
+                                • Site branch requests & sub-project usage automatically deduct from this Main Project pool
                               </span>
                             )}
                           </div>
                         </div>
 
                         {/* Mini Balances Pill */}
-                        <div className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-200">
                           <div className="px-2">
                             <div className="text-[10px] text-slate-400 font-bold uppercase">
                               {isMainProject ? 'Main Pool Recv' : 'Received'}
                             </div>
                             <div className="font-mono font-bold text-slate-800">{formatNumber(totalRecv)}</div>
+                          </div>
+                          <div className="h-6 w-px bg-slate-200" />
+                          <div className="px-2">
+                            <div className="text-[10px] text-sky-600 font-bold uppercase">
+                              Sent to Sites
+                            </div>
+                            <div className="font-mono font-bold text-sky-700">{formatNumber(totalDispatched)}</div>
                           </div>
                           <div className="h-6 w-px bg-slate-200" />
                           <div className="px-2">
@@ -862,7 +892,7 @@ export const ClientFreeIssueView: React.FC = () => {
                           <div className="h-6 w-px bg-slate-200" />
                           <div className="px-2">
                             <div className="text-[10px] text-emerald-600 font-bold uppercase">
-                              {isMainProject ? 'Pool Balance' : 'In Hand'}
+                              {isMainProject ? 'HQ Pool Avail' : 'In Hand (HQ)'}
                             </div>
                             <div className="font-mono font-black text-emerald-700">{formatNumber(totalRem)}</div>
                           </div>
@@ -876,18 +906,20 @@ export const ClientFreeIssueView: React.FC = () => {
                             <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
                               <th className="py-2.5 px-3">Item Code</th>
                               <th className="py-2.5 px-3">Material Description</th>
-                              <th className="py-2.5 px-3 text-right">Received Under Main</th>
+                              <th className="py-2.5 px-3 text-right">Received (FOC)</th>
+                              <th className="py-2.5 px-3 text-right">Dispatched to Sites</th>
                               <th className="py-2.5 px-3 text-right">
-                                {isMainProject ? 'Total Used (All Sub-Projects)' : 'Field Installed (Used)'}
+                                {isMainProject ? 'Installed (All Sub-Projects)' : 'Field Installed (Used)'}
                               </th>
-                              <th className="py-2.5 px-3 text-right">Remaining Stock</th>
+                              <th className="py-2.5 px-3 text-right">Central Pool Balance</th>
                               <th className="py-2.5 px-3 text-center">Status</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 font-medium">
                             {freeItems.map((it) => {
-                              const percentUsed = it.totalReceived > 0 ? (it.totalUsed / it.totalReceived) * 100 : 0;
-                              const isDepleted = it.remainingBalance <= 0;
+                              const totalDeducted = Math.max(it.dispatchedToSites, it.totalUsed);
+                              const percentAllocated = it.totalReceived > 0 ? (totalDeducted / it.totalReceived) * 100 : 0;
+                              const isDepleted = it.centralWarehouseAvailable <= 0;
                               return (
                                 <tr key={it.itemId} className="hover:bg-slate-50/70 transition-colors">
                                   <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
@@ -899,23 +931,27 @@ export const ClientFreeIssueView: React.FC = () => {
                                   <td className="py-2.5 px-3 text-right font-mono text-slate-700 font-bold">
                                     {formatNumber(it.totalReceived)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
                                   </td>
+                                  <td className="py-2.5 px-3 text-right font-mono text-sky-700 font-bold">
+                                    {it.dispatchedToSites > 0 ? `-${formatNumber(it.dispatchedToSites)}` : '0'}{' '}
+                                    <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
+                                  </td>
                                   <td className="py-2.5 px-3 text-right font-mono text-amber-700 font-bold">
                                     {formatNumber(it.totalUsed)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
                                   </td>
                                   <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900">
                                     <span className={isDepleted ? 'text-rose-600' : 'text-emerald-700'}>
-                                      {formatNumber(it.remainingBalance)}
+                                      {formatNumber(it.centralWarehouseAvailable)}
                                     </span>{' '}
                                     <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
                                   </td>
                                   <td className="py-2.5 px-3 text-center">
                                     {isDepleted ? (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
-                                        Fully Consumed (100%)
+                                        {it.dispatchedToSites > 0 ? 'Dispatched to Sites (100%)' : 'Fully Consumed (100%)'}
                                       </span>
                                     ) : (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                        Active Stock ({Math.round(percentUsed)}% Installed)
+                                        Active Pool ({Math.round(percentAllocated)}% Allocated)
                                       </span>
                                     )}
                                   </td>

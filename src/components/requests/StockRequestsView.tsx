@@ -42,6 +42,8 @@ export const StockRequestsView: React.FC = () => {
     activeSites,
     items,
     activeItems,
+    projects,
+    activeProjects,
     currentUser,
     stockRequests,
     createStockRequest,
@@ -54,11 +56,13 @@ export const StockRequestsView: React.FC = () => {
     getMainWarehouseStock,
     clientFreeIssues,
     getClientFreeStockBalance,
+    getProjectFreeStockList,
   } = useStock();
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [selectedRequestForPrint, setSelectedRequestForPrint] = useState<StockTransferRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in-transit' | 'accepted' | 'rejected'>('all');
+  const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | 'normal' | 'foc'>('all');
   const [tableSearchQuery, setTableSearchQuery] = useState('');
   const [activeViewTab, setActiveViewTab] = useState<'requests' | 'foc-materials'>('requests');
 
@@ -133,6 +137,9 @@ export const StockRequestsView: React.FC = () => {
   const activeMachineryItems = activeItems.filter((i) => isMachineryItem(i));
 
   const [formSiteId, setFormSiteId] = useState(defaultSite);
+  const [formRequestCategory, setFormRequestCategory] = useState<'normal' | 'foc'>('normal');
+  const [focScopeFilter, setFocScopeFilter] = useState<'all' | 'main' | 'individual'>('all');
+  const [selectedFocProjectId, setSelectedFocProjectId] = useState<string>('');
   const [purpose, setPurpose] = useState('');
   const [priority, setPriority] = useState<RequestPriority>('Normal');
   const [reqModalTab, setReqModalTab] = useState<'Material' | 'Machinery' | 'all'>('Material');
@@ -141,6 +148,87 @@ export const StockRequestsView: React.FC = () => {
     { itemId: activeMaterialItems[0]?.id || activeItems[0]?.id || '', requestedQty: 50 },
   ]);
   const [formError, setFormError] = useState('');
+
+  // Build structured list of Root Projects (Major / Main Projects & Individual Projects) for FOC Requisitions
+  const focRootProjectsWithMeta = useMemo(() => {
+    const rootProjs = activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub');
+    return rootProjs
+      .map((p) => {
+        const subProjects = activeProjects.filter((sp) => sp.parentProjectId === p.id);
+        const effectiveScope: 'main' | 'individual' =
+          p.projectScope === 'main' || subProjects.length > 0 ? 'main' : 'individual';
+        const focList = getProjectFreeStockList(p.id);
+        const totalFocReceived = focList.reduce((acc, it) => acc + it.totalReceived, 0);
+        const totalHqAvail = focList.reduce((acc, it) => acc + it.centralWarehouseAvailable, 0);
+        const matchingVoucher = (clientFreeIssues || []).find(
+          (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id)
+        );
+        const clientName = p.customerName || matchingVoucher?.clientName || '';
+        return {
+          project: p,
+          effectiveScope,
+          subProjects,
+          focList,
+          totalFocReceived,
+          totalHqAvail,
+          clientName,
+        };
+      })
+      .sort((a, b) => {
+        if (b.totalHqAvail !== a.totalHqAvail) return b.totalHqAvail - a.totalHqAvail;
+        return b.totalFocReceived - a.totalFocReceived;
+      });
+  }, [activeProjects, getProjectFreeStockList, clientFreeIssues]);
+
+  const filteredFocProjects = useMemo(() => {
+    if (focScopeFilter === 'all') return focRootProjectsWithMeta;
+    return focRootProjectsWithMeta.filter((entry) => entry.effectiveScope === focScopeFilter);
+  }, [focRootProjectsWithMeta, focScopeFilter]);
+
+  const selectedFocProjectMeta = useMemo(() => {
+    return (
+      focRootProjectsWithMeta.find((entry) => entry.project.id === selectedFocProjectId) ||
+      filteredFocProjects[0] ||
+      focRootProjectsWithMeta[0] ||
+      null
+    );
+  }, [focRootProjectsWithMeta, filteredFocProjects, selectedFocProjectId]);
+
+  const applyFocProjectSelection = (projId: string) => {
+    setSelectedFocProjectId(projId);
+    const meta = focRootProjectsWithMeta.find((e) => e.project.id === projId);
+    if (meta) {
+      const scopeTag = meta.effectiveScope === 'main' ? 'Main Project' : 'Individual Project';
+      setPurpose(`Client FOC Transfer (${scopeTag}): [${meta.project.projectId}] ${meta.project.projectName}`);
+      if (meta.focList.length > 0) {
+        setRows(
+          meta.focList.map((focItm) => ({
+            itemId: focItm.itemId,
+            requestedQty:
+              focItm.centralWarehouseAvailable > 0
+                ? Math.min(50, focItm.centralWarehouseAvailable)
+                : Math.min(10, focItm.totalReceived || 10),
+          }))
+        );
+        setReqModalTab('Material');
+      }
+    }
+  };
+
+  const handleSwitchFormCategory = (cat: 'normal' | 'foc') => {
+    setFormRequestCategory(cat);
+    setFormError('');
+    if (cat === 'foc') {
+      const targetMeta = selectedFocProjectMeta || focRootProjectsWithMeta[0];
+      if (targetMeta) {
+        applyFocProjectSelection(targetMeta.project.id);
+      }
+    } else {
+      if (purpose.startsWith('Client FOC Transfer')) {
+        setPurpose('');
+      }
+    }
+  };
 
   // Form indexed rows separated by category
   const materialRowsWithIndex = rows
@@ -234,6 +322,11 @@ export const StockRequestsView: React.FC = () => {
     e.preventDefault();
     setFormError('');
 
+    if (formRequestCategory === 'foc' && !selectedFocProjectMeta) {
+      setFormError('Please select the Assigned Project (Major / Main Project or Individual Project) for this Client Free Stock request.');
+      return;
+    }
+
     if (!rows.length) {
       setFormError('Please add at least one item line to request.');
       return;
@@ -246,10 +339,22 @@ export const StockRequestsView: React.FC = () => {
       }
     }
 
+    const activeFocProj = formRequestCategory === 'foc' ? selectedFocProjectMeta : null;
+
     createStockRequest({
       siteId: formSiteId,
       priority,
-      purpose: purpose.trim() || 'General site requisition',
+      purpose:
+        purpose.trim() ||
+        (activeFocProj
+          ? `Client FOC Transfer: [${activeFocProj.project.projectId}] ${activeFocProj.project.projectName}`
+          : 'General site requisition'),
+      requestCategory: formRequestCategory,
+      focProjectId: activeFocProj ? activeFocProj.project.id : undefined,
+      focProjectCode: activeFocProj ? activeFocProj.project.projectId : undefined,
+      focProjectName: activeFocProj ? activeFocProj.project.projectName : undefined,
+      focProjectScope: activeFocProj ? activeFocProj.effectiveScope : undefined,
+      focClientName: activeFocProj ? activeFocProj.clientName || undefined : undefined,
       items: rows.map((r) => ({
         itemId: r.itemId,
         requestedQty: r.requestedQty,
@@ -294,12 +399,20 @@ export const StockRequestsView: React.FC = () => {
     }
   };
 
-  // 1-Click: Send only available stock (caps approvedQty to warehouse balance, 0 if out of stock)
+  // Helper to get available balance for a request item (supports both Normal Main Stock and Project FOC HQ Pool)
+  const getRequestItemAvailableBalance = (req: StockTransferRequest, itemId: string): number => {
+    if (req.requestCategory === 'foc' && req.focProjectId) {
+      return getClientFreeStockBalance(req.focProjectId, itemId).centralWarehouseAvailable;
+    }
+    return getMainWarehouseStock(itemId).availableBalance;
+  };
+
+  // 1-Click: Send only available stock (caps approvedQty to warehouse/FOC balance, 0 if out of stock)
   const handleSetAllToAvailable = () => {
     if (!reviewingRequest) return;
     setApprovalItems((prev) =>
       prev.map((item) => {
-        const avail = getMainWarehouseStock(item.itemId).availableBalance;
+        const avail = getRequestItemAvailableBalance(reviewingRequest, item.itemId);
         const originalReq = reviewingRequest.items.find((r) => r.itemId === item.itemId);
         const reqQty = originalReq ? originalReq.requestedQty : item.approvedQty;
         const capped = Math.max(0, Math.min(reqQty, avail));
@@ -312,7 +425,7 @@ export const StockRequestsView: React.FC = () => {
   const handleRemoveAllOutOfStock = () => {
     if (!reviewingRequest) return;
     const outOfStockItems = reviewingRequest.items.filter((r) => {
-      const avail = getMainWarehouseStock(r.itemId).availableBalance;
+      const avail = getRequestItemAvailableBalance(reviewingRequest, r.itemId);
       return avail <= 0;
     });
 
@@ -323,7 +436,7 @@ export const StockRequestsView: React.FC = () => {
     });
 
     const remaining = reviewingRequest.items.filter((r) => {
-      const avail = getMainWarehouseStock(r.itemId).availableBalance;
+      const avail = getRequestItemAvailableBalance(reviewingRequest, r.itemId);
       return avail > 0;
     });
 
@@ -374,7 +487,7 @@ export const StockRequestsView: React.FC = () => {
     setAcceptingRequest(null);
   };
 
-  // Filter requests based on user role, assigned site(s), branch filter, and search query
+  // Filter requests based on user role, assigned site(s), branch filter, request category, and search query
   const visibleRequests = stockRequests.filter((req) => {
     if (isCentralAdmin) {
       if (selectedBranchFilter !== 'all' && req.siteId !== selectedBranchFilter) return false;
@@ -383,6 +496,9 @@ export const StockRequestsView: React.FC = () => {
       if (selectedBranchFilter !== 'all' && req.siteId !== selectedBranchFilter) return false;
     }
 
+    if (requestTypeFilter === 'foc' && req.requestCategory !== 'foc') return false;
+    if (requestTypeFilter === 'normal' && req.requestCategory === 'foc') return false;
+
     if (tableSearchQuery.trim()) {
       const q = tableSearchQuery.toLowerCase().trim();
       const site = sites.find((s) => s.id === req.siteId);
@@ -390,6 +506,9 @@ export const StockRequestsView: React.FC = () => {
         req.requestNoteNumber.toLowerCase().includes(q) ||
         (site && site.name.toLowerCase().includes(q)) ||
         (req.purpose && req.purpose.toLowerCase().includes(q)) ||
+        (req.focProjectName && req.focProjectName.toLowerCase().includes(q)) ||
+        (req.focProjectCode && req.focProjectCode.toLowerCase().includes(q)) ||
+        (req.focClientName && req.focClientName.toLowerCase().includes(q)) ||
         (req.requestedBy && req.requestedBy.toLowerCase().includes(q)) ||
         req.priority.toLowerCase().includes(q) ||
         req.status.toLowerCase().includes(q);
@@ -546,7 +665,8 @@ export const StockRequestsView: React.FC = () => {
                           <th className="py-2.5 px-3">Material Description</th>
                           <th className="py-2.5 px-3 text-center">Unit</th>
                           <th className="py-2.5 px-3 text-right">FOC Received Qty</th>
-                          <th className="py-2.5 px-3 text-right">Remaining Bal</th>
+                          <th className="py-2.5 px-3 text-right">Dispatched to Sites</th>
+                          <th className="py-2.5 px-3 text-right">Central Pool Bal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -565,8 +685,11 @@ export const StockRequestsView: React.FC = () => {
                               <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
                                 {formatNumber(row.quantity)} {itm?.unit}
                               </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-sky-700">
+                                {bal.dispatchedToSites > 0 ? `-${formatNumber(bal.dispatchedToSites)}` : '0'} {itm?.unit}
+                              </td>
                               <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
-                                {formatNumber(bal.remainingBalance)} {itm?.unit}
+                                {formatNumber(bal.centralWarehouseAvailable)} {itm?.unit}
                               </td>
                             </tr>
                           );
@@ -652,39 +775,78 @@ export const StockRequestsView: React.FC = () => {
           </button>
         </div>
 
-        {/* Central Admin Branch Filter */}
-        {isCentralAdmin && (
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 shadow-2xs">
-            <Building className="w-3.5 h-3.5 text-slate-500" />
-            <span className="font-semibold text-slate-600">Branch:</span>
-            <select
-              value={selectedBranchFilter}
-              onChange={(e) => setSelectedBranchFilter(e.target.value)}
-              className="bg-transparent text-slate-900 font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Branches ({stockRequests.length} total)</option>
-              {branchSites.map((b) => {
-                const count = stockRequests.filter((r) => r.siteId === b.id).length;
-                return (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({count})
-                  </option>
-                );
-              })}
-            </select>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Request Category Filter (Normal vs Client FOC) */}
+            <div className="inline-flex items-center bg-white border border-slate-200 rounded-lg p-0.5 text-xs font-semibold shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setRequestTypeFilter('all')}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  requestTypeFilter === 'all'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All Types
+              </button>
+              <button
+                type="button"
+                onClick={() => setRequestTypeFilter('normal')}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  requestTypeFilter === 'normal'
+                    ? 'bg-emerald-700 text-white'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                📦 Normal Stock
+              </button>
+              <button
+                type="button"
+                onClick={() => setRequestTypeFilter('foc')}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  requestTypeFilter === 'foc'
+                    ? 'bg-indigo-700 text-white'
+                    : 'text-indigo-700 hover:bg-indigo-50'
+                }`}
+              >
+                🎁 Client FOC Stock
+              </button>
+            </div>
+
+            {/* Central Admin Branch Filter */}
+            {isCentralAdmin && (
+              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 shadow-2xs">
+                <Building className="w-3.5 h-3.5 text-slate-500" />
+                <span className="font-semibold text-slate-600">Branch:</span>
+                <select
+                  value={selectedBranchFilter}
+                  onChange={(e) => setSelectedBranchFilter(e.target.value)}
+                  className="bg-transparent text-slate-900 font-bold focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All Branches ({stockRequests.length} total)</option>
+                  {branchSites.map((b) => {
+                    const count = stockRequests.filter((r) => r.siteId === b.id).length;
+                    return (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
           </div>
-        )}
       </div>
 
-      {/* Active Notifications Banner if any request is ready for Site Acceptance */}
+      {/* Active Notifications Banner if any request is Approved / Dispatched */}
       {stockRequests.some((r) => r.status === 'Approved / In-Transit') && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-900 flex-1">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-emerald-950 flex-1">
             <strong className="text-sm font-bold block mb-0.5">
-              Request Notes Notification: Approved Shipments In-Transit
+              Approved Shipments Allocated to Site Branches (Deducted from Central Stock)
             </strong>
-            Shipments have been dispatched by Main Warehouse Logistics. The destination Site Admin should click <strong>"Accept Directly"</strong> or <strong>"Edit Received Amount"</strong> to update site inventory.
+            Approved quantities have already been <strong>deducted from Main Stock / Client FOC Central Pool</strong> and are <strong>live in Site Branch Stock</strong>. Destination Site Admins can click <strong>&quot;Mark Received&quot;</strong> or <strong>&quot;Count &amp; Receive&quot;</strong> to log final physical verification.
           </div>
         </div>
       )}
@@ -724,7 +886,7 @@ export const StockRequestsView: React.FC = () => {
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search requisition #, branch, item, machinery..."
+              placeholder="Search requisition #, branch, project, item, machinery..."
               value={tableSearchQuery}
               onChange={(e) => setTableSearchQuery(e.target.value)}
               className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 focus:border-slate-900 rounded-lg text-xs font-medium focus:ring-1 focus:ring-slate-900 focus:outline-none transition-colors placeholder:text-slate-400 shadow-2xs"
@@ -749,7 +911,7 @@ export const StockRequestsView: React.FC = () => {
                 <th className="py-3 px-3">Date</th>
                 <th className="py-3 px-3">Site Branch</th>
                 <th className="py-3 px-3">Priority</th>
-                <th className="py-3 px-4">Items Summary</th>
+                <th className="py-3 px-4">Items & Project Summary</th>
                 <th className="py-3 px-3">Status</th>
                 <th className="py-3 px-4 text-right">Workflow Actions</th>
               </tr>
@@ -783,7 +945,16 @@ export const StockRequestsView: React.FC = () => {
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                        {req.requestNoteNumber}
+                        <div>{req.requestNoteNumber}</div>
+                        {req.requestCategory === 'foc' ? (
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                            🎁 Client FOC Request
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            📦 Normal Stock
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-3 text-slate-600 whitespace-nowrap font-mono text-[11px]">
                         {formatDateTime(req.requestedDate)}
@@ -806,6 +977,23 @@ export const StockRequestsView: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 max-w-sm">
+                        {req.requestCategory === 'foc' && (req.focProjectName || req.focProjectCode) && (
+                          <div className="mb-1.5 p-1.5 rounded-lg bg-indigo-50/80 border border-indigo-200 text-[10px] text-indigo-950">
+                            <div className="flex items-center gap-1.5 flex-wrap font-bold">
+                              <span className="px-1.5 py-0.2 rounded bg-indigo-700 text-white text-[9px] uppercase tracking-wider">
+                                {req.focProjectScope === 'main' ? '🏢 Main Project' : '📄 Individual Project'}
+                              </span>
+                              <span className="font-mono text-indigo-800">{req.focProjectCode}</span>
+                              <span>·</span>
+                              <span className="truncate">{req.focProjectName}</span>
+                            </div>
+                            {req.focClientName && (
+                              <div className="text-[9px] text-indigo-700 mt-0.5">
+                                Client Free Pool: <strong>{req.focClientName}</strong>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div className="space-y-1">
                           {req.items.map((row) => {
                             const itm = items.find((i) => i.id === row.itemId);
@@ -953,14 +1141,20 @@ export const StockRequestsView: React.FC = () => {
       {showSubmitModal && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-5 backdrop-blur-xs overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-5xl xl:max-w-6xl w-full p-6 sm:p-8 border border-slate-200 my-auto min-h-[620px] max-h-[92vh] overflow-y-auto flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <ArrowRightLeft className="w-5 h-5 text-emerald-400" />
+                <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center shrink-0 shadow-sm ${
+                  formRequestCategory === 'foc' ? 'bg-indigo-700' : 'bg-slate-900'
+                }`}>
+                  <ArrowRightLeft className={`w-5 h-5 ${formRequestCategory === 'foc' ? 'text-indigo-200' : 'text-emerald-400'}`} />
                 </div>
                 <div>
                   <h3 className="font-bold text-xl text-slate-900">Submit Stock Requirement Form to Main Branch</h3>
-                  <p className="text-xs sm:text-sm text-slate-500">Official site requisition for construction materials or heavy machinery & equipment</p>
+                  <p className="text-xs sm:text-sm text-slate-500">
+                    {formRequestCategory === 'foc'
+                      ? 'Request Client Free-Issue (FOC) stock from Central Warehouse Pool for an Assigned Main or Individual Project'
+                      : 'Official site requisition for standard company-owned construction materials or heavy machinery & equipment'}
+                  </p>
                 </div>
               </div>
               <button
@@ -972,6 +1166,79 @@ export const StockRequestsView: React.FC = () => {
               </button>
             </div>
 
+            {/* 2-TAB REQUISITION SOURCE MODE SWITCHER (Normal Stock Request vs Client Free Stock for Assigned Project Request) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5 p-1.5 bg-slate-100/90 border border-slate-200/90 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => handleSwitchFormCategory('normal')}
+                className={`flex items-start gap-3.5 p-3.5 rounded-xl text-left transition-all cursor-pointer border ${
+                  formRequestCategory === 'normal'
+                    ? 'bg-white border-emerald-500/80 shadow-md ring-2 ring-emerald-500/15'
+                    : 'bg-transparent border-transparent hover:bg-white/60 text-slate-600'
+                }`}
+              >
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-lg ${
+                    formRequestCategory === 'normal'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  📦
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-bold text-sm ${formRequestCategory === 'normal' ? 'text-slate-900' : 'text-slate-700'}`}>
+                      1. Normal Stock Request
+                    </span>
+                    {formRequestCategory === 'normal' && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
+                        Active Mode
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                    Request general company-owned materials & machinery from Central Main Warehouse (GRN Stock).
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSwitchFormCategory('foc')}
+                className={`flex items-start gap-3.5 p-3.5 rounded-xl text-left transition-all cursor-pointer border ${
+                  formRequestCategory === 'foc'
+                    ? 'bg-white border-indigo-600 shadow-md ring-2 ring-indigo-500/15'
+                    : 'bg-transparent border-transparent hover:bg-white/60 text-slate-600'
+                }`}
+              >
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-lg ${
+                    formRequestCategory === 'foc'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  🎁
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-bold text-sm ${formRequestCategory === 'foc' ? 'text-indigo-950' : 'text-slate-700'}`}>
+                      2. Client Free Stock for Assigned Project Request
+                    </span>
+                    {formRequestCategory === 'foc' && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-300 uppercase">
+                        Active Mode
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                    Request Client Free-Issue (FOC) items by <strong>Major / Main Project</strong> or <strong>Individual Project</strong>. Deducts from Central FOC Pool to Site.
+                  </p>
+                </div>
+              </button>
+            </div>
+
             {formError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs sm:text-sm text-red-700 font-semibold flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
@@ -980,6 +1247,225 @@ export const StockRequestsView: React.FC = () => {
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-5 flex-1 flex flex-col">
+              {/* DEDICATED CLIENT FREE STOCK (FOC) PROJECT SELECTION PANEL */}
+              {formRequestCategory === 'foc' && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-white to-violet-50/70 border-2 border-indigo-200 shadow-xs space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-indigo-200/80 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-indigo-700 text-white uppercase tracking-wider">
+                          🎁 Client Free Stock (FOC) Allocation
+                        </span>
+                        <span className="text-xs font-semibold text-indigo-900">
+                          Select Main Project or Individual Project
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1">
+                        Major Project FOC requests deduct from the <strong>Main Project Central Pool</strong> and transfer into your Site Yard so you can enter daily usage under any <strong>Sub-Project</strong>. Individual Projects transfer separately.
+                      </p>
+                    </div>
+
+                    {/* Scope Filter Pills: All / Major (Main) Projects / Individual Projects */}
+                    <div className="inline-flex items-center bg-indigo-100/90 p-1 rounded-xl border border-indigo-200 shrink-0 self-start">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFocScopeFilter('all');
+                          const nextList = focRootProjectsWithMeta;
+                          if (nextList.length > 0 && !nextList.some((m) => m.project.id === selectedFocProjectId)) {
+                            applyFocProjectSelection(nextList[0].project.id);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          focScopeFilter === 'all'
+                            ? 'bg-indigo-900 text-white shadow-2xs'
+                            : 'text-indigo-900 hover:bg-white/60'
+                        }`}
+                      >
+                        All ({focRootProjectsWithMeta.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFocScopeFilter('main');
+                          const nextList = focRootProjectsWithMeta.filter((m) => m.effectiveScope === 'main');
+                          if (nextList.length > 0 && !nextList.some((m) => m.project.id === selectedFocProjectId)) {
+                            applyFocProjectSelection(nextList[0].project.id);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          focScopeFilter === 'main'
+                            ? 'bg-indigo-700 text-white shadow-2xs'
+                            : 'text-indigo-900 hover:bg-white/60'
+                        }`}
+                      >
+                        <span>🏢 Major / Main Projects</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-800/20">
+                          {focRootProjectsWithMeta.filter((m) => m.effectiveScope === 'main').length}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFocScopeFilter('individual');
+                          const nextList = focRootProjectsWithMeta.filter((m) => m.effectiveScope === 'individual');
+                          if (nextList.length > 0 && !nextList.some((m) => m.project.id === selectedFocProjectId)) {
+                            applyFocProjectSelection(nextList[0].project.id);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          focScopeFilter === 'individual'
+                            ? 'bg-teal-700 text-white shadow-2xs'
+                            : 'text-indigo-900 hover:bg-white/60'
+                        }`}
+                      >
+                        <span>📄 Individual Projects</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-800/20">
+                          {focRootProjectsWithMeta.filter((m) => m.effectiveScope === 'individual').length}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Assigned Project Selector + Active Project FOC Summary */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                    <div className="lg:col-span-6">
+                      <label className="block text-xs font-bold text-indigo-950 mb-1.5 uppercase tracking-wide">
+                        Assigned Project (Main Project or Individual Project) *
+                      </label>
+                      {filteredFocProjects.length === 0 ? (
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
+                          No projects found in this filter. Switch filter above or register a Project in <strong>Project Registry</strong>.
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedFocProjectMeta?.project.id || ''}
+                          onChange={(e) => applyFocProjectSelection(e.target.value)}
+                          className="w-full px-3.5 py-2.5 border-2 border-indigo-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-indigo-700 focus:outline-none font-bold text-slate-900 shadow-2xs cursor-pointer"
+                          required={formRequestCategory === 'foc'}
+                        >
+                          {filteredFocProjects.map((meta) => (
+                            <option key={meta.project.id} value={meta.project.id}>
+                              {meta.effectiveScope === 'main' ? '🏢 [MAIN PROJECT] ' : '📄 [INDIVIDUAL] '}
+                              {meta.project.projectId} — {meta.project.projectName}
+                              {meta.clientName ? ` (Client: ${meta.clientName})` : ''} • {meta.focList.length} FOC items avail.
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Selected Project Pool Details Card */}
+                    <div className="lg:col-span-6">
+                      {selectedFocProjectMeta ? (
+                        <div className="p-3.5 rounded-xl bg-white border border-indigo-200 shadow-2xs space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
+                                  selectedFocProjectMeta.effectiveScope === 'main'
+                                    ? 'bg-indigo-700 text-white'
+                                    : 'bg-teal-700 text-white'
+                                }`}
+                              >
+                                {selectedFocProjectMeta.effectiveScope === 'main'
+                                  ? `🏢 Major / Main Project (${selectedFocProjectMeta.subProjects.length} Sub-Projects)`
+                                  : '📄 Individual Standalone Project'}
+                              </span>
+                              <span className="font-mono text-xs font-bold text-indigo-800">
+                                {selectedFocProjectMeta.project.projectId}
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                              {selectedFocProjectMeta.focList.length} FOC Item Types in HQ Pool
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-700 flex flex-wrap items-center gap-x-4 gap-y-1">
+                            {selectedFocProjectMeta.clientName && (
+                              <span>
+                                Client: <strong className="text-slate-900">{selectedFocProjectMeta.clientName}</strong>
+                              </span>
+                            )}
+                            <span>
+                              HQ Pool Available:{' '}
+                              <strong className="text-indigo-800 font-mono">
+                                {formatNumber(selectedFocProjectMeta.totalHqAvail)} units
+                              </strong>
+                            </span>
+                          </div>
+
+                          {/* Sub-projects list if Main Project */}
+                          {selectedFocProjectMeta.effectiveScope === 'main' && selectedFocProjectMeta.subProjects.length > 0 && (
+                            <div className="pt-1.5 border-t border-slate-100">
+                              <div className="text-[11px] font-bold text-indigo-900 mb-1">
+                                Linked Sub-Projects (Use received stock under any of these in 5. Material Usage):
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {selectedFocProjectMeta.subProjects.map((sub) => (
+                                  <span
+                                    key={sub.id}
+                                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200"
+                                  >
+                                    ↳ {sub.projectId}: {sub.projectName}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Quick Load All Project FOC Items button */}
+                          {selectedFocProjectMeta.focList.length > 0 ? (
+                            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">Pool Items:</span>
+                                {selectedFocProjectMeta.focList.slice(0, 5).map((entry) => {
+                                  const itm = items.find((i) => i.id === entry.itemId);
+                                  if (!itm) return null;
+                                  return (
+                                    <button
+                                      key={entry.itemId}
+                                      type="button"
+                                      onClick={() => {
+                                        const exists = rows.some((r) => r.itemId === entry.itemId);
+                                        if (!exists) {
+                                          setRows((prev) => [
+                                            ...prev,
+                                            {
+                                              itemId: entry.itemId,
+                                              requestedQty: Math.max(1, Math.min(10, entry.centralWarehouseAvailable || 1)),
+                                            },
+                                          ]);
+                                        }
+                                      }}
+                                      className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-pointer transition-colors"
+                                      title="Click to add this FOC item to request lines"
+                                    >
+                                      + {itm.itemCode} ({formatNumber(entry.centralWarehouseAvailable)} {itm.unit} avail)
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => applyFocProjectSelection(selectedFocProjectMeta.project.id)}
+                                className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold cursor-pointer transition-colors shadow-2xs shrink-0"
+                              >
+                                ⚡ Load All Project FOC Items
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="pt-1.5 border-t border-slate-100 text-[11px] text-amber-800 font-medium">
+                              ⚠️ No Client Free Stock (FOC) has been received for this project in <strong>6. Client Free Stock</strong> yet.
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
@@ -1022,7 +1508,11 @@ export const StockRequestsView: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Substation conduit ducting, transformer foundation pile caps, fiber optic trenching"
+                  placeholder={
+                    formRequestCategory === 'foc'
+                      ? 'e.g. Client FOC draw-down for main project / sub-project site installation'
+                      : 'e.g. Substation conduit ducting, transformer foundation pile caps, fiber optic trenching'
+                  }
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium shadow-2xs placeholder:text-slate-400"
@@ -1030,12 +1520,22 @@ export const StockRequestsView: React.FC = () => {
               </div>
 
               {/* Dynamic Items Table with Material & Machinery Dedicated Tabs */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 space-y-4 flex-1">
+              <div className={`border rounded-2xl p-4 space-y-4 flex-1 ${
+                formRequestCategory === 'foc'
+                  ? 'border-indigo-200 bg-indigo-50/30'
+                  : 'border-slate-200 bg-slate-50/70'
+              }`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
                   <div>
-                    <label className="text-sm font-bold text-slate-900 block">Requested Items & Equipment</label>
+                    <label className="text-sm font-bold text-slate-900 block">
+                      {formRequestCategory === 'foc'
+                        ? `Requested Client FOC Items (${selectedFocProjectMeta ? selectedFocProjectMeta.project.projectId : 'Select Project'})`
+                        : 'Requested Items & Equipment'}
+                    </label>
                     <span className="text-xs text-slate-500">
-                      Select items with clear dropdown visibility — switch tabs to separate Materials and Machinery
+                      {formRequestCategory === 'foc'
+                        ? 'Showing Client Free Stock (FOC) Central Pool availability for the selected Main or Individual Project'
+                        : 'Select items with clear dropdown visibility — switch tabs to separate Materials and Machinery'}
                     </span>
                   </div>
 
@@ -1049,10 +1549,14 @@ export const StockRequestsView: React.FC = () => {
                           ? 'bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-500/20'
                           : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
                       }`}
-                      title="Filter dropdown to show only items with available stock in Central Main Warehouse"
+                      title={
+                        formRequestCategory === 'foc'
+                          ? 'Filter dropdown to show only items available in this Project’s Central FOC Pool'
+                          : 'Filter dropdown to show only items with available stock in Central Main Warehouse'
+                      }
                     >
                       <CheckCircle className={`w-3.5 h-3.5 ${onlyAvailableInModal ? 'text-white' : 'text-slate-400'}`} />
-                      <span>Available Stock Only</span>
+                      <span>{formRequestCategory === 'foc' ? 'Available Project FOC Only' : 'Available Stock Only'}</span>
                     </button>
 
                     {/* 2-Tab Switcher */}
@@ -1120,7 +1624,16 @@ export const StockRequestsView: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
-                        <strong>Available Stock Filter Active:</strong> Only items with positive stock in Central Warehouse are shown in dropdowns.
+                        {formRequestCategory === 'foc' ? (
+                          <>
+                            <strong>Project FOC Pool Filter Active:</strong> Only items with available Client Free Stock for{' '}
+                            <strong>{selectedFocProjectMeta?.project.projectName || 'the selected project'}</strong> are shown in dropdowns.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Available Stock Filter Active:</strong> Only items with positive stock in Central Warehouse are shown in dropdowns.
+                          </>
+                        )}
                       </span>
                     </div>
                     <button
@@ -1189,7 +1702,9 @@ export const StockRequestsView: React.FC = () => {
                           Item Description & Classification
                         </th>
                         <th className="py-3 px-3 text-center w-20">Unit</th>
-                        <th className="py-3 px-4 text-right w-28">Main Avail.</th>
+                        <th className="py-3 px-4 text-right w-32">
+                          {formRequestCategory === 'foc' ? 'FOC Main Avail.' : 'Main Avail.'}
+                        </th>
                         <th className="py-3 px-4 text-right w-36 font-bold text-slate-900">Required Qty *</th>
                         <th className="py-3 px-3 text-center w-14">Del</th>
                       </tr>
@@ -1230,7 +1745,11 @@ export const StockRequestsView: React.FC = () => {
                       ) : (
                         displayedRows.map(({ row, index: originalIndex, item }) => {
                           const isMach = item ? isMachineryItem(item) : false;
-                          const mainStock = item ? getMainWarehouseStock(item.id) : null;
+                          const availBalance = item
+                            ? formRequestCategory === 'foc' && selectedFocProjectMeta
+                              ? getClientFreeStockBalance(selectedFocProjectMeta.project.id, item.id).centralWarehouseAvailable
+                              : getMainWarehouseStock(item.id).availableBalance
+                            : 0;
                           return (
                             <tr
                               key={originalIndex}
@@ -1249,6 +1768,11 @@ export const StockRequestsView: React.FC = () => {
                                         🧱 Material / Consumable
                                       </span>
                                     )}
+                                    {formRequestCategory === 'foc' && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                        🎁 Client FOC Pool
+                                      </span>
+                                    )}
                                     {item && (
                                       <span className="text-xs text-slate-500 font-semibold">
                                         Category: <strong className="text-slate-700 font-medium">{item.category}</strong>
@@ -1261,8 +1785,11 @@ export const StockRequestsView: React.FC = () => {
                                     showStockBadge={true}
                                     defaultClassification={reqModalTab === 'Machinery' ? 'Machinery' : 'Material'}
                                     onlyAvailableStock={onlyAvailableInModal}
+                                    focProjectId={formRequestCategory === 'foc' ? selectedFocProjectMeta?.project.id : undefined}
                                     placeholder={
-                                      reqModalTab === 'Machinery'
+                                      formRequestCategory === 'foc'
+                                        ? 'Search & select project Client Free (FOC) item...'
+                                        : reqModalTab === 'Machinery'
                                         ? 'Search & select machinery / equipment...'
                                         : 'Search & select material item...'
                                     }
@@ -1273,9 +1800,22 @@ export const StockRequestsView: React.FC = () => {
                                 {item?.unit || 'Nos'}
                               </td>
                               <td className="py-3 px-4 text-right font-mono text-slate-700 font-bold whitespace-nowrap text-xs sm:text-sm">
-                                <span className={mainStock && mainStock.availableBalance <= 0 ? 'text-rose-600' : 'text-slate-900'}>
-                                  {mainStock ? formatNumber(mainStock.availableBalance) : 0}
+                                <span
+                                  className={
+                                    availBalance <= 0
+                                      ? 'text-rose-600'
+                                      : formRequestCategory === 'foc'
+                                      ? 'text-indigo-700 font-extrabold'
+                                      : 'text-slate-900'
+                                  }
+                                >
+                                  {formatNumber(availBalance)}
                                 </span>
+                                {formRequestCategory === 'foc' && (
+                                  <div className="text-[10px] font-sans font-semibold text-indigo-600">
+                                    Project FOC Pool
+                                  </div>
+                                )}
                               </td>
                               <td className="py-3 px-4 text-right whitespace-nowrap">
                                 <input
@@ -1346,9 +1886,15 @@ export const StockRequestsView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
+                    className={`px-4 py-2 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs cursor-pointer ${
+                      formRequestCategory === 'foc'
+                        ? 'bg-indigo-700 hover:bg-indigo-800'
+                        : 'bg-slate-900 hover:bg-slate-800'
+                    }`}
                   >
-                    Transmit Requisition
+                    {formRequestCategory === 'foc'
+                      ? 'Transmit Client FOC Requisition'
+                      : 'Transmit Requisition'}
                   </button>
                 </div>
               </div>
@@ -1361,7 +1907,7 @@ export const StockRequestsView: React.FC = () => {
       {reviewingRequest && (() => {
         const shortageSummary = reviewingRequest.items.reduce(
           (acc, row) => {
-            const avail = getMainWarehouseStock(row.itemId).availableBalance;
+            const avail = getRequestItemAvailableBalance(reviewingRequest, row.itemId);
             if (avail <= 0) acc.outOfStockCount++;
             else if (avail < row.requestedQty) acc.partialStockCount++;
             else acc.inStockCount++;
@@ -1388,6 +1934,11 @@ export const StockRequestsView: React.FC = () => {
                       <span className="font-mono font-bold text-xs bg-slate-900 text-white px-2 py-0.5 rounded">
                         {reviewingRequest.requestNoteNumber}
                       </span>
+                      {reviewingRequest.requestCategory === 'foc' && (
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                          🎁 Client Free Stock (FOC) Request
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                       <span>Requesting Site: <strong className="text-slate-800">{sites.find((s) => s.id === reviewingRequest.siteId)?.name}</strong></span>
@@ -1395,6 +1946,14 @@ export const StockRequestsView: React.FC = () => {
                       <span>Requester: <strong className="text-slate-800">{reviewingRequest.requestedBy}</strong></span>
                       <span>·</span>
                       <span>Priority: <strong className={reviewingRequest.priority === 'Emergency' ? 'text-red-700' : 'text-slate-700'}>{reviewingRequest.priority}</strong></span>
+                      {reviewingRequest.requestCategory === 'foc' && reviewingRequest.focProjectName && (
+                        <>
+                          <span>·</span>
+                          <span className="text-indigo-800 font-bold">
+                            {reviewingRequest.focProjectScope === 'main' ? '🏢 Main Project:' : '📄 Individual Project:'} {reviewingRequest.focProjectCode} — {reviewingRequest.focProjectName}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1416,7 +1975,11 @@ export const StockRequestsView: React.FC = () => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-950 bg-amber-200/90 px-2 py-0.5 rounded-md border border-amber-300">
                         <AlertTriangle className="w-3 h-3 text-amber-700" />
-                        <span>Central Stock Shortage</span>
+                        <span>
+                          {reviewingRequest.requestCategory === 'foc'
+                            ? 'Project FOC Pool Shortage'
+                            : 'Central Stock Shortage'}
+                        </span>
                       </span>
                       {shortageSummary.outOfStockCount > 0 && (
                         <span className="inline-flex items-center text-[11px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded border border-rose-200">
@@ -1473,7 +2036,12 @@ export const StockRequestsView: React.FC = () => {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 mb-2.5 flex items-center justify-between text-xs text-emerald-800 shrink-0">
                   <div className="flex items-center gap-1.5">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>All requested items are <strong>fully in stock</strong> at Central Warehouse.</span>
+                    <span>
+                      All requested items are <strong>fully in stock</strong> in{' '}
+                      {reviewingRequest.requestCategory === 'foc'
+                        ? `Project FOC Central Pool (${reviewingRequest.focProjectCode || reviewingRequest.focProjectName})`
+                        : 'Central Warehouse'}.
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -1560,7 +2128,9 @@ export const StockRequestsView: React.FC = () => {
                   <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-semibold sticky top-0 z-10">
                     <tr>
                       <th className="py-2 px-3">Item Specs</th>
-                      <th className="py-2 px-3 text-right">Main Warehouse Avail.</th>
+                      <th className="py-2 px-3 text-right">
+                        {reviewingRequest.requestCategory === 'foc' ? 'Project FOC Pool Avail.' : 'Main Warehouse Avail.'}
+                      </th>
                       <th className="py-2 px-3 text-right">Site Requested</th>
                       <th className="py-2 px-3 text-right w-48 font-bold text-slate-900">Approved Qty to Dispatch</th>
                       <th className="py-2 px-3 text-center w-28">Item Action</th>
@@ -1569,10 +2139,9 @@ export const StockRequestsView: React.FC = () => {
                   <tbody className="divide-y divide-slate-100">
                     {reviewingRequest.items.map((row) => {
                       const itm = items.find((i) => i.id === row.itemId);
-                      const mainStock = itm ? getMainWarehouseStock(itm.id) : null;
                       const approvedVal =
                         approvalItems.find((a) => a.itemId === row.itemId)?.approvedQty ?? row.requestedQty;
-                      const avail = mainStock?.availableBalance || 0;
+                      const avail = getRequestItemAvailableBalance(reviewingRequest, row.itemId);
                       const isExceeding = approvedVal > avail;
                       const isZeroStock = avail <= 0;
                       const isPartialStock = !isZeroStock && avail < row.requestedQty;

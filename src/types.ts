@@ -290,7 +290,7 @@ export interface RequestItemRow {
 
 export interface StockTransferRequest {
   id: string;
-  requestNoteNumber: string; // RN-2026-XXXX
+  requestNoteNumber: string; // RN-2026-0001
   siteId: string;
   requestedBy: string;
   requestedDate: string;
@@ -298,12 +298,19 @@ export interface StockTransferRequest {
   priority: RequestPriority;
   purpose: string;
   items: RequestItemRow[];
+  requestCategory?: 'normal' | 'foc';
+  focProjectId?: string;
+  focProjectCode?: string;
+  focProjectName?: string;
+  focProjectScope?: 'main' | 'individual' | 'sub';
+  focClientName?: string;
   approvalDate?: string;
   approvedBy?: string;
   approvalNotes?: string;
   acceptanceDate?: string;
   acceptedBy?: string;
   acceptanceNotes?: string;
+  updatedAt?: string;
 }
 
 export interface CrossProjectOverrideItemRow {
