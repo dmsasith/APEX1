@@ -364,7 +364,11 @@ interface StockContextType {
   getClientFreeStockBalance: (projectId: string, itemId: string) => {
     totalReceived: number;
     totalUsed: number;
+    directUsed: number;
     remainingBalance: number;
+    rootProjectId: string;
+    rootProjectName: string;
+    isSubProjectPool: boolean;
   };
   getProjectFreeStockList: (projectId: string) => Array<{
     itemId: string;
@@ -373,7 +377,19 @@ interface StockContextType {
     unit: string;
     totalReceived: number;
     totalUsed: number;
+    directUsed: number;
     remainingBalance: number;
+    rootProjectId: string;
+    rootProjectName: string;
+    isSubProjectPool: boolean;
+    subProjectBreakdown: Array<{
+      subProjectId: string;
+      subProjectCode: string;
+      subProjectName: string;
+      siteIdentifier?: string;
+      isMainDirect?: boolean;
+      usedQty: number;
+    }>;
   }>;
 
   // Branch Stock Return (To Main Yard)
@@ -5474,7 +5490,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateProject = (id: string, updates: Partial<Project>) => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setProjects((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, ...updates } : p));
+      const updated = prev.map((p) => {
+        if (p.id === id) {
+          return { ...p, ...updates };
+        }
+        if (p.parentProjectId === id) {
+          return {
+            ...p,
+            parentProjectCode: updates.projectId !== undefined ? updates.projectId : p.parentProjectCode,
+            parentProjectName: updates.projectName !== undefined ? updates.projectName : p.parentProjectName,
+          };
+        }
+        return p;
+      });
       saveTenantData(activeTenantId, 'projects', updated);
       const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
@@ -5482,20 +5510,30 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return updated;
     });
-    // If project section/type or name is changed, update existing usages cleanly without any data loss
-    if (updates.projectTypeId !== undefined || updates.projectTypeName !== undefined || updates.projectName !== undefined) {
-      setProjectUsages((prev) =>
-        prev.map((pu) =>
+    // If project section/type, name, or parent main project is changed, update existing usages cleanly without any data loss
+    if (
+      updates.projectTypeId !== undefined ||
+      updates.projectTypeName !== undefined ||
+      updates.projectName !== undefined ||
+      updates.parentProjectId !== undefined ||
+      updates.parentProjectName !== undefined
+    ) {
+      setProjectUsages((prev) => {
+        const next = prev.map((pu) =>
           pu.projectId === id
             ? {
                 ...pu,
                 projectTypeId: updates.projectTypeId !== undefined ? updates.projectTypeId : pu.projectTypeId,
                 projectTypeName: updates.projectTypeName !== undefined ? updates.projectTypeName : pu.projectTypeName,
                 projectName: updates.projectName !== undefined ? updates.projectName : pu.projectName,
+                parentProjectId: updates.parentProjectId !== undefined ? updates.parentProjectId : pu.parentProjectId,
+                parentProjectName: updates.parentProjectName !== undefined ? updates.parentProjectName : pu.parentProjectName,
               }
             : pu
-        )
-      );
+        );
+        saveTenantData(activeTenantId, 'projectUsages', next);
+        return next;
+      });
     }
     const proj = projects.find((p) => p.id === id);
     addAuditLog(
@@ -6693,6 +6731,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       usageVoucherNumber,
       teamName,
       projectName: projName,
+      parentProjectId: data.parentProjectId || proj?.parentProjectId || undefined,
+      parentProjectName: data.parentProjectName || proj?.parentProjectName || undefined,
       customerName: data.customerName || proj?.customerName || '',
       customerPhone: data.customerPhone || proj?.customerPhone || '',
       siteIdentifier: data.siteIdentifier || proj?.siteIdentifier || '',
@@ -6862,28 +6902,78 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const getClientFreeStockBalance = (projectId: string, itemId: string) => {
+    const targetProj = projects.find((p) => p.id === projectId);
+    const parentProj =
+      targetProj?.parentProjectId
+        ? projects.find((p) => p.id === targetProj.parentProjectId && !p.isDeleted)
+        : undefined;
+    const rootProjectId = parentProj ? parentProj.id : (targetProj?.parentProjectId || projectId);
+    const rootProjectName =
+      parentProj?.projectName || targetProj?.parentProjectName || targetProj?.projectName || 'Project';
+    const childSubProjects = projects.filter((p) => !p.isDeleted && p.parentProjectId === rootProjectId);
+    const isSubProjectPool =
+      Boolean(targetProj?.parentProjectId) ||
+      targetProj?.projectScope === 'main' ||
+      childSubProjects.length > 0;
+
+    const familyIds = new Set<string>([
+      rootProjectId,
+      projectId,
+      ...childSubProjects.map((sp) => sp.id),
+    ]);
+
     const totalReceived = clientFreeIssues
-      .filter((e) => !e.isDeleted && e.projectId === projectId)
+      .filter((e) => !e.isDeleted && (familyIds.has(e.projectId) || (e.parentProjectId && e.parentProjectId === rootProjectId)))
       .reduce((sum, entry) => {
         const row = entry.items.find((it) => it.itemId === itemId);
         return sum + (row ? Number(row.quantity) || 0 : 0);
       }, 0);
 
     const totalUsed = projectUsages
-      .filter((u) => u.projectId === projectId)
+      .filter((u) => !u.isDeleted && (familyIds.has(u.projectId) || (u.parentProjectId && u.parentProjectId === rootProjectId)))
+      .reduce((sum, usage) => {
+        const row = usage.items.find((it) => it.itemId === itemId);
+        return sum + (row ? Number(row.quantity) || 0 : 0);
+      }, 0);
+
+    const directUsed = projectUsages
+      .filter((u) => !u.isDeleted && u.projectId === projectId)
       .reduce((sum, usage) => {
         const row = usage.items.find((it) => it.itemId === itemId);
         return sum + (row ? Number(row.quantity) || 0 : 0);
       }, 0);
 
     const remainingBalance = Math.max(0, totalReceived - totalUsed);
-    return { totalReceived, totalUsed, remainingBalance };
+    return {
+      totalReceived,
+      totalUsed,
+      directUsed,
+      remainingBalance,
+      rootProjectId,
+      rootProjectName,
+      isSubProjectPool,
+    };
   };
 
   const getProjectFreeStockList = (projectId: string) => {
+    const targetProj = projects.find((p) => p.id === projectId);
+    const parentProj =
+      targetProj?.parentProjectId
+        ? projects.find((p) => p.id === targetProj.parentProjectId && !p.isDeleted)
+        : undefined;
+    const rootProjectId = parentProj ? parentProj.id : (targetProj?.parentProjectId || projectId);
+    const rootProjObj = parentProj || projects.find((p) => p.id === rootProjectId);
+    const childSubProjects = projects.filter((p) => !p.isDeleted && p.parentProjectId === rootProjectId);
+
+    const familyIds = new Set<string>([
+      rootProjectId,
+      projectId,
+      ...childSubProjects.map((sp) => sp.id),
+    ]);
+
     const itemMap = new Map<string, { itemId: string; itemCode: string; itemName: string; unit: string; totalReceived: number }>();
     clientFreeIssues
-      .filter((e) => !e.isDeleted && e.projectId === projectId)
+      .filter((e) => !e.isDeleted && (familyIds.has(e.projectId) || (e.parentProjectId && e.parentProjectId === rootProjectId)))
       .forEach((entry) => {
         entry.items.forEach((it) => {
           const existing = itemMap.get(it.itemId);
@@ -6903,6 +6993,55 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return Array.from(itemMap.values()).map((info) => {
       const balance = getClientFreeStockBalance(projectId, info.itemId);
+
+      // Build Sub-Project consumption breakdown for this item
+      const subProjectBreakdown: Array<{
+        subProjectId: string;
+        subProjectCode: string;
+        subProjectName: string;
+        siteIdentifier?: string;
+        isMainDirect?: boolean;
+        usedQty: number;
+      }> = [];
+
+      // Direct usage on Main Project itself (if any)
+      if (rootProjObj && childSubProjects.length > 0) {
+        const mainDirectUsed = projectUsages
+          .filter((u) => !u.isDeleted && u.projectId === rootProjObj.id)
+          .reduce((sum, u) => {
+            const r = u.items.find((it) => it.itemId === info.itemId);
+            return sum + (r ? Number(r.quantity) || 0 : 0);
+          }, 0);
+        if (mainDirectUsed > 0) {
+          subProjectBreakdown.push({
+            subProjectId: rootProjObj.id,
+            subProjectCode: rootProjObj.projectId,
+            subProjectName: `${rootProjObj.projectName} (Direct on Main)`,
+            siteIdentifier: rootProjObj.siteIdentifier,
+            isMainDirect: true,
+            usedQty: mainDirectUsed,
+          });
+        }
+      }
+
+      // Usage across each Sub-Project
+      childSubProjects.forEach((sp) => {
+        const spUsed = projectUsages
+          .filter((u) => !u.isDeleted && u.projectId === sp.id)
+          .reduce((sum, u) => {
+            const r = u.items.find((it) => it.itemId === info.itemId);
+            return sum + (r ? Number(r.quantity) || 0 : 0);
+          }, 0);
+        subProjectBreakdown.push({
+          subProjectId: sp.id,
+          subProjectCode: sp.projectId,
+          subProjectName: sp.projectName,
+          siteIdentifier: sp.siteIdentifier,
+          isMainDirect: false,
+          usedQty: spUsed,
+        });
+      });
+
       return {
         itemId: info.itemId,
         itemCode: info.itemCode,
@@ -6910,7 +7049,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         unit: info.unit,
         totalReceived: info.totalReceived,
         totalUsed: balance.totalUsed,
+        directUsed: balance.directUsed,
         remainingBalance: balance.remainingBalance,
+        rootProjectId: balance.rootProjectId,
+        rootProjectName: balance.rootProjectName,
+        isSubProjectPool: balance.isSubProjectPool,
+        subProjectBreakdown,
       };
     });
   };

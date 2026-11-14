@@ -730,6 +730,27 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
     });
   }, [activeSupplierReturns, searchQuery, returnStatusFilter]);
 
+  // Summary KPI calculations
+  const totalPoValue = useMemo(
+    () => activePurchaseOrders.reduce((sum, po) => sum + (po.grandTotal || 0), 0),
+    [activePurchaseOrders]
+  );
+  const pendingPoCount = useMemo(
+    () =>
+      activePurchaseOrders.filter(
+        (po) => po.status === 'Order Sent' || po.status === 'Partially Received' || po.status === 'Draft'
+      ).length,
+    [activePurchaseOrders]
+  );
+  const completedPoCount = useMemo(
+    () => activePurchaseOrders.filter((po) => po.status === 'Received into Main Stock').length,
+    [activePurchaseOrders]
+  );
+  const totalRtvValue = useMemo(
+    () => activeSupplierReturns.reduce((sum, r) => sum + (r.grandTotal || 0), 0),
+    [activeSupplierReturns]
+  );
+
   const handleOpenCreateReturn = () => {
     setEditingReturn(null);
     setShowReturnModal(true);
@@ -791,7 +812,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-top-4">
@@ -800,93 +821,199 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
         </div>
       )}
 
-      {/* Top Banner / Header */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <ShoppingCart className="w-3.5 h-3.5" />
-              Main Stock Procurement & Requisitions
-            </span>
-            <span className="text-xs font-semibold text-slate-400">• Main Admin Only</span>
+      {/* Executive Header Surface */}
+      <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.06)]">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+              <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+              <span>Main Stock Procurement & Requisitions</span>
+              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span className="text-slate-500 font-medium">Central Admin Operations</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Material Requisitions & Supplier Orders
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Manage approved vendors, issue international-standard Purchase Orders (PO), receive full or partial GRN batches into Central Main Stock, and process Supplier Returns (RTV) & Debit Notes.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Material Requisitions & Supplier Orders
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Request materials from external suppliers into Central Main Stock, manage registered vendors, and generate international standard Purchase Orders with PDF, Print & Direct Email.
-          </p>
+
+          {/* Single-Line Primary & Secondary Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={openAddSupplier}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200/80 text-slate-800 border border-slate-200/90 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Building2 className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <span>+ Register Supplier</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenCreateReturn}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100/80 text-amber-900 border border-amber-200/90 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span>+ Return to Supplier</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={openCreateOrder}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0 ${theme.primaryBtn}`}
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>New Purchase Order (PO)</span>
+            </button>
+          </div>
         </div>
 
-        {/* Primary Action Button */}
-        <div className="flex items-center gap-2.5">
-          {activeTab === 'orders' ? (
-            <button
-              onClick={openCreateOrder}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95 ${theme.primaryBtn}`}
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Material Requisition (PO)</span>
-            </button>
-          ) : activeTab === 'returns' ? (
-            <button
-              onClick={handleOpenCreateReturn}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95 bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>New Return to Supplier (Debit Note)</span>
-            </button>
-          ) : (
-            <button
-              onClick={openAddSupplier}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95 ${theme.primaryBtn}`}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Register New Supplier</span>
-            </button>
-          )}
+        {/* 4-Column Executive Procurement KPI Strip */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-5 border-t border-slate-100">
+          <div
+            onClick={() => {
+              setActiveTab('orders');
+              setStatusFilter('all');
+            }}
+            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+          >
+            <div>
+              <div className="text-xs font-medium text-slate-500">Purchase Orders Issued</div>
+              <div className="text-xl font-extrabold text-slate-900 font-mono tabular-nums mt-0.5">
+                {formatNumber(activePurchaseOrders.length)}
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
+                Value: <strong className="text-slate-700">{config.currencySymbol} {formatNumber(totalPoValue)}</strong>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-900/5 text-slate-700 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div
+            onClick={() => {
+              setActiveTab('orders');
+              setStatusFilter('Order Sent');
+            }}
+            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+          >
+            <div>
+              <div className="text-xs font-medium text-slate-500">Pending / Partial Delivery</div>
+              <div className="text-xl font-extrabold text-amber-700 font-mono tabular-nums mt-0.5">
+                {formatNumber(pendingPoCount)}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Awaiting warehouse GRN receipt
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div
+            onClick={() => {
+              setActiveTab('orders');
+              setStatusFilter('Received into Main Stock');
+            }}
+            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+          >
+            <div>
+              <div className="text-xs font-medium text-slate-500">Received into Main Stock</div>
+              <div className="text-xl font-extrabold text-emerald-700 font-mono tabular-nums mt-0.5">
+                {formatNumber(completedPoCount)}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Credited to central inventory
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center shrink-0">
+              <Boxes className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div
+            onClick={() => setActiveTab('suppliers')}
+            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+          >
+            <div>
+              <div className="text-xs font-medium text-slate-500">Approved Suppliers & RTVs</div>
+              <div className="text-xl font-extrabold text-slate-900 font-mono tabular-nums mt-0.5">
+                {formatNumber(activeSuppliers.length)}{' '}
+                <span className="text-xs font-medium text-slate-500">vendors</span>
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
+                RTV Claims: <strong className="text-amber-700">{activeSupplierReturns.length}</strong> ({config.currencySymbol} {formatNumber(totalRtvValue)})
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-700 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Tabs Navigation & Search Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-        <div className="flex flex-wrap items-center gap-2">
+      {/* Unified Segmented Navigation & Search/Filter Toolbar */}
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-3 sm:p-3.5 border border-slate-200/90 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        {/* Clean Single-Line Segmented Tabs */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/60 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('suppliers')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
-              activeTab === 'suppliers'
-                ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400'
-                : 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-950 border border-indigo-300 hover:from-indigo-100 hover:to-purple-100 shadow-2xs'
+            type="button"
+            onClick={() => setActiveTab('orders')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'orders'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Building2 className={`w-4 h-4 ${activeTab === 'suppliers' ? 'text-white' : 'text-indigo-600'}`} />
-            <span>✨ Suppliers Directory ({activeSuppliers.length})</span>
+            <FileText className="w-3.5 h-3.5 shrink-0" />
+            <span>Purchase Orders</span>
+            <span
+              className={`font-mono tabular-nums text-[11px] px-1.5 py-0.2 rounded-md ${
+                activeTab === 'orders' ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {activePurchaseOrders.length}
+            </span>
           </button>
 
           <button
-            onClick={() => setActiveTab('orders')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'orders'
+            type="button"
+            onClick={() => setActiveTab('suppliers')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'suppliers'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 bg-white hover:bg-slate-100 border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Purchase Orders ({activePurchaseOrders.length})</span>
+            <Building2 className="w-3.5 h-3.5 shrink-0" />
+            <span>Suppliers Directory</span>
+            <span
+              className={`font-mono tabular-nums text-[11px] px-1.5 py-0.2 rounded-md ${
+                activeTab === 'suppliers' ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {activeSuppliers.length}
+            </span>
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('returns')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'returns'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'text-slate-600 bg-white hover:bg-slate-100 border border-slate-200'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5 shrink-0" />
             <span>Return to Supplier (RTV & Debit Notes)</span>
             <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                activeTab === 'returns' ? 'bg-amber-800 text-white' : 'bg-amber-100 text-amber-800'
+              className={`font-mono tabular-nums text-[11px] px-1.5 py-0.2 rounded-md ${
+                activeTab === 'returns' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
               }`}
             >
               {activeSupplierReturns.length}
@@ -894,10 +1021,10 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
           </button>
         </div>
 
-        {/* Search & Filter - Enlarged for mobile accessibility */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <div className="relative w-full sm:w-80 md:w-96 min-w-[220px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Search Input & Contextual Status Filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div className="relative flex-1 sm:w-72 md:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder={
@@ -909,7 +1036,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
+              className="w-full pl-9 pr-8 py-2 bg-slate-50/80 hover:bg-white focus:bg-white border border-slate-200/90 focus:border-emerald-600 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/15 transition-all"
             />
             {searchQuery && (
               <button
@@ -927,9 +1054,9 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="px-3.5 py-2 bg-slate-50/80 hover:bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-600 transition-colors cursor-pointer shrink-0"
             >
-              <option value="all">All Statuses</option>
+              <option value="all">All Order Statuses</option>
               <option value="Draft">Draft</option>
               <option value="Order Sent">Order Sent / Pending</option>
               <option value="Partially Received">Partially Received</option>
@@ -942,7 +1069,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
             <select
               value={returnStatusFilter}
               onChange={(e) => setReturnStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="px-3.5 py-2 bg-slate-50/80 hover:bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-600 transition-colors cursor-pointer shrink-0"
             >
               <option value="all">All Return Statuses</option>
               <option value="Draft">Draft</option>
@@ -959,18 +1086,68 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
       {activeTab === 'orders' && (
         <div className="space-y-4">
           {filteredOrders.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-              <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="text-sm font-bold text-slate-700">No Purchase Orders Found</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                Create a material requisition to order stock from suppliers directly into Central Main Stock.
+            <div className="bg-white/95 rounded-3xl border border-slate-200/90 p-10 sm:p-14 text-center shadow-2xs">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center mx-auto mb-4">
+                <ShoppingCart className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'No Matching Purchase Orders Found'
+                  : 'No Purchase Orders Issued Yet'}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-lg mx-auto leading-relaxed">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'Try clearing your search filter or switching the status selector above.'
+                  : 'Create an official Material Requisition (Purchase Order) to order inventory from registered suppliers and receive deliveries directly into Central Main Stock.'}
               </p>
-              <button
-                onClick={openCreateOrder}
-                className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
-              >
-                Create First Purchase Order
-              </button>
+
+              {/* Guided 3-Step Workflow Strip */}
+              {!searchQuery && statusFilter === 'all' && (
+                <div className="max-w-2xl mx-auto mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                  <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/60">
+                    <div className="text-[11px] font-mono font-bold text-emerald-700">01. Vendor Setup</div>
+                    <div className="text-xs font-bold text-slate-900 mt-0.5">Register Supplier</div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Add supplier contact, email, and payment terms in the Suppliers Directory.
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/60">
+                    <div className="text-[11px] font-mono font-bold text-emerald-700">02. Issue Requisition</div>
+                    <div className="text-xs font-bold text-slate-900 mt-0.5">Generate Official PO</div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Select catalog items, quantities, and unit prices to print, download PDF, or email.
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/60">
+                    <div className="text-[11px] font-mono font-bold text-emerald-700">03. Stock Crediting</div>
+                    <div className="text-xs font-bold text-slate-900 mt-0.5">Receive Full/Partial GRN</div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Confirm delivered quantities to automatically update Central Main Stock.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={openCreateOrder}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 shadow-xs whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create First Purchase Order</span>
+                </button>
+                {activeSuppliers.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={openAddSupplier}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Register Supplier First</span>
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -982,34 +1159,39 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
 
                 const totalOrderedUnits = po.items.reduce((sum, it) => sum + it.quantity, 0);
                 const totalReceivedUnits = po.items.reduce((sum, it) => sum + (it.receivedQuantity || 0), 0);
-                const percentReceived = totalOrderedUnits > 0 ? Math.min(100, Math.round((totalReceivedUnits / totalOrderedUnits) * 100)) : 0;
+                const percentReceived =
+                  totalOrderedUnits > 0
+                    ? Math.min(100, Math.round((totalReceivedUnits / totalOrderedUnits) * 100))
+                    : 0;
 
                 return (
                   <div
                     key={po.id}
-                    className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition-all p-5 shadow-xs flex flex-col justify-between group"
+                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 transition-all p-5 shadow-2xs flex flex-col justify-between group"
                   >
                     <div>
                       {/* Card Header */}
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div>
-                          <div className="text-[11px] font-mono font-bold text-slate-400">PO VOUCHER</div>
-                          <div className="text-base font-black text-slate-900 group-hover:text-emerald-700 transition">
+                          <div className="text-[11px] font-mono text-slate-400 font-semibold">
+                            Purchase Order
+                          </div>
+                          <div className="text-base font-extrabold text-slate-900 font-mono tabular-nums group-hover:text-emerald-700 transition">
                             {po.poNumber}
                           </div>
                         </div>
 
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ${
+                          className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold whitespace-nowrap shrink-0 ${
                             isReceived
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                               : isPartial
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
                               : isDraft
                               ? 'bg-slate-100 text-slate-700 border border-slate-200'
                               : isCancelled
-                              ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : 'bg-blue-50 text-blue-800 border border-blue-200'
                           }`}
                         >
                           {po.status}
@@ -1026,26 +1208,29 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                           <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate">{po.supplierEmail}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono tabular-nums">
                           <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>Order Date: {po.orderDate} • Due: {po.expectedDeliveryDate}</span>
+                          <span>Ordered: {po.orderDate} · Due: {po.expectedDeliveryDate}</span>
                         </div>
                       </div>
 
                       {/* Partial delivery progress indicator */}
                       {isPartial && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 mb-3 text-xs">
-                          <div className="flex items-center justify-between text-amber-900 font-bold text-[11px] mb-1">
-                            <span className="flex items-center gap-1">
+                        <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 mb-3 text-xs">
+                          <div className="flex items-center justify-between text-amber-900 font-bold text-[11px] mb-1 font-mono tabular-nums">
+                            <span className="flex items-center gap-1 font-sans">
                               <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              Partial Delivery: {totalReceivedUnits} / {totalOrderedUnits} units
+                              Delivered: {totalReceivedUnits} / {totalOrderedUnits} units
                             </span>
                             <span>{percentReceived}%</span>
                           </div>
                           <div className="w-full bg-amber-200/70 rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-amber-600 h-1.5 rounded-full transition-all" style={{ width: `${percentReceived}%` }} />
+                            <div
+                              className="bg-amber-600 h-1.5 rounded-full transition-all"
+                              style={{ width: `${percentReceived}%` }}
+                            />
                           </div>
-                          <div className="text-[10px] text-amber-700 mt-1 flex justify-between font-semibold">
+                          <div className="text-[10px] text-amber-700 mt-1 flex justify-between font-semibold font-mono tabular-nums">
                             <span>Pending: {totalOrderedUnits - totalReceivedUnits} units</span>
                             <span>Batches: {po.receiptHistory?.length || 1}</span>
                           </div>
@@ -1053,23 +1238,23 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                       )}
 
                       {/* Items Preview */}
-                      <div className="bg-slate-50 rounded-xl p-2.5 mb-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
-                          <span>Items ({po.items.length})</span>
-                          <span>Est. Total</span>
+                      <div className="bg-slate-50/90 rounded-xl p-2.5 mb-3 border border-slate-100">
+                        <div className="text-[11px] font-semibold text-slate-500 mb-1 flex items-center justify-between">
+                          <span>Line Items ({po.items.length})</span>
+                          <span>Line Total</span>
                         </div>
                         <div className="space-y-1 max-h-20 overflow-y-auto">
                           {po.items.map((it, idx) => (
                             <div key={idx} className="flex items-center justify-between text-xs text-slate-700">
-                              <span className="truncate font-medium max-w-[170px]">
-                                {it.quantity} {it.unit} • {it.itemName}
+                              <span className="truncate font-medium max-w-[175px]">
+                                <span className="font-mono tabular-nums">{it.quantity}</span> {it.unit} · {it.itemName}
                                 {it.receivedQuantity !== undefined && it.receivedQuantity > 0 && (
-                                  <span className="text-[10px] text-emerald-700 font-bold ml-1">
+                                  <span className="text-[10px] text-emerald-700 font-bold ml-1 font-mono tabular-nums">
                                     ({it.receivedQuantity} rec.)
                                   </span>
                                 )}
                               </span>
-                              <span className="font-mono text-slate-600 text-[11px]">
+                              <span className="font-mono tabular-nums text-slate-600 text-[11px]">
                                 {config.currencySymbol} {formatNumber(it.lineTotal)}
                               </span>
                             </div>
@@ -1079,8 +1264,8 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
 
                       {/* Financial Total */}
                       <div className="flex items-baseline justify-between text-xs font-bold pt-1">
-                        <span className="text-slate-500">Grand Total:</span>
-                        <span className="text-base font-black text-slate-900 font-mono">
+                        <span className="text-slate-500">Grand Total</span>
+                        <span className="text-base font-extrabold text-slate-900 font-mono tabular-nums">
                           {config.currencySymbol} {formatNumber(po.grandTotal)}
                         </span>
                       </div>
@@ -1089,24 +1274,27 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                     {/* Card Actions */}
                     <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5">
                       <button
+                        type="button"
                         onClick={() => setViewingOrder(po)}
-                        className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+                        className="flex-1 py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
                         title="View Full PO Voucher & Details"
                       >
-                        <FileText className="w-3.5 h-3.5" />
+                        <FileText className="w-3.5 h-3.5 shrink-0" />
                         <span>View</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleOpenEmailClient(po)}
-                        className="py-1.5 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+                        className="py-1.5 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
                         title="Open in Email App (Pre-filled Mailto)"
                       >
-                        <Mail className="w-3.5 h-3.5" />
+                        <Mail className="w-3.5 h-3.5 shrink-0" />
                         <span>Email</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handlePrintDocument(po)}
                         className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center justify-center transition cursor-pointer"
                         title="Print Purchase Order"
@@ -1116,16 +1304,21 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
 
                       {!isReceived && !isCancelled && (
                         <button
+                          type="button"
                           onClick={() => openGrnModal(po)}
-                          className={`py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer active:scale-95 shadow-xs ${
+                          className={`py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap ${
                             isPartial
                               ? 'bg-amber-600 hover:bg-amber-700 text-white'
                               : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                           }`}
-                          title={isPartial ? 'Receive next delivery batch from supplier' : 'Receive materials into Main Warehouse Stock'}
+                          title={
+                            isPartial
+                              ? 'Receive next delivery batch from supplier'
+                              : 'Receive materials into Main Warehouse Stock'
+                          }
                         >
-                          <Boxes className="w-3.5 h-3.5" />
-                          <span>{isPartial ? 'Receive Next Batch' : 'Receive'}</span>
+                          <Boxes className="w-3.5 h-3.5 shrink-0" />
+                          <span>{isPartial ? 'Receive Batch' : 'Receive GRN'}</span>
                         </button>
                       )}
                     </div>
@@ -1140,53 +1333,22 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
       {/* TAB 2: SUPPLIER RETURNS (RTV & DEBIT NOTES) */}
       {activeTab === 'returns' && (
         <div className="space-y-4">
-          {/* Top KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="text-[11px] font-bold uppercase text-slate-500">Total Returns Created</div>
-              <div className="text-xl font-black text-slate-900 mt-1">{activeSupplierReturns.length}</div>
-              <div className="text-[11px] font-semibold text-emerald-700 mt-0.5">
-                Total Value: {config.currencySymbol} {formatNumber(activeSupplierReturns.reduce((s, r) => s + r.grandTotal, 0))}
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="text-[11px] font-bold uppercase text-blue-600">Dispatched / In-Transit</div>
-              <div className="text-xl font-black text-blue-900 mt-1">
-                {activeSupplierReturns.filter((r) => r.status === 'Dispatched to Supplier').length}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Awaiting credit note / settlement</div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="text-[11px] font-bold uppercase text-emerald-600">Debit Notes Settled</div>
-              <div className="text-xl font-black text-emerald-900 mt-1">
-                {activeSupplierReturns.filter((r) => r.status === 'Debit Note Settled').length}
-              </div>
-              <div className="text-[11px] text-emerald-700 mt-0.5">Credits / refunds finalized</div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="text-[11px] font-bold uppercase text-teal-600">Replacement Received</div>
-              <div className="text-xl font-black text-teal-900 mt-1">
-                {activeSupplierReturns.filter((r) => r.status === 'Replacement Stock Received').length}
-              </div>
-              <div className="text-[11px] text-teal-700 mt-0.5">Restocked into inventory</div>
-            </div>
-          </div>
-
           {filteredReturns.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-              <RotateCcw className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="text-sm font-bold text-slate-700">No Supplier Returns Found</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                No vendor returns have been recorded yet. Click below to initiate an official Return to Vendor (RTV) & Debit Note for defective, damaged, or rejected stock.
+            <div className="bg-white/95 rounded-3xl border border-slate-200/90 p-10 sm:p-14 text-center shadow-2xs">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-700 flex items-center justify-center mx-auto mb-4">
+                <RotateCcw className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">No Supplier Returns Recorded</h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-lg mx-auto leading-relaxed">
+                Initiate an official Return to Vendor (RTV) and generate a printable Debit Note for defective, damaged, or non-conforming materials delivered by suppliers.
               </p>
               <button
+                type="button"
                 onClick={handleOpenCreateReturn}
-                className="mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm active:scale-95"
+                className="mt-5 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs inline-flex items-center gap-2 whitespace-nowrap"
               >
-                + Create Return to Supplier
+                <RotateCcw className="w-4 h-4" />
+                <span>Create Return to Supplier (Debit Note)</span>
               </button>
             </div>
           ) : (
@@ -1195,65 +1357,78 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                 const totalUnits = ret.items.reduce((s, i) => s + i.quantity, 0);
                 const isDraft = ret.status === 'Draft';
                 const isDispatched = ret.status === 'Dispatched to Supplier';
-                const isSettled = ret.status === 'Debit Note Settled' || ret.status === 'Replacement Stock Received';
 
                 return (
                   <div
                     key={ret.id}
-                    className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
                   >
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono font-bold text-slate-900 text-sm">{ret.rtvNumber}</span>
-                        <span className="text-slate-300">•</span>
+                        <span className="font-mono tabular-nums font-extrabold text-slate-900 text-sm">
+                          {ret.rtvNumber}
+                        </span>
+                        <span aria-hidden="true" className="text-slate-300">·</span>
                         <span className="text-xs font-bold text-slate-800">{ret.supplierName}</span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                             ret.status === 'Dispatched to Supplier'
-                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              ? 'bg-blue-50 text-blue-800 border border-blue-200'
                               : ret.status === 'Debit Note Settled'
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                               : ret.status === 'Replacement Stock Received'
-                              ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                              ? 'bg-teal-50 text-teal-800 border border-teal-200'
                               : ret.status === 'Draft'
                               ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                              : 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-rose-50 text-rose-800 border border-rose-200'
                           }`}
                         >
                           {ret.status}
                         </span>
                         <span className="text-[11px] text-slate-500 font-medium">
-                          ({ret.settlementType})
+                          · {ret.settlementType}
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                        <span>Date: <strong>{formatDate(ret.returnDate)}</strong></span>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                        <span>Date: <strong className="font-mono tabular-nums text-slate-700">{formatDate(ret.returnDate)}</strong></span>
+                        <span aria-hidden="true">·</span>
                         <span>
-                          Origin: <strong>{ret.locationType === 'Main Stock' ? 'Main Central Depot' : ret.siteName || 'Site Yard'}</strong>
+                          Origin: <strong className="text-slate-700">{ret.locationType === 'Main Stock' ? 'Main Central Depot' : ret.siteName || 'Site Yard'}</strong>
                         </span>
-                        {ret.poReference && <span>PO Ref: <strong className="font-mono">{ret.poReference}</strong></span>}
-                        {ret.gatePassNo && <span>Gate Pass: <strong className="font-mono">{ret.gatePassNo}</strong></span>}
-                        {ret.settlementRef && <span>Settlement Ref: <strong className="font-mono text-emerald-700">{ret.settlementRef}</strong></span>}
+                        {ret.poReference && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span>PO Ref: <strong className="font-mono tabular-nums text-slate-700">{ret.poReference}</strong></span>
+                          </>
+                        )}
+                        {ret.gatePassNo && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span>Gate Pass: <strong className="font-mono tabular-nums text-slate-700">{ret.gatePassNo}</strong></span>
+                          </>
+                        )}
+                        {ret.settlementRef && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span>Settlement Ref: <strong className="font-mono tabular-nums text-emerald-700">{ret.settlementRef}</strong></span>
+                          </>
+                        )}
                       </div>
 
-                      {/* Items Pill Summary */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[11px] font-bold text-slate-700">
-                          {totalUnits} units across {ret.items.length} item(s):
+                      {/* Clean Unboxed Items Summary */}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-[11px] text-slate-600">
+                        <span className="font-bold text-slate-800 font-mono tabular-nums">
+                          {totalUnits} units ({ret.items.length} items):
                         </span>
                         {ret.items.slice(0, 3).map((it, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700"
-                          >
-                            <span className="font-semibold">{it.itemName}</span>
-                            <span className="text-slate-500">({it.quantity} {it.unit})</span>
-                            <span className="text-amber-700 font-medium">• {it.reasonCategory}</span>
+                          <span key={idx}>
+                            <strong className="text-slate-800">{it.itemName}</strong> ({it.quantity} {it.unit} · {it.reasonCategory})
+                            {idx < Math.min(ret.items.length, 3) - 1 ? ' / ' : ''}
                           </span>
                         ))}
                         {ret.items.length > 3 && (
-                          <span className="text-[11px] text-slate-500 italic">+{ret.items.length - 3} more</span>
+                          <span className="text-slate-500 italic">+{ret.items.length - 3} more</span>
                         )}
                       </div>
                     </div>
@@ -1261,8 +1436,8 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                     {/* Financial Amount & Actions */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                       <div className="text-left md:text-right">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Debit Claim Total</div>
-                        <div className="font-mono font-black text-base text-emerald-800">
+                        <div className="text-[11px] font-medium text-slate-400">Debit Claim Total</div>
+                        <div className="font-mono tabular-nums font-extrabold text-base text-emerald-800">
                           {config.currencySymbol} {formatNumber(ret.grandTotal)}
                         </div>
                       </div>
@@ -1270,8 +1445,9 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                       <div className="flex flex-wrap items-center gap-1.5">
                         {isDraft && (
                           <button
+                            type="button"
                             onClick={() => handleDispatchReturn(ret)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95"
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer whitespace-nowrap"
                             title="Dispatch goods to supplier & deduct stock from inventory"
                           >
                             <Truck className="w-3.5 h-3.5" />
@@ -1281,8 +1457,9 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
 
                         {isDispatched && (
                           <button
+                            type="button"
                             onClick={() => setSettlingReturn(ret)}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer whitespace-nowrap"
                             title="Record vendor credit note or replacement goods arrival"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1291,8 +1468,9 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                         )}
 
                         <button
+                          type="button"
                           onClick={() => setSelectedReturnForDebitNote(ret)}
-                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95"
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer whitespace-nowrap"
                           title="View & Print Official Debit Note / RTV Voucher"
                         >
                           <Printer className="w-3.5 h-3.5 text-amber-300" />
@@ -1301,6 +1479,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
 
                         {isDraft && (
                           <button
+                            type="button"
                             onClick={() => handleOpenEditReturn(ret)}
                             className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
                             title="Edit Return"
@@ -1310,6 +1489,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                         )}
 
                         <button
+                          type="button"
                           onClick={() => handleDeleteReturn(ret)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                           title="Delete Return Record"
@@ -1330,17 +1510,21 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
       {activeTab === 'suppliers' && (
         <div className="space-y-4">
           {filteredSuppliers.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-              <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="text-sm font-bold text-slate-700">No Suppliers Registered</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                Add your approved material suppliers, hardware vendors, cable manufacturers, and equipment providers.
+            <div className="bg-white/95 rounded-3xl border border-slate-200/90 p-10 sm:p-14 text-center shadow-2xs">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-700 flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">No Suppliers Registered Yet</h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-lg mx-auto leading-relaxed">
+                Register your approved material suppliers, hardware vendors, cable manufacturers, and equipment providers to issue Purchase Orders and track deliveries.
               </p>
               <button
+                type="button"
                 onClick={openAddSupplier}
-                className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+                className="mt-5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer inline-flex items-center gap-2 shadow-xs whitespace-nowrap"
               >
-                Register First Supplier
+                <Plus className="w-4 h-4" />
+                <span>Register First Supplier</span>
               </button>
             </div>
           ) : (
@@ -1351,7 +1535,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                 return (
                   <div
                     key={s.id}
-                    className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between"
+                    className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between"
                   >
                     <div>
                       {/* Supplier Top Header */}
@@ -1359,19 +1543,19 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                         <div className="min-w-0">
                           <h3 className="text-base font-bold text-slate-900 truncate">{s.name}</h3>
                           {s.category && (
-                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
+                            <div className="text-[11px] font-medium text-slate-500 mt-0.5">
                               {s.category}
-                            </span>
+                            </div>
                           )}
                         </div>
 
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                        <span className="text-xs font-mono tabular-nums font-bold text-emerald-700 shrink-0">
                           {supplierPoCount} Orders
                         </span>
                       </div>
 
                       {/* Contact Info */}
-                      <div className="space-y-2 text-xs text-slate-600 py-2 border-t border-b border-slate-100">
+                      <div className="space-y-2 text-xs text-slate-600 py-2.5 border-t border-b border-slate-100">
                         {s.contactPerson && (
                           <div className="flex items-center gap-2">
                             <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1387,7 +1571,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                             {s.email}
                           </a>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 font-mono tabular-nums">
                           <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>{s.phone}</span>
                         </div>
@@ -1399,7 +1583,11 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                         )}
                         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
                           <span>Terms: <strong className="text-slate-700">{s.paymentTerms || 'Net 30'}</strong></span>
-                          {s.businessRegNo && <span>Tax/BRN: <strong className="text-slate-700">{s.businessRegNo}</strong></span>}
+                          {s.businessRegNo && (
+                            <span className="font-mono tabular-nums">
+                              Tax/BRN: <strong className="text-slate-700">{s.businessRegNo}</strong>
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -1414,6 +1602,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                     <div className="mt-4 pt-3 flex items-center justify-between border-t border-slate-100">
                       <div className="flex items-center gap-1.5">
                         <button
+                          type="button"
                           onClick={() => openEditSupplier(s)}
                           className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
                           title="Edit Supplier"
@@ -1421,6 +1610,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                           <Edit className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDeleteSupplier(s)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                           title="Delete Supplier"
@@ -1430,13 +1620,14 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                       </div>
 
                       <button
+                        type="button"
                         onClick={() => {
                           openCreateOrder();
                           handleSupplierSelectChange(s.id);
                         }}
-                        className="py-1 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                        className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5" />
                         <span>Issue PO</span>
                       </button>
                     </div>

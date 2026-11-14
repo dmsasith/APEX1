@@ -434,10 +434,16 @@ export interface ProjectType {
   isDeleted?: boolean;
 }
 
+export type ProjectScope = 'individual' | 'main' | 'sub';
+
 export interface Project {
   id: string;
   projectId: string; // e.g. PRJ-2026-001 or Site ID / Order No
   projectName: string;
+  projectScope?: ProjectScope; // 'individual' (Standalone) | 'main' (Major Umbrella Project) | 'sub' (Sub-Project under Main Project)
+  parentProjectId?: string; // ID of parent Major/Main Project when projectScope === 'sub'
+  parentProjectCode?: string; // Display code of parent Major/Main Project
+  parentProjectName?: string; // Display name of parent Major/Main Project
   customerName?: string;
   customerPhone?: string;
   siteIdentifier?: string; // Physical Site ID, Connection ID, Work Order No
@@ -464,6 +470,8 @@ export interface ProjectMaterialUsage {
   usageVoucherNumber: string; // UV-2026-XXXX
   projectId: string;
   projectName: string;
+  parentProjectId?: string;
+  parentProjectName?: string;
   customerName?: string;
   customerPhone?: string;
   siteIdentifier?: string;
@@ -515,6 +523,9 @@ export interface ClientFreeIssueEntry {
   clientName: string; // e.g. Telecommunications Operator, Utility Owner, Main Contractor, etc.
   projectId: string;
   projectName: string;
+  projectScope?: ProjectScope;
+  parentProjectId?: string;
+  parentProjectName?: string;
   siteIdentifier?: string;
   dispatchNoteNo?: string; // Client Gate Pass / Dispatch Note Number
   receivedDate: string;

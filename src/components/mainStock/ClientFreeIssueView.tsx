@@ -57,6 +57,7 @@ export const ClientFreeIssueView: React.FC = () => {
     items,
     projects,
     activeProjects,
+    updateProject,
     clientFreeIssues,
     addClientFreeIssue,
     deleteClientFreeIssue,
@@ -114,6 +115,7 @@ export const ClientFreeIssueView: React.FC = () => {
 
   // Form State for Logging Client Free-Issue Shipment (DN)
   const [formClientName, setFormClientName] = useState(activeClients[0]?.name || '');
+  const [formProjectMode, setFormProjectMode] = useState<'main' | 'individual' | 'all'>('main');
   const [formProjectId, setFormProjectId] = useState(activeProjects[0]?.id || '');
   const [formDispatchNoteNo, setFormDispatchNoteNo] = useState('');
   const [formReceivedDate, setFormReceivedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -295,22 +297,26 @@ export const ClientFreeIssueView: React.FC = () => {
     return Array.from(names);
   }, [activeClients, activeVouchers]);
 
-  // Overall KPIs
+  // Overall KPIs (deduplicated by Root/Main Project so Sub-Projects don't double-count)
   const kpis = useMemo(() => {
     let totalUnitsReceived = 0;
-    const projectSet = new Set<string>();
+    const rootProjectSet = new Set<string>();
 
     activeVouchers.forEach((v) => {
-      if (v.projectId) projectSet.add(v.projectId);
+      if (v.projectId) {
+        const proj = projects.find((p) => p.id === v.projectId);
+        const rootId = proj?.parentProjectId || v.projectId;
+        rootProjectSet.add(rootId);
+      }
       v.items.forEach((it) => {
         totalUnitsReceived += Number(it.quantity) || 0;
       });
     });
 
-    // Calculate total consumed from client stock
+    // Calculate total consumed from client stock across each root project family
     let totalUnitsInstalled = 0;
-    projectSet.forEach((projId) => {
-      const stockList = getProjectFreeStockList(projId);
+    rootProjectSet.forEach((rootId) => {
+      const stockList = getProjectFreeStockList(rootId);
       stockList.forEach((row) => {
         totalUnitsInstalled += row.totalUsed;
       });
@@ -323,9 +329,9 @@ export const ClientFreeIssueView: React.FC = () => {
       totalUnitsReceived,
       totalUnitsInstalled,
       netRemaining,
-      assignedProjectsCount: projectSet.size,
+      assignedProjectsCount: rootProjectSet.size,
     };
-  }, [activeVouchers, getProjectFreeStockList]);
+  }, [activeVouchers, projects, getProjectFreeStockList]);
 
   // Filtered Vouchers List
   const filteredVouchers = useMemo(() => {
@@ -363,15 +369,21 @@ export const ClientFreeIssueView: React.FC = () => {
     });
   }, [activeClients, selectedClientFilter, searchQuery]);
 
-  // Project Balance Overview
+  // Project Balance Overview (Grouped by Root Main Project or Standalone Individual Project)
   const projectSummaries = useMemo(() => {
-    const list = activeProjects.map((p) => {
+    const rootProjects = activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub');
+
+    const list = rootProjects.map((p) => {
+      const childSubProjects = activeProjects.filter((sp) => sp.parentProjectId === p.id);
+      const isMainProject = p.projectScope === 'main' || childSubProjects.length > 0;
       const freeStockItems = getProjectFreeStockList(p.id);
       const totalRecv = freeStockItems.reduce((acc, it) => acc + it.totalReceived, 0);
       const totalUsed = freeStockItems.reduce((acc, it) => acc + it.totalUsed, 0);
       const totalRem = freeStockItems.reduce((acc, it) => acc + it.remainingBalance, 0);
       return {
         project: p,
+        isMainProject,
+        childSubProjects,
         items: freeStockItems,
         totalRecv,
         totalUsed,
@@ -379,15 +391,24 @@ export const ClientFreeIssueView: React.FC = () => {
       };
     });
 
-    // Filter by project dropdown & search
+    // Filter by project dropdown (matches either root project or one of its child sub-projects) & search
     return list.filter((item) => {
-      if (selectedProjectFilter !== 'all' && item.project.id !== selectedProjectFilter) return false;
+      if (
+        selectedProjectFilter !== 'all' &&
+        item.project.id !== selectedProjectFilter &&
+        !item.childSubProjects.some((sp) => sp.id === selectedProjectFilter)
+      ) {
+        return false;
+      }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matchProj =
           item.project.projectName.toLowerCase().includes(q) ||
           item.project.projectId.toLowerCase().includes(q) ||
           (item.project.siteIdentifier || '').toLowerCase().includes(q) ||
+          item.childSubProjects.some(
+            (sp) => sp.projectName.toLowerCase().includes(q) || sp.projectId.toLowerCase().includes(q)
+          ) ||
           item.items.some((it) => it.itemName.toLowerCase().includes(q) || it.itemCode.toLowerCase().includes(q));
         if (!matchProj) return false;
       }
@@ -436,7 +457,12 @@ export const ClientFreeIssueView: React.FC = () => {
 
   const handleOpenLogModal = (preselectedClientName?: string) => {
     setFormClientName(preselectedClientName || activeClients[0]?.name || '');
-    setFormProjectId(activeProjects[0]?.id || '');
+    const mainProjs = activeProjects.filter(
+      (p) => p.projectScope === 'main' || activeProjects.some((sp) => sp.parentProjectId === p.id)
+    );
+    const defaultMode = mainProjs.length > 0 ? 'main' : 'all';
+    setFormProjectMode(defaultMode);
+    setFormProjectId(mainProjs[0]?.id || activeProjects.find((p) => !p.parentProjectId)?.id || activeProjects[0]?.id || '');
     setFormDispatchNoteNo('');
     setFormReceivedDate(new Date().toISOString().split('T')[0]);
     setFormReceivedBy(currentUser?.fullName || 'Logistics Coordinator');
@@ -488,10 +514,18 @@ export const ClientFreeIssueView: React.FC = () => {
 
     const targetProj = activeProjects.find((p) => p.id === formProjectId) || projects.find((p) => p.id === formProjectId);
 
+    // If user explicitly received stock "Under Main Project", ensure targetProj is marked as a Main Project
+    if (formProjectMode === 'main' && targetProj && !targetProj.parentProjectId && targetProj.projectScope !== 'main') {
+      updateProject(targetProj.id, { projectScope: 'main' });
+    }
+
     addClientFreeIssue({
       clientName: formClientName.trim(),
       projectId: formProjectId,
       projectName: targetProj?.projectName || 'Assigned Project',
+      projectScope: formProjectMode === 'main' ? 'main' : (targetProj?.projectScope || 'individual'),
+      parentProjectId: targetProj?.parentProjectId,
+      parentProjectName: targetProj?.parentProjectName,
       siteIdentifier: targetProj?.siteIdentifier || '',
       dispatchNoteNo: formDispatchNoteNo.trim(),
       receivedDate: formReceivedDate,
@@ -502,7 +536,7 @@ export const ClientFreeIssueView: React.FC = () => {
     });
 
     setShowLogModal(false);
-    triggerToast(`Client Free-Issue Shipment (${formDispatchNoteNo.trim()}) logged for ${formClientName.trim()}.`);
+    triggerToast(`Client Free-Issue Shipment (${formDispatchNoteNo.trim()}) logged under ${targetProj?.projectName || 'Project'}.`);
   };
 
   const handleDeleteEntry = (entry: ClientFreeIssueEntry) => {
@@ -768,7 +802,7 @@ export const ClientFreeIssueView: React.FC = () => {
               <div className="space-y-4">
                 {projectSummaries
                   .filter((p) => p.items.length > 0)
-                  .map(({ project, items: freeItems, totalRecv, totalUsed, totalRem }) => (
+                  .map(({ project, isMainProject, childSubProjects, items: freeItems, totalRecv, totalUsed, totalRem }) => (
                     <div
                       key={project.id}
                       className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs hover:border-indigo-300 transition-all"
@@ -776,10 +810,19 @@ export const ClientFreeIssueView: React.FC = () => {
                       {/* Project Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md">
                               {project.projectId}
                             </span>
+                            {isMainProject ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                                <span>🏢 Under Main Project ({childSubProjects.length} Sub-Projects)</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold uppercase">
+                                <span>📄 Individual Project</span>
+                              </span>
+                            )}
                             <h3 className="text-base font-extrabold text-slate-900">
                               {project.projectName}
                             </h3>
@@ -789,27 +832,38 @@ export const ClientFreeIssueView: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-slate-500 flex items-center gap-3">
+                          <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3">
                             {project.customerName && <span>Customer: <strong className="text-slate-700">{project.customerName}</strong></span>}
                             {project.district && <span>District: <strong className="text-slate-700">{project.district}</strong></span>}
                             <span>Total Free Materials: <strong className="text-slate-700">{freeItems.length} lines</strong></span>
+                            {isMainProject && (
+                              <span className="text-indigo-700 font-semibold">
+                                • Sub-Project usage automatically deducts from this Main Project pool
+                              </span>
+                            )}
                           </div>
                         </div>
 
                         {/* Mini Balances Pill */}
                         <div className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-200">
                           <div className="px-2">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Received</div>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">
+                              {isMainProject ? 'Main Pool Recv' : 'Received'}
+                            </div>
                             <div className="font-mono font-bold text-slate-800">{formatNumber(totalRecv)}</div>
                           </div>
                           <div className="h-6 w-px bg-slate-200" />
                           <div className="px-2">
-                            <div className="text-[10px] text-amber-600 font-bold uppercase">Installed</div>
+                            <div className="text-[10px] text-amber-600 font-bold uppercase">
+                              {isMainProject ? 'All Subs Used' : 'Installed'}
+                            </div>
                             <div className="font-mono font-bold text-amber-700">{formatNumber(totalUsed)}</div>
                           </div>
                           <div className="h-6 w-px bg-slate-200" />
                           <div className="px-2">
-                            <div className="text-[10px] text-emerald-600 font-bold uppercase">In Hand</div>
+                            <div className="text-[10px] text-emerald-600 font-bold uppercase">
+                              {isMainProject ? 'Pool Balance' : 'In Hand'}
+                            </div>
                             <div className="font-mono font-black text-emerald-700">{formatNumber(totalRem)}</div>
                           </div>
                         </div>
@@ -822,8 +876,10 @@ export const ClientFreeIssueView: React.FC = () => {
                             <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
                               <th className="py-2.5 px-3">Item Code</th>
                               <th className="py-2.5 px-3">Material Description</th>
-                              <th className="py-2.5 px-3 text-right">Received from Client</th>
-                              <th className="py-2.5 px-3 text-right">Field Installed (Used)</th>
+                              <th className="py-2.5 px-3 text-right">Received Under Main</th>
+                              <th className="py-2.5 px-3 text-right">
+                                {isMainProject ? 'Total Used (All Sub-Projects)' : 'Field Installed (Used)'}
+                              </th>
                               <th className="py-2.5 px-3 text-right">Remaining Stock</th>
                               <th className="py-2.5 px-3 text-center">Status</th>
                             </tr>
@@ -869,6 +925,79 @@ export const ClientFreeIssueView: React.FC = () => {
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Sub-Project Consumption Breakdown (for Major / Main Projects) */}
+                      {isMainProject && childSubProjects.length > 0 && (
+                        <div className="mt-4 pt-3.5 border-t border-indigo-100 bg-indigo-50/40 rounded-xl p-3.5">
+                          <div className="flex items-center justify-between mb-2.5">
+                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
+                              <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Sub-Projects Individual Usage Breakdown ({childSubProjects.length} Sub-Projects)</span>
+                            </span>
+                            <span className="text-[11px] text-indigo-700 font-medium">
+                              Automatically deducted from Main Project [{project.projectId}]
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                            {childSubProjects.map((sp) => {
+                              const spItemUsages = freeItems
+                                .map((fi) => {
+                                  const match = fi.subProjectBreakdown?.find((b) => b.subProjectId === sp.id);
+                                  return {
+                                    itemCode: fi.itemCode,
+                                    itemName: fi.itemName,
+                                    unit: fi.unit,
+                                    usedQty: match?.usedQty || 0,
+                                  };
+                                })
+                                .filter((x) => x.usedQty > 0);
+
+                              return (
+                                <div
+                                  key={sp.id}
+                                  className="bg-white border border-indigo-200/80 rounded-xl p-3 shadow-2xs flex flex-col justify-between"
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                      <span className="font-mono text-[10px] font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                                        ↳ {sp.projectId}
+                                      </span>
+                                      {sp.siteIdentifier && (
+                                        <span className="text-[10px] font-mono text-slate-500">
+                                          Site: {sp.siteIdentifier}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="font-bold text-xs text-slate-900 mb-2">
+                                      {sp.projectName}
+                                    </div>
+
+                                    {spItemUsages.length === 0 ? (
+                                      <div className="text-[11px] text-slate-400 italic">
+                                        No free stock consumed on this sub-project yet.
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-1 border-t border-slate-100 pt-1.5">
+                                        {spItemUsages.map((u, idx) => (
+                                          <div key={idx} className="flex items-center justify-between text-[11px]">
+                                            <span className="text-slate-600 truncate pr-2">
+                                              [{u.itemCode}] {u.itemName}
+                                            </span>
+                                            <span className="font-mono font-bold text-amber-700 shrink-0">
+                                              -{formatNumber(u.usedQty)} {u.unit}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
               </div>
@@ -1614,21 +1743,92 @@ export const ClientFreeIssueView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Assigned Project <span className="text-rose-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Target Project Mode <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormProjectMode('main');
+                          const mainProjs = activeProjects.filter(
+                            (p) => !p.parentProjectId && p.projectScope !== 'sub'
+                          );
+                          if (mainProjs.length > 0) setFormProjectId(mainProjs[0].id);
+                        }}
+                        className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                          formProjectMode === 'main'
+                            ? 'bg-indigo-600 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🏢 Under Main Project
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormProjectMode('individual');
+                          const indProjs = activeProjects.filter(
+                            (p) =>
+                              !p.parentProjectId &&
+                              p.projectScope !== 'main' &&
+                              !activeProjects.some((sp) => sp.parentProjectId === p.id)
+                          );
+                          if (indProjs.length > 0) setFormProjectId(indProjs[0].id);
+                        }}
+                        className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                          formProjectMode === 'individual'
+                            ? 'bg-slate-900 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        📄 Individual Project
+                      </button>
+                    </div>
+                  </div>
                   <select
                     required
                     value={formProjectId}
                     onChange={(e) => setFormProjectId(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    {activeProjects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.projectName} ({p.projectId}) {p.siteIdentifier ? `— Site: ${p.siteIdentifier}` : ''}
-                      </option>
-                    ))}
+                    {(() => {
+                      const candidateProjects =
+                        formProjectMode === 'main'
+                          ? activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub')
+                          : formProjectMode === 'individual'
+                          ? activeProjects.filter(
+                              (p) =>
+                                !p.parentProjectId &&
+                                p.projectScope !== 'main' &&
+                                !activeProjects.some((sp) => sp.parentProjectId === p.id)
+                            )
+                          : activeProjects;
+
+                      if (candidateProjects.length === 0) {
+                        return <option value="">-- No Matching Projects Found --</option>;
+                      }
+
+                      return candidateProjects.map((p) => {
+                        const subCount = activeProjects.filter((sp) => sp.parentProjectId === p.id).length;
+                        const prefix =
+                          formProjectMode === 'main' || p.projectScope === 'main' || subCount > 0
+                            ? `🏢 [Under Main Project] `
+                            : `📄 `;
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {prefix}{p.projectName} ({p.projectId}){subCount > 0 ? ` — ${subCount} Sub-Projects` : ''}{p.siteIdentifier ? ` — Site: ${p.siteIdentifier}` : ''}
+                          </option>
+                        );
+                      });
+                    })()}
                   </select>
+                  {formProjectMode === 'main' && (
+                    <p className="text-[11px] text-indigo-700 font-medium mt-1">
+                      ✓ Stock received under this Main Project will automatically deduct whenever material usage is logged on any of its Sub-Projects.
+                    </p>
+                  )}
                 </div>
               </div>
 

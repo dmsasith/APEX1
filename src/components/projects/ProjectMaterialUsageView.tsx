@@ -141,21 +141,57 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const targetSection = activeProjectTypes.find((pt) => pt.id === selectedSectionId);
 
   // Project Entry Mode ('new' on-the-fly or 'existing')
-  const [projectEntryMode, setProjectEntryMode] = useState<'new' | 'existing'>('new');
+  const [projectEntryMode, setProjectEntryMode] = useState<'new' | 'existing'>('existing');
+  const [newProjectScope, setNewProjectScope] = useState<'individual' | 'sub'>('sub');
+  const [newParentProjectId, setNewParentProjectId] = useState<string>('');
+  const [entrySubProjectName, setEntrySubProjectName] = useState('');
   const [entryCustomerName, setEntryCustomerName] = useState('');
   const [entryCustomerPhone, setEntryCustomerPhone] = useState('');
   const [entrySiteId, setEntrySiteId] = useState('');
   const [entryDistrict, setEntryDistrict] = useState('');
   const [entrySubArea, setEntrySubArea] = useState('');
   const [existingProjectFocClientId, setExistingProjectFocClientId] = useState('');
+  const [existingScopeFilter, setExistingScopeFilter] = useState<'all' | 'sub' | 'main' | 'individual'>('all');
+  const [existingMainParentFilter, setExistingMainParentFilter] = useState<string>('all');
+
+  // Helper to classify projects
+  const mainProjectsList = React.useMemo(
+    () =>
+      activeProjects.filter(
+        (p) => p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id)
+      ),
+    [activeProjects]
+  );
 
   // Existing Project selection (filtered by section when possible)
-  const sectionProjects = activeProjects.filter((p) => !selectedSectionId || p.projectTypeId === selectedSectionId);
+  const sectionProjects = React.useMemo(() => {
+    return activeProjects.filter((p) => {
+      const matchSection = !selectedSectionId || !p.projectTypeId || p.projectTypeId === selectedSectionId;
+      if (!matchSection) return false;
+      const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
+      const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
+      const isIndiv = !isMain && !isSub;
+
+      if (existingScopeFilter === 'sub' && !isSub) return false;
+      if (existingScopeFilter === 'main' && !isMain) return false;
+      if (existingScopeFilter === 'individual' && !isIndiv) return false;
+      if (existingMainParentFilter !== 'all') {
+        if (p.id !== existingMainParentFilter && p.parentProjectId !== existingMainParentFilter) return false;
+      }
+      return true;
+    });
+  }, [activeProjects, selectedSectionId, existingScopeFilter, existingMainParentFilter]);
+
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
     sectionProjects[0]?.id || activeProjects[0]?.id || ''
   );
   const targetProject = projects.find((p) => p.id === selectedProjectId) || activeProjects.find((p) => p.id === selectedProjectId);
-  const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
+  const currentTargetProjId =
+    projectEntryMode === 'existing'
+      ? selectedProjectId
+      : newProjectScope === 'sub' && newParentProjectId
+      ? newParentProjectId
+      : '';
   const projectFreeMaterials = currentTargetProjId ? getProjectFreeStockList(currentTargetProjId) : [];
 
   // Supervisor / Team Leader
@@ -337,7 +373,16 @@ export const ProjectMaterialUsageView: React.FC = () => {
     setErrorMsg('');
 
     if (projectEntryMode === 'new') {
-      if (!entryCustomerName.trim()) {
+      if (newProjectScope === 'sub') {
+        if (!newParentProjectId) {
+          setErrorMsg('Please select the Parent Major / Main Project for this Sub-Project.');
+          return;
+        }
+        if (!entrySubProjectName.trim()) {
+          setErrorMsg('Please enter the Sub-Project Name / Work Area.');
+          return;
+        }
+      } else if (!entryCustomerName.trim()) {
         setErrorMsg('Please enter the Project or Customer Name.');
         return;
       }
@@ -406,23 +451,43 @@ export const ProjectMaterialUsageView: React.FC = () => {
       let finalSiteIdentifier = targetProject?.siteIdentifier || '';
       let finalCustomerPhone = targetProject?.customerPhone || '';
       let finalCustomerName = targetProject?.customerName || '';
+      let finalParentProjectId = targetProject?.parentProjectId;
 
-      // If in 'new' mode, dynamically register the project into the Project Registry!
+      // If in 'new' mode, dynamically register the project or sub-project into the Project Registry!
       if (projectEntryMode === 'new') {
+        const parentMainObj =
+          newProjectScope === 'sub' && newParentProjectId
+            ? projects.find((p) => p.id === newParentProjectId)
+            : undefined;
+
         const generatedProjId = entrySiteId.trim()
           ? entrySiteId.trim().toUpperCase()
+          : parentMainObj
+          ? `${parentMainObj.projectId}-SUB-${Math.floor(10 + Math.random() * 90)}`
           : `PRJ-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+
+        const resolvedProjectName =
+          newProjectScope === 'sub' ? entrySubProjectName.trim() : entryCustomerName.trim();
+        const resolvedCustomerName =
+          entryCustomerName.trim() || parentMainObj?.customerName || resolvedProjectName;
 
         const registeredProject = addProject({
           projectId: generatedProjId,
-          projectName: entryCustomerName.trim(),
-          customerName: entryCustomerName.trim(),
-          customerPhone: entryCustomerPhone.trim() || undefined,
+          projectName: resolvedProjectName,
+          projectScope: newProjectScope === 'sub' ? 'sub' : 'individual',
+          parentProjectId: parentMainObj?.id,
+          parentProjectCode: parentMainObj?.projectId,
+          parentProjectName: parentMainObj?.projectName,
+          customerName: resolvedCustomerName,
+          customerPhone: entryCustomerPhone.trim() || parentMainObj?.customerPhone || undefined,
           siteIdentifier: entrySiteId.trim().toUpperCase() || undefined,
-          projectTypeId: selectedSectionId || undefined,
-          projectTypeName: activeSec?.name,
+          projectTypeId: selectedSectionId || parentMainObj?.projectTypeId || undefined,
+          projectTypeName: activeSec?.name || parentMainObj?.projectTypeName,
           referenceNo: `REF-${Math.floor(1000 + Math.random() * 9000)}`,
-          district: entryDistrict.trim() || (sites.find((s) => s.id === selectedSiteId)?.location || 'General'),
+          district:
+            entryDistrict.trim() ||
+            parentMainObj?.district ||
+            (sites.find((s) => s.id === selectedSiteId)?.location || 'General'),
           subArea: entrySubArea.trim() || 'Field Site',
           status: 'Active',
         });
@@ -432,19 +497,23 @@ export const ProjectMaterialUsageView: React.FC = () => {
         finalSiteIdentifier = registeredProject.siteIdentifier || '';
         finalCustomerPhone = registeredProject.customerPhone || '';
         finalCustomerName = registeredProject.customerName || '';
+        finalParentProjectId = registeredProject.parentProjectId;
       } else {
         if (existingProjectFocClientId) {
           finalCustomerName = existingProjectFocClientId;
         }
       }
 
-      // Check project reservation restrictions
+      // Check project reservation restrictions (allow Sub-Projects to use stock reserved for their Parent Main Project)
       const reservedConflicts: { item: typeof items[0]; reservedFor: string }[] = [];
       for (const row of validRows) {
         const itm = items.find((i) => i.id === row.itemId);
         if (itm && itm.isProjectReserved && itm.reservedProjectId) {
-          if (projectEntryMode === 'existing' && itm.reservedProjectId === finalProjectId) {
-            // Valid reserved item usage for its assigned project
+          const isSameOrParentMatch =
+            itm.reservedProjectId === finalProjectId ||
+            (finalParentProjectId && itm.reservedProjectId === finalParentProjectId);
+          if (isSameOrParentMatch) {
+            // Valid reserved item usage for its assigned project or parent Main Project
             continue;
           } else {
             reservedConflicts.push({
@@ -524,6 +593,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
       // Reset form fields
       setWorkDetails('');
+      setEntrySubProjectName('');
       setEntryCustomerName('');
       setEntryCustomerPhone('');
       setEntrySiteId('');
@@ -592,10 +662,19 @@ export const ProjectMaterialUsageView: React.FC = () => {
     setEditingVoucher(null);
   };
 
-  // Filtered usages history
+  // Filtered usages history (supports filtering by a Main Project to show all its Sub-Projects too!)
   const filteredUsages = projectUsages.filter((pu) => {
     if (pu.isDeleted) return false;
-    if (projectFilter !== 'all' && pu.projectId !== projectFilter) return false;
+    if (projectFilter !== 'all') {
+      const childSubIds = new Set(
+        projects.filter((p) => p.parentProjectId === projectFilter).map((p) => p.id)
+      );
+      const matchesProjectOrChild =
+        pu.projectId === projectFilter ||
+        pu.parentProjectId === projectFilter ||
+        childSubIds.has(pu.projectId);
+      if (!matchesProjectOrChild) return false;
+    }
     if (teamFilter !== 'all' && pu.teamId !== teamFilter) return false;
     if (sectionFilter !== 'all' && pu.projectTypeId !== sectionFilter) return false;
     if (isSiteRestricted && !userHasSiteAccess(currentUser, pu.siteId, activeSites)) return false;
@@ -603,19 +682,63 @@ export const ProjectMaterialUsageView: React.FC = () => {
       const q = searchFilter.toLowerCase();
       const matchVoucher = pu.usageVoucherNumber.toLowerCase().includes(q);
       const matchProj = (pu.projectName || '').toLowerCase().includes(q);
+      const matchParent = (pu.parentProjectName || '').toLowerCase().includes(q);
       const matchTeam = (pu.teamName || '').toLowerCase().includes(q);
       const matchLead = (pu.supervisorOrLeader || pu.supervisorOrLeaderName || '').toLowerCase().includes(q);
       const matchDetails = (pu.workDetails || '').toLowerCase().includes(q);
-      return matchVoucher || matchProj || matchTeam || matchLead || matchDetails;
+      return matchVoucher || matchProj || matchParent || matchTeam || matchLead || matchDetails;
     }
     return true;
   });
 
-  // Reconcile project calculations
+  // Reconcile project calculations (supports Major / Main Project family aggregation + Sub-Project breakdown)
   const reconcileProject = projects.find((p) => p.id === reconcileProjectId) || activeProjects[0];
-  const reconcileUsages = reconcileProject
-    ? projectUsages.filter((pu) => pu.projectId === reconcileProject.id && !pu.isDeleted)
-    : [];
+  const reconcileChildSubProjects = React.useMemo(
+    () =>
+      reconcileProject
+        ? activeProjects.filter((p) => p.parentProjectId === reconcileProject.id)
+        : [],
+    [reconcileProject, activeProjects]
+  );
+  const isReconcileMainProject =
+    reconcileProject?.projectScope === 'main' || reconcileChildSubProjects.length > 0;
+  const reconcileParentMainProject = reconcileProject?.parentProjectId
+    ? projects.find((p) => p.id === reconcileProject.parentProjectId)
+    : undefined;
+
+  const reconcileUsages = React.useMemo(() => {
+    if (!reconcileProject) return [];
+    const childSubIdSet = new Set(reconcileChildSubProjects.map((s) => s.id));
+    return projectUsages.filter(
+      (pu) =>
+        !pu.isDeleted &&
+        (pu.projectId === reconcileProject.id ||
+          pu.parentProjectId === reconcileProject.id ||
+          childSubIdSet.has(pu.projectId))
+    );
+  }, [reconcileProject, reconcileChildSubProjects, projectUsages]);
+
+  const reconcileSubProjectCards = React.useMemo(() => {
+    if (!reconcileProject || reconcileChildSubProjects.length === 0) return [];
+    return reconcileChildSubProjects.map((sub) => {
+      const subVouchers = projectUsages.filter((pu) => !pu.isDeleted && pu.projectId === sub.id);
+      const itemsMap = new Map<string, number>();
+      const teamsSet = new Set<string>();
+      subVouchers.forEach((v) => {
+        if (v.teamName) teamsSet.add(v.teamName);
+        v.items.forEach((r) => {
+          itemsMap.set(r.itemId, (itemsMap.get(r.itemId) || 0) + Number(r.quantity));
+        });
+      });
+      return {
+        subProject: sub,
+        vouchersCount: subVouchers.length,
+        teamsCount: teamsSet.size,
+        teamNames: Array.from(teamsSet),
+        items: Array.from(itemsMap.entries()),
+      };
+    });
+  }, [reconcileProject, reconcileChildSubProjects, projectUsages]);
 
   const reconcileTeamBreakdown = React.useMemo(() => {
     const map = new Map<string, { teamName: string; vouchersCount: number; itemsMap: Map<string, number> }>();
@@ -934,27 +1057,21 @@ export const ProjectMaterialUsageView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmitUsage} className="space-y-4">
-              {/* Step 2 Card: Project & Customer Details */}
+              {/* Step 2 Card: Project, Sub-Project & Customer Details */}
               <div className="p-4 bg-teal-50/70 border border-teal-200/90 rounded-xl shadow-2xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-200/60 pb-2.5">
-                  <span className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
-                    <FolderPlus className="w-4 h-4 text-teal-600" />
-                    <span>2. Project & Customer Identification</span>
-                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
+                      <FolderPlus className="w-4 h-4 text-teal-600" />
+                      <span>2. Project / Sub-Project & Customer Identification</span>
+                    </span>
+                    <span className="text-[11px] text-teal-800/80 block mt-0.5">
+                      Select a Sub-Project under a Major Project (auto-deducts from Main Project Free Stock) or an Individual Project.
+                    </span>
+                  </div>
 
                   {/* Mode Switcher */}
                   <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-teal-200 text-[11px] font-semibold self-start sm:self-auto shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setProjectEntryMode('new')}
-                      className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                        projectEntryMode === 'new'
-                          ? 'bg-teal-700 text-white shadow-2xs font-bold'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      + Enter Customer / New Site
-                    </button>
                     <button
                       type="button"
                       onClick={() => setProjectEntryMode('existing')}
@@ -966,21 +1083,129 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     >
                       Select Registered Project ({sectionProjects.length})
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProjectEntryMode('new');
+                        if (!newParentProjectId && mainProjectsList.length > 0) {
+                          setNewParentProjectId(mainProjectsList[0].id);
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-md transition cursor-pointer ${
+                        projectEntryMode === 'new'
+                          ? 'bg-teal-700 text-white shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      + Register New Sub-Project / Site
+                    </button>
                   </div>
                 </div>
 
                 {projectEntryMode === 'new' ? (
                   <div className="space-y-3 pt-1">
+                    {/* Choose whether registering a Sub-Project under a Main Project or a Standalone Individual Project */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewProjectScope('sub');
+                          if (!newParentProjectId && mainProjectsList.length > 0) {
+                            setNewParentProjectId(mainProjectsList[0].id);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                          newProjectScope === 'sub'
+                            ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-200'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold text-amber-950 flex items-center justify-between">
+                          <span>↳ New Sub-Project (Under Main Project)</span>
+                          {newProjectScope === 'sub' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-600 text-white">Active</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5">
+                          Create a Sub-Project under an existing Major Project and draw from its shared Free Stock pool.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setNewProjectScope('individual')}
+                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                          newProjectScope === 'individual'
+                            ? 'bg-teal-50/90 border-teal-500 ring-2 ring-teal-200'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold text-teal-950 flex items-center justify-between">
+                          <span>📄 New Individual Project (Standalone)</span>
+                          {newProjectScope === 'individual' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-700 text-white">Active</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5">
+                          Register a standalone single project or direct customer job with its own ledger.
+                        </p>
+                      </button>
+                    </div>
+
+                    {newProjectScope === 'sub' && (
+                      <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-amber-950 mb-1">
+                              Select Parent Major / Main Project *
+                            </label>
+                            <select
+                              value={newParentProjectId}
+                              onChange={(e) => {
+                                setNewParentProjectId(e.target.value);
+                                const parentObj = projects.find((p) => p.id === e.target.value);
+                                if (parentObj?.customerName) setEntryCustomerName(parentObj.customerName);
+                                if (parentObj?.district) setEntryDistrict(parentObj.district);
+                              }}
+                              className="w-full text-xs font-bold px-3 py-2 border border-amber-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              required={newProjectScope === 'sub'}
+                            >
+                              <option value="">-- Choose Major / Main Project --</option>
+                              {(mainProjectsList.length > 0 ? mainProjectsList : activeProjects.filter((p) => !p.parentProjectId)).map((mp) => (
+                                <option key={mp.id} value={mp.id}>
+                                  🏢 [{mp.projectId}] {mp.projectName} {mp.customerName ? `(${mp.customerName})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-amber-950 mb-1">
+                              New Sub-Project Name / Site Section *
+                            </label>
+                            <input
+                              type="text"
+                              value={entrySubProjectName}
+                              onChange={(e) => setEntrySubProjectName(e.target.value)}
+                              placeholder="e.g. Homagama Phase 2, Tower B Sector 3"
+                              className="w-full text-xs font-bold px-3 py-2 border border-amber-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              required={newProjectScope === 'sub'}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                          FOC Client / Principal Name *
+                          FOC Client / Principal Name {newProjectScope === 'individual' ? '*' : '(Inherited if blank)'}
                         </label>
                         <select
                           value={entryCustomerName}
                           onChange={(e) => setEntryCustomerName(e.target.value)}
                           className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                          required
+                          required={newProjectScope === 'individual'}
                         >
                           <option value="">-- Select Registered Client / Principal --</option>
                           {activeClients.map((clt) => (
@@ -1011,7 +1236,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Site ID / Work Order / Ref No
+                          Site ID / Sub-Project Code
                         </label>
                         <div className="relative">
                           <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -1019,7 +1244,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             type="text"
                             value={entrySiteId}
                             onChange={(e) => setEntrySiteId(e.target.value)}
-                            placeholder="e.g. SITE-0891, SO-4421"
+                            placeholder="e.g. SUB-01, SITE-0891"
                             className="w-full pl-8 pr-3 py-2 text-xs font-mono uppercase border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                           />
                         </div>
@@ -1062,9 +1287,6 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             <div className="font-semibold text-amber-900 mt-0.5">
                               {duplicateMatches.map((m) => `"${m.projectName}" (${m.siteIdentifier ? `Site: ${m.siteIdentifier}, ` : ''}${m.customerPhone ? `Tel: ${m.customerPhone}` : m.projectId})`).join(' | ')}
                             </div>
-                            <div className="text-[11px] text-amber-800 mt-0.5">
-                              You can link this usage to the existing project (e.g. 2nd team or revisit), or save as a separate duplicate entry.
-                            </div>
                           </div>
                         </div>
 
@@ -1085,28 +1307,178 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="pt-1">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Choose Project in Section "{targetSection?.name || 'Current'}" *
-                    </label>
-                    <select
-                      value={selectedProjectId}
-                      onChange={(e) => setSelectedProjectId(e.target.value)}
-                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                      required
-                    >
-                      {sectionProjects.length === 0 ? (
-                        <option value="">No registered projects in this section (Click "+ Enter Customer" above)</option>
-                      ) : (
-                        sectionProjects.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            [{p.projectId}] {p.projectName} {p.siteIdentifier ? `· Site: ${p.siteIdentifier}` : ''} {p.customerPhone ? `· Tel: ${p.customerPhone}` : ''}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                  <div className="pt-1 space-y-2.5">
+                    {/* Quick Scope Filter + Main Project Family Filter */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-white/80 p-2 rounded-lg border border-teal-200/80">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(
+                          [
+                            { id: 'all', label: 'All Projects' },
+                            { id: 'sub', label: '↳ Sub-Projects (Under Main)' },
+                            { id: 'main', label: '🏢 Major / Main Projects' },
+                            { id: 'individual', label: '📄 Individual Projects' },
+                          ] as const
+                        ).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              setExistingScopeFilter(tab.id);
+                              const nextList = activeProjects.filter((p) => {
+                                const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
+                                const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
+                                const isIndiv = !isMain && !isSub;
+                                if (tab.id === 'sub') return isSub;
+                                if (tab.id === 'main') return isMain;
+                                if (tab.id === 'individual') return isIndiv;
+                                return true;
+                              });
+                              if (nextList.length > 0) setSelectedProjectId(nextList[0].id);
+                            }}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                              existingScopeFilter === tab.id
+                                ? 'bg-teal-700 text-white shadow-2xs'
+                                : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
 
-                    <div className="mt-3">
+                      {mainProjectsList.length > 0 && (
+                        <select
+                          value={existingMainParentFilter}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setExistingMainParentFilter(val);
+                            if (val !== 'all') {
+                              const firstSub = activeProjects.find((p) => p.parentProjectId === val);
+                              setSelectedProjectId(firstSub ? firstSub.id : val);
+                            }
+                          }}
+                          className="text-[11px] font-bold px-2.5 py-1 border border-purple-200 rounded-md bg-purple-50 text-purple-900 focus:outline-none"
+                        >
+                          <option value="all">🏢 Filter by Main Project: All</option>
+                          {mainProjectsList.map((mp) => (
+                            <option key={mp.id} value={mp.id}>
+                              🏢 [{mp.projectId}] {mp.projectName}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Choose Sub-Project / Project for Material Usage *
+                      </label>
+                      <select
+                        value={selectedProjectId}
+                        onChange={(e) => setSelectedProjectId(e.target.value)}
+                        className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        required
+                      >
+                        {sectionProjects.length === 0 ? (
+                          <option value="">No matching projects (Change filter or click "+ Register New Sub-Project")</option>
+                        ) : (
+                          sectionProjects.map((p) => {
+                            const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
+                            const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
+                            const prefix = isSub
+                              ? `↳ [SUB of ${p.parentProjectCode || p.parentProjectName || 'Main'}]`
+                              : isMain
+                              ? '🏢 [MAIN PROJECT]'
+                              : '📄 [INDIVIDUAL]';
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {prefix} [{p.projectId}] {p.projectName} {p.subArea ? `· ${p.subArea}` : ''}
+                              </option>
+                            );
+                          })
+                        )}
+                      </select>
+                    </div>
+
+                    {/* If a Major / Main Project is selected, show its Sub-Projects for 1-click selection */}
+                    {targetProject &&
+                      (targetProject.projectScope === 'main' ||
+                        activeProjects.some((sub) => sub.parentProjectId === targetProject.id)) && (
+                        <div className="p-3 bg-purple-50/90 border border-purple-200 rounded-xl space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-extrabold text-purple-950 flex items-center gap-1.5">
+                              <span>🏢 Major / Main Project Selected:</span>
+                              <span className="font-mono bg-purple-100 px-1.5 py-0.5 rounded border border-purple-300">
+                                {targetProject.projectName}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProjectEntryMode('new');
+                                setNewProjectScope('sub');
+                                setNewParentProjectId(targetProject.id);
+                                if (targetProject.customerName) setEntryCustomerName(targetProject.customerName);
+                                if (targetProject.district) setEntryDistrict(targetProject.district);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] cursor-pointer shadow-2xs"
+                            >
+                              + Create New Sub-Project Under This Main Project
+                            </button>
+                          </div>
+                          {(() => {
+                            const childSubs = activeProjects.filter((s) => s.parentProjectId === targetProject.id);
+                            if (childSubs.length === 0) {
+                              return (
+                                <p className="text-[11px] text-purple-800">
+                                  No Sub-Projects registered under this Main Project yet. Click the button above to add a Sub-Project or log directly onto the Main Project.
+                                </p>
+                              );
+                            }
+                            return (
+                              <div>
+                                <div className="text-[11px] text-purple-800 font-semibold mb-1.5">
+                                  Click a Sub-Project below to log field usage under that specific Sub-Project (automatically deducts from this Main Project&apos;s Free Stock):
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {childSubs.map((sub) => (
+                                    <button
+                                      key={sub.id}
+                                      type="button"
+                                      onClick={() => setSelectedProjectId(sub.id)}
+                                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-950 border border-amber-300 text-[11px] font-bold transition cursor-pointer shadow-2xs"
+                                    >
+                                      ↳ [{sub.projectId}] {sub.projectName}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                    {/* If a Sub-Project is selected, show its Parent Main Project banner */}
+                    {targetProject && targetProject.parentProjectId && (
+                      <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded bg-amber-600 text-white font-extrabold text-[10px] uppercase">
+                            ↳ Sub-Project
+                          </span>
+                          <span>
+                            Linked under Main Project:{' '}
+                            <strong className="text-purple-900">
+                              [{targetProject.parentProjectCode || 'MAIN'}] {targetProject.parentProjectName}
+                            </strong>
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          ✓ Deducts from Main Project Free Stock Pool
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="mt-2">
                       <label className="block text-xs font-bold text-slate-700 mb-1">
                         Associated FOC Client / Principal (Optional)
                       </label>
@@ -1126,52 +1498,58 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                     {targetProject && (
                       <div className="mt-2 p-2.5 bg-white border border-teal-200 rounded-lg text-[11px] text-slate-700 flex flex-wrap items-center gap-3 shadow-2xs">
-                        <span><strong>Site ID:</strong> {targetProject.siteIdentifier || targetProject.projectId}</span>
+                        <span><strong>Project Code:</strong> {targetProject.projectId}</span>
+                        {targetProject.parentProjectName && (
+                          <span><strong>Parent Main Project:</strong> {targetProject.parentProjectName}</span>
+                        )}
                         <span><strong>Phone:</strong> {targetProject.customerPhone || 'N/A'}</span>
                         <span><strong>District:</strong> {targetProject.district || 'General'}</span>
-                        <span><strong>Ref:</strong> {targetProject.referenceNo || '—'}</span>
+                        <span><strong>Sub-Area:</strong> {targetProject.subArea || '—'}</span>
                       </div>
                     )}
+                  </div>
+                )}
 
-                    {projectFreeMaterials.length > 0 && (
-                      <div className="mt-2.5 p-3.5 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border border-indigo-200 rounded-xl text-xs space-y-2 shadow-2xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-indigo-950 font-bold border-b border-indigo-100/80 pb-2">
-                          <span className="flex items-center gap-1.5 text-xs">
-                            <Gift className="w-4 h-4 text-indigo-600 shrink-0" />
-                            <span>
-                              Client / Principal FOC Free Stock Allocated
-                              {(() => {
-                                const names = Array.from(
-                                  new Set(
-                                    clientFreeIssues
-                                      .filter((v) => !v.isDeleted && v.projectId === currentTargetProjId)
-                                      .map((v) => v.clientName)
-                                  )
-                                );
-                                const displayName = names.length > 0 ? names.join(', ') : targetProject?.customerName;
-                                return displayName ? ` (${displayName})` : '';
-                              })()}
+                {/* Shared Main Project / Individual Project Free Stock Pool Banner */}
+                {projectFreeMaterials.length > 0 && (
+                  <div className="mt-2.5 p-3.5 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border border-indigo-200 rounded-xl text-xs space-y-2 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-indigo-950 font-bold border-b border-indigo-100/80 pb-2">
+                      <span className="flex items-center gap-1.5 text-xs">
+                        <Gift className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <span>
+                          {targetProject?.parentProjectId || (projectEntryMode === 'new' && newProjectScope === 'sub')
+                            ? `Shared Main Project Free Stock Pool (${targetProject?.parentProjectName || projects.find((p) => p.id === newParentProjectId)?.projectName || 'Main Project'})`
+                            : 'Client / Principal FOC Free Stock Allocated'}
+                        </span>
+                      </span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white shadow-2xs self-start sm:self-auto">
+                        Auto-Deducted from Main Pool
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      Material usage logged on this {targetProject?.parentProjectId ? 'Sub-Project' : 'project'} automatically deducts from the Client Free Stock balance below while tracking this Sub-Project&apos;s individual consumption separately:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
+                      {projectFreeMaterials.map((fm) => (
+                        <div key={fm.itemId} className="flex flex-col justify-between bg-white px-3 py-2 rounded-lg border border-indigo-100 font-mono text-[11px] shadow-2xs gap-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-900 font-bold truncate pr-2">[{fm.itemCode}] {fm.itemName}</span>
+                            <span className="shrink-0 font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                              {formatNumber(fm.remainingBalance)} {fm.unit} Left in Pool
                             </span>
-                          </span>
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white shadow-2xs self-start sm:self-auto">
-                            Auto-Deducted Priority
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-600">
-                          Material usage entered below automatically draws down this client's FOC free stock balance first before consuming team custody inventory:
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
-                          {projectFreeMaterials.map((fm) => (
-                            <div key={fm.itemId} className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-indigo-100 font-mono text-[11px] shadow-2xs">
-                              <span className="text-slate-900 font-bold truncate pr-2">[{fm.itemCode}] {fm.itemName}</span>
-                              <span className="shrink-0 font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                                {formatNumber(fm.remainingBalance)} {fm.unit} FOC left
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500">
+                            <span>Pool Received: {formatNumber(fm.totalReceived)} {fm.unit}</span>
+                            {targetProject?.parentProjectId && (
+                              <span className="text-amber-700 font-bold">
+                                This Sub-Project Used: {formatNumber(fm.directUsed || 0)} {fm.unit}
                               </span>
-                            </div>
-                          ))}
+                            )}
+                            <span>Total Pool Used: {formatNumber(fm.totalUsed)} {fm.unit}</span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1709,6 +2087,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="font-semibold text-slate-800">{usage.projectName}</div>
+                          {(usage.parentProjectName || projects.find((p) => p.id === usage.projectId)?.parentProjectName) && (
+                            <div className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                              ↳ Under Main: {usage.parentProjectName || projects.find((p) => p.id === usage.projectId)?.parentProjectName}
+                            </div>
+                          )}
                           <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
                             {usage.projectTypeName && (
                               <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-200 font-bold">
@@ -1793,31 +2176,65 @@ export const ProjectMaterialUsageView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: PROJECT MULTI-TEAM RECONCILIATION */}
+      {/* TAB 3: PROJECT MULTI-TEAM & SUB-PROJECT RECONCILIATION */}
       {activeTab === 'reconciliation' && (
         <div className="space-y-6">
           {/* Project Selector Bar */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Multi-Team Reconciliation</span>
-              <h2 className="text-lg font-bold text-slate-900 mt-0.5">Project Material Consumption Breakdown</h2>
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                Major Project, Sub-Project & Multi-Team Reconciliation
+              </span>
+              <h2 className="text-lg font-bold text-slate-900 mt-0.5">
+                Project Material Consumption & Free Stock Reconciliation
+              </h2>
               <p className="text-xs text-slate-500">
-                Track how materials for each project were allocated and consumed across distinct field teams.
+                Select a Major / Main Project to reconcile total Free Stock against all its Sub-Projects, or select a specific Sub-Project / Individual Project.
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-600">Select Project:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+              <span className="text-xs font-semibold text-slate-600">Select Project / Sub-Project:</span>
               <select
                 value={reconcileProjectId}
                 onChange={(e) => setReconcileProjectId(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900 focus:outline-none min-w-[240px]"
+                className="px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900 focus:outline-none min-w-[280px]"
               >
-                {activeProjects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.projectId}] {p.projectName}
-                  </option>
-                ))}
+                {mainProjectsList.length > 0 && (
+                  <optgroup label="🏢 Major / Main Projects (Total Umbrella Reconciliation)">
+                    {mainProjectsList.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        🏢 [MAIN: {p.projectId}] {p.projectName}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {activeProjects.some((p) => p.projectScope === 'sub' || Boolean(p.parentProjectId)) && (
+                  <optgroup label="↳ Sub-Projects (Individual Sub-Project Details)">
+                    {activeProjects
+                      .filter((p) => p.projectScope === 'sub' || Boolean(p.parentProjectId))
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          ↳ [{p.projectId}] {p.projectName} (Under: {p.parentProjectName || p.parentProjectCode})
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
+                <optgroup label="📄 Individual / Standalone Projects">
+                  {activeProjects
+                    .filter(
+                      (p) =>
+                        p.projectScope !== 'main' &&
+                        p.projectScope !== 'sub' &&
+                        !p.parentProjectId &&
+                        !activeProjects.some((sub) => sub.parentProjectId === p.id)
+                    )
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        📄 [{p.projectId}] {p.projectName}
+                      </option>
+                    ))}
+                </optgroup>
               </select>
             </div>
           </div>
@@ -1827,10 +2244,23 @@ export const ProjectMaterialUsageView: React.FC = () => {
               {/* Project Card Header */}
               <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold">
                       {reconcileProject.projectId}
                     </span>
+                    {isReconcileMainProject ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-extrabold">
+                        🏢 Major / Main Project ({reconcileChildSubProjects.length} Sub-Projects)
+                      </span>
+                    ) : reconcileProject.parentProjectId ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-extrabold">
+                        ↳ Sub-Project Under Main: {reconcileProject.parentProjectName || reconcileParentMainProject?.projectName}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-400/30 text-xs font-extrabold">
+                        📄 Individual Project
+                      </span>
+                    )}
                     {reconcileProject.projectTypeName && (
                       <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold">
                         {reconcileProject.projectTypeName}
@@ -1838,26 +2268,39 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     )}
                   </div>
                   <h3 className="text-xl font-bold">{reconcileProject.projectName}</h3>
-                  <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1">
                     <span>District: {reconcileProject.district || '—'}</span>
                     <span>·</span>
                     <span>Ref: {reconcileProject.referenceNo || '—'}</span>
                     <span>·</span>
-                    <span>Total Vouchers: {reconcileUsages.length}</span>
+                    <span>
+                      Total Vouchers {isReconcileMainProject ? '(Main + All Sub-Projects)' : ''}: {reconcileUsages.length}
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="text-2xl font-black text-emerald-400">
-                    {reconcileTeamBreakdown.teams.length} Team(s)
+                <div className="flex flex-col sm:items-end gap-2">
+                  {reconcileParentMainProject && (
+                    <button
+                      type="button"
+                      onClick={() => setReconcileProjectId(reconcileParentMainProject.id)}
+                      className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                    >
+                      ← View Full Main Project ({reconcileParentMainProject.projectName}) Reconciliation
+                    </button>
+                  )}
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-emerald-400">
+                      {reconcileTeamBreakdown.teams.length} Team(s)
+                    </div>
+                    <div className="text-xs text-slate-400">Participated in this Scope</div>
                   </div>
-                  <div className="text-xs text-slate-400">Participated in this Project</div>
                 </div>
               </div>
 
               {/* Client Free-Issue Stock Reconciliation (Client/Principal Statement) */}
               {(() => {
-                const projectFocList = getProjectFreeStockList(reconcileProjectId);
+                const projectFocList = getProjectFreeStockList(reconcileProject.id);
                 if (projectFocList.length === 0) return null;
                 return (
                   <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-xs border border-indigo-900">
@@ -1867,14 +2310,24 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           <Gift className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
-                            <span>Client Free-Issue Stock Reconciliation (Client / Principal FOC)</span>
+                          <h4 className="text-sm font-extrabold text-white flex flex-wrap items-center gap-2">
+                            <span>
+                              {isReconcileMainProject
+                                ? 'Major / Main Project Total Free-Issue Stock Reconciliation (All Sub-Projects Combined)'
+                                : reconcileProject.parentProjectId
+                                ? `Sub-Project Free Stock Usage vs. Main Project Pool (${reconcileProject.parentProjectName})`
+                                : 'Client Free-Issue Stock Reconciliation (Client / Principal FOC)'}
+                            </span>
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
                               Official Statement
                             </span>
                           </h4>
                           <p className="text-[11px] text-indigo-300/80">
-                            Materials supplied free by principal for this project vs installed in field vs remaining balance
+                            {isReconcileMainProject
+                              ? 'Total materials received under this Main Project vs. combined usage across all Sub-Projects vs. net remaining balance'
+                              : reconcileProject.parentProjectId
+                              ? 'Shows materials consumed specifically by this Sub-Project alongside the shared Main Project pool balance'
+                              : 'Materials supplied free by principal for this project vs installed in field vs remaining balance'}
                           </p>
                         </div>
                       </div>
@@ -1886,9 +2339,16 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           <tr className="border-b border-indigo-800/80 text-indigo-300 font-bold uppercase text-[10px]">
                             <th className="py-2 px-3">Item Code</th>
                             <th className="py-2 px-3">Material Description</th>
-                            <th className="py-2 px-3 text-right">Received from Client</th>
-                            <th className="py-2 px-3 text-right">Field Installed</th>
-                            <th className="py-2 px-3 text-right">Remaining Balance</th>
+                            <th className="py-2 px-3 text-right">Received in Main Pool</th>
+                            {reconcileProject.parentProjectId && (
+                              <th className="py-2 px-3 text-right">Used by THIS Sub-Project</th>
+                            )}
+                            <th className="py-2 px-3 text-right">
+                              {isReconcileMainProject || reconcileProject.parentProjectId
+                                ? 'Total Used (All Sub-Projects)'
+                                : 'Field Installed'}
+                            </th>
+                            <th className="py-2 px-3 text-right">Net Remaining Balance</th>
                             <th className="py-2 px-3 text-center">Reconciliation Status</th>
                           </tr>
                         </thead>
@@ -1898,11 +2358,30 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             return (
                               <tr key={foc.itemId} className="hover:bg-indigo-900/30 transition-colors">
                                 <td className="py-2.5 px-3 font-mono font-bold text-white">{foc.itemCode}</td>
-                                <td className="py-2.5 px-3 text-slate-200 font-semibold">{foc.itemName}</td>
+                                <td className="py-2.5 px-3 text-slate-200 font-semibold">
+                                  <div>{foc.itemName}</div>
+                                  {isReconcileMainProject && foc.subProjectBreakdown && foc.subProjectBreakdown.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {foc.subProjectBreakdown.map((sb) => (
+                                        <span
+                                          key={sb.subProjectId}
+                                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-900/80 text-amber-200 border border-indigo-700"
+                                        >
+                                          ↳ {sb.subProjectName}: {formatNumber(sb.usedQty)} {foc.unit}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
                                 <td className="py-2.5 px-3 text-right font-mono text-cyan-300 font-bold">
                                   {formatNumber(foc.totalReceived)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
                                 </td>
-                                <td className="py-2.5 px-3 text-right font-mono text-amber-300 font-bold">
+                                {reconcileProject.parentProjectId && (
+                                  <td className="py-2.5 px-3 text-right font-mono text-amber-300 font-black">
+                                    {formatNumber(foc.directUsed || 0)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                  </td>
+                                )}
+                                <td className="py-2.5 px-3 text-right font-mono text-amber-200 font-bold">
                                   {formatNumber(foc.totalUsed)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-300">
@@ -1929,11 +2408,98 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 );
               })()}
 
+              {/* Sub-Projects Individual Breakdown Section (When viewing a Major / Main Project) */}
+              {isReconcileMainProject && (
+                <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
+                    <div>
+                      <h4 className="text-xs font-extrabold uppercase tracking-wider text-amber-950 flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-amber-600" />
+                        <span>Sub-Projects Individual Material Usage Breakdown ({reconcileSubProjectCards.length})</span>
+                      </h4>
+                      <p className="text-[11px] text-amber-900/80 mt-0.5">
+                        Separate material consumption recorded under each Sub-Project belonging to <strong>{reconcileProject.projectName}</strong>. Click any Sub-Project to inspect its standalone reconciliation.
+                      </p>
+                    </div>
+                  </div>
+
+                  {reconcileSubProjectCards.length === 0 ? (
+                    <div className="p-6 text-center text-amber-800 bg-white/80 border border-dashed border-amber-300 rounded-xl text-xs">
+                      No Sub-Projects have been linked under this Major Project yet.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {reconcileSubProjectCards.map((card) => (
+                        <div
+                          key={card.subProject.id}
+                          className="bg-white border border-amber-200 rounded-xl p-4 shadow-2xs flex flex-col justify-between gap-3"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-mono font-bold text-[10px]">
+                                    ↳ {card.subProject.projectId}
+                                  </span>
+                                  <span className="text-xs font-extrabold text-slate-900">
+                                    {card.subProject.projectName}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">
+                                  {card.subProject.district || 'General'} · {card.subProject.subArea || 'Sub-Site'} ·{' '}
+                                  <strong>{card.vouchersCount}</strong> Voucher(s) · <strong>{card.teamsCount}</strong> Team(s)
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setReconcileProjectId(card.subProject.id)}
+                                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold transition cursor-pointer shrink-0 shadow-2xs"
+                              >
+                                View Sub-Project →
+                              </button>
+                            </div>
+
+                            {card.items.length === 0 ? (
+                              <div className="text-[11px] text-slate-400 italic py-2">
+                                No material usage vouchers logged for this Sub-Project yet.
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {card.items.map(([itmId, qty]) => {
+                                  const itm = items.find((i) => i.id === itmId);
+                                  return (
+                                    <div
+                                      key={itmId}
+                                      className="flex items-center justify-between text-xs py-1 px-2 rounded bg-slate-50 border border-slate-100"
+                                    >
+                                      <span className="text-slate-700 font-semibold truncate pr-2">
+                                        [{itm?.itemCode}] {itm?.itemName || itmId}
+                                      </span>
+                                      <span className="font-mono font-black text-amber-800 shrink-0">
+                                        {formatNumber(qty)} {itm?.unit || 'units'}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Grand Total Project Consumed Materials */}
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-2">
                   <Package className="w-4 h-4 text-emerald-600" />
-                  <span>Total Project Materials Consumed (Across All Teams)</span>
+                  <span>
+                    {isReconcileMainProject
+                      ? 'Total Main Project Materials Consumed (Combined Across All Sub-Projects & Teams)'
+                      : 'Total Project Materials Consumed (Across All Teams)'}
+                  </span>
                 </h4>
 
                 {reconcileTeamBreakdown.totalItems.length === 0 ? (
