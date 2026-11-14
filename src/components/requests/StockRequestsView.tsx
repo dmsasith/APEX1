@@ -54,6 +54,7 @@ export const StockRequestsView: React.FC = () => {
     deleteStockRequest,
     clearStockRequests,
     getMainWarehouseStock,
+    getSiteItemStock,
     clientFreeIssues,
     getClientFreeStockBalance,
     getProjectFreeStockList,
@@ -144,8 +145,57 @@ export const StockRequestsView: React.FC = () => {
   const [priority, setPriority] = useState<RequestPriority>('Normal');
   const [reqModalTab, setReqModalTab] = useState<'Material' | 'Machinery' | 'all'>('Material');
   const [onlyAvailableInModal, setOnlyAvailableInModal] = useState<boolean>(false);
+
+  // Helper to sort items for the currently selected requesting site so Low Stock items come first
+  const sortItemsForRequestingSite = (itemList: Item[], siteIdToCheck: string) => {
+    if (!siteIdToCheck || siteIdToCheck === 'all') return itemList;
+    return [...itemList].sort((a, b) => {
+      const aSite = getSiteItemStock(siteIdToCheck, a.id);
+      const bSite = getSiteItemStock(siteIdToCheck, b.id);
+      const aMain = getMainWarehouseStock(a.id);
+      const bMain = getMainWarehouseStock(b.id);
+
+      const getTier = (sStk: typeof aSite) => {
+        if (sStk.isLowStock) return 0;
+        if (sStk.availableBalance <= sStk.threshold) return 1;
+        return 2;
+      };
+      const aTier = getTier(aSite);
+      const bTier = getTier(bSite);
+      if (aTier !== bTier) return aTier - bTier;
+
+      const aHasMain = aMain.availableBalance > 0 ? 1 : 0;
+      const bHasMain = bMain.availableBalance > 0 ? 1 : 0;
+      if (aHasMain !== bHasMain) return bHasMain - aHasMain;
+
+      if (aSite.availableBalance !== bSite.availableBalance) {
+        return aSite.availableBalance - bSite.availableBalance;
+      }
+      return bMain.availableBalance - aMain.availableBalance;
+    });
+  };
+
+  const sortedMaterialItemsForSite = useMemo(
+    () => sortItemsForRequestingSite(activeMaterialItems, formSiteId),
+    [activeMaterialItems, formSiteId, getSiteItemStock, getMainWarehouseStock]
+  );
+
+  const sortedMachineryItemsForSite = useMemo(
+    () => sortItemsForRequestingSite(activeMachineryItems, formSiteId),
+    [activeMachineryItems, formSiteId, getSiteItemStock, getMainWarehouseStock]
+  );
+
+  // Low stock items at the currently selected requesting site
+  const siteLowStockItemsForForm = useMemo(() => {
+    if (!formSiteId || formSiteId === 'all') return [];
+    return sortItemsForRequestingSite(activeItems, formSiteId).filter((itm) => {
+      const sStk = getSiteItemStock(formSiteId, itm.id);
+      return sStk.isLowStock || sStk.availableBalance <= sStk.threshold;
+    });
+  }, [activeItems, formSiteId, getSiteItemStock, getMainWarehouseStock]);
+
   const [rows, setRows] = useState<Array<{ itemId: string; requestedQty: number }>>([
-    { itemId: activeMaterialItems[0]?.id || activeItems[0]?.id || '', requestedQty: 50 },
+    { itemId: sortedMaterialItemsForSite[0]?.id || activeMaterialItems[0]?.id || activeItems[0]?.id || '', requestedQty: 50 },
   ]);
   const [formError, setFormError] = useState('');
 
@@ -250,7 +300,12 @@ export const StockRequestsView: React.FC = () => {
     setPurpose('');
     setPriority('Normal');
     setReqModalTab('Material');
-    setRows([{ itemId: activeMaterialItems[0]?.id || activeItems[0]?.id || '', requestedQty: 10 }]);
+    setRows([
+      {
+        itemId: sortedMaterialItemsForSite[0]?.id || activeMaterialItems[0]?.id || activeItems[0]?.id || '',
+        requestedQty: 10,
+      },
+    ]);
     setFormError('');
   };
 
@@ -282,7 +337,8 @@ export const StockRequestsView: React.FC = () => {
 
   const handleAddMaterialRow = () => {
     const nextItem =
-      activeMaterialItems.find((i) => !rows.some((r) => r.itemId === i.id)) ||
+      sortedMaterialItemsForSite.find((i) => !rows.some((r) => r.itemId === i.id)) ||
+      sortedMaterialItemsForSite[0] ||
       activeMaterialItems[0] ||
       activeItems[0];
     if (nextItem) {
@@ -293,7 +349,8 @@ export const StockRequestsView: React.FC = () => {
 
   const handleAddMachineryRow = () => {
     const nextItem =
-      activeMachineryItems.find((i) => !rows.some((r) => r.itemId === i.id)) ||
+      sortedMachineryItemsForSite.find((i) => !rows.some((r) => r.itemId === i.id)) ||
+      sortedMachineryItemsForSite[0] ||
       activeMachineryItems[0] ||
       activeItems[0];
     if (nextItem) {
@@ -561,7 +618,14 @@ export const StockRequestsView: React.FC = () => {
             </button>
           )}
           <button
-            onClick={() => setShowSubmitModal(true)}
+            onClick={() => {
+              const targetSite = formSiteId || defaultSite;
+              const sortedMat = sortItemsForRequestingSite(activeMaterialItems, targetSite);
+              if (sortedMat[0]) {
+                setRows([{ itemId: sortedMat[0].id, requestedQty: 50 }]);
+              }
+              setShowSubmitModal(true);
+            }}
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
           >
             <Plus className="w-4 h-4 text-emerald-400" />
@@ -1473,7 +1537,16 @@ export const StockRequestsView: React.FC = () => {
                   </label>
                   <select
                     value={formSiteId}
-                    onChange={(e) => setFormSiteId(e.target.value)}
+                    onChange={(e) => {
+                      const nextSiteId = e.target.value;
+                      setFormSiteId(nextSiteId);
+                      if (formRequestCategory === 'normal' && rows.length === 1) {
+                        const sortedMat = sortItemsForRequestingSite(activeMaterialItems, nextSiteId);
+                        if (sortedMat[0]) {
+                          setRows([{ itemId: sortedMat[0].id, requestedQty: rows[0].requestedQty || 50 }]);
+                        }
+                      }
+                    }}
                     disabled={!isCentralAdmin && allowedRequisitionSites.length <= 1}
                     className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium shadow-2xs disabled:bg-slate-100"
                     required
@@ -1669,6 +1742,33 @@ export const StockRequestsView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    {siteLowStockItemsForForm.length > 0 && formRequestCategory === 'normal' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRows(
+                            siteLowStockItemsForForm.map((itm) => {
+                              const sStk = getSiteItemStock(formSiteId, itm.id);
+                              const mStk = getMainWarehouseStock(itm.id);
+                              const needed = Math.max(10, (sStk.threshold || 10) * 2 - sStk.availableBalance);
+                              return {
+                                itemId: itm.id,
+                                requestedQty:
+                                  mStk.availableBalance > 0
+                                    ? Math.min(needed, mStk.availableBalance)
+                                    : needed,
+                              };
+                            })
+                          );
+                          setReqModalTab('all');
+                        }}
+                        className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                        title="Automatically load all items that are currently Low Stock or 0 Stock at this Site Branch"
+                      >
+                        <span>⚠️ Load Site Low Stock ({siteLowStockItemsForForm.length})</span>
+                      </button>
+                    )}
+
                     {(reqModalTab === 'Material' || reqModalTab === 'all') && (
                       <button
                         type="button"
@@ -1695,13 +1795,14 @@ export const StockRequestsView: React.FC = () => {
 
                 {/* Table of items with comfortable height to let dropdown unfold fully */}
                 <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white min-h-[440px] pb-52 shadow-2xs">
-                  <table className="w-full text-xs text-left min-w-[760px]">
+                  <table className="w-full text-xs text-left min-w-[820px]">
                     <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-xs font-bold uppercase tracking-wider">
                       <tr>
-                        <th className="py-3 px-4 min-w-[360px] sm:min-w-[460px] md:min-w-[520px]">
+                        <th className="py-3 px-4 min-w-[360px] sm:min-w-[440px] md:min-w-[480px]">
                           Item Description & Classification
                         </th>
                         <th className="py-3 px-3 text-center w-20">Unit</th>
+                        <th className="py-3 px-3 text-right w-32">Site Avl.</th>
                         <th className="py-3 px-4 text-right w-32">
                           {formRequestCategory === 'foc' ? 'FOC Main Avail.' : 'Main Avail.'}
                         </th>
@@ -1712,7 +1813,7 @@ export const StockRequestsView: React.FC = () => {
                     <tbody className="divide-y divide-slate-100">
                       {displayedRows.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-16 text-center">
+                          <td colSpan={6} className="py-16 text-center">
                             {reqModalTab === 'Material' ? (
                               <div className="space-y-3">
                                 <p className="text-sm font-medium text-slate-500">No material items added to this requisition yet.</p>
@@ -1750,13 +1851,18 @@ export const StockRequestsView: React.FC = () => {
                               ? getClientFreeStockBalance(selectedFocProjectMeta.project.id, item.id).centralWarehouseAvailable
                               : getMainWarehouseStock(item.id).availableBalance
                             : 0;
+                          const siteStk = item && formSiteId ? getSiteItemStock(formSiteId, item.id) : null;
+                          const isSiteLow = siteStk
+                            ? siteStk.isLowStock || siteStk.availableBalance <= siteStk.threshold
+                            : false;
+
                           return (
                             <tr
                               key={originalIndex}
                               className="hover:bg-slate-50/70 transition-colors relative"
                               style={{ zIndex: 40 - originalIndex }}
                             >
-                              <td className="py-3 px-4 min-w-[360px] sm:min-w-[460px] md:min-w-[520px]">
+                              <td className="py-3 px-4 min-w-[360px] sm:min-w-[440px] md:min-w-[480px]">
                                 <div className="space-y-1.5">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {isMach ? (
@@ -1766,6 +1872,11 @@ export const StockRequestsView: React.FC = () => {
                                     ) : (
                                       <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs">
                                         🧱 Material / Consumable
+                                      </span>
+                                    )}
+                                    {isSiteLow && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                        ⚠️ {siteStk?.isLowStock ? 'Low Site Stock' : 'Site Avl: 0 / Low'}
                                       </span>
                                     )}
                                     {formRequestCategory === 'foc' && (
@@ -1782,6 +1893,7 @@ export const StockRequestsView: React.FC = () => {
                                   <SearchableItemSelect
                                     selectedItemId={row.itemId}
                                     onSelectItem={(selected) => handleRowChange(originalIndex, 'itemId', selected.id)}
+                                    requestingSiteId={formSiteId}
                                     showStockBadge={true}
                                     defaultClassification={reqModalTab === 'Machinery' ? 'Machinery' : 'Material'}
                                     onlyAvailableStock={onlyAvailableInModal}
@@ -1799,6 +1911,22 @@ export const StockRequestsView: React.FC = () => {
                               <td className="py-3 px-3 text-center text-slate-800 font-bold whitespace-nowrap text-xs sm:text-sm">
                                 {item?.unit || 'Nos'}
                               </td>
+                              <td className="py-3 px-3 text-right font-mono whitespace-nowrap text-xs sm:text-sm">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md font-bold inline-block ${
+                                    isSiteLow
+                                      ? 'bg-amber-50 text-amber-800 border border-amber-300'
+                                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  }`}
+                                >
+                                  Site Avl: {formatNumber(siteStk?.availableBalance ?? 0)}
+                                </span>
+                                {siteStk && (
+                                  <div className="text-[10px] font-sans text-slate-400 font-medium mt-0.5">
+                                    Min: {siteStk.threshold}
+                                  </div>
+                                )}
+                              </td>
                               <td className="py-3 px-4 text-right font-mono text-slate-700 font-bold whitespace-nowrap text-xs sm:text-sm">
                                 <span
                                   className={
@@ -1811,9 +1939,13 @@ export const StockRequestsView: React.FC = () => {
                                 >
                                   {formatNumber(availBalance)}
                                 </span>
-                                {formRequestCategory === 'foc' && (
+                                {formRequestCategory === 'foc' ? (
                                   <div className="text-[10px] font-sans font-semibold text-indigo-600">
                                     Project FOC Pool
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] font-sans text-slate-400 font-medium mt-0.5">
+                                    Main Stock
                                   </div>
                                 )}
                               </td>

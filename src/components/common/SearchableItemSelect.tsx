@@ -11,6 +11,7 @@ interface SearchableItemSelectProps {
   selectedItemId: string;
   onSelectItem: (item: Item) => void;
   siteId?: string; // If provided, shows that site's available stock. Otherwise shows main warehouse stock.
+  requestingSiteId?: string; // If provided during Stock Requisition, shows BOTH Site Avl: and Main Avl: and sorts Site Low Stock items to the top
   focProjectId?: string; // If provided, shows that project's Central FOC Warehouse available balance
   placeholder?: string;
   disabled?: boolean;
@@ -26,6 +27,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   selectedItemId,
   onSelectItem,
   siteId,
+  requestingSiteId,
   focProjectId,
   placeholder = 'Search & select item by code, barcode, or assembly description...',
   disabled = false,
@@ -41,11 +43,13 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'Material' | 'Machinery'>(defaultClassification);
   const [onlyAvailable, setOnlyAvailable] = useState<boolean>(onlyAvailableStock);
+  const [onlySiteLowStock, setOnlySiteLowStock] = useState<boolean>(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const barcodeEnabled = config.barcodeEnabled !== false;
+  const hasRequestingSite = Boolean(requestingSiteId && requestingSiteId !== 'all');
 
   useEffect(() => {
     if (defaultClassification) {
@@ -65,6 +69,12 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   const machineryCount = activeItems.filter((i) => isMachineryItem(i)).length;
 
   const getItemStockInfo = (itemId: string) => {
+    const reqSiteStk =
+      hasRequestingSite && requestingSiteId ? getSiteItemStock(requestingSiteId, itemId) : null;
+    const isSiteLowOrZero = reqSiteStk
+      ? reqSiteStk.isLowStock || reqSiteStk.availableBalance <= reqSiteStk.threshold
+      : false;
+
     if (focProjectId) {
       const focStock = getClientFreeStockBalance(focProjectId, itemId);
       return {
@@ -73,6 +83,11 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         isLow: focStock.totalReceived > 0 && focStock.centralWarehouseAvailable <= 0,
         label: 'Project FOC HQ Pool',
         isFocMode: true,
+        siteAvailable: reqSiteStk ? reqSiteStk.availableBalance : undefined,
+        siteThreshold: reqSiteStk ? reqSiteStk.threshold : undefined,
+        siteIsLowActive: reqSiteStk ? reqSiteStk.isLowStock : false,
+        siteIsLowOrZero: isSiteLowOrZero,
+        siteHasActivity: reqSiteStk ? reqSiteStk.hasActivity : false,
       };
     } else if (siteId && siteId !== 'all') {
       const siteStock = getSiteItemStock(siteId, itemId);
@@ -82,6 +97,11 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         isLow: siteStock.isLowStock,
         label: 'Site Yard Stock',
         isFocMode: false,
+        siteAvailable: undefined,
+        siteThreshold: siteStock.threshold,
+        siteIsLowActive: siteStock.isLowStock,
+        siteIsLowOrZero: siteStock.isLowStock || siteStock.availableBalance <= siteStock.threshold,
+        siteHasActivity: siteStock.hasActivity,
       };
     } else {
       const mainStock = getMainWarehouseStock(itemId);
@@ -91,20 +111,29 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         isLow: mainStock.isLowStock,
         label: 'Central Main Stock',
         isFocMode: false,
+        siteAvailable: reqSiteStk ? reqSiteStk.availableBalance : undefined,
+        siteThreshold: reqSiteStk ? reqSiteStk.threshold : undefined,
+        siteIsLowActive: reqSiteStk ? reqSiteStk.isLowStock : false,
+        siteIsLowOrZero: isSiteLowOrZero,
+        siteHasActivity: reqSiteStk ? reqSiteStk.hasActivity : false,
       };
     }
   };
 
   // Filter items based on query (including barcode!), type tab, and stock availability
+  // When requestingSiteId is provided, automatically sort Site Low Stock items to the very top!
   const filteredItems = activeItems
     .filter((i) => {
       const isMach = isMachineryItem(i);
       if (selectedType === 'Material' && isMach) return false;
       if (selectedType === 'Machinery' && !isMach) return false;
 
-      if (onlyAvailable) {
-        const stock = getItemStockInfo(i.id);
-        if (stock.available <= 0) return false;
+      const stock = getItemStockInfo(i.id);
+      if (onlyAvailable && stock.available <= 0) {
+        return false;
+      }
+      if (hasRequestingSite && onlySiteLowStock && !stock.siteIsLowOrZero) {
+        return false;
       }
 
       const q = searchQuery.toLowerCase().trim();
@@ -118,11 +147,40 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
       );
     })
     .sort((a, b) => {
-      if (!focProjectId) return 0;
-      const aFoc = getItemStockInfo(a.id);
-      const bFoc = getItemStockInfo(b.id);
-      if (bFoc.available !== aFoc.available) return bFoc.available - aFoc.available;
-      return bFoc.totalFocReceived - aFoc.totalFocReceived;
+      const aInfo = getItemStockInfo(a.id);
+      const bInfo = getItemStockInfo(b.id);
+
+      // When requesting for a Site Branch, prioritize Site Low Stock items at the top of the list
+      if (hasRequestingSite) {
+        // Tier 0: Site has prior activity AND is Low Stock (availableBalance <= threshold)
+        // Tier 1: Site stock is <= threshold (including 0 stock at site)
+        // Tier 2: Site stock is above threshold
+        const getUrgencyTier = (info: typeof aInfo) => {
+          if (info.siteIsLowActive) return 0;
+          if (info.siteIsLowOrZero) return 1;
+          return 2;
+        };
+        const aTier = getUrgencyTier(aInfo);
+        const bTier = getUrgencyTier(bInfo);
+        if (aTier !== bTier) return aTier - bTier;
+
+        // Within low-stock tiers, prioritize items that actually have Main / FOC stock available to request
+        const aHasMain = aInfo.available > 0 ? 1 : 0;
+        const bHasMain = bInfo.available > 0 ? 1 : 0;
+        if (aHasMain !== bHasMain) return bHasMain - aHasMain;
+
+        // Next, sort by lowest Site Available stock first (0 before 5 before 20)
+        const aSiteAvl = aInfo.siteAvailable ?? 0;
+        const bSiteAvl = bInfo.siteAvailable ?? 0;
+        if (aSiteAvl !== bSiteAvl) return aSiteAvl - bSiteAvl;
+      }
+
+      if (focProjectId) {
+        if (bInfo.available !== aInfo.available) return bInfo.available - aInfo.available;
+        return bInfo.totalFocReceived - aInfo.totalFocReceived;
+      }
+
+      return 0;
     });
 
   // Listen to USB HID scanner when dropdown is open
@@ -200,20 +258,40 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
             {showStockBadge && (() => {
               const stock = getItemStockInfo(selectedItem.id);
               return (
-                <span
-                  className={`ml-auto shrink-0 px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
-                    stock.available === 0
-                      ? 'bg-red-50 text-red-600 border border-red-200'
-                      : stock.isFocMode
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                      : stock.isLow
-                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}
-                  title={`${stock.label}: ${formatNumber(stock.available)} ${selectedItem.unit}`}
-                >
-                  {stock.isFocMode ? `FOC: ${formatNumber(stock.available)} ${selectedItem.unit}` : `${formatNumber(stock.available)} ${selectedItem.unit}`}
-                </span>
+                <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                  {hasRequestingSite && stock.siteAvailable !== undefined && (
+                    <span
+                      className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                        stock.siteIsLowActive || stock.siteAvailable === 0
+                          ? 'bg-amber-50 text-amber-800 border border-amber-300'
+                          : stock.siteIsLowOrZero
+                          ? 'bg-amber-50/70 text-amber-700 border border-amber-200'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      }`}
+                      title={`Site Available Stock: ${formatNumber(stock.siteAvailable)} ${selectedItem.unit} (Min Threshold: ${stock.siteThreshold ?? 0})`}
+                    >
+                      {stock.siteIsLowOrZero ? '⚠️ ' : ''}Site Avl: {formatNumber(stock.siteAvailable)} {selectedItem.unit}
+                    </span>
+                  )}
+                  <span
+                    className={`px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
+                      stock.available === 0
+                        ? 'bg-red-50 text-red-600 border border-red-200'
+                        : stock.isFocMode
+                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                        : stock.isLow
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}
+                    title={`${stock.label}: ${formatNumber(stock.available)} ${selectedItem.unit}`}
+                  >
+                    {stock.isFocMode
+                      ? `FOC Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
+                      : hasRequestingSite
+                      ? `Main Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
+                      : `${formatNumber(stock.available)} ${selectedItem.unit}`}
+                  </span>
+                </div>
               );
             })()}
           </div>
@@ -308,24 +386,41 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
             </button>
           </div>
 
-          {/* Quick Filter: Available Stock Only */}
-          <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                const nextVal = !onlyAvailable;
-                setOnlyAvailable(nextVal);
-                if (onToggleAvailableOnly) onToggleAvailableOnly(nextVal);
-              }}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                onlyAvailable
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
-              }`}
-            >
-              <Check className={`w-3.5 h-3.5 ${onlyAvailable ? 'text-white' : 'text-slate-400'}`} />
-              <span>Available Stock Only</span>
-            </button>
+          {/* Quick Filter: Available Stock Only & Site Low Stock Priority */}
+          <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const nextVal = !onlyAvailable;
+                  setOnlyAvailable(nextVal);
+                  if (onToggleAvailableOnly) onToggleAvailableOnly(nextVal);
+                }}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  onlyAvailable
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <Check className={`w-3.5 h-3.5 ${onlyAvailable ? 'text-white' : 'text-slate-400'}`} />
+                <span>Available Stock Only</span>
+              </button>
+
+              {hasRequestingSite && (
+                <button
+                  type="button"
+                  onClick={() => setOnlySiteLowStock(!onlySiteLowStock)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    onlySiteLowStock
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
+                  }`}
+                  title="Click to filter only low-stock items at the requesting site (by default, low-stock items are already sorted to the top)"
+                >
+                  <span>⚠️ {onlySiteLowStock ? 'Showing Site Low Stock Only' : 'Site Low Stock Sorted Top'}</span>
+                </button>
+              )}
+            </div>
             <span className="text-[11px] text-slate-500 font-medium">
               Showing {filteredItems.length} items
             </span>
@@ -406,7 +501,11 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                       setSearchQuery('');
                     }}
                     className={`p-3 hover:bg-slate-100/80 cursor-pointer flex items-center justify-between gap-3 transition-colors ${
-                      isSelected ? 'bg-slate-100 font-medium' : ''
+                      isSelected
+                        ? 'bg-slate-100 font-medium'
+                        : hasRequestingSite && stock.siteIsLowOrZero
+                        ? 'bg-amber-50/35'
+                        : ''
                     }`}
                   >
                     <div className="min-w-0 flex-1">
@@ -427,6 +526,17 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                         ) : (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
                             🧱 Material
+                          </span>
+                        )}
+                        {hasRequestingSite && stock.siteIsLowOrZero && (
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold shrink-0 border ${
+                              stock.siteIsLowActive || (stock.siteAvailable ?? 0) === 0
+                                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}
+                          >
+                            ⚠️ {stock.siteIsLowActive ? 'Low Site Stock' : (stock.siteAvailable ?? 0) === 0 ? 'Site Avl: 0' : 'Low at Site'}
                           </span>
                         )}
                         <span className="text-xs sm:text-sm text-slate-900 truncate font-bold min-w-0 flex-1" title={item.itemName}>
@@ -453,24 +563,49 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {showStockBadge && (
-                        <div className="text-right">
-                          <span
-                            className={`px-2.5 py-1 rounded-md font-mono text-xs font-bold inline-block ${
-                              stock.available === 0
-                                ? 'bg-red-50 text-red-700 border border-red-200'
-                                : stock.isFocMode
-                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                : stock.isLow
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            }`}
-                          >
-                            {stock.isFocMode ? `FOC: ${formatNumber(stock.available)} ${item.unit}` : `${formatNumber(stock.available)} ${item.unit}`}
-                          </span>
-                          <div className="text-[10px] text-slate-400 mt-0.5 font-medium">
-                            {stock.label}
+                        <div className="flex items-center gap-2">
+                          {hasRequestingSite && stock.siteAvailable !== undefined && (
+                            <div className="text-right">
+                              <span
+                                className={`px-2.5 py-1 rounded-md font-mono text-xs font-bold inline-block ${
+                                  stock.siteIsLowActive || stock.siteAvailable === 0
+                                    ? 'bg-amber-50 text-amber-800 border border-amber-300'
+                                    : stock.siteIsLowOrZero
+                                    ? 'bg-amber-50/70 text-amber-700 border border-amber-200'
+                                    : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                }`}
+                              >
+                                Site Avl: {formatNumber(stock.siteAvailable)} {item.unit}
+                              </span>
+                              <div className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                Site Stock (Min: {stock.siteThreshold ?? 0})
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="text-right">
+                            <span
+                              className={`px-2.5 py-1 rounded-md font-mono text-xs font-bold inline-block ${
+                                stock.available === 0
+                                  ? 'bg-red-50 text-red-700 border border-red-200'
+                                  : stock.isFocMode
+                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                  : stock.isLow
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}
+                            >
+                              {stock.isFocMode
+                                ? `FOC Avl: ${formatNumber(stock.available)} ${item.unit}`
+                                : hasRequestingSite
+                                ? `Main Avl: ${formatNumber(stock.available)} ${item.unit}`
+                                : `${formatNumber(stock.available)} ${item.unit}`}
+                            </span>
+                            <div className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                              {stock.label}
+                            </div>
                           </div>
                         </div>
                       )}
