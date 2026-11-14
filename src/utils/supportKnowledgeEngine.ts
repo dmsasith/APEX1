@@ -12,6 +12,8 @@ export interface SupportWorkspaceContext {
   activeTeamsCount?: number;
   teamNames?: string[];
   activeProjectsCount?: number;
+  activeProjectSectionsCount?: number;
+  projectSectionNames?: string[];
   pendingRequestsCount?: number;
 }
 
@@ -29,11 +31,9 @@ interface KnowledgeTopic {
   answerSi: (ctx: SupportWorkspaceContext) => string;
 }
 
-// Detect if the user typed in Sinhala script or Singlish even while on a given tab
+// Detect if the user typed in Sinhala script or Singlish
 export function detectSinhalaOrSinglishInput(text: string): boolean {
-  // Check Sinhala unicode range
   if (/[\u0D80-\u0DFF]/.test(text)) return true;
-  // Common Singlish words
   const singlishWords = [
     'kohomada',
     'mokakda',
@@ -55,6 +55,9 @@ export function detectSinhalaOrSinglishInput(text: string): boolean {
     'udaw',
     'wisthara',
     'kiyanna',
+    'hadala',
+    'widiyath',
+    'widiya',
   ];
   const lower = ` ${text.toLowerCase()} `;
   return singlishWords.some((w) => lower.includes(` ${w} `) || lower.includes(`${w}?`));
@@ -62,66 +65,206 @@ export function detectSinhalaOrSinglishInput(text: string): boolean {
 
 const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
   {
+    id: 'project-sections-and-templates',
+    suggestedTab: 'projects',
+    keywords: [
+      'section',
+      'sections',
+      'template',
+      'templates',
+      'bom',
+      'new section',
+      'section registry',
+      'project type',
+      'suggested qty',
+      'default material',
+    ],
+    phrases: [
+      'new section registry',
+      'project section',
+      'project sections',
+      'material template',
+      'material templates',
+      'bom template',
+      'create new section',
+      'create section',
+      'configure material template',
+      'section hadala',
+      'sections hadala',
+      'template hadana',
+      'templates hadana',
+      'aluth project section',
+    ],
+    answerEn: (ctx) =>
+      `**How to Create New Project Sections & Configure Default Material Templates (BOM):**\n\n` +
+      `**Part 1 — Create a New Project Section:**\n` +
+      `1. Open **Project & New Section Registry** from the left sidebar.\n` +
+      `2. Click the **+ New Section Registry** button at the top right (or click the **New Section Registry & Material Templates** tab and click **+ Create New Section**).\n` +
+      `3. Enter the **Section Name** (e.g., *Telecom New Connection*, *Telecom Cable Development*), **Short Code** (e.g., *TNC*), **Badge Theme Color**, and **Description**.\n` +
+      `4. Click **Create Section**.\n\n` +
+      `**Part 2 — Configure a Default Material Template (BOM) for that Section:**\n` +
+      `1. Inside the **New Section Registry & Material Templates** tab, find your section card.\n` +
+      `2. Click **Configure Material Template** (or **Edit Material Template (BOM)**).\n` +
+      `3. Select the standard items routinely used in this section, click **+ Add Item to Template** to add more rows, and enter the optional **Suggested Qty** for each item.\n` +
+      `4. Click **Save Material Template**.\n` +
+      `5. **Automatic Pre-Fill:** Whenever a user selects a project belonging to this section in **Material Usage**, these template items and suggested quantities load automatically!${
+        ctx.activeProjectSectionsCount
+          ? `\n\n📌 *Current Workspace Status:* **${ctx.activeProjectSectionsCount} project section(s)** configured${
+              ctx.projectSectionNames && ctx.projectSectionNames.length > 0
+                ? ` (${ctx.projectSectionNames.slice(0, 5).join(', ')})`
+                : ''
+            }.`
+          : ''
+      }`,
+    answerSi: (ctx) =>
+      `**අලුත් Project Section එකක් සාදා එයට Material Template (BOM) එකක් සකස් කරන ආකාරය:**\n\n` +
+      `**1 වන පියවර — අලුත් Project Section එකක් සෑදීම (New Section Registry):**\n` +
+      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත යන්න.\n` +
+      `2. ඉහළ දකුණු කෙළවරේ ඇති **"+ New Section Registry"** බටන් එක ක්ලික් කරන්න (නැතිනම් **"New Section Registry & Material Templates"** ටැබ් එකට ගොස් **"+ Create New Section"** ක්ලික් කරන්න).\n` +
+      `3. **Section Name** (උදා: *Telecom New Connection*), **Short Code** (උදා: *TNC*), **Badge Color** සහ විස්තරය ඇතුළත් කර **"Create Section"** ක්ලික් කරන්න.\n\n` +
+      `**2 වන පියවර — එම Section එකට Default Material Template (BOM) එකක් සෑදීම:**\n` +
+      `1. **"New Section Registry & Material Templates"** ටැබ් එකෙහි ඔබ සෑදූ Section Card එක මත ඇති **"Configure Material Template"** (හෝ **"Edit Material Template (BOM)"**) බටන් එක ක්ලික් කරන්න.\n` +
+      `2. එම Section එකේ වැඩ වලට සාමාන්‍යයෙන් වැය වන Items ලැයිස්තුවෙන් තෝරන්න. තවත් Items එකතු කිරීමට **"+ Add Item to Template"** ක්ලික් කරන්න.\n` +
+      `3. එක් එක් Item එකට අදාළ සාමාන්‍ය ප්‍රමාණය (**Suggested Qty**) ඇතුළත් කර **"Save Material Template"** ක්ලික් කරන්න.\n` +
+      `4. **ප්‍රයෝජනය:** ඉන්පසු **"Material Usage"** පිටුවේදී එම Section එකට අදාළ ඕනෑම Project එකක් තේරූ විට මෙම Template එකේ බඩු ලැයිස්තුව ස්වයංක්‍රීයව (Auto-fill) එතැනට ලැබේ!${
+        ctx.activeProjectSectionsCount
+          ? `\n\n📌 *දැනට පද්ධතියේ Project Sections **${ctx.activeProjectSectionsCount}ක්** සකස් කර ඇත.*`
+          : ''
+      }`,
+  },
+  {
+    id: 'project-registry-management',
+    suggestedTab: 'projects',
+    keywords: [
+      'project registry',
+      'register project',
+      'customer phone',
+      'site id',
+      'connection id',
+      'import csv',
+      'sample csv',
+      'district',
+      'sub area',
+    ],
+    phrases: [
+      'how to register a project',
+      'register new project',
+      'import projects',
+      'project master list',
+      'project ekak hadanne',
+      'project register karanne',
+    ],
+    answerEn: (ctx) =>
+      `**How to Register & Manage Projects (Project & New Section Registry):**\n\n` +
+      `1. **Open Project Registry:** Click **Project & New Section Registry** in the left sidebar.\n` +
+      `2. **Register a Single Project:** Click **Register Project** (or click **+ Add** directly on any Section card in the Project Sections Hub).\n` +
+      `3. **Enter Project Details:** Fill in the **Project ID**, **Reference No**, **Project / Customer Name**, **Customer Phone Number**, **Site ID / Connection ID**, **Client/Principal**, **Project Section**, **District**, and **Sub Area**.\n` +
+      `4. **Bulk CSV Import / Export:** Use **Sample CSV** to download the template format, **Import CSV** to upload multiple projects at once, or **Export CSV** to download your project list.\n` +
+      `5. **Zero-Data-Loss Editing & Multi-Team Usage View:** You can change a project's section anytime without losing usage history, and click the **` +
+      `usage entry(s)** badge on any project row to inspect team-by-team material consumption.${
+        ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
+      }`,
+    answerSi: (ctx) =>
+      `**අලුත් Project එකක් ලියාපදිංචි කරන සහ කළමනාකරණය කරන ආකාරය:**\n\n` +
+      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත යන්න.\n` +
+      `2. **තනි Project එකක් ඇතුළත් කිරීමට:** ඉහළ ඇති **"Register Project"** බටන් එක හෝ අදාළ Section Card එකේ ඇති **"+ Add"** බටන් එක ක්ලික් කරන්න.\n` +
+      `3. **විස්තර ඇතුළත් කිරීම:** Project ID, Project/Customer Name, දුරකථන අංකය (Customer Phone), Site ID / Connection ID, Project Section එක, District සහ Sub Area ඇතුළත් කර **"Register Project"** ක්ලික් කරන්න.\n` +
+      `4. **CSV මගින් Projects රැසක් එකවර ඇතුළත් කිරීම:** **"Sample CSV"** බාගත කර, ඒ අනුව සකස් කළ ගොනුව **"Import CSV"** මගින් පද්ධතියට ඇතුළත් කළ හැක.\n` +
+      `5. **Project Usage බැලීම:** ඕනෑම Project එකක් ඉදිරියෙන් ඇති **"usage entry(s)"** බටන් එක ක්ලික් කර එක් එක් Team එකෙන් එම Project එකට වැය කළ බඩු විස්තර බලාගත හැක.${
+        ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
+      }`,
+  },
+  {
+    id: 'project-usage',
+    suggestedTab: 'project-usage',
+    keywords: ['usage', 'consume', 'consumption', 'boq', 'bill of quantities', 'project material', 'override', 'reserved project', 'waya'],
+    phrases: [
+      'record project usage',
+      'project material usage',
+      'log material usage',
+      'cross project override',
+      'project ekata',
+      'material usage danne',
+    ],
+    answerEn: () =>
+      `**How to Record Project Material Usage & Use Section Templates:**\n\n` +
+      `1. **Open Material Usage:** Click **Material Usage** in the left sidebar.\n` +
+      `2. **Select Project & Section:** Choose the **Project** (you can filter by Section, Site ID, Customer Phone, or Project Name). If the project's section has a **Default Material Template (BOM)**, the template items pre-load automatically!\n` +
+      `3. **Choose Deduction Source:**\n` +
+      `   • **Team In-Hand Stock:** Deducts from materials already issued to the selected Field Team.\n` +
+      `   • **Site Branch Stock:** Deducts directly from the Branch Yard inventory.\n` +
+      `   • **Client Free Stock (FOC):** Deducts from client-supplied FOC materials allocated to that project.\n` +
+      `4. **Cross-Project Reserved Items:** If an item is reserved for a specific project, using it on another project allows you to submit a **Cross-Project Override Request** for Admin approval.`,
+    answerSi: () =>
+      `**Project Material Usage (ව්‍යාපෘති සඳහා වැය වූ බඩු) සටහන් කරන ආකාරය:**\n\n` +
+      `1. වම් පස මෙනුවෙන් **"Material Usage"** වෙත යන්න.\n` +
+      `2. **Project එක තෝරන්න:** අදාළ Project එක තේරූ විට එම Project Section එකට අදාළව සකස් කළ **Material Template (BOM)** එකේ Items ස්වයංක්‍රීයව ලැයිස්තුගත වේ.\n` +
+      `3. **බඩු අඩු විය යුතු තොගය (Source) තෝරන්න:**\n` +
+      `   • **Team In-Hand Stock:** Team එකට නිකුත් කර ඔවුන් අතේ ඇති බඩු වලින්.\n` +
+      `   • **Site Branch Stock:** කෙලින්ම Branch ගබඩාවෙන්.\n` +
+      `   • **Client Free Stock (FOC):** සේවාදායකයා නොමිලේ ලබාදුන් බඩු තොගයෙන්.\n` +
+      `4. වැය වූ ප්‍රමාණයන් (Quantities) ඇතුළත් කර Save කරන්න.`,
+  },
+  {
     id: 'site-transfer',
     suggestedTab: 'requests',
-    keywords: ['transfer', 'request', 'requisition', 'dispatch', 'branch yard', 'site stock', 'send stock', 'yawanne', 'illanne'],
+    keywords: ['transfer', 'request', 'requisition', 'dispatch', 'branch yard', 'send stock', 'yawanne', 'illanne'],
     phrases: [
       'request and transfer',
       'transfer stock',
       'main warehouse to a branch',
       'stock request',
+      'stock requisitions',
       'new stock requirement',
       'site ekata badu',
       'branch ekata badu',
     ],
     answerEn: (ctx) =>
       `**How to Request & Transfer Stock from Main Warehouse to a Branch Yard:**\n\n` +
-      `1. **Create a Stock Request:** Go to **2. Site Requests** from the left sidebar and click **+ New Stock Requirement Form**.\n` +
-      `2. **Select Branch & Items:** Choose the destination **Branch / Site Yard**, select the required items and quantities, and submit the request.\n` +
-      `3. **Approve & Dispatch (HQ):** The **Super Admin** or **Main Storekeeper** reviews the request under **2. Site Requests** and clicks **Approve & Dispatch** (this deducts the quantity from Central Main Stock).\n` +
-      `4. **Confirm Receipt at Branch (GRN):** The **Branch Supervisor** opens **2. Site Requests** (or **Branch Stock**) and clicks **Confirm Receipt (GRN)** to add the dispatched items into their Branch Yard inventory.\n\n` +
-      `*Tip:* Super Admins and Main Storekeepers can also perform an instant **Direct Stock Transfer** from **1. Main Stock** without waiting for a request.${
+      `1. **Create a Stock Requisition:** Go to **Stock Requisitions** from the left sidebar and click **+ New Stock Requirement Form**.\n` +
+      `2. **Select Branch & Items:** Choose the destination **Branch / Site Yard**, select the required items and quantities, and submit.\n` +
+      `3. **Approve & Dispatch (HQ):** The **Super Admin** or **Main Storekeeper** reviews the request under **Stock Requisitions** and clicks **Approve & Dispatch** (partial dispatch quantities are also supported).\n` +
+      `4. **Confirm Receipt at Branch (GRN):** The **Branch Supervisor** clicks **Confirm Receipt (GRN)** on the dispatched request to add the items into their **Site Branch Stock**.\n\n` +
+      `*Tip:* Admins can also perform an instant **Direct Stock Transfer** from **Main Central Stock** without waiting for a request.${
         ctx.pendingRequestsCount
-          ? `\n\n📌 *Live Status:* There are currently **${ctx.pendingRequestsCount} pending stock request(s)** waiting for action.`
+          ? `\n\n📌 *Live Status:* **${ctx.pendingRequestsCount} pending stock request(s)** waiting for action.`
           : ''
       }`,
     answerSi: (ctx) =>
       `**Main Warehouse (ප්‍රධාන ගබඩාවේ) සිට Branch / Site එකකට බඩු Request කර Transfer කරගන්නා ආකාරය:**\n\n` +
-      `1. **Request එකක් දැමීම:** වම් පස මෙනුවෙන් **"2. Site Requests"** වෙත ගොස් **"+ New Stock Requirement Form"** බටන් එක ක්ලික් කරන්න.\n` +
-      `2. **Branch එක සහ බඩු තේරීම:** බඩු අවශ්‍ය **Branch / Site එක** තෝරා, අවශ්‍ය Items සහ ප්‍රමාණයන් (Quantities) ඇතුළත් කර Submit කරන්න.\n` +
+      `1. **Request එකක් දැමීම:** වම් පස මෙනුවෙන් **"Stock Requisitions"** වෙත ගොස් **"+ New Stock Requirement Form"** බටන් එක ක්ලික් කරන්න.\n` +
+      `2. **Branch එක සහ බඩු තේරීම:** බඩු අවශ්‍ය **Branch / Site එක** තෝරා, අවශ්‍ය Items සහ ප්‍රමාණයන් ඇතුළත් කර Submit කරන්න.\n` +
       `3. **Approve & Dispatch කිරීම:** ප්‍රධාන ගබඩාවේ **Super Admin** හෝ **Main Storekeeper** විසින් එම ඉල්ලීම පරීක්ෂා කර **"Approve & Dispatch"** ක්ලික් කළ විට Main Stock එකෙන් බඩු නිකුත් වේ.\n` +
-      `4. **Branch එකට භාරගැනීම (Confirm Receipt):** අදාළ Branch Supervisor විසින් **"Confirm Receipt (GRN)"** ක්ලික් කළ පසු එම බඩු **"Branch Stock"** එකට එකතු වේ.${
+      `4. **Branch එකට භාරගැනීම (Confirm Receipt):** අදාළ Branch Supervisor විසින් **"Confirm Receipt (GRN)"** ක්ලික් කළ පසු එම බඩු **"Site Branch Stock"** එකට එකතු වේ.${
         ctx.pendingRequestsCount
-          ? `\n\n📌 *දැනට පද්ධතියේ අනුමැතිය බලාපොරොත්තුවෙන් Pending Requests **${ctx.pendingRequestsCount}ක්** ඇත.*`
+          ? `\n\n📌 *දැනට පද්ධතියේ Pending Requests **${ctx.pendingRequestsCount}ක්** ඇත.*`
           : ''
       }`,
   },
   {
     id: 'main-stock-grn',
     suggestedTab: 'main-stock',
-    keywords: ['grn', 'main stock', 'central warehouse', 'receive stock', 'add stock', 'opening stock', 'new stock'],
+    keywords: ['grn', 'main stock', 'main central stock', 'central warehouse', 'receive stock', 'add stock', 'damaged restoration'],
     phrases: [
       'add main stock',
       'add new stock',
       'create grn',
-      'enter stock',
+      'restore damaged stock',
       'main stock ekata',
       'badu danne kohomada',
     ],
     answerEn: () =>
-      `**How to Add New Stock (GRN) to the Central Main Warehouse:**\n\n` +
-      `1. **Open Main Stock:** Click **1. Main Stock** in the left navigation sidebar.\n` +
-      `2. **Start GRN Entry:** Click the **+ Add Stock (GRN)** button at the top right.\n` +
-      `3. **Fill Supplier & Reference Details:** Enter the Supplier Name, Invoice / Delivery Note Number, and GRN Date.\n` +
-      `4. **Add Items & Quantities:** Select each registered item from the dropdown (or scan its barcode), enter the received quantity, and click **Save GRN**.\n` +
-      `5. **PO-Based Receiving:** If you created a Purchase Order first, go to **Supplier PO** and click **Receive GRN** directly against that PO.`,
+      `**How to Manage Main Central Stock, GRN Entries & Damaged Stock Restoration:**\n\n` +
+      `1. **Open Main Central Stock:** Click **Main Central Stock** in the left sidebar.\n` +
+      `2. **Add Stock (GRN):** Click **+ Add Stock (GRN)**, choose **Purchase** or **Manual Entry**, enter Supplier / Invoice details, select items and quantities, and save.\n` +
+      `3. **Direct Site Transfer:** Transfer stock directly from the Central Warehouse to any Site Branch Yard.\n` +
+      `4. **Damaged Stock Restoration:** View damaged items returned from teams/branches and use **Restore Damaged Stock to Main** once items are repaired and ready for reuse.`,
     answerSi: () =>
-      `**ප්‍රධාන ගබඩාවට (Central Main Stock) අලුතින් බඩු (GRN) ඇතුළත් කරන ආකාරය:**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"1. Main Stock"** පිටුවට යන්න.\n` +
-      `2. ඉහළින් ඇති **"+ Add Stock (GRN)"** බටන් එක ක්ලික් කරන්න.\n` +
-      `3. Supplier ගේ නම, Invoice / බිල්පත් අංකය සහ දිනය ඇතුළත් කරන්න.\n` +
-      `4. ලැබුණු Items තෝරා අදාළ ප්‍රමාණයන් (Quantities) ඇතුළත් කර **"Save GRN"** ක්ලික් කරන්න.\n` +
-      `5. Purchase Order (PO) එකක් හරහා බඩු ගන්නවා නම් **"Supplier PO"** වෙත ගොස් අදාළ PO එකට GRN එක දැමිය හැක.`,
+      `**ප්‍රධාන ගබඩාවට (Main Central Stock) බඩු (GRN) ඇතුළත් කිරීම සහ Damaged Stock කළමනාකරණය:**\n\n` +
+      `1. වම් පස මෙනුවෙන් **"Main Central Stock"** පිටුවට යන්න.\n` +
+      `2. **අලුත් බඩු ඇතුළත් කිරීමට:** **"+ Add Stock (GRN)"** ක්ලික් කර Supplier විස්තර, Invoice අංකය සහ Items ප්‍රමාණයන් ඇතුළත් කර Save කරන්න.\n` +
+      `3. **Direct Transfer:** Request එකක් නොමැතිව කෙලින්ම Branch එකකට බඩු යැවීමට Direct Transfer භාවිතා කළ හැක.\n` +
+      `4. **Damaged Stock Restoration:** අලුත්වැඩියා කළ Damaged බඩු නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිතා කරන්න.`,
   },
   {
     id: 'issue-to-teams',
@@ -131,54 +274,27 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'issue items to a team',
       'issue materials',
       'issue to teams',
-      'dispatch to team',
+      'team in-hand stock',
       'team ekakata badu',
       'team ekata issue',
     ],
     answerEn: (ctx) =>
-      `**How to Issue Materials from a Branch Yard to a Field Team:**\n\n` +
-      `1. **Check Branch Inventory:** Make sure the required items have available stock (` +
-      `> 0) in your **Branch Stock**.\n` +
-      `2. **Open Issue to Teams:** Click **3. Issue to Teams** in the left sidebar.\n` +
-      `3. **Select Branch & Team:** Choose the **Branch Yard** and the **Field Team** receiving the materials.\n` +
-      `4. **Select Materials & Quantities:** Pick the items from the available branch stock list, enter the quantities to issue, and click **Issue Material to Team**.\n` +
-      `5. **Track Team Custody:** All issued items are tracked live under **Team In-Hand** until they are consumed on a project (**5. Material Usage**) or returned (**6. Team Returns**).${
-        ctx.activeTeamsCount ? `\n\n📌 *Your workspace currently has **${ctx.activeTeamsCount} active field team(s)** registered.*` : ''
+      `**How to Issue Materials to Field Teams & Track Team In-Hand Custody:**\n\n` +
+      `1. **Check Branch Inventory:** Ensure the required items have available stock (> 0) in **Site Branch Stock**.\n` +
+      `2. **Open Issue to Teams:** Click **Issue to Teams** in the left sidebar.\n` +
+      `3. **Select Branch & Team:** Choose the **Branch Yard** and the **Field Team** receiving the items.\n` +
+      `4. **Select Items & Print Gate Pass:** Pick the items and quantities, click **Issue Material to Team**, and print the official **Gate Pass / Issue Voucher**.\n` +
+      `5. **Team In-Hand Stock:** Open **Team In-Hand Stock** to monitor the live balance held by each team (*Total Issued − Used in Projects − Returned to Branch*).${
+        ctx.activeTeamsCount ? `\n\n📌 *Currently **${ctx.activeTeamsCount} active field team(s)** are registered.*` : ''
       }`,
     answerSi: (ctx) =>
-      `**Branch එකේ සිට වැඩ කරන Field Team එකකට බඩු නිකුත් කරන (Issue to Teams) ආකාරය:**\n\n` +
-      `1. **Branch Stock පරීක්ෂාව:** පළමුව අදාළ Branch එකේ ("Branch Stock") නිකුත් කිරීමට අවශ්‍ය බඩු තොගය තිබිය යුතුය.\n` +
-      `2. **Issue to Teams වෙත යන්න:** වම් පස මෙනුවෙන් **"3. Issue to Teams"** තෝරන්න.\n` +
-      `3. **Branch සහ Team තෝරන්න:** බඩු නිකුත් කරන **Branch Yard එක** සහ බඩු ලබාගන්නා **Field Team එක** තෝරන්න.\n` +
-      `4. **බඩු සහ ප්‍රමාණයන් ඇතුළත් කරන්න:** ලැයිස්තුවෙන් අදාළ Items සහ ප්‍රමාණයන් තෝරා **"Issue Material to Team"** ක්ලික් කරන්න.\n` +
-      `5. **Team In-Hand:** Team එක අතේ දැනට ඉතිරිව ඇති සියලුම බඩු **"Team In-Hand"** පිටුවෙන් බලාගත හැක.${
-        ctx.activeTeamsCount ? `\n\n📌 *දැනට පද්ධතියේ සක්‍රීය Teams **${ctx.activeTeamsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
+      `**Branch එකේ සිට Field Team එකකට බඩු නිකුත් කිරීම (Issue to Teams) සහ Team In-Hand බැලීම:**\n\n` +
+      `1. පළමුව අදාළ Branch එකේ (**Site Branch Stock**) නිකුත් කිරීමට අවශ්‍ය බඩු තොගය තිබිය යුතුය.\n` +
+      `2. වම් පස මෙනුවෙන් **"Issue to Teams"** තෝරන්න.\n` +
+      `3. බඩු නිකුත් කරන **Branch Yard එක** සහ **Field Team එක** තෝරා, Items සහ ප්‍රමාණයන් ඇතුළත් කර **"Issue Material to Team"** ක්ලික් කරන්න.\n` +
+      `4. **Team In-Hand Stock:** එක් එක් Team එක අතේ දැනට ඉතිරිව පවතින බඩු තොගය **"Team In-Hand Stock"** පිටුවෙන් සජීවීව බලාගත හැක.${
+        ctx.activeTeamsCount ? `\n\n📌 *දැනට සක්‍රීය Teams **${ctx.activeTeamsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
-  },
-  {
-    id: 'project-usage',
-    suggestedTab: 'project-usage',
-    keywords: ['usage', 'consume', 'consumption', 'boq', 'bill of quantities', 'project material', 'waya'],
-    phrases: [
-      'record project usage',
-      'project material usage',
-      'log material usage',
-      'project ekata',
-      'material usage danne',
-    ],
-    answerEn: () =>
-      `**How to Record Project Material Usage & Track BOQ Progress:**\n\n` +
-      `1. **Register the Project First:** Go to **4. Project Registry** and create the project (assigning its Branch Yard and optional BOQ item limits).\n` +
-      `2. **Open Material Usage:** Go to **5. Material Usage** from the sidebar.\n` +
-      `3. **Choose Deduction Source:** Select whether the materials were used from **Team In-Hand Stock** (items already issued to a field team) or directly from **Branch Yard Stock**.\n` +
-      `4. **Select Project & Team:** Pick the **Project**, the **Field Team**, and enter the exact quantities consumed on site.\n` +
-      `5. **Submit Usage:** Click **Record Usage**. The system automatically deducts the stock and updates the project's BOQ utilization & cost reports.`,
-    answerSi: () =>
-      `**Project එකකට වැය වූ බඩු (Project Material Usage / BOQ) සටහන් කරන ආකාරය:**\n\n` +
-      `1. **Project එක ලියාපදිංචි කිරීම:** පළමුව **"4. Project Registry"** වෙත ගොස් අදාළ Project එක සහ එහි BOQ බඩු ප්‍රමාණයන් ඇතුළත් කර තිබිය යුතුය.\n` +
-      `2. **Material Usage වෙත යන්න:** වම් පස මෙනුවෙන් **"5. Material Usage"** ක්ලික් කරන්න.\n` +
-      `3. **බඩු වැය වූ මූලාශ්‍රය තෝරන්න:** බඩු වැය කළේ Team එක අතේ තිබූ තොගයෙන්ද (**Team In-Hand**) නැතිනම් කෙලින්ම **Branch Stock** එකෙන්ද යන්න තෝරන්න.\n` +
-      `4. **Project සහ Team තෝරන්න:** අදාළ Project එක, Team එක සහ වැය වූ Items ප්‍රමාණයන් ඇතුළත් කර Save කරන්න.`,
   },
   {
     id: 'returns',
@@ -187,120 +303,146 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
     phrases: [
       'return unused stock',
       'team returns',
-      'branch return',
+      'branch returns',
       'return materials',
       'badu return karanne',
     ],
     answerEn: () =>
-      `**How to Return Unused or Damaged Stock:**\n\n` +
-      `• **Option A — Team Return to Branch Yard (6. Team Returns):**\n` +
-      `  1. Open **6. Team Returns** from the sidebar.\n` +
-      `  2. Select the **Field Team** returning items and the receiving **Branch Yard**.\n` +
-      `  3. Enter the returned quantity and condition (**Good** restores usable Branch Stock; **Damaged** logs into the damaged stock ledger).\n\n` +
-      `• **Option B — Branch Return to Central Main Warehouse (7. Branch Return):**\n` +
-      `  1. Open **7. Branch Return** from the sidebar.\n` +
-      `  2. Select your **Branch Yard**, pick the surplus items and quantities to send back to HQ, and submit.`,
+      `**How to Return Unused or Damaged Stock (Team Returns & Branch Returns):**\n\n` +
+      `• **Option A — Team Returns to Branch Yard (Team Returns):**\n` +
+      `  1. Open **Team Returns** from the sidebar.\n` +
+      `  2. Select the **Field Team** and receiving **Branch Yard**.\n` +
+      `  3. Enter the returned quantity and condition (**Good** restores usable Site Branch Stock; **Damaged** logs into the Damaged Stock ledger).\n\n` +
+      `• **Option B — Branch Return to Central Main Warehouse (Branch Returns):**\n` +
+      `  1. Open **Branch Returns** from the sidebar.\n` +
+      `  2. Select your **Branch Yard**, pick the surplus items and quantities to send back to the Central Main Warehouse (HQ), and submit.`,
     answerSi: () =>
       `**ඉතිරි වූ හෝ හානි වූ බඩු නැවත ගබඩාවට Return කරන ආකාරය:**\n\n` +
-      `• **1. Team එකක සිට Branch එකට Return කිරීම ("6. Team Returns"):**\n` +
-      `  - වම් පස මෙනුවෙන් **"6. Team Returns"** වෙත යන්න.\n` +
-      `  - අදාළ Team එක තෝරා, ඉතිරි වූ බඩු ප්‍රමාණය සහ තත්ත්වය (**Good** හෝ **Damaged**) තෝරා Save කරන්න. (Good ලෙස දැමූ බඩු නැවත Branch Stock එකට එකතු වේ).\n\n` +
-      `• **2. Branch එකක සිට ප්‍රධාන ගබඩාවට (Main Stock) Return කිරීම ("7. Branch Return"):**\n` +
-      `  - වම් පස මෙනුවෙන් **"7. Branch Return"** වෙත ගොස් Branch එකේ ඉතිරි බඩු නැවත Central Main Warehouse වෙත යැවිය හැක.`,
+      `• **1. Team එකක සිට Branch එකට Return කිරීම ("Team Returns"):**\n` +
+      `  - වම් පස මෙනුවෙන් **"Team Returns"** වෙත ගොස් අදාළ Team එක තෝරන්න.\n` +
+      `  - ඉතිරි වූ බඩු ප්‍රමාණය සහ තත්ත්වය (**Good** හෝ **Damaged**) තෝරා Save කරන්න.\n\n` +
+      `• **2. Branch එකක සිට ප්‍රධාන ගබඩාවට (Main Stock) Return කිරීම ("Branch Returns"):**\n` +
+      `  - වම් පස මෙනුවෙන් **"Branch Returns"** වෙත ගොස් Branch එකේ ඉතිරි බඩු නැවත ප්‍රධාන ගබඩාව (HQ) වෙත යැවිය හැක.`,
   },
   {
     id: 'procurement-po',
     suggestedTab: 'procurement',
-    keywords: ['procurement', 'supplier', 'purchase order', 'po', 'debit note', 'vendor', 'damaged supplier'],
+    keywords: ['procurement', 'supplier', 'purchase order', 'po', 'debit note', 'rtv', 'settlement', 'vendor'],
     phrases: [
       'create purchase order',
+      'supplier orders',
       'supplier return',
       'debit note',
       'supplier po',
     ],
     answerEn: () =>
-      `**How to Manage Supplier Purchase Orders (PO), Returns & Debit Notes:**\n\n` +
-      `1. **Create a Purchase Order:** Go to **Supplier PO** in the sidebar and click **+ New Purchase Order**. Enter supplier details, items, and unit prices.\n` +
-      `2. **Receive GRN Against PO:** When the supplier delivers the goods, click **Receive GRN** on the PO card to add the items directly into **1. Main Stock**.\n` +
-      `3. **Supplier Returns & Debit Notes:** If delivered items are defective or damaged, use the **Supplier Return / Debit Note** option in **Supplier PO** to deduct defective stock and print an official Debit Note or record a replacement settlement.`,
+      `**How to Manage Supplier Orders (PO), GRN Batches, Supplier Returns (RTV) & Debit Notes:**\n\n` +
+      `1. **Create a Purchase Order:** Open **Supplier Orders (PO)** and click **+ New Purchase Order**. Select the supplier, items, and unit prices.\n` +
+      `2. **Full or Partial GRN Receipt:** When goods arrive, click **Receive GRN** on the PO to receive full or partial batch quantities directly into **Main Central Stock** (or close remaining balances).\n` +
+      `3. **Supplier Returns (RTV) & Debit Notes:** For defective or damaged deliveries, create a **Supplier Return**, dispatch with Gate Pass & vehicle details, print an official **Debit Note**, and record supplier settlement (Replacement, Credit Note, or Refund).`,
     answerSi: () =>
-      `**Supplier Purchase Orders (PO), Supplier Returns සහ Debit Notes කළමනාකරණය:**\n\n` +
-      `1. **Purchase Order සෑදීම:** වම් පස මෙනුවෙන් **"Supplier PO"** වෙත ගොස් අලුත් PO එකක් සාදන්න.\n` +
-      `2. **PO එකට බඩු භාරගැනීම (GRN):** Supplier බඩු එවූ පසු එම PO එකේ **"Receive GRN"** ක්ලික් කිරීමෙන් කෙලින්ම Main Stock එකට බඩු එකතු වේ.\n` +
-      `3. **Supplier Return & Debit Note:** ප්‍රමිතියෙන් තොර හෝ හානි වූ බඩු නැවත Supplier වෙත යැවීමට සහ Debit Note එකක් ලබාගැනීමට එහි ඇති Supplier Return පහසුකම භාවිතා කරන්න.`,
+      `**Supplier Orders (PO), Supplier Returns සහ Debit Notes කළමනාකරණය:**\n\n` +
+      `1. **Purchase Order සෑදීම:** වම් පස මෙනුවෙන් **"Supplier Orders (PO)"** වෙත ගොස් අලුත් PO එකක් සාදන්න.\n` +
+      `2. **PO එකට බඩු භාරගැනීම (Full / Partial GRN):** Supplier බඩු එවූ පසු **"Receive GRN"** මගින් සම්පූර්ණ හෝ කොටස් වශයෙන් Main Stock එකට බඩු භාරගත හැක.\n` +
+      `3. **Supplier Return & Debit Note:** හානි වූ බඩු නැවත Supplier වෙත යැවීමට, Gate Pass සහ **Debit Note** මුද්‍රණය කිරීමට සහ Settlement සටහන් කිරීමට Supplier Return පහසුකම භාවිතා කරන්න.`,
   },
   {
     id: 'client-foc',
     suggestedTab: 'client-free-stock',
-    keywords: ['client free', 'foc', 'free issue', 'customer supplied', 'client stock'],
+    keywords: ['client free', 'foc', 'free issue', 'customer supplied', 'principal', 'client stock'],
     phrases: ['client free stock', 'free of charge', 'client material'],
     answerEn: () =>
-      `**How to Manage Client Free Issue (FOC) Stock:**\n\n` +
-      `1. Open **Client Free Stock** from the sidebar.\n` +
-      `2. Record materials provided free-of-charge by clients separately from company-purchased stock.\n` +
-      `3. You can track received FOC quantities, allocate them to specific client projects, and print FOC receiving notes.`,
+      `**How to Manage Client Free Stock (FOC) & Principal Materials:**\n\n` +
+      `1. Open **Client Free Stock (FOC)** from the left sidebar.\n` +
+      `2. Register Clients / Principals in the Client Directory and log Free-of-Charge materials received for specific projects.\n` +
+      `3. Track **Total Received**, **Total Used**, and **Remaining FOC Balance** per project separately from company-purchased stock.`,
     answerSi: () =>
       `**Client Free Stock (FOC - සේවාදායකයින් නොමිලේ ලබාදෙන බඩු) කළමනාකරණය:**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"Client Free Stock"** වෙත යන්න.\n` +
-      `2. ආයතනයෙන් මිලදී ගත් බඩු වලට පරිබාහිරව, Client විසින් ව්‍යාපෘති සඳහා ලබාදෙන බඩු මෙහි වෙනමම සටහන් කර ගබඩා කළ හැක.`,
+      `1. වම් පස මෙනුවෙන් **"Client Free Stock (FOC)"** වෙත යන්න.\n` +
+      `2. ආයතනයෙන් මිලදී ගත් බඩු වලට පරිබාහිරව, Client විසින් ව්‍යාපෘති සඳහා ලබාදෙන බඩු අදාළ Project එකට වෙන් කර මෙහි සටහන් කළ හැක.`,
+  },
+  {
+    id: 'items-barcodes-machinery',
+    suggestedTab: 'items',
+    keywords: ['barcode', 'qr', 'scanner', 'usb scanner', 'camera scan', 'machinery', 'plant', 'equipment', 'excel import', 'item catalog'],
+    phrases: [
+      'item catalog',
+      'plant & equipment',
+      'print barcode',
+      'barcode scanner',
+      'import items excel',
+    ],
+    answerEn: (ctx) =>
+      `**Item Catalog, Plant & Equipment, Excel Import & Barcode Scanning:**\n\n` +
+      `• **Item Catalog & Plant/Equipment:** Open **Item Catalog** for all items or **Plant & Equipment** specifically for machinery and tools. Items can also be marked as **Project-Reserved**.\n` +
+      `• **Excel Bulk Import / Export:** Import items from Excel/CSV using **Sync (Add + Update)**, **Append Only**, or **Replace** modes.\n` +
+      `• **Barcode Labels & Scanning:** Auto-generate missing barcodes, print **Barcode Sticker Labels** (` +
+      `CODE128, CODE39, EAN13), and scan items using a **USB HID Barcode Scanner** or **Mobile Camera Scanner**.\n\n` +
+      `📌 *Current Catalog:* **${ctx.activeItemsCount ?? 0}** active items (**${ctx.lowStockItemsCount ?? 0}** low-stock alerts).`,
+    answerSi: (ctx) =>
+      `**Item Catalog, Plant & Equipment, Excel Import සහ Barcode පහසුකම්:**\n\n` +
+      `• **Item Catalog & Plant/Equipment:** සියලුම භාණ්ඩ **"Item Catalog"** මගින්ද, යන්ත්‍රෝපකරණ සහ Tools **"Plant & Equipment"** මගින්ද කළමනාකරණය කළ හැක.\n` +
+      `• **Excel Import / Export:** Excel ගොනුවක් මගින් භාණ්ඩ සිය ගණනක් එකවර පද්ධතියට ඇතුළත් කළ හැක.\n` +
+      `• **Barcode Print & Scan:** භාණ්ඩ සඳහා Barcode ලේබල් මුද්‍රණය කිරීමට සහ USB Barcode Scanner හෝ ජංගම දුරකථන කැමරාවෙන් Scan කිරීමට පහසුකම් ඇත.\n\n` +
+      `📌 *දැනට පද්ධතියේ:* සක්‍රීය Items **${ctx.activeItemsCount ?? 0}**ක් ඇත.`,
   },
   {
     id: 'registrations-setup',
     suggestedTab: 'registrations',
-    keywords: ['register', 'master setup', 'create item', 'add item', 'new branch', 'new site', 'new team', 'crew member', 'excel import', 'barcode'],
+    keywords: ['register', 'master setup', 'master registrations', 'new branch', 'new site', 'new team', 'crew member', 'team member'],
     phrases: [
       'how to register',
-      'create a new item',
+      'master registrations',
       'register a branch',
       'register a team',
-      'add crew members',
-      'aluth item',
+      'add team members',
       'site ekak hadanne',
       'team ekak hadanne',
     ],
     answerEn: (ctx) =>
-      `**How to Register Items, Branches, Field Teams & Users (Master Setup):**\n\n` +
-      `Open **Master Setup** from the left sidebar and select the relevant tab:\n` +
-      `• **Items Catalog:** Register materials, tools, or machinery with Item Code, Unit, Unit Price, and Low-Stock Alert threshold. You can also **Import/Export via Excel** or print **Barcode Labels**.\n` +
-      `• **Sites / Branches:** Add operational branch yards, location details, and assign a Branch Supervisor.\n` +
-      `• **Field Teams:** Register work squads with Team Name, Team Leader Name & NIC, Assigned Site Base, and individual **Team Members** (Name, NIC/ID, Role, Phone).\n` +
-      `• **Manage Users:** Create staff login accounts, set passwords, and assign each user's Role and Branch.\n\n` +
-      `📌 *Current Workspace Summary:* **${ctx.activeItemsCount ?? 0}** Items · **${ctx.activeSitesCount ?? 0}** Branches · **${ctx.activeTeamsCount ?? 0}** Teams.`,
+      `**How to Register Items, Branches, Field Teams, Suppliers, Clients & Users (Master Registrations):**\n\n` +
+      `Open **Master Registrations** from the left sidebar and select the tab you need:\n` +
+      `• **Items:** Register Materials or Machinery with Item Code, Unit, Unit Price, Low-Stock Threshold, and optional Project Reservation.\n` +
+      `• **Sites / Branches:** Add Branch Yards, location/contact details, and link a designated Branch Supervisor.\n` +
+      `• **Field Teams:** Register squads with Team Name, Team Leader Name & NIC, Assigned Site Base, and individual **Team Members** (Name, NIC/ID, Role, Phone).\n` +
+      `• **Suppliers & Clients:** Maintain master directories for Procurement POs and Client FOC stock.\n` +
+      `• **Users:** Create staff accounts, assign Roles, and link one or more Branches.\n\n` +
+      `📌 *Workspace Summary:* **${ctx.activeItemsCount ?? 0}** Items · **${ctx.activeSitesCount ?? 0}** Branches · **${ctx.activeTeamsCount ?? 0}** Teams.`,
     answerSi: (ctx) =>
-      `**අලුත් Items, Branches (Sites), Field Teams සහ Users ලියාපදිංචි කරන ආකාරය:**\n\n` +
-      `වම් පස මෙනුවෙන් **"Master Setup"** වෙත ගොස් අදාළ කොටස තෝරන්න:\n` +
-      `• **Items:** අලුත් භාණ්ඩ (Materials, Tools, Machinery) ඇතුළත් කිරීමට, Excel මගින් Import කිරීමට සහ Barcode ලේබල් මුද්‍රණය කිරීමට.\n` +
-      `• **Sites / Branches:** අලුත් Branch Yards සහ ඒවායේ Supervisors ලියාපදිංචි කිරීමට.\n` +
-      `• **Teams:** වැඩ කරන කණ්ඩායම් (Field Teams), Team Leader සහ Team Members (නම සහ NIC අංක) ඇතුළත් කිරීමට.\n` +
+      `**Master Registrations හරහා Items, Branches, Field Teams සහ Users ලියාපදිංචි කරන ආකාරය:**\n\n` +
+      `වම් පස මෙනුවෙන් **"Master Registrations"** වෙත ගොස් අදාළ ටැබ් එක තෝරන්න:\n` +
+      `• **Items:** අලුත් Materials සහ Machinery ලියාපදිංචි කිරීමට.\n` +
+      `• **Sites / Branches:** අලුත් Branch Yards සහ Branch Supervisors ඇතුළත් කිරීමට.\n` +
+      `• **Teams:** Field Teams, Team Leader සහ **Team Members** (නම, NIC අංකය, Role, දුරකථන අංකය) ඇතුළත් කිරීමට.\n` +
       `• **Users:** සිස්ටම් එකට ලොග් වන Users, ඔවුන්ගේ Role එක සහ Branch එක ලබාදීමට.\n\n` +
       `📌 *දැනට පද්ධතියේ:* Items **${ctx.activeItemsCount ?? 0}**ක් · Branches **${ctx.activeSitesCount ?? 0}**ක් · Teams **${ctx.activeTeamsCount ?? 0}**ක් ඇත.`,
   },
   {
     id: 'users-roles-permissions',
     suggestedTab: 'manage-users',
-    keywords: ['role', 'permission', 'access', 'user', 'password', 'login', 'supervisor', 'storekeeper', 'admin'],
+    keywords: ['role', 'permission', 'access', 'user', 'password', 'login', 'supervisor', 'storekeeper', 'admin', 'view as'],
     phrases: [
       'what permissions',
       'my role',
       'create user',
-      'manage users',
+      'user management',
       'cannot see',
       'user kenek',
       'mage role',
     ],
     answerEn: (ctx) =>
-      `**User Roles & System Permissions Guide:**\n\n` +
-      `You are currently logged in as **${ctx.userName || 'User'}** with role **${ctx.userRole || 'Staff'}** (Branch: **${ctx.branchName || 'All Branches'}**).\n\n` +
-      `• **Super Admin / All-Site Admin:** Full control across all branches, Main Stock, Supplier POs, Master Setup, User Management, Audit Trail, and Recycle Bin.\n` +
-      `• **Main Storekeeper:** Manages Central Main Warehouse GRNs, approves/dispatches Site Stock Requests, and receives Branch Returns.\n` +
-      `• **Site Manager / Site Supervisor / Sub-Storekeeper:** Manages their assigned Branch Yard — creates Stock Requests, confirms received transfers, issues stock to Field Teams, records Project Material Usage, and handles Team Returns.\n` +
-      `• **Project Manager / Auditor:** Views project BOQ usage, stock balances, and audit reports.`,
+      `**User Roles, Multi-Site Access & Permissions Guide:**\n\n` +
+      `You are logged in as **${ctx.userName || 'User'}** with role **${ctx.userRole || 'Staff'}** (Branch: **${ctx.branchName || 'All Branches'}**).\n\n` +
+      `• **Super Admin Central:** Full access to all branches, Main Stock, Supplier POs, Master Registrations, User Management, Document Templates, Backups, Audit Trail, Recycle Bin, and **View-As User Preview Mode**.\n` +
+      `• **All Site Branch Admin:** Cross-branch operational access to Main Stock, Supplier POs, Requisitions, and all Branch Yards.\n` +
+      `• **Branch Admin:** Manages their assigned Branch Yard(s) — creates Stock Requisitions, confirms received transfers, issues stock to Field Teams, records Project Material Usage, and handles Team/Branch Returns.\n` +
+      `• **Branch System User:** Standard operational access for their assigned Branch Yard(s).`,
     answerSi: (ctx) =>
       `**User Roles සහ බලතල (Permissions) පිළිබඳ විස්තරය:**\n\n` +
       `ඔබ දැනට ලොග් වී සිටින්නේ **${ctx.userName || 'User'}** ලෙස **${ctx.userRole || 'Staff'}** තනතුරෙන් (Branch: **${ctx.branchName || 'All Branches'}**).\n\n` +
-      `• **Super Admin / All-Site Admin:** සියලුම Branches, Main Stock, Supplier PO, Master Setup, Users සහ Recycle Bin සඳහා සම්පූර්ණ බලතල ඇත.\n` +
-      `• **Main Storekeeper:** ප්‍රධාන ගබඩාවට GRN දැමීම, Site Requests අනුමත කර බඩු යැවීම (Dispatch) සහ Branch Returns භාරගැනීම සිදු කරයි.\n` +
-      `• **Site Manager / Site Supervisor / Sub-Storekeeper:** තමන්ට අදාළ Branch එකට බඩු ඉල්ලුම් කිරීම, ලැබුණු බඩු භාරගැනීම, Teams වලට බඩු නිකුත් කිරීම සහ Project Usage සටහන් කිරීම සිදු කරයි.`,
+      `• **Super Admin Central:** සියලුම Branches, Main Stock, Supplier PO, Master Registrations, User Management, Backups සහ Recycle Bin සඳහා සම්පූර්ණ බලතල ඇත.\n` +
+      `• **All Site Branch Admin:** සියලුම Branches සහ ප්‍රධාන ගබඩාවේ මෙහෙයුම් කටයුතු පාලනය කළ හැක.\n` +
+      `• **Branch Admin / Branch System User:** තමන්ට අදාළ Branch එකට බඩු ඉල්ලුම් කිරීම (Stock Requisitions), ලැබුණු බඩු භාරගැනීම, Teams වලට බඩු නිකුත් කිරීම සහ Project Usage සටහන් කිරීම සිදු කරයි.`,
   },
   {
     id: 'recycle-bin-delete',
@@ -313,55 +455,63 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'delete permanently',
     ],
     answerEn: () =>
-      `**How to Restore or Permanently Delete Items, Users, Teams & Records:**\n\n` +
-      `1. Click **Recycle Bin** in the left sidebar (or the trash icon in the top header).\n` +
-      `2. Switch between tabs for deleted **Items, Sites, Teams, Users, or Stock Transactions**.\n` +
+      `**How to Restore or Permanently Delete Records (Recycle Bin):**\n\n` +
+      `1. Open **Recycle Bin** from the left sidebar (or top header trash icon).\n` +
+      `2. Filter or browse deleted **Items, Sites, Teams, Users, Projects, or Stock Transactions**.\n` +
       `3. Click **Restore** to bring the record back into active use immediately.\n` +
-      `4. Click **Delete Permanently** if you want to erase the record forever so it never reappears.`,
+      `4. Click **Delete Permanently** (or **Empty Recycle Bin**) to erase the record forever so it never reappears on refresh.`,
     answerSi: () =>
       `**මැකුණු දත්ත නැවත ගැනීමට (Restore) හෝ ස්ථිරවම මකා දැමීමට (Recycle Bin):**\n\n` +
       `1. වම් පස මෙනුවෙන් **"Recycle Bin"** වෙත යන්න.\n` +
-      `2. එහි ඇති මැකුණු Items, Sites, Teams, Users හෝ ගනුදෙනු (Transactions) පරීක්ෂා කරන්න.\n` +
+      `2. එහි ඇති මැකුණු Items, Sites, Teams, Users, Projects හෝ ගනුදෙනු (Transactions) පරීක්ෂා කරන්න.\n` +
       `3. නැවත පද්ධතියට ගැනීමට **"Restore"** බටන් එකත්, නැවත කිසිවිටෙක නොඑන ලෙස ස්ථිරවම ඉවත් කිරීමට **"Delete Permanently"** බටන් එකත් භාවිතා කරන්න.`,
   },
   {
     id: 'low-stock-inventory',
-    suggestedTab: 'items',
-    keywords: ['low stock', 'out of stock', 'reorder', 'shortage', 'balance', 'inventory status', 'adu'],
-    phrases: ['low stock items', 'check stock balance', 'stock level'],
+    suggestedTab: 'site-stock',
+    keywords: ['low stock', 'out of stock', 'reorder', 'shortage', 'balance', 'site branch stock', 'adu'],
+    phrases: ['low stock items', 'check stock balance', 'stock level', 'branch stock'],
     answerEn: (ctx) =>
       `**How to Check Stock Balances & Low-Stock Alerts:**\n\n` +
-      `• **Central Warehouse Stock:** Open **1. Main Stock** to view central warehouse quantities and low-stock indicators.\n` +
-      `• **Branch Yard Stock:** Open **Branch Stock** to inspect stock held at each individual site/branch.\n` +
-      `• **Reorder Thresholds:** In **Items & Catalog**, each item has a minimum reorder level; when stock drops at or below that level, a red/amber Low Stock alert badge appears.\n\n` +
+      `• **Main Central Stock:** View central warehouse quantities, total received, dispatched, and low-stock indicators.\n` +
+      `• **Site Branch Stock:** Inspect inventory held at each individual branch yard (*Received − Issued to Teams − Direct Project Usage + Team Returns − Branch Returns*).\n` +
+      `• **Team In-Hand Stock:** View materials currently held by each field squad.\n\n` +
       `📌 *Live Workspace Status:* Out of **${ctx.activeItemsCount ?? 0}** active items, **${ctx.lowStockItemsCount ?? 0}** item(s) are currently at or below their low-stock threshold${
         ctx.lowStockItemNames && ctx.lowStockItemNames.length > 0
           ? ` (${ctx.lowStockItemNames.slice(0, 4).join(', ')})`
           : ''
       }.`,
     answerSi: (ctx) =>
-      `**බඩු තොග (Stock Balances) සහ අඩු වී ඇති බඩු (Low Stock) පරීක්ෂා කරන ආකාරය:**\n\n` +
-      `• **1. Main Stock:** ප්‍රධාන ගබඩාවේ දැනට පවතින තොග ප්‍රමාණයන් බලාගැනීමට.\n` +
-      `• **Branch Stock:** එක් එක් Branch / Site එකෙහි පවතින බඩු තොග වෙන වෙනම බලාගැනීමට.\n` +
-      `• **Low Stock Alerts:** යම් භාණ්ඩයක තොගය අවම සීමාවට (Reorder Level) වඩා අඩු වූ විට Dashboard එකේ සහ Main Stock හි රතු/කහ පැහැයෙන් පෙන්වයි.\n\n` +
+      `**බඩු තොග (Stock Balances) සහ Low Stock පරීක්ෂා කරන ආකාරය:**\n\n` +
+      `• **Main Central Stock:** ප්‍රධාන ගබඩාවේ දැනට පවතින තොග ප්‍රමාණයන් බලාගැනීමට.\n` +
+      `• **Site Branch Stock:** එක් එක් Branch / Site එකෙහි පවතින බඩු තොග වෙන වෙනම බලාගැනීමට.\n` +
+      `• **Team In-Hand Stock:** එක් එක් Team එක අතේ දැනට පවතින බඩු බලාගැනීමට.\n\n` +
       `📌 *දැනට පද්ධතියේ:* සක්‍රීය Items **${ctx.activeItemsCount ?? 0}** අතරින් Items **${ctx.lowStockItemsCount ?? 0}**ක් Low Stock සීමාවේ පවතී.`,
   },
   {
-    id: 'directory-audit-templates',
-    suggestedTab: 'branch-directory',
-    keywords: ['directory', 'audit', 'report', 'print', 'letterhead', 'template', 'backup', 'export excel'],
-    phrases: ['branch directory', 'audit trail', 'letterhead template', 'print report'],
+    id: 'directory-audit-letterhead-backup',
+    suggestedTab: 'templates',
+    keywords: ['directory', 'audit', 'report', 'print', 'letterhead', 'signature', 'backup', 'flush', 'theme', 'config'],
+    phrases: [
+      'branch staff & teams',
+      'audit trail',
+      'document templates',
+      'letterhead template',
+      'system backup',
+      'system config',
+    ],
     answerEn: () =>
-      `**Reports, Directory, Letterhead Templates & Backups:**\n\n` +
-      `• **Branch Staff & Teams Directory:** View and print the complete hierarchy of branches, supervisors, field teams, and crew members (or export to Excel).\n` +
-      `• **Audit Trail:** Inspect chronological logs of every stock addition, transfer, team issue, return, and deletion with filters and PDF/Excel export.\n` +
-      `• **Templates:** Customize your company logo, letterhead header, footer, and signature blocks for official printed GRNs, Gate Passes, and POs.\n` +
-      `• **System Backup:** Use the Backup icon in the top header to export a full JSON/Excel snapshot of your workspace at any time.`,
+      `**Directory, Document Templates (Letterhead), Audit Trail & System Backups:**\n\n` +
+      `• **Branch Staff & Teams:** View, filter, export to Excel (**Export Members**), and print the complete hierarchy of branches, supervisors, field teams, and crew members.\n` +
+      `• **Document Templates:** Customize your company letterhead, logo, digital signatures, and print layout for GRNs, POs, Debit Notes, Gate Passes, and Vouchers.\n` +
+      `• **Audit Trail:** Inspect chronological logs of every transaction and user action with PDF/CSV export.\n` +
+      `• **System Backups & Config (Top Header):** Create/restore versioned JSON backups, open the **Offline Backup Viewer**, customize system theme/company settings, or perform an **Admin System Flush**.`,
     answerSi: () =>
-      `**වාර්තා (Reports), Branch Directory, Letterhead සහ Backup පහසුකම්:**\n\n` +
+      `**Branch Directory, Document Templates (Letterhead), Audit Trail සහ System Backups:**\n\n` +
       `• **Branch Staff & Teams:** සියලුම Branches, Supervisors, Teams සහ සාමාජිකයින්ගේ විස්තර බලාගැනීමට සහ Print / Excel Export කිරීමට.\n` +
-      `• **Audit Trail:** පද්ධතියේ සිදු කළ සියලුම ගනුදෙනු සහ වෙනස්කම් පිළිබඳ සම්පූර්ණ වාර්තා ලබාගැනීමට.\n` +
-      `• **Templates:** Print කරන GRN, Gate Pass සහ PO සඳහා ආයතනයේ නම, ලාංඡනය (Logo) සහ Letterhead සකස් කිරීමට.`,
+      `• **Document Templates:** Print කරන GRN, Gate Pass, PO සහ Vouchers සඳහා ආයතනයේ නම, ලාංඡනය (Logo), Digital Signatures සහ Letterhead සකස් කිරීමට.\n` +
+      `• **Audit Trail:** පද්ධතියේ සිදු කළ සියලුම ගනුදෙනු පිළිබඳ වාර්තා ලබාගැනීමට.\n` +
+      `• **System Backup & Config (ඉහළ Header තීරුව):** පද්ධතියේ සම්පූර්ණ Backup ලබාගැනීමට, Restore කිරීමට සහ ආයතනයේ Theme/Settings වෙනස් කිරීමට.`,
   },
 ];
 
@@ -370,12 +520,8 @@ export function resolveSmartSystemSupportAnswer(
   ctx: SupportWorkspaceContext
 ): SupportAnswerResult {
   const q = userQuestion.trim().toLowerCase();
-  // Determine response language:
-  // If the user is in the Sinhala tab ('si'), OR typed in Sinhala/Singlish, respond in Sinhala.
-  // If the user is in the English tab ('en') and typed in English, respond strictly in English.
   const useSinhala = ctx.language === 'si' || detectSinhalaOrSinglishInput(userQuestion);
 
-  // Score each topic based on phrase and keyword matches
   let bestTopic: KnowledgeTopic | null = null;
   let bestScore = 0;
 
@@ -383,7 +529,7 @@ export function resolveSmartSystemSupportAnswer(
     let score = 0;
     for (const phrase of topic.phrases) {
       if (q.includes(phrase)) {
-        score += 5;
+        score += 6;
       }
     }
     for (const kw of topic.keywords) {
@@ -404,34 +550,37 @@ export function resolveSmartSystemSupportAnswer(
     };
   }
 
-  // Context-aware general overview when the user asks a general question like "help", "hi", "how does this system work?"
   if (useSinhala) {
     return {
       suggestedTab: ctx.currentTab || 'dashboard',
       reply:
-        `**Apex Stock & Site Management System — උපදෙස් මාලාව:**\n\n` +
-        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. ප්‍රධාන ක්‍රියාවලි පහත පරිදි වේ:\n` +
-        `1. **Master Setup:** අලුත් Items, Branches (Sites), Field Teams සහ Users ලියාපදිංචි කිරීම.\n` +
-        `2. **1. Main Stock:** ප්‍රධාන ගබඩාවට බඩු ඇතුළත් කිරීම (**+ Add Stock / GRN**).\n` +
-        `3. **2. Site Requests:** ප්‍රධාන ගබඩාවෙන් Branch වලට බඩු ඉල්ලුම් කිරීම සහ **Approve & Dispatch** මගින් යැවීම.\n` +
-        `4. **3. Issue to Teams:** Branch එකේ සිට වැඩ කරන Field Team එකකට බඩු නිකුත් කිරීම.\n` +
-        `5. **5. Material Usage:** Project එකකට වැය වූ බඩු සටහන් කිරීම.\n` +
-        `6. **6. Team Returns / 7. Branch Return:** ඉතිරි බඩු නැවත ගබඩාවට භාරගැනීම.\n\n` +
-        `ඉහත ඇති Quick Help බටන් එකක් ක්ලික් කරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය දේ ටයිප් කරන්න!`,
+        `**Apex Stock & Site Management System — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
+        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ සියලුම කොටස්:\n` +
+        `1. **Master Registrations:** Items, Branches (Sites), Field Teams (සහ Team Members), Suppliers, Clients සහ Users ලියාපදිංචි කිරීම.\n` +
+        `2. **Main Central Stock & Supplier Orders (PO):** ප්‍රධාන ගබඩාවට GRN දැමීම, Purchase Orders, Supplier Returns (Debit Notes) සහ Damaged Stock කළමනාකරණය.\n` +
+        `3. **Client Free Stock (FOC):** සේවාදායකයින් නොමිලේ ලබාදෙන බඩු ව්‍යාපෘති අනුව කළමනාකරණය.\n` +
+        `4. **Stock Requisitions & Site Branch Stock:** ප්‍රධාන ගබඩාවෙන් Branch වලට බඩු ඉල්ලුම් කිරීම, Approve & Dispatch කිරීම සහ Branch තොග පාලනය.\n` +
+        `5. **Issue to Teams & Team In-Hand Stock:** Branch එකෙන් Team වලට බඩු නිකුත් කිරීම (Gate Pass) සහ Team අතේ ඇති බඩු පරීක්ෂාව.\n` +
+        `6. **Project & New Section Registry:** අලුත් Project Sections සෑදීම (**+ New Section Registry**), ඒවාට **Default Material Templates (BOM)** සකස් කිරීම සහ Projects ලියාපදිංචි කිරීම.\n` +
+        `7. **Material Usage:** Project එකකට වැය වූ බඩු (Template BOM හරහා) සටහන් කිරීම.\n` +
+        `8. **Team Returns & Branch Returns:** ඉතිරි හෝ හානි වූ බඩු නැවත ගබඩාවට භාරගැනීම.\n\n` +
+        `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
   }
 
   return {
     suggestedTab: ctx.currentTab || 'dashboard',
     reply:
-      `**Apex Stock & Site Management System — Step-by-Step Workflow Guide:**\n\n` +
-      `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here is how the complete workflow operates:\n` +
-      `1. **Master Setup:** Register your Items, Branch Yards (Sites), Field Work Teams, and System Users.\n` +
-      `2. **1. Main Stock:** Receive new inventory into the Central Main Warehouse using **+ Add Stock (GRN)** or **Supplier PO**.\n` +
-      `3. **2. Site Requests:** Create a Stock Request for a Branch Yard -> Admin clicks **Approve & Dispatch** -> Branch clicks **Confirm Receipt**.\n` +
-      `4. **3. Issue to Teams:** Issue materials from available **Branch Stock** to a registered **Field Team**.\n` +
-      `5. **5. Material Usage:** Record materials consumed on a project against Team In-Hand or Branch Stock.\n` +
-      `6. **6. Team Returns & 7. Branch Return:** Return unused or damaged stock back to the Branch or Main Warehouse.\n\n` +
-      `Click any **Quick Help** topic above or type your specific question below!`,
+      `**Apex Stock & Site Management System — Complete Feature Guide:**\n\n` +
+      `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules available in the system:\n` +
+      `1. **Master Registrations:** Register Items (Materials & Machinery), Branches, Field Teams & Crew Members, Suppliers, Clients, and Users.\n` +
+      `2. **Main Central Stock & Supplier Orders (PO):** Record GRNs, manage Purchase Orders, Supplier Returns (RTV), Debit Notes, and Damaged Stock restoration.\n` +
+      `3. **Client Free Stock (FOC):** Track client-supplied free-of-charge materials per project.\n` +
+      `4. **Stock Requisitions & Site Branch Stock:** Request stock from HQ, Approve & Dispatch, and Confirm Receipt at Branch Yards.\n` +
+      `5. **Issue to Teams & Team In-Hand Stock:** Issue materials to Field Teams with printable Gate Passes and monitor live team custody.\n` +
+      `6. **Project & New Section Registry:** Create custom Project Sections (**+ New Section Registry**), configure **Default Material Templates (BOM)**, and register/import projects.\n` +
+      `7. **Material Usage:** Record project material consumption with auto-loaded section BOM templates.\n` +
+      `8. **Team Returns, Branch Returns, Document Templates, Audit Trail & Recycle Bin.**\n\n` +
+      `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

@@ -125,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       items: [
         {
           id: 'projects',
-          label: 'Project Registry',
+          label: 'Project & New Section Registry',
           icon: FolderKanban,
         },
         {

@@ -35,6 +35,14 @@ interface QuickPrompt {
 
 const QUICK_PROMPTS: QuickPrompt[] = [
   {
+    id: 'project-sections-templates',
+    labelEn: '🧩 How to create Project Sections & Templates?',
+    labelSi: '🧩 අලුත් Project Sections සහ Templates හදන්නේ කොහොමද?',
+    promptEn: 'How do I create a new Project Section in New Section Registry and configure its Default Material Template (BOM)?',
+    promptSi: 'Project & New Section Registry එකේ අලුත් Project Section එකක් හදලා ඒකට Material Template (BOM) එකක් හදන්නේ කොහොමද?',
+    targetTab: 'projects',
+  },
+  {
     id: 'grn',
     labelEn: '📦 How to add Main Stock (GRN)?',
     labelSi: '📦 Main Stock එකට GRN දාන්නේ කොහොමද?',
@@ -78,8 +86,8 @@ const QUICK_PROMPTS: QuickPrompt[] = [
     id: 'setup',
     labelEn: '⚙️ How to register Items, Sites & Teams?',
     labelSi: '⚙️ Items, Sites සහ Teams ලියාපදිංචි කරන්නේ කොහොමද?',
-    promptEn: 'How do I register new Items, Branch Yards, Field Teams, and Users in Master Setup?',
-    promptSi: 'Master Setup හරහා අලුත් Items, Branches, Teams සහ Users ලියාපදිංචි කරන්නේ කොහොමද?',
+    promptEn: 'How do I register new Items, Branch Yards, Field Teams, and Users in Master Registrations?',
+    promptSi: 'Master Registrations හරහා අලුත් Items, Branches, Teams සහ Users ලියාපදිංචි කරන්නේ කොහොමද?',
     targetTab: 'registrations',
   },
   {
@@ -94,22 +102,23 @@ const QUICK_PROMPTS: QuickPrompt[] = [
 
 const MODULE_LABELS: Record<string, { en: string; si: string }> = {
   dashboard: { en: 'Open Dashboard', si: 'Dashboard වෙත යන්න' },
-  'main-stock': { en: 'Open 1. Main Stock', si: '1. Main Stock වෙත යන්න' },
-  'client-free-stock': { en: 'Open Client Free Stock', si: 'Client Free Stock වෙත යන්න' },
-  procurement: { en: 'Open Supplier PO', si: 'Supplier PO වෙත යන්න' },
-  requests: { en: 'Open 2. Site Requests', si: '2. Site Requests වෙත යන්න' },
-  'site-stock': { en: 'Open Branch Stock', si: 'Branch Stock වෙත යන්න' },
-  dispatch: { en: 'Open 3. Issue to Teams', si: '3. Issue to Teams වෙත යන්න' },
-  'team-stock': { en: 'Open Team In-Hand', si: 'Team In-Hand වෙත යන්න' },
-  projects: { en: 'Open 4. Project Registry', si: '4. Project Registry වෙත යන්න' },
-  'project-usage': { en: 'Open 5. Material Usage', si: '5. Material Usage වෙත යන්න' },
-  returns: { en: 'Open 6. Team Returns', si: '6. Team Returns වෙත යන්න' },
-  'branch-returns': { en: 'Open 7. Branch Return', si: '7. Branch Return වෙත යන්න' },
-  registrations: { en: 'Open Master Setup', si: 'Master Setup වෙත යන්න' },
-  items: { en: 'Open Items & Catalog', si: 'Items & Catalog වෙත යන්න' },
-  'manage-users': { en: 'Open Manage Users', si: 'Manage Users වෙත යන්න' },
+  'main-stock': { en: 'Open Main Central Stock', si: 'Main Central Stock වෙත යන්න' },
+  'client-free-stock': { en: 'Open Client Free Stock (FOC)', si: 'Client Free Stock වෙත යන්න' },
+  procurement: { en: 'Open Supplier Orders (PO)', si: 'Supplier Orders (PO) වෙත යන්න' },
+  requests: { en: 'Open Stock Requisitions', si: 'Stock Requisitions වෙත යන්න' },
+  'site-stock': { en: 'Open Site Branch Stock', si: 'Site Branch Stock වෙත යන්න' },
+  dispatch: { en: 'Open Issue to Teams', si: 'Issue to Teams වෙත යන්න' },
+  'team-stock': { en: 'Open Team In-Hand Stock', si: 'Team In-Hand Stock වෙත යන්න' },
+  projects: { en: 'Open Project & New Section Registry', si: 'Project & New Section Registry වෙත යන්න' },
+  'project-usage': { en: 'Open Material Usage', si: 'Material Usage වෙත යන්න' },
+  returns: { en: 'Open Team Returns', si: 'Team Returns වෙත යන්න' },
+  'branch-returns': { en: 'Open Branch Returns', si: 'Branch Returns වෙත යන්න' },
+  registrations: { en: 'Open Master Registrations', si: 'Master Registrations වෙත යන්න' },
+  items: { en: 'Open Item Catalog', si: 'Item Catalog වෙත යන්න' },
+  'manage-users': { en: 'Open User Management', si: 'User Management වෙත යන්න' },
   teams: { en: 'Open Teams Registration', si: 'Teams Registration වෙත යන්න' },
   'branch-directory': { en: 'Open Branch Staff & Teams', si: 'Branch Staff & Teams වෙත යන්න' },
+  templates: { en: 'Open Document Templates', si: 'Document Templates වෙත යන්න' },
   'recycle-bin': { en: 'Open Recycle Bin', si: 'Recycle Bin වෙත යන්න' },
 };
 
@@ -124,7 +133,7 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
 });
 
 export const AiSupportChatWidget: React.FC<{ currentTab?: string }> = ({ currentTab = 'dashboard' }) => {
-  const { currentUser, sites, items, teams, projects, getMainWarehouseStock, pendingRequestsCount } = useStock();
+  const { currentUser, sites, items, teams, projects, activeProjectTypes, getMainWarehouseStock, pendingRequestsCount } = useStock();
   const [isOpen, setIsOpen] = useState(false);
   // Strictly default to 'en' (English) so Start Chat has zero Sinhala anywhere
   const [language, setLanguage] = useState<'en' | 'si'>('en');
@@ -196,9 +205,11 @@ export const AiSupportChatWidget: React.FC<{ currentTab?: string }> = ({ current
       activeTeamsCount: activeTeams.length,
       teamNames: activeTeams.map((t) => t.teamName),
       activeProjectsCount: activeProjects.length,
+      activeProjectSectionsCount: activeProjectTypes.length,
+      projectSectionNames: activeProjectTypes.map((pt) => pt.name),
       pendingRequestsCount,
     };
-  }, [items, sites, teams, projects, getMainWarehouseStock, currentUser, currentTab, activeBranchName, language, pendingRequestsCount]);
+  }, [items, sites, teams, projects, activeProjectTypes, getMainWarehouseStock, currentUser, currentTab, activeBranchName, language, pendingRequestsCount]);
 
   const handleNavigate = (tabId: string) => {
     window.dispatchEvent(new CustomEvent('app-navigate', { detail: tabId }));

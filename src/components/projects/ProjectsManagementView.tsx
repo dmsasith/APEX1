@@ -512,13 +512,13 @@ export const ProjectsManagementView: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Infrastructure Projects</span>
             <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">Master Registry & Sections</span>
+            <span className="text-xs text-slate-500">Project Registry & New Section Registry</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
-            Project Registry & Custom Sections
+            Project Registry & New Section Registry
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
-            Organize projects by custom sections (e.g. <em>Telecom New Connection</em>, <em>Telecom Cable Development</em>), set default material templates, and track multi-team material usage without data loss.
+            Register projects, create custom project sections (e.g. <em>Telecom New Connection</em>, <em>Telecom Cable Development</em>), configure default material BOM templates, and track multi-team material usage.
           </p>
         </div>
 
@@ -564,6 +564,18 @@ export const ProjectsManagementView: React.FC = () => {
 
           <button
             type="button"
+            onClick={() => {
+              setActiveTab('sections');
+              handleOpenAddSectionModal();
+            }}
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+          >
+            <Layers className="w-4 h-4 text-emerald-400" />
+            <span>+ New Section Registry</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleOpenAddModal()}
             className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
           >
@@ -591,14 +603,14 @@ export const ProjectsManagementView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('sections')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition ${
+          className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
             activeTab === 'sections'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Layers className="w-4 h-4 text-emerald-400" />
-          <span>Project Sections & Material Templates ({activeProjectTypes.length})</span>
+          <span>New Section Registry & Material Templates ({activeProjectTypes.length})</span>
         </button>
       </div>
 
@@ -972,18 +984,18 @@ export const ProjectsManagementView: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Custom Project Sections & BOM Templates</h2>
+              <h2 className="text-base font-bold text-slate-900">New Section Registry & BOM Material Templates</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Create sections like <strong>Telecom New Connection</strong> or <strong>Telecom Cable Development</strong>. Attach default material item templates so supervisors save time when entering daily usage.
+                Create project sections like <strong>Telecom New Connection</strong> or <strong>Telecom Cable Development</strong>. Attach default material item templates (BOM) so supervisors save time when entering daily usage.
               </p>
             </div>
             <button
               type="button"
               onClick={handleOpenAddSectionModal}
-              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition"
+              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Create New Section</span>
+              <span>+ Create New Section</span>
             </button>
           </div>
 

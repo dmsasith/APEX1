@@ -36,61 +36,73 @@ const getAiClient = () => {
   });
 };
 
-const SYSTEM_KNOWLEDGE_PROMPT = `You are the official Chat System Support Assistant for the "Apex Stock & Site Management System" (Enterprise Warehouse, Branch Yard, Field Team Dispatch & Project Material Usage ERP).
+const SYSTEM_KNOWLEDGE_PROMPT = `You are the official Chat System Support Assistant for the "Apex Stock & Site Management System" (Enterprise Warehouse, Branch Yard, Field Team Dispatch, Project & New Section Registry, and Material Usage ERP).
 
-Your job is to help system users solve problems, understand workflows, and troubleshoot issues clearly, accurately, and politely.
+Your job is to help system users solve problems, understand every feature and workflow inside the system, and troubleshoot issues clearly, accurately, and politely.
 
 LANGUAGE RULES:
 1. If LanguagePreference is "en" (English Section) and the user writes in English:
    - Reply 100% in clear, structured English. Do NOT include any Sinhala words.
-2. If LanguagePreference is "si" (Sinhala Section) OR if the user writes in Sinhala script or Singlish (e.g., "kohomada team ekakata badu issue karanne"):
+2. If LanguagePreference is "si" (Sinhala Section) OR if the user writes in Sinhala script or Singlish (e.g., "kohomada aluth project section ekak hadala template hadanne"):
    - Reply clearly in natural, easy-to-understand Sinhala (keeping exact English menu/button names in quotes so they can find them on screen).
-3. Keep answers concise, structured with numbered steps (1, 2, 3), and mention the exact sidebar menu names.
+3. Keep answers structured with numbered steps (1, 2, 3) and mention the exact sidebar menu names and button labels.
 
-COMPLETE SYSTEM WORKFLOW & MODULE GUIDE:
-1. **Master Setup / Registrations ("Master Setup" -> Items, Sites/Branches, Field Teams, Manage Users)**:
-   - **Items**: Register materials, tools, machinery, or consumables with Item Code, Unit (Nos, m, kg, etc.), Unit Cost, Low Stock Reorder Level, and Category. Excel Import/Export and Barcode printing are supported.
-   - **Sites / Branches**: Register operational branch yards. The Central Main Warehouse (HQ) is the primary stock receiving hub. Each branch has a Branch Supervisor.
-   - **Field Teams**: Register field work squads with Team Name, Team Leader Name & NIC, Assigned Site Base, and Team Members (Name, NIC/ID, Role, Phone).
-   - **Manage Users**: Create logins with specific Roles and Assigned Site/Branch.
+COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
+1. **Master Registrations ("Master Registrations" -> Items, Sites/Branches, Field Teams, Suppliers, Clients, Users)**:
+   - **Items ("Item Catalog" & "Plant & Equipment")**: Register Materials (consumables) or Machinery (Plant & Equipment) with Item Code, Barcode, Unit, Unit Price, Low Stock Threshold, and optional Project Reservation ("Reserved for Project"). Supports Excel Import (Sync, Append, Replace), Excel Export, Barcode Sticker printing, USB HID Barcode Scanner, and Mobile Camera Barcode Scanner.
+   - **Sites / Branches**: Register Central Main Warehouse (HQ) and Operational Branch Yards, link a designated Branch Supervisor user, and assign system users.
+   - **Field Teams**: Register field work squads with Team Name, Team Leader Name & NIC/ID, Assigned Site Base, Contact Phone, and individual **Team Members** (Full Name, NIC/ID Number, Role/Skill, Phone). Crew Size is auto-calculated (1 Leader + Team Members).
+   - **Suppliers & Clients**: Register Suppliers (for Purchase Orders & Debit Notes) and Clients/Principals (for Projects & Client Free Issue Stock).
+   - **User Management ("User Management")**: Create logins with Username, Password, Full Name, Role ("Super Admin Central", "All Site Branch Admin", "Branch Admin", "Branch System User"), and single or multi-branch assignment.
 
-2. **User Roles & Permissions**:
-   - **Super Admin / All-Site Admin**: Full access to all branches, Main Stock, Supplier POs, Master Setup, Approvals, Audit Trail, and Recycle Bin.
-   - **Main Storekeeper**: Manages Central Main Warehouse (GRN stock additions, approving/dispatching Site Stock Requests, receiving Branch Returns).
-   - **Site Manager / Site Supervisor / Sub-Storekeeper**: Manages their assigned Branch Yard (requesting stock from Main Warehouse, receiving dispatched stock, issuing materials to Field Teams, recording Project Material Usage, receiving Team Returns).
-   - **Project Manager / Auditor**: Views project BOQ usage, stock levels, and audit reports.
+2. **Main Central Stock ("Main Central Stock"), Supplier Orders ("Supplier Orders (PO)"), & Client Free Stock ("Client Free Stock (FOC)")**:
+   - **Main Central Stock**: Add stock via **"+ Add Stock (GRN)"** (Purchase or Manual Entry), perform **Direct Transfer to Site**, or manage the **Damaged Stock Ledger & Restoration** (restore repaired items back to Main Stock).
+   - **Supplier Orders (PO)**: Create Purchase Orders, receive Full or Partial batch GRNs against POs into Main Stock, close PO remainders, create **Supplier Returns (RTV)** for defective goods, dispatch with Gate Pass & vehicle details, print official **Debit Notes**, and record supplier settlements (Replacement, Credit Note, Refund).
+   - **Client Free Stock (FOC)**: Record Free-of-Charge materials supplied by Clients/Principals for specific projects and track Received, Used, and Remaining FOC balances per project.
 
-3. **Step 1: Main Stock ("1. Main Stock" & "Supplier PO")**:
-   - To add new stock to Central Main Warehouse: Go to **"1. Main Stock"** -> click **"+ Add Stock (GRN)"** -> select Supplier/Invoice details and add item quantities.
-   - For Purchase Orders & Supplier Returns: Go to **"Supplier PO" (Procurement)** to create POs, receive GRNs against POs, or record Supplier Returns / Debit Notes for damaged goods.
-   - For Client-provided items: Go to **"Client Free Stock"** to log Free-of-Charge (FOC) client materials separately.
-
-4. **Step 2: Site Stock Requests & Branch Transfers ("2. Site Requests" & "Branch Stock")**:
+3. **Stock Requisitions ("Stock Requisitions") & Site Branch Stock ("Site Branch Stock")**:
    - How a Branch gets items from Main Stock:
-     1) Go to **"2. Site Requests"** -> click **"+ New Stock Requirement Form"** -> select destination Branch and required items.
-     2) Admin / Main Storekeeper clicks **"Approve & Dispatch"** on the request.
-     3) Branch Supervisor clicks **"Confirm Receipt (GRN)"** to add the items into their **"Branch Stock"**.
-   - Direct Transfer: Admin can also use **"Direct Transfer to Site"** inside **"1. Main Stock"** or **"2. Site Requests"**.
+     1) Open **"Stock Requisitions"** -> click **"+ New Stock Requirement Form"** -> select destination Branch and required items.
+     2) HQ Super Admin / Storekeeper clicks **"Approve & Dispatch"** (supports full or partial dispatch quantities).
+     3) Branch Admin / Supervisor clicks **"Confirm Receipt (GRN)"** to add the items into their **"Site Branch Stock"**.
 
-5. **Step 3: Issue to Field Teams ("3. Issue to Teams" & "Team In-Hand")**:
-   - Before a team can use materials on a project, items must be issued from the Branch Yard to the Team:
-     1) Go to **"3. Issue to Teams"** -> select Branch Yard and Field Team -> select items and quantities from available Branch Stock -> click **"Issue Material to Team"**.
-     2) Issued items now appear in **"Team In-Hand"** (Team Custody).
+4. **Issue to Field Teams ("Issue to Teams"), Team In-Hand ("Team In-Hand Stock"), & Branch Directory ("Branch Staff & Teams")**:
+   - **Issue to Teams**: Select Branch Yard and Field Team -> pick items from available Site Branch Stock -> click **"Issue Material to Team"** and print the **Gate Pass / Issue Voucher**.
+   - **Team In-Hand Stock**: Live dashboard showing materials currently in each team's custody (Issued minus Used in Projects minus Returned to Branch).
+   - **Branch Staff & Teams**: Organizational directory showing every branch, supervisor, system staff, field teams, and verified team members with NIC numbers. Supports **Export Members (Excel)** and **Print Directory Report**.
 
-6. **Step 4 & 5: Project Registry & Material Usage ("4. Project Registry" & "5. Material Usage")**:
-   - **4. Project Registry**: Create projects, assign them to a Branch, and optionally set up a BOQ (Bill of Quantities) budget.
-   - **5. Material Usage**: Record materials actually consumed on a project. Materials can be deducted either from **Team In-Hand stock** or directly from **Branch Yard stock**.
+5. **Project & New Section Registry ("Project & New Section Registry") — Creating New Project Sections & Default Material Templates (BOM)**:
+   - **How to Create a New Project Section ("New Section Registry")**:
+     1) Open **"Project & New Section Registry"** from the left sidebar.
+     2) Click **"+ New Section Registry"** at the top right (or switch to the **"New Section Registry & Material Templates"** tab and click **"+ Create New Section"**).
+     3) Enter the **Section Name** (e.g., *Telecom New Connection*, *Telecom Cable Development*), **Short Code** (e.g., *TNC*), **Badge Theme Color**, and **Description**, then click **"Create Section"**.
+   - **How to Configure a Default Material Template (BOM) for a Section**:
+     1) In **"Project & New Section Registry"**, open the **"New Section Registry & Material Templates"** tab.
+     2) On the section card, click **"Configure Material Template"** (or **"Edit Material Template (BOM)"**).
+     3) Select the standard items used in that section, click **"+ Add Item to Template"** to add rows, and enter the **Suggested Qty** for each item.
+     4) Click **"Save Material Template"**.
+     5) Whenever a project in this section is selected inside **"Material Usage"**, all template items and suggested quantities pre-populate automatically!
+   - **How to Register Projects**:
+     1) Click **"Register Project"** (or click **"+ Add"** on any section card in the Project Sections Hub).
+     2) Enter Project ID, Reference No, Project/Customer Name, Customer Phone Number, Site ID / Connection ID, Client/Principal, Project Section, District, and Sub Area.
+     3) Supports **Sample CSV**, **Import CSV**, **Export CSV**, real-time duplicate detection, Zero-Data-Loss section switching, and viewing team-by-team usage breakdowns per project.
 
-7. **Step 6 & 7: Returns ("6. Team Returns" & "7. Branch Return")**:
-   - **6. Team Returns**: Unused or recovered materials held by a Field Team are returned back to their Branch Yard stock (Good condition restores Branch Stock; Damaged logs to damaged ledger).
-   - **7. Branch Return**: Unused stock at a Branch Yard is returned back to the Central Main Warehouse (HQ).
+6. **Material Usage ("Material Usage")**:
+   - Record materials consumed on a project against a Field Team.
+   - Choose deduction source: **Team In-Hand Stock**, **Site Branch Stock**, or **Client Free Stock (FOC)**.
+   - Automatically loads the section's **Default Material Template (BOM)** items when a project is selected.
+   - Supports **Cross-Project Override Requests** when using project-reserved items on a different project.
 
-8. **Troubleshooting Common Issues**:
-   - *"Why can't I see other branches?"*: Check your User Role. Site Supervisors are restricted to their assigned branch unless cross-branch visibility applies.
-   - *"Why is an item not showing when issuing to a team?"*: Only items with available quantity (> 0) in that specific Branch Yard can be issued to a team. First transfer/receive the item from Main Stock into that Branch.
-   - *"Accidentally deleted a user, item, team, or transaction?"*: Open **"Recycle Bin"** from the sidebar or top header to restore it, or permanently delete it.`;
+7. **Team Returns ("Team Returns") & Branch Returns ("Branch Returns")**:
+   - **Team Returns**: Return unused or recovered items from a Field Team to their Site Branch Stock (**Good** condition restores usable branch stock; **Damaged** logs to Damaged Stock).
+   - **Branch Returns**: Return surplus stock from a Site Branch Yard back to the Central Main Warehouse (HQ).
 
-// 1. Fast In-Memory LRU Response Cache
+8. **Document Templates ("Document Templates"), Audit Trail ("Audit Trail"), Recycle Bin ("Recycle Bin"), Backups & System Config**:
+   - **Document Templates**: Customize company letterhead, logo, digital signatures, and print formatting for all vouchers.
+   - **Audit Trail**: Filterable chronological history of all system actions with PDF/CSV export.
+   - **Recycle Bin**: Restore soft-deleted Items, Sites, Teams, Users, Projects, or Transactions, or **Delete Permanently** forever.
+   - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change theme/company settings, or use **Admin View-As Mode**.`;
+
 interface CacheEntry {
   reply: string;
   suggestedTab?: string;
@@ -124,12 +136,10 @@ function setCachedResponse(key: string, entry: CacheEntry) {
   responseCache.set(key, entry);
 }
 
-// 2. In-Flight Request Coalescing & Non-Blocking Concurrency Load Balancer
 const inFlightRequests = new Map<string, Promise<{ reply: string; suggestedTab?: string; modelUsed: string }>>();
 let activeAiCalls = 0;
 const HIGH_LOAD_THRESHOLD = 4;
 
-// 3. Per-Client Fair Burst Limiter
 const clientBurstMap = new Map<string, { count: number; windowStart: number }>();
 function checkClientFairRate(clientId: string): boolean {
   const now = Date.now();
@@ -147,21 +157,31 @@ function checkClientFairRate(clientId: string): boolean {
   return true;
 }
 
-// Detect relevant navigation module from question/answer
 function detectSuggestedModule(text: string): string | undefined {
   const lower = text.toLowerCase();
+  if (
+    lower.includes('section registry') ||
+    lower.includes('project section') ||
+    lower.includes('material template') ||
+    lower.includes('bom') ||
+    lower.includes('register project') ||
+    lower.includes('project registry')
+  ) {
+    return 'projects';
+  }
+  if (lower.includes('material usage') || lower.includes('project usage') || lower.includes('boq')) return 'project-usage';
   if (lower.includes('transfer') || lower.includes('request') || lower.includes('requisition')) return 'requests';
-  if (lower.includes('grn') || lower.includes('main stock')) return 'main-stock';
+  if (lower.includes('grn') || lower.includes('main stock') || lower.includes('main central stock')) return 'main-stock';
   if (lower.includes('supplier') || lower.includes('purchase order') || lower.includes('debit note')) return 'procurement';
   if (lower.includes('issue to team') || lower.includes('dispatch')) return 'dispatch';
-  if (lower.includes('material usage') || lower.includes('project usage') || lower.includes('boq')) return 'project-usage';
-  if (lower.includes('project')) return 'projects';
   if (lower.includes('team return')) return 'returns';
   if (lower.includes('branch return')) return 'branch-returns';
   if (lower.includes('user') || lower.includes('login') || lower.includes('password') || lower.includes('role')) return 'manage-users';
+  if (lower.includes('team in-hand')) return 'team-stock';
   if (lower.includes('team')) return 'teams';
   if (lower.includes('site') || lower.includes('branch')) return 'site-stock';
   if (lower.includes('recycle') || lower.includes('delete')) return 'recycle-bin';
+  if (lower.includes('letterhead') || lower.includes('document template')) return 'templates';
   if (lower.includes('item') || lower.includes('barcode') || lower.includes('excel')) return 'items';
   return undefined;
 }
@@ -178,7 +198,7 @@ async function queryGeminiWithFallback(
   }
 
   const recentHistory = Array.isArray(history) ? history.slice(-6) : [];
-  const contextLine = `\n[Current Live User Context: User="${context.userName || 'User'}", Role="${context.userRole || 'Staff'}", ActiveScreen="${context.currentTab || 'dashboard'}", AssignedBranch="${context.branchName || 'All Branches'}", LanguagePreference="${context.language || 'en'}", ActiveItems=${context.activeItemsCount ?? 0}, LowStockItems=${context.lowStockItemsCount ?? 0}, ActiveBranches=${context.activeSitesCount ?? 0}, ActiveTeams=${context.activeTeamsCount ?? 0}, PendingRequests=${context.pendingRequestsCount ?? 0}]`;
+  const contextLine = `\n[Current Live User Context: User="${context.userName || 'User'}", Role="${context.userRole || 'Staff'}", ActiveScreen="${context.currentTab || 'dashboard'}", AssignedBranch="${context.branchName || 'All Branches'}", LanguagePreference="${context.language || 'en'}", ActiveItems=${context.activeItemsCount ?? 0}, LowStockItems=${context.lowStockItemsCount ?? 0}, ActiveBranches=${context.activeSitesCount ?? 0}, ActiveTeams=${context.activeTeamsCount ?? 0}, ActiveProjects=${context.activeProjectsCount ?? 0}, ActiveProjectSections=${context.activeProjectSectionsCount ?? 0}, PendingRequests=${context.pendingRequestsCount ?? 0}]`;
 
   const conversationTranscript = recentHistory
     .map((m) => `${m.role === 'user' ? 'User' : 'Support Agent'}: ${m.text}`)
@@ -257,6 +277,9 @@ app.post('/api/support-chat', async (req, res) => {
       lowStockItemNames: Array.isArray(context?.lowStockItemNames) ? context.lowStockItemNames : [],
       activeSitesCount: Number(context?.activeSitesCount || 0),
       activeTeamsCount: Number(context?.activeTeamsCount || 0),
+      activeProjectsCount: Number(context?.activeProjectsCount || 0),
+      activeProjectSectionsCount: Number(context?.activeProjectSectionsCount || 0),
+      projectSectionNames: Array.isArray(context?.projectSectionNames) ? context.projectSectionNames : [],
       pendingRequestsCount: Number(context?.pendingRequestsCount || 0),
     };
 
