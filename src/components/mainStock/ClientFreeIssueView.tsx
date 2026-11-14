@@ -221,7 +221,7 @@ export const ClientFreeIssueView: React.FC = () => {
 
   // Open New Client Register Modal
   const handleOpenNewClientModal = () => {
-    setNewClientCode(`CLT-${String(clients.length + 1).padStart(3, '0')}`);
+    setNewClientCode(`CLT-${String(clients.length + 1).padStart(4, '0')}`);
     setNewClientName('');
     setNewClientCategory(STANDARD_CLIENT_CATEGORIES[0]);
     setNewClientContactPerson('');
@@ -240,7 +240,7 @@ export const ClientFreeIssueView: React.FC = () => {
     e.preventDefault();
     if (!newClientName.trim()) return;
 
-    const finalCode = newClientCode.trim() || `CLT-${String(clients.length + 1).padStart(3, '0')}`;
+    const finalCode = newClientCode.trim() || `CLT-${String(clients.length + 1).padStart(4, '0')}`;
     const trimmedName = newClientName.trim();
 
     addClient({
@@ -463,7 +463,7 @@ export const ClientFreeIssueView: React.FC = () => {
     const defaultMode = mainProjs.length > 0 ? 'main' : 'all';
     setFormProjectMode(defaultMode);
     setFormProjectId(mainProjs[0]?.id || activeProjects.find((p) => !p.parentProjectId)?.id || activeProjects[0]?.id || '');
-    setFormDispatchNoteNo('');
+    setFormDispatchNoteNo(`DN-${new Date().getFullYear()}-${String(clientFreeIssues.length + 1).padStart(4, '0')}`);
     setFormReceivedDate(new Date().toISOString().split('T')[0]);
     setFormReceivedBy(currentUser?.fullName || 'Logistics Coordinator');
     setFormStorageLocation(sites[0]?.name || 'Main Central Warehouse');
@@ -1303,7 +1303,7 @@ export const ClientFreeIssueView: React.FC = () => {
                     type="text"
                     value={newClientCode}
                     onChange={(e) => setNewClientCode(e.target.value)}
-                    placeholder={`e.g. CLT-${String(clients.length + 1).padStart(3, '0')}`}
+                    placeholder={`e.g. CLT-${String(clients.length + 1).padStart(4, '0')}`}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono font-bold bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>

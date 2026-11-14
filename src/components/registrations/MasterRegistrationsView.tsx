@@ -59,7 +59,7 @@ import {
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
-import { generateUniqueBarcode } from '../../utils/barcodeUtils';
+import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
 
 interface MasterRegistrationsViewProps {
   initialTab?: 'items' | 'sites' | 'users' | 'teams' | 'clients';
@@ -164,8 +164,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   // --- ITEM FORM STATE ---
   const [itemClassification, setItemClassification] = useState<'Material' | 'Machinery'>('Material');
-  const [itemCode, setItemCode] = useState('');
+  const [itemCode, setItemCode] = useState(() => generateNextSequentialItemCode(activeItems, 'Material'));
   const [itemBarcode, setItemBarcode] = useState('');
+
+  // Keep itemCode auto-populated if empty or when items list updates
+  React.useEffect(() => {
+    if (!itemCode.trim() || itemCode.startsWith('ITM-') || itemCode.startsWith('MCH-')) {
+      setItemCode(generateNextSequentialItemCode(activeItems, itemClassification));
+    }
+  }, [activeItems.length, itemClassification]);
   const [itemName, setItemName] = useState('');
   const [itemCategory, setItemCategory] = useState('Electrical & Power');
   const [itemUnit, setItemUnit] = useState('pcs');
@@ -270,7 +277,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     );
 
     showToast(`Master Item ${upperCode} registered successfully!`);
-    setItemCode('');
+    setItemCode(generateNextSequentialItemCode([...activeItems, { itemCode: upperCode, itemType: itemClassification }], itemClassification));
     setItemBarcode('');
     setItemName('');
     setInitialReceivedQty('');
@@ -534,7 +541,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   // --- FORM FIELD CLEAR HANDLERS ---
   const handleClearItemForm = () => {
-    setItemCode('');
+    setItemCode(generateNextSequentialItemCode(activeItems, itemClassification));
     setItemBarcode('');
     setItemName('');
     setItemCategory('Electrical & Power');
@@ -849,7 +856,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [showAddClientCategoryModal, setShowAddClientCategoryModal] = useState(false);
   const [newCustomClientCategoryName, setNewCustomClientCategoryName] = useState('');
 
-  const [clientCodeInput, setClientCodeInput] = useState('');
+  const [clientCodeInput, setClientCodeInput] = useState(() => `CLT-${String(clients.length + 1).padStart(4, '0')}`);
+
+  React.useEffect(() => {
+    if (!clientCodeInput.trim() || clientCodeInput.startsWith('CLT-')) {
+      setClientCodeInput(`CLT-${String(clients.length + 1).padStart(4, '0')}`);
+    }
+  }, [clients.length]);
   const [clientNameInput, setClientNameInput] = useState('');
   const [clientCategoryInput, setClientCategoryInput] = useState('Telecom Operator & Network Owner');
   const [clientContactPersonInput, setClientContactPersonInput] = useState('');
@@ -931,7 +944,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     });
 
     showToast(`Master Client "${newClt.name}" (${newClt.clientCode}) registered successfully!`);
-    setClientCodeInput('');
+    setClientCodeInput(`CLT-${String(clients.length + 2).padStart(4, '0')}`);
     setClientNameInput('');
     setClientContactPersonInput('');
     setClientEmailInput('');
@@ -1111,6 +1124,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     type="button"
                     onClick={() => {
                       setItemClassification('Material');
+                      if (!itemCode.trim() || itemCode.startsWith('MCH-') || itemCode.startsWith('ITM-')) {
+                        setItemCode(generateNextSequentialItemCode(activeItems, 'Material'));
+                      }
                       if (STANDARD_MACHINERY_CATEGORIES.includes(itemCategory as any)) {
                         setItemCategory('Electrical & Power');
                       }
@@ -1128,6 +1144,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     type="button"
                     onClick={() => {
                       setItemClassification('Machinery');
+                      if (!itemCode.trim() || itemCode.startsWith('ITM-') || itemCode.startsWith('MCH-')) {
+                        setItemCode(generateNextSequentialItemCode(activeItems, 'Machinery'));
+                      }
                       if (!STANDARD_MACHINERY_CATEGORIES.includes(itemCategory as any)) {
                         setItemCategory('Excavator');
                       }
@@ -1145,10 +1164,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item Code *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Item Code *</label>
+                  <button
+                    type="button"
+                    onClick={() => setItemCode(generateNextSequentialItemCode(activeItems, itemClassification))}
+                    className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    Auto Code (0001)
+                  </button>
+                </div>
                 <input
                   type="text"
-                  placeholder={itemClassification === 'Machinery' ? 'e.g. EXC-CAT-320, GEN-KUB-50, WELD-400' : 'e.g. CBL-CU-500, ST-BAR-20'}
+                  placeholder={itemClassification === 'Machinery' ? 'e.g. MCH-0001, EXC-CAT-320' : 'e.g. ITM-0001, CBL-CU-500'}
                   value={itemCode}
                   onChange={(e) => setItemCode(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono uppercase bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
@@ -1993,7 +2021,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               </span>
                               <span aria-hidden="true">·</span>
                               <span className="font-mono tabular-nums text-[10px]">
-                                {s.isMainWarehouse ? 'HQ-01' : `BR-${String(idx).padStart(2, '0')}`}
+                                {s.isMainWarehouse ? 'HQ-0001' : `BR-${String(idx).padStart(4, '0')}`}
                               </span>
                             </div>
                             <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
@@ -2923,7 +2951,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 <span className="break-words">{s?.name || 'Central Base'}</span>
                                 <span aria-hidden="true">·</span>
                                 <span className="font-mono tabular-nums text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                                  SQ-{String(idx + 1).padStart(2, '0')}
+                                  SQ-{String(idx + 1).padStart(4, '0')}
                                 </span>
                               </div>
                               <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
@@ -3354,7 +3382,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       type="text"
                       value={clientCodeInput}
                       onChange={(e) => setClientCodeInput(e.target.value)}
-                      placeholder={`Auto e.g. CLT-${String(clients.length + 1).padStart(3, '0')}`}
+                      placeholder={`Auto e.g. CLT-${String(clients.length + 1).padStart(4, '0')}`}
                       className="w-full px-3.5 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-mono font-bold bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     />
                   </div>

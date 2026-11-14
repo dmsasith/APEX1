@@ -460,11 +460,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
             ? projects.find((p) => p.id === newParentProjectId)
             : undefined;
 
+        const existingSubsUnderParent = parentMainObj
+          ? projects.filter((p) => p.parentProjectId === parentMainObj.id).length
+          : 0;
+
         const generatedProjId = entrySiteId.trim()
           ? entrySiteId.trim().toUpperCase()
           : parentMainObj
-          ? `${parentMainObj.projectId}-SUB-${Math.floor(10 + Math.random() * 90)}`
-          : `PRJ-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+          ? `${parentMainObj.projectId}-SUB-${String(existingSubsUnderParent + 1).padStart(4, '0')}`
+          : `PRJ-${new Date().getFullYear()}-${String(projects.length + 1).padStart(4, '0')}`;
 
         const resolvedProjectName =
           newProjectScope === 'sub' ? entrySubProjectName.trim() : entryCustomerName.trim();
@@ -483,7 +487,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
           siteIdentifier: entrySiteId.trim().toUpperCase() || undefined,
           projectTypeId: selectedSectionId || parentMainObj?.projectTypeId || undefined,
           projectTypeName: activeSec?.name || parentMainObj?.projectTypeName,
-          referenceNo: `REF-${Math.floor(1000 + Math.random() * 9000)}`,
+          referenceNo: parentMainObj?.referenceNo || `REF-${String(projects.length + 1).padStart(4, '0')}`,
           district:
             entryDistrict.trim() ||
             parentMainObj?.district ||

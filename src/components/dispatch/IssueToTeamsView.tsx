@@ -101,8 +101,14 @@ export const IssueToTeamsView: React.FC = () => {
   const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
 
   const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
-  const [workOrderRef, setWorkOrderRef] = useState(`WO-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`);
+  const [workOrderRef, setWorkOrderRef] = useState(
+    () => `WO-${new Date().getFullYear()}-${String(teamIssues.length + 1).padStart(4, '0')}`
+  );
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    setWorkOrderRef(`WO-${new Date().getFullYear()}-${String(teamIssues.length + 1).padStart(4, '0')}`);
+  }, [teamIssues.length]);
 
   // Search & Add items with the "+" Plus Button requirement
   const [searchItemQuery, setSearchItemQuery] = useState('');
@@ -247,7 +253,7 @@ export const IssueToTeamsView: React.FC = () => {
     // Reset form
     setDispatchItemsList([]);
     setNotes('');
-    setWorkOrderRef(`WO-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`);
+    setWorkOrderRef(`WO-${new Date().getFullYear()}-${String(teamIssues.length + 2).padStart(4, '0')}`);
   };
 
   const selectedTeam = teams.find((t) => t.id === selectedTeamId);

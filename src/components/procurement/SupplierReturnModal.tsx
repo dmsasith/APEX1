@@ -55,6 +55,7 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
     activeItems,
     items,
     activePurchaseOrders,
+    supplierReturns,
     getMainWarehouseStock,
     getSiteItemStock,
     addSupplierReturn,
@@ -115,7 +116,8 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
 
   // Outward logistics
   const [gatePassNo, setGatePassNo] = useState(
-    editingReturn?.gatePassNo || `GP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+    editingReturn?.gatePassNo ||
+      `GP-${new Date().getFullYear()}-${String((supplierReturns?.length || 0) + 1).padStart(4, '0')}`
   );
   const [transporterName, setTransporterName] = useState(editingReturn?.transporterName || '');
   const [vehicleNo, setVehicleNo] = useState(editingReturn?.vehicleNo || '');

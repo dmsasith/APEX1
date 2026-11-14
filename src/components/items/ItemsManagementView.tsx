@@ -41,7 +41,7 @@ import {
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
-import { generateUniqueBarcode } from '../../utils/barcodeUtils';
+import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
 
 interface ItemsManagementViewProps {
   initialType?: 'all' | 'Material' | 'Machinery';
@@ -90,7 +90,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
   // Manual Item Create Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newItemType, setNewItemType] = useState<'Material' | 'Machinery'>('Material');
-  const [newItemCode, setNewItemCode] = useState('');
+  const [newItemCode, setNewItemCode] = useState(() => generateNextSequentialItemCode(items, 'Material'));
   const [newItemBarcode, setNewItemBarcode] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('Assembly Units (Manholes & Handholes)');
@@ -234,7 +234,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
 
     showToast(`Master Item ${codeUpper} created successfully!`);
     setShowCreateModal(false);
-    setNewItemCode('');
+    setNewItemCode(generateNextSequentialItemCode(items, newItemType));
     setNewItemBarcode('');
     setNewItemName('');
     setNewItemDesc('');
@@ -355,7 +355,12 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
             {/* Manual Add Item (Central Admin Only) */}
             {isCentralAdmin ? (
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  const defaultType = selectedItemType === 'Machinery' ? 'Machinery' : 'Material';
+                  setNewItemType(defaultType);
+                  setNewItemCode(generateNextSequentialItemCode(items, defaultType));
+                  setShowCreateModal(true);
+                }}
                 className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
               >
                 <PlusCircle className="w-4 h-4 text-emerald-400" />
@@ -943,6 +948,9 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                     type="button"
                     onClick={() => {
                       setNewItemType('Material');
+                      if (!newItemCode.trim() || newItemCode.startsWith('MCH-') || newItemCode.startsWith('ITM-')) {
+                        setNewItemCode(generateNextSequentialItemCode(items, 'Material'));
+                      }
                       if (STANDARD_MACHINERY_CATEGORIES.includes(newItemCategory as any)) {
                         setNewItemCategory('Assembly Units (Manholes & Handholes)');
                       }
@@ -960,6 +968,9 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                     type="button"
                     onClick={() => {
                       setNewItemType('Machinery');
+                      if (!newItemCode.trim() || newItemCode.startsWith('ITM-') || newItemCode.startsWith('MCH-')) {
+                        setNewItemCode(generateNextSequentialItemCode(items, 'Machinery'));
+                      }
                       if (!STANDARD_MACHINERY_CATEGORIES.includes(newItemCategory as any)) {
                         setNewItemCategory('Excavator');
                       }
@@ -978,12 +989,21 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Unit Designation / Item Code *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Unit Designation / Item Code *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setNewItemCode(generateNextSequentialItemCode(items, newItemType))}
+                    className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    Auto Code (0001)
+                  </button>
+                </div>
                 <input
                   type="text"
-                  placeholder={newItemType === 'Machinery' ? 'e.g. EXC-CAT-320, GEN-KUB-50, WELD-MILL-400' : 'e.g. MH-HH-1, MH-S-1-IS'}
+                  placeholder={newItemType === 'Machinery' ? 'e.g. MCH-0001, EXC-CAT-320' : 'e.g. ITM-0001, MH-HH-1'}
                   value={newItemCode}
                   onChange={(e) => setNewItemCode(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase focus:ring-2 focus:ring-slate-900 focus:outline-none"

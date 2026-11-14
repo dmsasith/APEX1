@@ -121,15 +121,30 @@ export const MainStockView: React.FC = () => {
   };
 
   // Form State for Incoming Stock Log
+  const getNextMainStockReferenceNo = (type: MainStockEntryType, extraOffset = 0) => {
+    const year = new Date().getFullYear();
+    if (type === 'Purchase') {
+      const purchaseCount = mainStockEntries.filter((e) => e.entryType === 'Purchase').length;
+      return `PO-${year}-${String(purchaseCount + 1 + extraOffset).padStart(4, '0')}`;
+    } else {
+      const manualCount = mainStockEntries.filter((e) => e.entryType !== 'Purchase').length;
+      return `MAN-ADJ-${String(manualCount + 1 + extraOffset).padStart(4, '0')}`;
+    }
+  };
+
   const [entryType, setEntryType] = useState<MainStockEntryType>('Purchase');
   const [selectedItemId, setSelectedItemId] = useState<string>(activeItems[0]?.id || '');
-  const [referenceNo, setReferenceNo] = useState(`PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [referenceNo, setReferenceNo] = useState(() => getNextMainStockReferenceNo('Purchase'));
   const [supplier, setSupplier] = useState('');
   const [quantity, setQuantity] = useState<number | ''>('');
   const [unitCost, setUnitCost] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
   const [reservedProjectId, setReservedProjectId] = useState<string>('none');
   const [errorMsg, setErrorMsg] = useState('');
+
+  React.useEffect(() => {
+    setReferenceNo(getNextMainStockReferenceNo(entryType));
+  }, [mainStockEntries.length, showLogModal]);
 
   const handleClearFormFields = () => {
     setQuantity('');
@@ -138,6 +153,7 @@ export const MainStockView: React.FC = () => {
     setNotes('');
     setReservedProjectId('none');
     setErrorMsg('');
+    setReferenceNo(getNextMainStockReferenceNo(entryType));
   };
 
   // Auto-fill unit cost when item selected
@@ -152,10 +168,10 @@ export const MainStockView: React.FC = () => {
   const handleEntryTypeChange = (type: MainStockEntryType) => {
     setEntryType(type);
     if (type === 'Purchase') {
-      setReferenceNo(`PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+      setReferenceNo(getNextMainStockReferenceNo('Purchase'));
       setSupplier('');
     } else {
-      setReferenceNo(`MAN-ADJ-${Math.floor(100 + Math.random() * 900)}`);
+      setReferenceNo(getNextMainStockReferenceNo(type));
       setSupplier('Internal Warehouse Physical Count');
     }
   };
@@ -197,6 +213,7 @@ export const MainStockView: React.FC = () => {
     setQuantity('');
     setNotes('');
     setReservedProjectId('none');
+    setReferenceNo(getNextMainStockReferenceNo(entryType, 1));
     setShowLogModal(false);
   };
 

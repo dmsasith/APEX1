@@ -225,6 +225,24 @@ export const ProjectsManagementView: React.FC = () => {
     });
   }, [showAddModal, customerPhone, siteIdentifier, projectId, projectName, activeProjects, editingProject]);
 
+  const getNextMainProjectSeq = () => {
+    const year = new Date().getFullYear();
+    const mainCount = activeProjects.filter((p) => getEffectiveScope(p) === 'main').length;
+    return {
+      projectId: `MAJ-${year}-${String(mainCount + 1).padStart(4, '0')}`,
+      referenceNo: `REF-MAJ-${String(mainCount + 1).padStart(4, '0')}`,
+    };
+  };
+
+  const getNextIndividualProjectSeq = () => {
+    const year = new Date().getFullYear();
+    const indCount = activeProjects.filter((p) => getEffectiveScope(p) === 'individual').length;
+    return {
+      projectId: `PRJ-${year}-${String(indCount + 1).padStart(4, '0')}`,
+      referenceNo: `REF-${String(activeProjects.length + 1).padStart(4, '0')}`,
+    };
+  };
+
   const handleOpenAddModal = (
     defaultSectionId?: string,
     defaultScope: ProjectScope = 'individual',
@@ -237,37 +255,39 @@ export const ProjectsManagementView: React.FC = () => {
     if (defaultScope === 'sub' && preselectedParent) {
       const existingSubsCount = activeProjects.filter((sp) => sp.parentProjectId === preselectedParent.id).length;
       setParentProjectId(preselectedParent.id);
-      setProjectId(`${preselectedParent.projectId}-SUB-${String(existingSubsCount + 1).padStart(2, '0')}`);
+      setProjectId(`${preselectedParent.projectId}-SUB-${String(existingSubsCount + 1).padStart(4, '0')}`);
       setProjectName('');
       setCustomerName(preselectedParent.customerName || '');
       setCustomerPhone(preselectedParent.customerPhone || '');
       setSiteIdentifier('');
       setProjectTypeId(preselectedParent.projectTypeId || defaultSectionId || activeProjectTypes[0]?.id || '');
-      setReferenceNo(preselectedParent.referenceNo || `REF-${Math.floor(1000 + Math.random() * 9000)}`);
+      setReferenceNo(preselectedParent.referenceNo || `REF-${String(activeProjects.length + 1).padStart(4, '0')}`);
       setDistrict(preselectedParent.district || '');
       setSubArea('');
     } else if (defaultScope === 'main') {
+      const nextMain = getNextMainProjectSeq();
       setParentProjectId('');
-      setProjectId(`MAJ-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`);
+      setProjectId(nextMain.projectId);
       setProjectName('');
       setCustomerName('');
       setCustomerPhone('');
       setSiteIdentifier('');
       const targetSec = defaultSectionId || (sectionFilter !== 'all' ? sectionFilter : (activeProjectTypes[0]?.id || ''));
       setProjectTypeId(targetSec);
-      setReferenceNo(`REF-MAJ-${Math.floor(1000 + Math.random() * 9000)}`);
+      setReferenceNo(nextMain.referenceNo);
       setDistrict('');
       setSubArea('');
     } else {
+      const nextInd = getNextIndividualProjectSeq();
       setParentProjectId(mainProjects[0]?.id || '');
-      setProjectId(`PRJ-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`);
+      setProjectId(nextInd.projectId);
       setProjectName('');
       setCustomerName('');
       setCustomerPhone('');
       setSiteIdentifier('');
       const targetSec = defaultSectionId || (sectionFilter !== 'all' ? sectionFilter : (activeProjectTypes[0]?.id || ''));
       setProjectTypeId(targetSec);
-      setReferenceNo(`REF-${Math.floor(1000 + Math.random() * 9000)}`);
+      setReferenceNo(nextInd.referenceNo);
       setDistrict('');
       setSubArea('');
     }
@@ -281,7 +301,7 @@ export const ProjectsManagementView: React.FC = () => {
     const parentObj = activeProjects.find((p) => p.id === newParentId);
     if (parentObj && !editingProject) {
       const existingSubsCount = activeProjects.filter((sp) => sp.parentProjectId === parentObj.id).length;
-      setProjectId(`${parentObj.projectId}-SUB-${String(existingSubsCount + 1).padStart(2, '0')}`);
+      setProjectId(`${parentObj.projectId}-SUB-${String(existingSubsCount + 1).padStart(4, '0')}`);
       if (parentObj.projectTypeId) setProjectTypeId(parentObj.projectTypeId);
       if (parentObj.customerName) setCustomerName(parentObj.customerName);
       if (parentObj.district) setDistrict(parentObj.district);
@@ -375,7 +395,7 @@ export const ProjectsManagementView: React.FC = () => {
         initialSubProjects.forEach((sp, idx) => {
           if (!sp.subName.trim()) return;
           createdSubCount++;
-          const subCode = `${createdMainOrProj.projectId}-SUB-${String(idx + 1).padStart(2, '0')}`;
+          const subCode = `${createdMainOrProj.projectId}-SUB-${String(idx + 1).padStart(4, '0')}`;
           addProject({
             projectId: subCode,
             projectName: sp.subName.trim(),
@@ -416,7 +436,7 @@ export const ProjectsManagementView: React.FC = () => {
   const handleOpenAddSectionModal = () => {
     setEditingSection(null);
     setSectionName('');
-    setSectionCode('');
+    setSectionCode(`SEC-${String(activeProjectTypes.length + 1).padStart(4, '0')}`);
     setSectionDescription('');
     setSectionColor('emerald');
     setSectionError('');
@@ -1622,8 +1642,10 @@ export const ProjectsManagementView: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setProjectScope('individual');
-                      if (!editingProject && projectId.startsWith('MAJ-')) {
-                        setProjectId(projectId.replace('MAJ-', 'PRJ-'));
+                      if (!editingProject) {
+                        const nextInd = getNextIndividualProjectSeq();
+                        setProjectId(nextInd.projectId);
+                        setReferenceNo(nextInd.referenceNo);
                       }
                     }}
                     className={`p-3 rounded-xl border text-left transition cursor-pointer ${
@@ -1644,8 +1666,10 @@ export const ProjectsManagementView: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setProjectScope('main');
-                      if (!editingProject && projectId.startsWith('PRJ-')) {
-                        setProjectId(projectId.replace('PRJ-', 'MAJ-'));
+                      if (!editingProject) {
+                        const nextMain = getNextMainProjectSeq();
+                        setProjectId(nextMain.projectId);
+                        setReferenceNo(nextMain.referenceNo);
                       }
                     }}
                     className={`p-3 rounded-xl border text-left transition cursor-pointer ${
@@ -1666,8 +1690,8 @@ export const ProjectsManagementView: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setProjectScope('sub');
-                      const defaultParent = selectableParentProjects[0];
-                      if (defaultParent && !parentProjectId) {
+                      const defaultParent = selectableParentProjects.find((p) => p.id === parentProjectId) || selectableParentProjects[0];
+                      if (defaultParent) {
                         handleParentProjectChange(defaultParent.id);
                       }
                     }}
@@ -1732,7 +1756,7 @@ export const ProjectsManagementView: React.FC = () => {
                     required
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value.toUpperCase())}
-                    placeholder="e.g. MAJ-2026-001"
+                    placeholder="e.g. MAJ-2026-0001"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none uppercase"
                   />
                 </div>
@@ -1743,7 +1767,7 @@ export const ProjectsManagementView: React.FC = () => {
                     type="text"
                     value={referenceNo}
                     onChange={(e) => setReferenceNo(e.target.value)}
-                    placeholder="e.g. REF-TEL-8812"
+                    placeholder="e.g. REF-0001"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
                 </div>

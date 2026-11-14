@@ -25,13 +25,14 @@ export const SettleReturnModal: React.FC<SettleReturnModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { config, settleSupplierReturn, currentUser } = useStock();
+  const { config, settleSupplierReturn, currentUser, supplierReturns } = useStock();
 
   const [settlementType, setSettlementType] = useState<SettlementType>(
     supplierReturn?.settlementType || 'Debit Note / Refund Credit'
   );
+  const settledCount = (supplierReturns || []).filter((r) => Boolean(r.settlementRef)).length;
   const [settlementRef, setSettlementRef] = useState(
-    `CN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+    `CN-${new Date().getFullYear()}-${String(settledCount + 1).padStart(4, '0')}`
   );
   const [settlementNotes, setSettlementNotes] = useState('');
   const [errorMessage, setErrorMessage] = useState('');

@@ -140,6 +140,7 @@ export function generateUniqueBarcode(
       ? existingItemsOrPrefix
       : 'APX-';
   const existingItems = Array.isArray(existingItemsOrPrefix) ? existingItemsOrPrefix : [];
+  const explicitSeqIndex = typeof existingItemsOrPrefix === 'number' && existingItemsOrPrefix > 0 ? existingItemsOrPrefix : null;
   const cleanPrefix = (prefix || 'APX-').trim().toUpperCase();
   const usedSet = new Set(
     existingItems.flatMap((i) => [
@@ -148,7 +149,7 @@ export function generateUniqueBarcode(
     ]).filter(Boolean)
   );
 
-  if (itemCode && itemCode.trim()) {
+  if (itemCode && itemCode.trim() && itemCode.trim().toUpperCase() !== 'ITEM') {
     const cleanCode = itemCode
       .trim()
       .toUpperCase()
@@ -161,16 +162,46 @@ export function generateUniqueBarcode(
     }
   }
 
-  // Fallback numeric 8-digit sequence with prefix
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const randomDigits = Math.floor(10000000 + Math.random() * 90000000).toString();
-    const candidate = `${cleanPrefix}${randomDigits}`;
+  // Sequential 4-digit 0001-based barcode generation
+  const startSeq = explicitSeqIndex || existingItems.length + 1;
+  for (let offset = 0; offset < 5000; offset++) {
+    const seqDigits = String(startSeq + offset).padStart(4, '0');
+    const candidate = `${cleanPrefix}${seqDigits}`;
     if (!usedSet.has(candidate)) {
       return candidate;
     }
   }
 
-  return `${cleanPrefix}${Date.now().toString().slice(-8)}`;
+  return `${cleanPrefix}${String(startSeq).padStart(4, '0')}`;
+}
+
+/**
+ * Generates the next sequential 4-digit Item Code starting from 0001
+ * e.g. ITM-0001, ITM-0002 for Material or MCH-0001, MCH-0002 for Machinery
+ */
+export function generateNextSequentialItemCode(
+  existingItems: Array<{ itemCode: string; itemType?: string }>,
+  itemType: 'Material' | 'Machinery' = 'Material'
+): string {
+  const prefix = itemType === 'Machinery' ? 'MCH-' : 'ITM-';
+  const usedCodes = new Set(existingItems.map((i) => i.itemCode.trim().toUpperCase()));
+
+  let maxNum = 0;
+  existingItems.forEach((i) => {
+    const code = i.itemCode.trim().toUpperCase();
+    if (code.startsWith(prefix)) {
+      const numPart = parseInt(code.slice(prefix.length), 10);
+      if (!isNaN(numPart) && numPart > maxNum) {
+        maxNum = numPart;
+      }
+    }
+  });
+
+  let nextNum = maxNum + 1;
+  while (usedCodes.has(`${prefix}${String(nextNum).padStart(4, '0')}`)) {
+    nextNum++;
+  }
+  return `${prefix}${String(nextNum).padStart(4, '0')}`;
 }
 
 export interface UsbScannerOptions {

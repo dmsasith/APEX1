@@ -3892,7 +3892,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     clientData: Omit<Client, 'id' | 'clientCode' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'> & { clientCode?: string }
   ): Client => {
     const nextNum = clients.length + 1;
-    const clientCode = clientData.clientCode?.trim() || `CLT-${String(nextNum).padStart(3, '0')}`;
+    const clientCode = clientData.clientCode?.trim() || `CLT-${String(nextNum).padStart(4, '0')}`;
     const newClient: Client = {
       ...clientData,
       id: `clt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -4008,7 +4008,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const receiverName = batchReceipt?.receivedBy || currentUser?.fullName || 'Central Store In-Charge';
     const nowIso = batchReceipt?.receiptDate || new Date().toISOString();
-    const batchGrnNumber = `GRN-${po.poNumber}-${(po.receiptHistory?.length || 0) + 1}`;
+    const batchGrnNumber = `GRN-${po.poNumber}-${String((po.receiptHistory?.length || 0) + 1).padStart(4, '0')}`;
 
     const updatedItems = [...po.items];
     const grnReceivedItems: Array<{
