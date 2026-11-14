@@ -55,7 +55,10 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
 2. **Main Central Stock ("Main Central Stock"), Supplier Orders ("Supplier Orders (PO)"), & Client Free Stock ("Client Free Stock (FOC)")**:
    - **Main Central Stock**: Add stock via **"+ Add Stock (GRN)"** (Purchase or Manual Entry), perform **Direct Transfer to Site**, or manage the **Damaged Stock Ledger & Restoration** (restore repaired items back to Main Stock).
    - **Supplier Orders (PO)**: Create Purchase Orders, receive Full or Partial batch GRNs against POs into Main Stock, close PO remainders, create **Supplier Returns (RTV)** for defective goods, dispatch with Gate Pass & vehicle details, print official **Debit Notes**, and record supplier settlements (Replacement, Credit Note, Refund).
-   - **Client Free Stock (FOC)**: Record Free-of-Charge materials supplied by Clients/Principals for specific projects and track Received, Used, and Remaining FOC balances per project.
+   - **Client Free Stock (FOC) — "Under Main Project" vs. "Individual Project"**:
+     1) Open **"Client Free Stock (FOC)"** and click **"+ Log Client Free Stock"**.
+     2) Choose Target Project Mode: **"🏢 Under Main Project"** (when a client supplies bulk free materials for a Major/Main Project covering multiple Sub-Projects) or **"📄 Individual Project"** (for a standalone single project).
+     3) When FOC stock is received **"Under Main Project"**, it creates a shared Main Project Pool. Whenever field usage is logged on any child **Sub-Project**, it automatically deducts from that Parent Main Project's FOC balance, while the **"Project Free Stock Balances"** tab shows both the Main Project net balance and the **"Sub-Projects Individual Usage Breakdown"**.
 
 3. **Stock Requisitions ("Stock Requisitions") & Site Branch Stock ("Site Branch Stock")**:
    - How a Branch gets items from Main Stock:
@@ -68,34 +71,35 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
    - **Team In-Hand Stock**: Live dashboard showing materials currently in each team's custody (Issued minus Used in Projects minus Returned to Branch).
    - **Branch Staff & Teams**: Organizational directory showing every branch, supervisor, system staff, field teams, and verified team members with NIC numbers. Supports **Export Members (Excel)** and **Print Directory Report**.
 
-5. **Project & New Section Registry ("Project & New Section Registry") — Creating New Project Sections & Default Material Templates (BOM)**:
-   - **How to Create a New Project Section ("New Section Registry")**:
-     1) Open **"Project & New Section Registry"** from the left sidebar.
-     2) Click **"+ New Section Registry"** at the top right (or switch to the **"New Section Registry & Material Templates"** tab and click **"+ Create New Section"**).
-     3) Enter the **Section Name** (e.g., *Telecom New Connection*, *Telecom Cable Development*), **Short Code** (e.g., *TNC*), **Badge Theme Color**, and **Description**, then click **"Create Section"**.
-   - **How to Configure a Default Material Template (BOM) for a Section**:
-     1) In **"Project & New Section Registry"**, open the **"New Section Registry & Material Templates"** tab.
-     2) On the section card, click **"Configure Material Template"** (or **"Edit Material Template (BOM)"**).
-     3) Select the standard items used in that section, click **"+ Add Item to Template"** to add rows, and enter the **Suggested Qty** for each item.
-     4) Click **"Save Material Template"**.
-     5) Whenever a project in this section is selected inside **"Material Usage"**, all template items and suggested quantities pre-populate automatically!
-   - **How to Register Projects**:
-     1) Click **"Register Project"** (or click **"+ Add"** on any section card in the Project Sections Hub).
-     2) Enter Project ID, Reference No, Project/Customer Name, Customer Phone Number, Site ID / Connection ID, Client/Principal, Project Section, District, and Sub Area.
-     3) Supports **Sample CSV**, **Import CSV**, **Export CSV**, real-time duplicate detection, Zero-Data-Loss section switching, and viewing team-by-team usage breakdowns per project.
+5. **Project & New Section Registry ("Project & New Section Registry") — Major / Main Projects, Sub-Projects, Individual Projects & Section Templates (BOM)**:
+   - **How to Register Major / Main Projects, Sub-Projects & Individual Projects**:
+     1) Open **"Project & New Section Registry"** and click **"Register Project"**.
+     2) Select one of the 3 **Project Structure Types**:
+        • **🏢 Major / Main Project (Umbrella)**: Used when a client issues bulk Free Stock for an entire area or contract containing multiple Sub-Projects. You can also add initial Sub-Projects directly inside the same modal, or click **"+ Sub-Project"** on any Main Project row in the table at any time.
+        • **↳ Sub-Project (Under Main Project)**: Links a Sub-Project under a Parent Major / Main Project so its material usage automatically draws from the Main Project's Free Stock pool.
+        • **📄 Individual Project (Standalone)**: A standalone single project with its own independent stock & usage ledger.
+     3) Use the top filter cards (**Major / Main Projects**, **Sub-Projects**, **Individual Projects**) or the Main Project dropdown filter to view any project family, and click the **"usage entry(s)"** badge to view the shared Main Pool and Sub-Project breakdown.
+   - **How to Create a New Project Section ("New Section Registry") & Configure Default Material Templates (BOM)**:
+     1) Click **"+ New Section Registry"** at the top right (or open the **"New Section Registry & Material Templates"** tab and click **"+ Create New Section"**).
+     2) Enter the **Section Name**, **Short Code**, **Badge Theme Color**, and **Description**, then click **"Create Section"**.
+     3) On the section card, click **"Configure Material Template"** (or **"Edit Material Template (BOM)"**), add the standard items and **Suggested Qty**, and click **"Save Material Template"**.
 
-6. **Material Usage ("Material Usage")**:
-   - Record materials consumed on a project against a Field Team.
-   - Choose deduction source: **Team In-Hand Stock**, **Site Branch Stock**, or **Client Free Stock (FOC)**.
-   - Automatically loads the section's **Default Material Template (BOM)** items when a project is selected.
-   - Supports **Cross-Project Override Requests** when using project-reserved items on a different project.
+6. **Material Usage & Reconciliation ("Material Usage")**:
+   - **Logging Material Usage on a Sub-Project or Individual Project (Tab 1)**:
+     1) Select the Project Section (Step 1) — its **Default Material Template (BOM)** loads automatically.
+     2) In Step 2 (**"Project / Sub-Project & Customer Identification"**), filter by **"↳ Sub-Projects (Under Main)"**, **"🏢 Major / Main Projects"**, or **"📄 Individual Projects"**, or click **"+ Register New Sub-Project / Site"** to create a new Sub-Project under a Main Project on the fly.
+     3) When material usage is logged on a **Sub-Project**, it **automatically deducts from the Parent Main Project's Client Free Stock (FOC) pool** while recording the consumption under that specific Sub-Project.
+   - **Total Main Project & Sub-Project Reconciliation (Tab 3 — "Reconciliation")**:
+     1) Select a **🏢 Major / Main Project** to reconcile the **Total Main Project** (Total FOC Received under Main Project vs. Combined Installed Qty across all Sub-Projects = Net Remaining Balance) AND view the **"Sub-Projects Individual Material Usage Breakdown"** cards for every child Sub-Project.
+     2) Select any **↳ Sub-Project** or **📄 Individual Project** to inspect its standalone consumption and team breakdown.
+   - Supports **Cross-Project Override Requests** when using project-reserved items on an unrelated project (items reserved for a Parent Main Project are automatically permitted on all its child Sub-Projects).
 
 7. **Team Returns ("Team Returns") & Branch Returns ("Branch Returns")**:
    - **Team Returns**: Return unused or recovered items from a Field Team to their Site Branch Stock (**Good** condition restores usable branch stock; **Damaged** logs to Damaged Stock).
    - **Branch Returns**: Return surplus stock from a Site Branch Yard back to the Central Main Warehouse (HQ).
 
 8. **Document Templates ("Document Templates"), Audit Trail ("Audit Trail"), Recycle Bin ("Recycle Bin"), Backups & System Config**:
-   - **Document Templates**: Customize company letterhead, logo, digital signatures, and print formatting for all vouchers.
+   - **Document Templates**: Customize company letterhead, logo, digital signatures, and print formatting for all vouchers, or upload custom PDF/Image formats in Section Formats.
    - **Audit Trail**: Filterable chronological history of all system actions with PDF/CSV export.
    - **Recycle Bin**: Restore soft-deleted Items, Sites, Teams, Users, Projects, or Transactions, or **Delete Permanently** forever.
    - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change theme/company settings, or use **Admin View-As Mode**.`;
@@ -162,11 +166,25 @@ function detectSuggestedModule(text: string): string | undefined {
     lower.includes('material template') ||
     lower.includes('bom') ||
     lower.includes('register project') ||
-    lower.includes('project registry')
+    lower.includes('project registry') ||
+    lower.includes('main project') ||
+    lower.includes('major project') ||
+    lower.includes('sub project') ||
+    lower.includes('sub-project') ||
+    lower.includes('individual project')
   ) {
     return 'projects';
   }
-  if (lower.includes('material usage') || lower.includes('project usage') || lower.includes('boq')) return 'project-usage';
+  if (
+    lower.includes('material usage') ||
+    lower.includes('project usage') ||
+    lower.includes('reconciliation') ||
+    lower.includes('reconcile') ||
+    lower.includes('boq')
+  ) {
+    return 'project-usage';
+  }
+  if (lower.includes('client free') || lower.includes('free stock') || lower.includes('foc')) return 'client-free-stock';
   if (lower.includes('transfer') || lower.includes('request') || lower.includes('requisition')) return 'requests';
   if (lower.includes('grn') || lower.includes('main stock') || lower.includes('main central stock')) return 'main-stock';
   if (lower.includes('supplier') || lower.includes('purchase order') || lower.includes('debit note')) return 'procurement';

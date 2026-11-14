@@ -129,15 +129,15 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'For defective or excess vendor deliveries, create an official Return to Vendor (RTV) / Debit Note with outward Gate Pass and credit claim tracking. For site-damaged items, inspect and restore repaired units back into Main Stock via the Damaged Stock ledger.',
       },
       {
-        stepTitle: '4. Record Client-Supplied Free Materials (FOC) Separately',
+        stepTitle: '4. Record Client-Supplied Free Materials (FOC) — Under Main Project or Individual Project',
         detail:
-          'When a project client provides materials free of charge, open "Client Free Stock" and log their receipt (FOC). These items stay at zero purchase cost while remaining fully traceable per client and project.',
+          'When a client/principal supplies free materials for an entire area or multi-stage contract, open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" (or "Individual Project"). Bulk FOC stock received under a Major / Main Project acts as a shared material pool that automatically deducts whenever field usage is logged on any of its child Sub-Projects, while displaying a separate Sub-Projects Individual Usage Breakdown.',
       },
     ],
     keyOutputs: [
       'Printable Purchase Orders (PO) & Batch GRN Vouchers',
       'Return to Vendor (RTV) Debit Notes & Outward Gate Passes',
-      'Client Free-Issue (FOC) Ledger & Damaged Stock Restoration',
+      'Client Free-Issue (FOC) Main Project Pool & Sub-Project Breakdown',
     ],
   },
   {
@@ -181,26 +181,26 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     id: 'ch-04',
     number: 'Chapter 04',
     category: 'projects',
-    categoryLabel: 'Projects & Reconciliation',
-    title: 'Project Material Usage (PU), Section Templates & Surplus Returns (RV / BRM)',
+    categoryLabel: 'Projects, Sub-Projects & Reconciliation',
+    title: 'Major / Main Projects, Sub-Projects, Individual Projects, Material Usage (PU) & Returns (RV / BRM)',
     summary:
-      'Reconcile issued stock against actual on-site installation across multiple teams, deduct client stock automatically, and recover unused materials.',
+      'Organize Major / Main Umbrella Projects with multiple Sub-Projects or standalone Individual Projects, deduct shared Main Project Free Stock automatically when logging Sub-Project usage, and reconcile both total Main Projects and individual Sub-Projects.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Create Projects & Reusable BOQ Section Templates',
+        stepTitle: '1. Register Major / Main Projects, Sub-Projects & Individual Projects + Section Templates',
         detail:
-          'Register active contracts or WBS sites in "Project Registry" (e.g., Road Section A, Fiber Zone 04, Substation B) and create reusable Material Templates for recurring engineering sections.',
+          'In "Project & New Section Registry", choose from 3 project structures when registering: (1) Major / Main Project (umbrella contract covering a whole area or multiple sub-projects — you can even add initial Sub-Projects in the same window), (2) Sub-Project (linked under a Parent Main Project, or added in 1 click via the "+ Sub-Project" button on any Main Project row), or (3) Individual Project (standalone single job). You can also configure reusable Material Templates (BOM) per engineering section.',
       },
       {
-        stepTitle: '2. Multi-Team Material Consumption Logging (PU)',
+        stepTitle: '2. Sub-Project & Multi-Team Material Usage Logging (PU) with Auto Main Pool Deduction',
         detail:
-          'Multiple field crews working on the same project log actual installed quantities in "Material Usage" or "Site Stock" and print official Project Usage Vouchers (PU). Every entry records which team installed what, where, and on which date.',
+          'In "Material Usage" (Step 2), select an existing Sub-Project under a Major Project, pick an Individual Project, or register a new Sub-Project on the fly under a Main Project. When field teams log material usage on a Sub-Project, the system automatically deducts those quantities from the Parent Main Project\'s shared Client Free Stock (FOC) pool while recording the consumption under that specific Sub-Project.',
       },
       {
-        stepTitle: '3. Automatic Client-Supplied Stock Priority',
+        stepTitle: '3. Total Main Project Umbrella Reconciliation & Separate Sub-Project Breakdown',
         detail:
-          'When logging usage for a client-linked project, the system automatically deducts available Client-Supplied Free Materials first before deducting company-purchased stock - preventing billing disputes.',
+          'Open the "Reconciliation" tab in Material Usage (or click the usage badge in Project Registry). Selecting a Major / Main Project reconciles the entire contract (Total FOC Stock Received under Main Project vs. Combined Installed Qty across all Sub-Projects = Net Remaining Balance) and displays a dedicated "Sub-Projects Individual Material Usage Breakdown" so you can inspect each Sub-Project and team separately.',
       },
       {
         stepTitle: '4. Team Returns (RV) & Branch-to-HQ Returns (BRM)',
@@ -209,9 +209,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Automatic Client Free-Stock Priority Deduction',
-      'Printable Project & Site Material Usage Vouchers (PU)',
-      'Verified Team Return (RV) & Branch Return (BRM) Vouchers',
+      '3-Tier Project Structure (Major/Main, Sub-Project & Individual)',
+      'Auto-Deduction of Sub-Project Usage from Main Project FOC Pool',
+      'Umbrella Main Project & Individual Sub-Project Reconciliation + PU/RV/BRM Vouchers',
     ],
   },
   {
@@ -357,15 +357,15 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'ප්‍රමිතියෙන් තොර හෝ වැඩිපුර ලැබුණු භාණ්ඩ ආපසු සැපයුම්කරු වෙත යැවීමේදී "Return to Vendor (RTV) / Debit Note" සහ Gate Pass පත්‍රිකා නිකුත් කරන්න. වැඩබිම්වලදී හානි වූ භාණ්ඩ අලුත්වැඩියා කර නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිත කරන්න.',
       },
       {
-        stepTitle: '4. සේවාදායකයා නොමිලේ ලබාදෙන භාණ්ඩ (Client Free Stock - FOC) වෙනම සටහන් කිරීම',
+        stepTitle: '4. සේවාදායක නොමිලේ තොග (Client Free Stock - FOC) ප්‍රධාන ව්‍යාපෘතියක් (Under Main Project) හෝ තනි ව්‍යාපෘතියක් යටතේ භාරගැනීම',
         detail:
-          'ව්‍යාපෘති සේවාදායකයා (Client) විසින් නොමිලේ ලබාදෙන අමුද්‍රව්‍ය "Client Free Stock" තුළ ලියාපදිංචි කර FOC වවුචරය ලබාගන්න. මේවා ආයතනයේ මුදල් වියදම් වූ තොග සමඟ මිශ්‍ර නොවී වෙනමම ගිණුම්ගත වේ.',
+          'සේවාදායකයින් (Clients) විසින් සම්පූර්ණ කලාපයකට හෝ අනු-ව්‍යාපෘති (Sub-Projects) කිහිපයක් ඇති ප්‍රධාන ව්‍යාපෘතියකට (Major / Main Project) එකවර බඩු නිකුත් කරන විට, "Client Free Stock" හි "+ Log Client Free Stock" වෙත ගොස් "Under Main Project" (හෝ තනි ව්‍යාපෘතියක් නම් "Individual Project") තෝරා අදාළ බඩු තොගය භාරගන්න. එවිට එම ප්‍රධාන ව්‍යාපෘතිය යටතේ ඇති ඕනෑම Sub-Project එකකට බඩු Usage දැමූ විට මෙම ප්‍රධාන තොගයෙන් ස්වයංක්‍රීයව අඩු වන අතර, එක් එක් Sub-Project එකේ භාවිතය වෙන වෙනමද බලාගත හැක.',
       },
     ],
     keyOutputs: [
       'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Batch GRN වවුචර්',
       'Return to Vendor (RTV) Debit Notes සහ Outward Gate Pass පත්‍රිකා',
-      'Client Free Stock (FOC) සහ අලුත්වැඩියා කළ තොග (Damaged Stock) ලෙජරය',
+      'Under Main Project Client Free Stock (FOC) Pool සහ Sub-Project Breakdown',
     ],
   },
   {
@@ -409,26 +409,26 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     id: 'ch-04',
     number: '04 වන පරිච්ඡේදය',
     category: 'projects',
-    categoryLabel: 'ව්‍යාපෘති භාවිතය සහ ආපසු භාරදීම්',
-    title: 'ව්‍යාපෘති අමුද්‍රව්‍ය භාවිතය (PU), Section Templates සහ ඉතිරි තොග ආපසු භාරදීම (RV / BRM)',
+    categoryLabel: 'ප්‍රධාන ව්‍යාපෘති, අනු-ව්‍යාපෘති (Sub-Projects) සහ ගැලපුම්',
+    title: 'Major / Main Projects, Sub-Projects, Individual Projects, Material Usage (PU) සහ Returns (RV / BRM)',
     summary:
-      'වැඩබිම්වල සැබෑ ලෙසම සවි කළ හෝ භාවිත කළ අමුද්‍රව්‍ය ප්‍රමාණයන් ව්‍යාපෘති අනුව සටහන් කිරීම, සේවාදායක තොග පළමුව අඩු කිරීම සහ ඉතිරි භාණ්ඩ ආපසු ගබඩාවට භාරගැනීම.',
+      'ප්‍රධාන ව්‍යාපෘති (Major / Main Projects) යටතේ අනු-ව්‍යාපෘති (Sub-Projects) සහ තනි ව්‍යාපෘති (Individual Projects) පහසුවෙන් සකසාගැනීම, Sub-Project වලට බඩු Usage දැමූ විට Main Project Free Stock එකෙන් ස්වයංක්‍රීයව අඩු වීම සහ සම්පූර්ණ ව්‍යාපෘතියේ මෙන්ම Sub-Projects වල වෙන වෙනම Reconciliation බලාගැනීම.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. ව්‍යාපෘති (Projects) සහ BOQ Section Templates සකස් කිරීම',
+        stepTitle: '1. Project Registry තුළ Major / Main Project, Sub-Project සහ Individual Project සකසාගැනීම',
         detail:
-          '"Project Registry" තුළ ඔබේ කොන්ත්‍රාත් සහ වැඩබිම් ලියාපදිංචි කර, නිතර භාවිත වන ඉංජිනේරු කොටස් සඳහා Material Templates සාදාගන්න.',
+          '"Project & New Section Registry" හි "Register Project" ක්ලික් කළ විට ව්‍යුහයන් 3ක් දැකගත හැක: (1) Major / Main Project (සම්පූර්ණ කලාපයකට හෝ Sub-Projects කිහිපයකට අදාළ ප්‍රධාන ව්‍යාපෘතිය — මෙය සාදන විටම ඊට අදාළ Sub-Projects ලැයිස්තුවත් එකවර ඇතුළත් කළ හැක), (2) Sub-Project (ප්‍රධාන ව්‍යාපෘතියක් යටතේ ක්‍රියාත්මක වන අනු-ව්‍යාපෘතිය — Main Project පේළියේ ඇති "+ Sub-Project" බටන් එකෙන්ද ක්ෂණිකව එක් කළ හැක), සහ (3) Individual Project (වෙනම තනි ව්‍යාපෘතියක්).',
       },
       {
-        stepTitle: '2. වැඩ කණ්ඩායම් මගින් ව්‍යාපෘති සඳහා භාණ්ඩ භාවිතය සටහන් කිරීම (PU)',
+        stepTitle: '2. Sub-Project වලට Material Usage (PU) ඇතුළත් කිරීම සහ Main Project තොගයෙන් ස්වයංක්‍රීයව අඩු වීම',
         detail:
-          '"Material Usage" හෝ "Site Stock" තුළට ගොස් අදාළ වැඩ කණ්ඩායම විසින් ව්‍යාපෘතියට සැබෑවටම යෙදවූ භාණ්ඩ ප්‍රමාණයන් සටහන් කර නිල Project Usage Voucher (PU) පත්‍රිකාව මුද්‍රණය කරගන්න.',
+          '"Material Usage" පිටුවේ 2 වන පියවරේදී ප්‍රධාන ව්‍යාපෘතියක් යටතේ ඇති Sub-Project එකක් තෝරා හෝ එතැනදීම නව Sub-Project එකක් සාදා ("+ Register New Sub-Project") වැය වූ බඩු ප්‍රමාණයන් ඇතුළත් කරන්න. Sub-Project එකකට බඩු Usage දැමූ සැණින් එය අදාළ Main Project එකට ලැබී ඇති Client Free Stock (FOC) තොගයෙන් ස්වයංක්‍රීයව අඩු වේ.',
       },
       {
-        stepTitle: '3. සේවාදායක නොමිලේ තොග (Client FOC) ස්වයංක්‍රීයව පළමුව අඩු වීම',
+        stepTitle: '3. Total Main Project Reconciliation සහ Sub-Projects වල වෙන වෙනම විස්තර බලාගැනීම',
         detail:
-          'සේවාදායකයෙකුට අදාළ ව්‍යාපෘතියකට භාවිතය සටහන් කරන විට, පළමුව එම සේවාදායකයා නොමිලේ ලබාදුන් තොගයෙන් (Client Free Stock) අඩු වී, ඉතිරිය පමණක් ආයතන තොගයෙන් අඩු වේ.',
+          '"Material Usage -> Reconciliation" (Tab 3) වෙත ගොස් Major / Main Project එක තේරූ විට, ප්‍රධාන ව්‍යාපෘතියට ලැබුණු මුළු Free Stock ප්‍රමාණය, සියලුම Sub-Projects හරහා වැය වූ මුළු එකතුව සහ ඉතිරි තොගය (Total Project Reconciliation) පෙන්වන අතර, ඊට පහළින් එක් එක් Sub-Project එකට වෙන වෙනම ගිය බඩු ප්‍රමාණයන් සහ Vouchers ("Sub-Projects Individual Breakdown") පැහැදිලිව බලාගත හැක.',
       },
       {
         stepTitle: '4. කණ්ඩායම් ආපසු භාරදීම් (RV) සහ ශාඛාවෙන් ප්‍රධාන ගබඩාවට ආපසු යැවීම් (BRM)',
@@ -437,9 +437,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Client Free Stock ස්වයංක්‍රීයව පළමුව අඩු කිරීමේ ක්‍රමවේදය',
-      'මුද්‍රණය කළ හැකි Project සහ Site Material Usage වවුචර් (PU)',
-      'Team Return (RV) සහ Branch Return (BRM) නිල ආපසු භාරදීමේ පත්‍රිකා',
+      'Major / Main Project, Sub-Project සහ Individual Project ව්‍යුහය',
+      'Sub-Project Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වීම',
+      'Total Main Project සහ Sub-Project වෙන වෙනම Reconciliation වාර්තා',
     ],
   },
   {
@@ -623,7 +623,9 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
       'Unique Team Name Lock & Historical Usage Data Protection',
       'Field Crew Issuance (IN) with Serial / Drum / Batch Remarks',
       'Real-Time Field Crew In-Hand Custody & Deletion Guard',
-      'Multi-Crew Project Material Usage (PU) & Team/Branch Returns (RV/BRM)',
+      'Major / Main Projects, Sub-Projects & Individual Project Hierarchy',
+      'Shared Main Project Client FOC Pool & Sub-Project Auto-Deduction',
+      'Total Main Project vs. Individual Sub-Project Reconciliation & Returns (PU/RV/BRM)',
     ],
   },
   {
@@ -646,18 +648,18 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
       'අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) වෙන් කර හඳුනාගැනීම',
       'නිල Purchase Orders (PO) සහ කොටස් වශයෙන් ලැබෙන GRN මුද්‍රණය කිරීමේ පහසුකම',
       'සැපයුම්කරු වෙත ආපසු යැවීමේ (RTV) Debit Notes සහ Outward Gate Pass',
-      'සේවාදායක නොමිලේ තොග (Client FOC) සහ හානි වූ භාණ්ඩ අලුත්වැඩියා ලෙජරය',
+      'Under Main Project / Individual Project ලෙස Client Free Stock (FOC) භාරගැනීම',
       'Excel / CSV Bulk Import, Multi-Sheet Export සහ අවම තොග අනතුරු ඇඟවීම්',
     ],
   },
   {
-    group: 'වැඩබිම් මෙහෙයුම්, කණ්ඩායම් සහ ව්‍යාපෘති (Teams & Projects)',
+    group: 'වැඩබිම් මෙහෙයුම්, කණ්ඩායම් සහ ව්‍යාපෘති (Teams, Main/Sub-Projects)',
     items: [
       'Available Stock Filter සහිත ශාඛා බඩු ඉල්ලුම්පත් (RN)',
       'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් ප්‍රමාණය (Auto Crew Size: 1 Leader + N Members)',
-      'Team නාමයන් දෙවරක් යෙදීම වැළැක්වීම සහ පැරණි Usage දත්ත ආරක්ෂාව',
-      'Drum / Batch / Serial විස්තර සහිතව කණ්ඩායම් වෙත බඩු නිකුත් කිරීම (IN)',
-      'කණ්ඩායම් අත ඇති තොග (In-Hand Stock) පරීක්ෂාව සහ Delete ආරක්ෂාව',
+      'Major / Main Projects, Sub-Projects සහ Individual Projects ව්‍යුහය',
+      'Sub-Project වලට Usage දැමූ විට Main Project Free Stock එකෙන් ස්වයංක්‍රීයව අඩු වීම',
+      'Total Main Project Reconciliation සහ Sub-Projects වල වෙන වෙනම විස්තර බලාගැනීම',
       'ව්‍යාපෘති භාණ්ඩ භාවිතය (PU) සහ ආපසු භාරදීමේ වවුචර් (RV / BRM)',
     ],
   },

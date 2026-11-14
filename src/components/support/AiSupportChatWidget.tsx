@@ -35,6 +35,14 @@ interface QuickPrompt {
 
 const QUICK_PROMPTS: QuickPrompt[] = [
   {
+    id: 'main-sub-projects-foc',
+    labelEn: '🏢 Main & Sub-Projects + FOC Reconciliation?',
+    labelSi: '🏢 Main Project, Sub-Projects සහ FOC Reconciliation කරන්නේ කොහොමද?',
+    promptEn: 'How do Major / Main Projects, Sub-Projects, Individual Projects, receiving Client Free Stock under a Main Project, and Total vs. Sub-Project Reconciliation work?',
+    promptSi: 'Project Registry එකේ Major / Main Project, Sub-Projects සහ Individual Projects හදාගෙන, Main Project යටතට Client Free Stock අරගෙන, Sub-Project වලට Usage දාලා Total සහ Sub-Project Reconciliation බලන්නේ කොහොමද?',
+    targetTab: 'projects',
+  },
+  {
     id: 'project-sections-templates',
     labelEn: '🧩 How to create Project Sections & Templates?',
     labelSi: '🧩 අලුත් Project Sections සහ Templates හදන්නේ කොහොමද?',
@@ -70,8 +78,8 @@ const QUICK_PROMPTS: QuickPrompt[] = [
     id: 'project-usage',
     labelEn: '🏗️ How to record Project Usage?',
     labelSi: '🏗️ Project Material Usage දාන්නේ කොහොමද?',
-    promptEn: 'How do I record Project Material Usage against a project and team?',
-    promptSi: 'Project එකකට වැය වුණු බඩු (Material Usage / BOQ) සිස්ටම් එකේ සටහන් කරන්නේ කොහොමද?',
+    promptEn: 'How do I record Project Material Usage against a Sub-Project or Individual Project and team?',
+    promptSi: 'Sub-Project එකකට හෝ Individual Project එකකට වැය වුණු බඩු (Material Usage / BOQ) සිස්ටම් එකේ සටහන් කරන්නේ කොහොමද?',
     targetTab: 'project-usage',
   },
   {
@@ -127,8 +135,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Main Stock (GRN), Branch Transfers, Issuing to Field Teams, Project Material Usage, Returns, Master Setup**, and User Permissions.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Main Stock (GRN), Branch Transfers, Team Issues, Project Material Usage, Returns** හෝ ඕනෑම ගැටලුවක් ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Major/Main Projects & Sub-Projects, Client Free Stock (Under Main Project), Project Material Usage & Reconciliation, Main Stock (GRN), Branch Transfers, Team Issues, Returns**, and User Permissions.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Major / Main Projects සහ Sub-Projects, Client Free Stock (Under Main Project), Material Usage සහ Reconciliation, Main Stock (GRN), Branch Transfers, Team Issues, Returns** හෝ ඕනෑම ගැටලුවක් ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 

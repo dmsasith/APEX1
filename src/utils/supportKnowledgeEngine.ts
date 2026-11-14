@@ -133,6 +133,70 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       }`,
   },
   {
+    id: 'main-sub-individual-projects-foc-reconciliation',
+    suggestedTab: 'projects',
+    keywords: [
+      'main project',
+      'major project',
+      'sub project',
+      'sub-project',
+      'sub projects',
+      'sub-projects',
+      'individual project',
+      'under main project',
+      'reconciliation',
+      'reconcile',
+      'umbrella',
+      'parent project',
+    ],
+    phrases: [
+      'major project',
+      'main project',
+      'sub project',
+      'sub-project',
+      'under main project',
+      'individual project',
+      'project reconciliation',
+      'sub project hadanne',
+      'main project eken adu',
+      'free stock reconciliation',
+    ],
+    answerEn: (ctx) =>
+      `**How Major / Main Projects, Sub-Projects, Individual Projects & Free Stock (FOC) Reconciliation Work:**\n\n` +
+      `**Step 1 — Register Major / Main Projects, Sub-Projects & Individual Projects (Project & New Section Registry):**\n` +
+      `1. Open **Project & New Section Registry** and click **Register Project**.\n` +
+      `2. Select the **Project Structure Type**:\n` +
+      `   • **🏢 Major / Main Project (Umbrella):** Use when a client issues bulk Free Stock for an entire area or contract containing multiple sub-projects. You can also add initial Sub-Projects right inside the same modal, or click **+ Sub-Project** on any Main Project row anytime.\n` +
+      `   • **↳ Sub-Project (Under Main Project):** Links a sub-project under a Parent Major / Main Project so it shares the Main Project's Free Stock pool.\n` +
+      `   • **📄 Individual Project (Standalone):** A single standalone project with its own independent stock & usage ledger.\n\n` +
+      `**Step 2 — Receive Client Free-Issue Stock (FOC) Under a Main Project:**\n` +
+      `1. Open **Client Free Stock (FOC)** and click **+ Log Client Free Stock**.\n` +
+      `2. Select **🏢 Under Main Project** (or **📄 Individual Project**), choose the Main Project name, and receive the client's bulk materials into the Main Project pool.\n\n` +
+      `**Step 3 — Enter Material Usage per Sub-Project & Reconcile Total vs. Sub-Projects:**\n` +
+      `1. Open **Material Usage** -> in Step 2, select the **Sub-Project** (or click **+ Register New Sub-Project** to create one under a Main Project on the fly).\n` +
+      `2. When you log material usage on a Sub-Project, it **automatically deducts from the Parent Main Project's Free Stock balance**.\n` +
+      `3. Open the **Reconciliation** tab (Tab 3): select the **🏢 Major / Main Project** to view the **Total Main Project Reconciliation** (Total Received vs. Total Used across all Sub-Projects = Net Remaining Balance) plus the **Sub-Projects Individual Breakdown**, or select any **↳ Sub-Project** to inspect its standalone details.${
+        ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
+      }`,
+    answerSi: (ctx) =>
+      `**Major / Main Projects, Sub-Projects, Individual Projects සහ Free Stock (FOC) Reconciliation ක්‍රියාත්මක වන ආකාරය:**\n\n` +
+      `**1 වන පියවර — Project Registry තුළ Main Project, Sub-Project සහ Individual Project සෑදීම:**\n` +
+      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත ගොස් **"Register Project"** ක්ලික් කරන්න.\n` +
+      `2. එහි ඇති ව්‍යුහයන් 3න් අදාළ වර්ගය තෝරන්න:\n` +
+      `   • **🏢 Major / Main Project (Umbrella):** Client විසින් සම්පූර්ණ කලාපයකට හෝ Sub-Projects කිහිපයකට එකවර Free Stock නිකුත් කරන ප්‍රධාන ව්‍යාපෘතිය. (මෙය සාදන විටම ඊට අදාළ Sub-Projects ලැයිස්තුවත් එකවර ඇතුළත් කළ හැක. නැතිනම් Main Project පේළියේ ඇති **"+ Sub-Project"** බටන් එකෙන් ඕනෑම විටක Sub-Projects එකතු කළ හැක).\n` +
+      `   • **↳ Sub-Project (Under Main Project):** ප්‍රධාන ව්‍යාපෘතියක් යටතේ ක්‍රියාත්මක වන අනු-ව්‍යාපෘතිය.\n` +
+      `   • **📄 Individual Project (Standalone):** වෙනම තනි ව්‍යාපෘතියක් ලෙස ක්‍රියාත්මක වන සාමාන්‍ය ව්‍යාපෘති.\n\n` +
+      `**2 වන පියවර — Client Free Stock (FOC) බඩු Main Project එක යටතට භාරගැනීම:**\n` +
+      `1. **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
+      `2. **"🏢 Under Main Project"** (හෝ තනි ව්‍යාපෘතියක් නම් **"📄 Individual Project"**) තෝරා, අදාළ Main Project නම යටතට බඩු තොගය Receive කරන්න.\n\n` +
+      `**3 වන පියවර — Sub-Project වලට Material Usage දැමීම සහ Total / Sub-Project Reconciliation බැලීම:**\n` +
+      `1. **"Material Usage"** පිටුවේ 2 වන කොටසේදී අදාළ **Sub-Project** එක තෝරා (හෝ **"+ Register New Sub-Project"** මගින් අලුත් Sub-Project එකක් සාදා) බඩු Usage ඇතුළත් කරන්න.\n` +
+      `2. Sub-Project එකට බඩු Usage දැමූ සැණින් එය **ස්වයංක්‍රීයව Main Project එකේ Free Stock තොගයෙන් අඩු වේ**.\n` +
+      `3. **"Reconciliation"** (Tab 3) වෙත ගොස් **🏢 Major / Main Project** එක තේරූ විට සම්පූර්ණ ව්‍යාපෘතියේම ගැලපුම (Total Received vs. සියලුම Sub-Projects වල Total Used = Remaining Balance) සහ ඊට පහළින් **එක් එක් Sub-Project එකේ වෙන වෙනම විස්තර (Sub-Projects Individual Breakdown)** බලාගත හැක.${
+        ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
+      }`,
+  },
+  {
     id: 'project-registry-management',
     suggestedTab: 'projects',
     keywords: [
@@ -155,22 +219,26 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'project register karanne',
     ],
     answerEn: (ctx) =>
-      `**How to Register & Manage Projects (Project & New Section Registry):**\n\n` +
+      `**How to Register & Manage Projects (Major/Main, Sub-Project & Individual):**\n\n` +
       `1. **Open Project Registry:** Click **Project & New Section Registry** in the left sidebar.\n` +
-      `2. **Register a Single Project:** Click **Register Project** (or click **+ Add** directly on any Section card in the Project Sections Hub).\n` +
-      `3. **Enter Project Details:** Fill in the **Project ID**, **Reference No**, **Project / Customer Name**, **Customer Phone Number**, **Site ID / Connection ID**, **Client/Principal**, **Project Section**, **District**, and **Sub Area**.\n` +
-      `4. **Bulk CSV Import / Export:** Use **Sample CSV** to download the template format, **Import CSV** to upload multiple projects at once, or **Export CSV** to download your project list.\n` +
-      `5. **Zero-Data-Loss Editing & Multi-Team Usage View:** You can change a project's section anytime without losing usage history, and click the **` +
-      `usage entry(s)** badge on any project row to inspect team-by-team material consumption.${
+      `2. **Choose Project Structure Type:** Click **Register Project** and select:\n` +
+      `   • **🏢 Major / Main Project:** Umbrella project that holds multiple Sub-Projects and a shared Client Free Stock pool.\n` +
+      `   • **↳ Sub-Project:** Linked under a Parent Main Project (can also be added in 1 click via **+ Sub-Project** on any Main Project row).\n` +
+      `   • **📄 Individual Project:** Standalone single project.\n` +
+      `3. **Enter Project Details:** Fill in Project ID, Reference No, Project/Customer Name, Customer Phone Number, Site ID, Client/Principal, Project Section, District, and Sub Area.\n` +
+      `4. **Bulk CSV Import / Export:** Use **Sample CSV**, **Import CSV**, or **Export CSV**.\n` +
+      `5. **Reconciliation & Usage View:** Click the **usage entry(s)** badge on any Main Project or Sub-Project row to inspect the shared Free Stock pool, Sub-Project breakdown, and team consumption.${
         ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
       }`,
     answerSi: (ctx) =>
-      `**අලුත් Project එකක් ලියාපදිංචි කරන සහ කළමනාකරණය කරන ආකාරය:**\n\n` +
+      `**අලුත් Project එකක් (Main Project, Sub-Project හෝ Individual Project) ලියාපදිංචි කරන ආකාරය:**\n\n` +
       `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත යන්න.\n` +
-      `2. **තනි Project එකක් ඇතුළත් කිරීමට:** ඉහළ ඇති **"Register Project"** බටන් එක හෝ අදාළ Section Card එකේ ඇති **"+ Add"** බටන් එක ක්ලික් කරන්න.\n` +
-      `3. **විස්තර ඇතුළත් කිරීම:** Project ID, Project/Customer Name, දුරකථන අංකය (Customer Phone), Site ID / Connection ID, Project Section එක, District සහ Sub Area ඇතුළත් කර **"Register Project"** ක්ලික් කරන්න.\n` +
-      `4. **CSV මගින් Projects රැසක් එකවර ඇතුළත් කිරීම:** **"Sample CSV"** බාගත කර, ඒ අනුව සකස් කළ ගොනුව **"Import CSV"** මගින් පද්ධතියට ඇතුළත් කළ හැක.\n` +
-      `5. **Project Usage බැලීම:** ඕනෑම Project එකක් ඉදිරියෙන් ඇති **"usage entry(s)"** බටන් එක ක්ලික් කර එක් එක් Team එකෙන් එම Project එකට වැය කළ බඩු විස්තර බලාගත හැක.${
+      `2. **"Register Project"** ක්ලික් කර ව්‍යාපෘති වර්ගය තෝරන්න:\n` +
+      `   • **🏢 Major / Main Project:** Sub-Projects කිහිපයක් සහ පොදු Free Stock තොගයක් සහිත ප්‍රධාන ව්‍යාපෘතිය.\n` +
+      `   • **↳ Sub-Project:** ප්‍රධාන ව්‍යාපෘතියක් යටතේ ඇති අනු-ව්‍යාපෘතිය (Main Project පේළියේ ඇති **"+ Sub-Project"** බටන් එකෙන්ද එක් කළ හැක).\n` +
+      `   • **📄 Individual Project:** වෙනම තනි ව්‍යාපෘතියක්.\n` +
+      `3. **විස්තර ඇතුළත් කිරීම:** Project ID, Project/Customer Name, දුරකථන අංකය, Project Section, District සහ Sub Area ඇතුළත් කර Save කරන්න.\n` +
+      `4. **CSV Import / Export:** **"Sample CSV"** සහ **"Import CSV"** මගින් Projects රැසක් එකවර ඇතුළත් කළ හැක.${
         ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
   },
@@ -187,23 +255,17 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'material usage danne',
     ],
     answerEn: () =>
-      `**How to Record Project Material Usage & Use Section Templates:**\n\n` +
+      `**How to Record Project Material Usage (Sub-Projects & Individual Projects) & Reconcile:**\n\n` +
       `1. **Open Material Usage:** Click **Material Usage** in the left sidebar.\n` +
-      `2. **Select Project & Section:** Choose the **Project** (you can filter by Section, Site ID, Customer Phone, or Project Name). If the project's section has a **Default Material Template (BOM)**, the template items pre-load automatically!\n` +
-      `3. **Choose Deduction Source:**\n` +
-      `   • **Team In-Hand Stock:** Deducts from materials already issued to the selected Field Team.\n` +
-      `   • **Site Branch Stock:** Deducts directly from the Branch Yard inventory.\n` +
-      `   • **Client Free Stock (FOC):** Deducts from client-supplied FOC materials allocated to that project.\n` +
-      `4. **Cross-Project Reserved Items:** If an item is reserved for a specific project, using it on another project allows you to submit a **Cross-Project Override Request** for Admin approval.`,
+      `2. **Select Sub-Project or Individual Project (Step 2):** Filter by **↳ Sub-Projects (Under Main)**, **🏢 Major / Main Projects**, or **📄 Individual Projects**, or click **+ Register New Sub-Project / Site** to create a Sub-Project under a Main Project on the fly. The section's **Default Material Template (BOM)** loads automatically!\n` +
+      `3. **Automatic Main Project Free Stock Deduction:** When logging usage on a Sub-Project, quantities automatically deduct from the Parent Main Project's shared **Client Free Stock (FOC)** pool while tracking that Sub-Project's usage separately.\n` +
+      `4. **Total & Sub-Project Reconciliation (Tab 3):** Open the **Reconciliation** tab to view the full **Major / Main Project Reconciliation** (with a card breakdown of every Sub-Project) or inspect any individual **Sub-Project**.`,
     answerSi: () =>
-      `**Project Material Usage (ව්‍යාපෘති සඳහා වැය වූ බඩු) සටහන් කරන ආකාරය:**\n\n` +
+      `**Project Material Usage (Sub-Projects සහ Individual Projects සඳහා වැය වූ බඩු) සටහන් කරන ආකාරය:**\n\n` +
       `1. වම් පස මෙනුවෙන් **"Material Usage"** වෙත යන්න.\n` +
-      `2. **Project එක තෝරන්න:** අදාළ Project එක තේරූ විට එම Project Section එකට අදාළව සකස් කළ **Material Template (BOM)** එකේ Items ස්වයංක්‍රීයව ලැයිස්තුගත වේ.\n` +
-      `3. **බඩු අඩු විය යුතු තොගය (Source) තෝරන්න:**\n` +
-      `   • **Team In-Hand Stock:** Team එකට නිකුත් කර ඔවුන් අතේ ඇති බඩු වලින්.\n` +
-      `   • **Site Branch Stock:** කෙලින්ම Branch ගබඩාවෙන්.\n` +
-      `   • **Client Free Stock (FOC):** සේවාදායකයා නොමිලේ ලබාදුන් බඩු තොගයෙන්.\n` +
-      `4. වැය වූ ප්‍රමාණයන් (Quantities) ඇතුළත් කර Save කරන්න.`,
+      `2. **Sub-Project හෝ Individual Project තෝරන්න (Step 2):** ප්‍රධාන ව්‍යාපෘතියක් යටතේ ඇති **Sub-Project** එකක් හෝ **Individual Project** එකක් තෝරන්න (නැතිනම් **"+ Register New Sub-Project / Site"** මගින් එතැනදීම නව Sub-Project එකක් සාදන්න). Section එකේ **Material Template (BOM)** බඩු ලැයිස්තුව ස්වයංක්‍රීයව ලැබේ.\n` +
+      `3. **Main Project Free Stock එකෙන් ස්වයංක්‍රීයව අඩු වීම:** Sub-Project එකකට බඩු Usage දැමූ විට එයට අදාළ ප්‍රධාන ව්‍යාපෘතියේ (Main Project) Client Free Stock තොගයෙන් ඉබේම අඩු වේ.\n` +
+      `4. **Reconciliation (Tab 3):** **"Reconciliation"** ටැබ් එක මගින් සම්පූර්ණ Main Project එකේ මුළු ගැලපුම මෙන්ම එක් එක් Sub-Project එකේ වෙන වෙනම බඩු භාවිතයද පරීක්ෂා කළ හැක.`,
   },
   {
     id: 'site-transfer',
@@ -349,17 +411,22 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
   {
     id: 'client-foc',
     suggestedTab: 'client-free-stock',
-    keywords: ['client free', 'foc', 'free issue', 'customer supplied', 'principal', 'client stock'],
-    phrases: ['client free stock', 'free of charge', 'client material'],
+    keywords: ['client free', 'foc', 'free issue', 'customer supplied', 'principal', 'client stock', 'free stock'],
+    phrases: ['client free stock', 'free of charge', 'client material', 'under main project'],
     answerEn: () =>
-      `**How to Manage Client Free Stock (FOC) & Principal Materials:**\n\n` +
-      `1. Open **Client Free Stock (FOC)** from the left sidebar.\n` +
-      `2. Register Clients / Principals in the Client Directory and log Free-of-Charge materials received for specific projects.\n` +
-      `3. Track **Total Received**, **Total Used**, and **Remaining FOC Balance** per project separately from company-purchased stock.`,
+      `**How to Manage Client Free Stock (FOC) — Under Main Project or Individual Project:**\n\n` +
+      `1. Open **Client Free Stock (FOC)** from the left sidebar and click **+ Log Client Free Stock**.\n` +
+      `2. Choose the **Target Project Mode**:\n` +
+      `   • **🏢 Under Main Project (Shared Pool for Sub-Projects):** Select a Major / Main Project to receive bulk FOC materials covering all its child Sub-Projects.\n` +
+      `   • **📄 Individual Project (Standalone):** Receive FOC materials for a single standalone project.\n` +
+      `3. **Automatic Drawdown & Breakdown:** Whenever field usage is logged on any Sub-Project under that Main Project, it automatically deducts from the Main Project's FOC balance, and the **Project Free Stock Balances** tab shows both the **Main Project Net Balance** and the **Sub-Projects Individual Usage Breakdown**.`,
     answerSi: () =>
-      `**Client Free Stock (FOC - සේවාදායකයින් නොමිලේ ලබාදෙන බඩු) කළමනාකරණය:**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"Client Free Stock (FOC)"** වෙත යන්න.\n` +
-      `2. ආයතනයෙන් මිලදී ගත් බඩු වලට පරිබාහිරව, Client විසින් ව්‍යාපෘති සඳහා ලබාදෙන බඩු අදාළ Project එකට වෙන් කර මෙහි සටහන් කළ හැක.`,
+      `**Client Free Stock (FOC - සේවාදායකයින් නොමිලේ ලබාදෙන බඩු) Under Main Project හෝ Individual Project ලෙස කළමනාකරණය:**\n\n` +
+      `1. වම් පස මෙනුවෙන් **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
+      `2. **Target Project Mode** තෝරන්න:\n` +
+      `   • **🏢 Under Main Project:** Sub-Projects කිහිපයක් ඇති ප්‍රධාන ව්‍යාපෘතියකට (Main Project) සම්පූර්ණ බඩු තොගය භාරගැනීමට.\n` +
+      `   • **📄 Individual Project:** තනි ව්‍යාපෘතියකට බඩු භාරගැනීමට.\n` +
+      `3. **ස්වයංක්‍රීය අඩු වීම:** එම Main Project එක යටතේ ඇති ඕනෑම Sub-Project එකකට Material Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වන අතර, එක් එක් Sub-Project එකේ භාවිතය වෙන වෙනමද බලාගත හැක.`,
   },
   {
     id: 'items-barcodes-machinery',
