@@ -641,7 +641,7 @@ ${po.preparedBy || currentUser?.fullName || 'Procurement Team'}
 Central Logistics & Warehouse Operations
 ${config.companyName || 'Apex Developer'}
 Contact: ${config.phone || '+94 11 2549590'}
-Email: ${config.email || 'apexdevinfo@gmail.com'}`;
+Email: ${config.email || 'support@apexstox.com'}`;
   };
 
   const handleOpenEmailClient = (po: PurchaseOrder) => {
@@ -2927,7 +2927,7 @@ Email: ${config.email || 'apexdevinfo@gmail.com'}`;
                     {activeTemplate?.address || config.address || 'Apex Software Engineering & Logistics Hub, Colombo, Sri Lanka.'}
                   </p>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Tel: {activeTemplate?.tel || config.phone || '+94 11 2549590'} • Email: {activeTemplate?.email || config.email || 'apexdevinfo@gmail.com'}
+                    Tel: {activeTemplate?.tel || config.phone || '+94 11 2549590'} • Email: {activeTemplate?.email || config.email || 'support@apexstox.com'}
                   </p>
                 </div>
 

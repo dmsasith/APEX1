@@ -1009,7 +1009,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       doc.setFontSize(7.5);
       doc.setTextColor(100, 116, 139);
       doc.text(
-        'Apex Stock Enterprise SaaS | Official Client User Guide & Feature Handbook | apexdevinfo@gmail.com',
+        'Apex Stock Enterprise SaaS | Official Client User Guide & Feature Handbook | apexstox.com | support@apexstox.com',
         marginX,
         pageH - 7.5
       );
@@ -1378,7 +1378,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       ctx.font = `500 14px ${fontStack}`;
       ctx.fillStyle = '#64748b';
       ctx.fillText(
-        'Apex Stock Enterprise SaaS · නිල සිංහල පරිශීලක උපදෙස් අත්පොත · apexdevinfo@gmail.com',
+        'Apex Stock Enterprise SaaS · නිල සිංහල පරිශීලක උපදෙස් අත්පොත · apexstox.com · support@apexstox.com',
         MARGIN_X,
         PAGE_H - 48
       );
@@ -1530,8 +1530,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                 </p>
               </div>
               <div className="text-right text-xs text-slate-600 font-mono">
-                <div>Edition: {new Date().getFullYear()}</div>
-                <div>apexdevinfo@gmail.com</div>
+                <div>Edition: {new Date().getFullYear()} | apexstox.com</div>
+                <div>support@apexstox.com</div>
               </div>
             </div>
           </div>

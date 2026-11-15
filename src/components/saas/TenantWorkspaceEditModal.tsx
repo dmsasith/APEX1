@@ -127,7 +127,7 @@ export const TenantWorkspaceEditModal: React.FC<TenantWorkspaceEditModalProps> =
                 required
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="e.g. apexdevinfo@gmail.com"
+                placeholder="e.g. support@apexstox.com"
                 className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>

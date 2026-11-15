@@ -130,6 +130,10 @@ import {
   clearFlushMetaInFirebase,
   subscribeToFirebaseFlushMeta,
   firebaseConfig,
+  checkRealFirebaseEmailVerified,
+  applyEmailVerificationCodeFromUrl,
+  OFFICIAL_SUPPORT_EMAIL,
+  OFFICIAL_SYSTEM_URL,
 } from '../firebase';
 
 export const STORAGE_KEY_PREFIX = 'apex_stock_site_v1_';
@@ -1056,7 +1060,7 @@ export function getAllSavedTenants(): Tenant[] {
       id: DEFAULT_TENANT.id,
       companyName: 'Apex Developer',
       slug: 'apex-developer',
-      contactEmail: 'apexdevinfo@gmail.com',
+      contactEmail: 'support@apexstox.com',
     });
 
     return persistTenantsLocal(Array.from(map.values()));
@@ -1925,27 +1929,33 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [tenants]);
 
-  // Enforce apexdevinfo@gmail.com on master tenant and sanitize any lingering comtec emails
+  // Enforce support@apexstox.com on master tenant and sanitize any lingering legacy emails
   useEffect(() => {
     let modified = false;
     const sanitized = tenants.map((t) => {
       if (t.id === 'tenant-apex-main' || t.id === 'tenant-comtec-main' || t.id === DEFAULT_TENANT.id) {
-        if (t.contactEmail !== 'apexdevinfo@gmail.com' || t.companyName !== 'Apex Developer') {
+        if (t.contactEmail !== 'support@apexstox.com' || t.companyName !== 'Apex Developer') {
           modified = true;
           return {
             ...t,
             id: 'tenant-apex-main',
             companyName: 'Apex Developer',
             slug: 'apex-developer',
-            contactEmail: 'apexdevinfo@gmail.com',
+            contactEmail: 'support@apexstox.com',
           };
         }
       }
-      if (t.contactEmail && (t.contactEmail.includes('comtec') || t.contactEmail === 'admin@apexdeveloper.lk' || t.contactEmail === 'admin@apexdeveloper.com')) {
+      if (
+        t.contactEmail &&
+        (t.contactEmail.includes('comtec') ||
+          t.contactEmail === 'apexdevinfo@gmail.com' ||
+          t.contactEmail === 'admin@apexdeveloper.lk' ||
+          t.contactEmail === 'admin@apexdeveloper.com')
+      ) {
         modified = true;
         return {
           ...t,
-          contactEmail: 'apexdevinfo@gmail.com',
+          contactEmail: 'support@apexstox.com',
         };
       }
       return t;
@@ -2190,6 +2200,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (!loadedConfig.systemName || loadedConfig.systemName.toLowerCase().includes('comtec')) {
         loadedConfig.systemName = 'Apex Stock & Site Management System';
       }
+      if (!loadedConfig.email || loadedConfig.email === 'apexdevinfo@gmail.com' || loadedConfig.email.includes('comtec')) {
+        loadedConfig.email = OFFICIAL_SUPPORT_EMAIL;
+      }
     }
 
     const loadedSites = loadTenantData<Site[]>(tenantId, 'sites', isDefault ? INITIAL_SITES : []);
@@ -2276,7 +2289,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const target = slugOrTenantId
       ? (tenants.find((t) => t.id === slugOrTenantId || t.slug === slugOrTenantId) || currentTenant)
       : currentTenant;
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const origin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : OFFICIAL_SYSTEM_URL;
     const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
     return `${origin}${pathname}?workspace=${target.slug}`;
   };
@@ -2833,6 +2849,78 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  // Automatic Email Link Verification Listener (handles ?mode=verifyEmail&oobCode=..., ?emailVerified=true, and background focus checks)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    const oobCode = params.get('oobCode');
+    const verifiedParam = params.get('emailVerified');
+
+    if (mode === 'verifyEmail' && oobCode) {
+      applyEmailVerificationCodeFromUrl(oobCode).then((verified) => {
+        if (verified && currentTenantIdRef.current) {
+          updateTenantDetails(currentTenantIdRef.current, { emailVerified: true });
+          updateTenantSubscription(currentTenantIdRef.current, { paymentMethodStatus: 'active' });
+        }
+      });
+      try {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('mode');
+        cleanUrl.searchParams.delete('oobCode');
+        cleanUrl.searchParams.delete('apiKey');
+        cleanUrl.searchParams.delete('lang');
+        window.history.replaceState({}, document.title, cleanUrl.toString());
+      } catch {}
+    } else if (verifiedParam === 'true' && currentTenant && !currentTenant.emailVerified) {
+      const targetEmail =
+        (currentTenant.contactEmail?.includes('@') ? currentTenant.contactEmail : '') ||
+        (currentUser?.username?.includes('@') ? currentUser.username : '');
+      if (targetEmail) {
+        checkRealFirebaseEmailVerified(targetEmail, currentUser?.password).then((res) => {
+          if (res.verified) {
+            updateTenantDetails(currentTenant.id, { emailVerified: true });
+            updateTenantSubscription(currentTenant.id, { paymentMethodStatus: 'active' });
+          }
+        });
+      }
+      try {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('emailVerified');
+        window.history.replaceState({}, document.title, cleanUrl.toString());
+      } catch {}
+    }
+  }, [currentTenant?.id, currentTenant?.emailVerified, currentTenant?.contactEmail, currentUser?.username, currentUser?.password]);
+
+  // Background window-focus auto-check so even if the modal was closed, clicking the email link auto-verifies the workspace on return
+  useEffect(() => {
+    if (typeof window === 'undefined' || !currentTenant || currentTenant.emailVerified) return;
+    const targetEmail =
+      (currentTenant.contactEmail?.includes('@') ? currentTenant.contactEmail : '') ||
+      (currentUser?.username?.includes('@') ? currentUser.username : '');
+    if (!targetEmail) return;
+
+    const checkOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        checkRealFirebaseEmailVerified(targetEmail, currentUser?.password)
+          .then((res) => {
+            if (res.verified) {
+              updateTenantDetails(currentTenant.id, { emailVerified: true });
+              updateTenantSubscription(currentTenant.id, { paymentMethodStatus: 'active' });
+            }
+          })
+          .catch(() => {});
+      }
+    };
+
+    window.addEventListener('focus', checkOnFocus);
+    document.addEventListener('visibilitychange', checkOnFocus);
+    return () => {
+      window.removeEventListener('focus', checkOnFocus);
+      document.removeEventListener('visibilitychange', checkOnFocus);
+    };
+  }, [currentTenant?.id, currentTenant?.emailVerified, currentTenant?.contactEmail, currentUser?.username, currentUser?.password]);
+
   const deleteTenant = (tenantId: string) => {
     if (!tenantId || tenantId === DEFAULT_TENANT.id || tenantId === 'tenant-apex-main') {
       console.warn('Cannot delete default master tenant.');
@@ -3038,7 +3126,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     id: DEFAULT_TENANT.id,
                     companyName: 'Apex Developer',
                     slug: 'apex-developer',
-                    contactEmail: 'apexdevinfo@gmail.com',
+                    contactEmail: 'support@apexstox.com',
                   });
                 } else if (deletedIds.has(t.id)) {
                   hadDeletedInRemote = true;

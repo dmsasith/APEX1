@@ -1187,10 +1187,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <span>Open User Guide & PDF</span>
                   </button>
                   <a
-                    href="mailto:apexdevinfo@gmail.com"
+                    href="mailto:support@apexstox.com"
                     className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-100 hover:text-[#dc9750] transition-colors"
                   >
-                    <span>Contact Support: apexdevinfo@gmail.com</span>
+                    <span>Contact Support: support@apexstox.com</span>
                     <ArrowRight className="w-3.5 h-3.5 text-[#dc9750]" />
                   </a>
                 </div>
