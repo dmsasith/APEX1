@@ -232,11 +232,16 @@ export function useUsbBarcodeScanner({
   const bufferRef = useRef<string>('');
   const lastKeyTimeRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
+  const lastFiredTimeRef = useRef<number>(0);
+  const lastFiredCodeRef = useRef<string>('');
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
 
   useEffect(() => {
-    if (!enabled || typeof window === 'undefined') return;
+    if (!enabled || typeof window === 'undefined') {
+      bufferRef.current = '';
+      return;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore modifier shortcuts
@@ -270,6 +275,17 @@ export function useUsbBarcodeScanner({
             e.stopPropagation();
             bufferRef.current = '';
             lastKeyTimeRef.current = 0;
+
+            // Guard against hardware gun double-Enter / bounce within 600ms
+            if (
+              currentBuffer === lastFiredCodeRef.current &&
+              now - lastFiredTimeRef.current < 600
+            ) {
+              return;
+            }
+            lastFiredCodeRef.current = currentBuffer;
+            lastFiredTimeRef.current = now;
+
             onScanRef.current(currentBuffer);
             return;
           }

@@ -10,16 +10,10 @@ import {
   Volume2,
   VolumeX,
   RefreshCw,
-  Upload,
-  Search,
-  Package,
-  Boxes,
-  Building2,
-  Users2,
   Printer,
-  Sparkles,
   Check,
   Zap,
+  ScanLine,
 } from 'lucide-react';
 import { Item } from '../../types';
 import { useStock } from '../../context/StockContext';
@@ -58,7 +52,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   onCaptureRawCode,
   title = 'Universal Barcode & QR Scanner',
   subtitle = 'Scan via USB / Bluetooth Hardware Gun or Mobile Phone Camera',
-  siteId,
   continuousScan = false,
 }) => {
   const resolvedOnSelect = onScanItem || onSelectItem;
@@ -86,6 +79,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   );
   const [manualOrUsbCode, setManualOrUsbCode] = useState('');
   const [lastScannedCode, setLastScannedCode] = useState<string>('');
+  const [lastScanSource, setLastScanSource] = useState<string>('');
   const [matchedItem, setMatchedItem] = useState<Item | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanHistory, setScanHistory] = useState<
@@ -93,35 +87,42 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   >([]);
   const [keepScanningMulti, setKeepScanningMulti] = useState<boolean>(continuousScan);
 
+  // Controls whether the scanner (Camera or USB Gun) is currently armed and listening.
+  // Once a barcode is detected, isScannerActive turns false immediately so it never scans repeatedly,
+  // hiding the live camera stream until the user clicks "Scan Now".
+  const [isScannerActive, setIsScannerActive] = useState<boolean>(true);
+  const scanLockRef = useRef<boolean>(false);
+
   // Camera state
   const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [isCameraRunning, setIsCameraRunning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isScanningFile, setIsScanningFile] = useState(false);
   const [showLabelPrintModal, setShowLabelPrintModal] = useState(false);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const usbInputRef = useRef<HTMLInputElement | null>(null);
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const readerContainerId = useRef(
     `apex-barcode-camera-reader-${Math.random().toString(36).slice(2, 8)}`
   ).current;
 
-  // Focus USB input when in USB tab
+  // Focus USB input when in USB tab and scanner is active
   useEffect(() => {
-    if (isOpen && scanTab === 'usb') {
+    if (isOpen && scanTab === 'usb' && isScannerActive) {
       setTimeout(() => {
         usbInputRef.current?.focus();
       }, 80);
     }
-  }, [isOpen, scanTab]);
+  }, [isOpen, scanTab, isScannerActive]);
 
   // Reset state on modal open
   useEffect(() => {
     if (isOpen) {
+      scanLockRef.current = false;
+      setIsScannerActive(true);
       setManualOrUsbCode('');
       setLastScannedCode('');
+      setLastScanSource('');
       setMatchedItem(null);
       setScanError(null);
       setCameraError(null);
@@ -134,18 +135,19 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     };
   }, [isOpen, continuousScan]);
 
-  // Start/Stop camera when switching tabs
+  // Start/Stop camera when switching tabs or toggling scanner active state
   useEffect(() => {
     if (!isOpen) return;
-    if (scanTab === 'camera' && mobileEnabled) {
+    if (scanTab === 'camera' && mobileEnabled && isScannerActive) {
       startCameraScanner(selectedCameraId || undefined);
     } else {
       stopCameraScanner();
     }
-  }, [scanTab, isOpen, mobileEnabled]);
+  }, [scanTab, isOpen, mobileEnabled, isScannerActive]);
 
   const stopCameraScanner = async () => {
     const instance = html5QrCodeRef.current;
+    html5QrCodeRef.current = null;
     if (instance) {
       try {
         if (instance.isScanning) {
@@ -155,7 +157,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       } catch {
         // Ignore cleanup errors
       }
-      html5QrCodeRef.current = null;
     }
     setIsCameraRunning(false);
   };
@@ -166,6 +167,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
     // Wait a tick for DOM container
     setTimeout(async () => {
+      if (scanLockRef.current) return;
       const container = document.getElementById(readerContainerId);
       if (!container) return;
 
@@ -175,6 +177,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           setCameras(devices.map((d) => ({ id: d.id, label: d.label || `Camera ${d.id.slice(0, 5)}` })));
         }
 
+        if (scanLockRef.current) return;
         const scanner = new Html5Qrcode(readerContainerId);
         html5QrCodeRef.current = scanner;
 
@@ -185,12 +188,13 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         await scanner.start(
           cameraConfig,
           {
-            fps: 12,
+            fps: 10,
             qrbox: { width: 260, height: 150 },
             aspectRatio: 1.5,
           },
           (decodedText) => {
-            handleProcessScannedValue(decodedText, 'Mobile Camera');
+            if (scanLockRef.current) return;
+            handleProcessScannedValue(decodedText, 'Camera Scanner');
           },
           () => {
             // Frame scan error (normal while aiming)
@@ -202,43 +206,42 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         const msg =
           err instanceof Error
             ? err.message
-            : 'Unable to access camera. Check camera permissions or use "Scan from Barcode Photo" below.';
+            : 'Unable to access camera. Please check browser camera permissions or switch to USB / Manual entry.';
         setCameraError(msg);
         setIsCameraRunning(false);
       }
     }, 120);
   };
 
-  const handlePhotoUploadScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsScanningFile(true);
-    setCameraError(null);
+  // Re-arm scanner when user explicitly clicks "Scan Now"
+  const handleScanNow = () => {
+    scanLockRef.current = false;
     setScanError(null);
-
-    try {
-      await stopCameraScanner();
-      const tempScanner = new Html5Qrcode(readerContainerId);
-      const decodedText = await tempScanner.scanFile(file, true);
-      tempScanner.clear();
-      handleProcessScannedValue(decodedText, 'Barcode Image');
-    } catch {
-      playScanBeep('error', beepEnabled);
-      setScanError(
-        'Could not detect a clear 1D barcode or QR code in that image. Please try a sharper close-up photo or use USB/Manual entry.'
-      );
-    } finally {
-      setIsScanningFile(false);
-      if (photoInputRef.current) photoInputRef.current.value = '';
+    setManualOrUsbCode('');
+    setIsScannerActive(true);
+    if (scanTab === 'camera' && mobileEnabled) {
+      startCameraScanner(selectedCameraId || undefined);
+    } else if (scanTab === 'usb') {
+      setTimeout(() => {
+        usbInputRef.current?.focus();
+      }, 60);
     }
   };
 
   const handleProcessScannedValue = (rawValue: string, sourceLabel = 'Scanner') => {
+    if (scanLockRef.current) return;
     const cleaned = (rawValue || '').trim();
     if (!cleaned) return;
 
+    // Immediately lock and pause both Camera & USB scanner so it only detects ONCE
+    scanLockRef.current = true;
+    setIsScannerActive(false);
+    setManualOrUsbCode('');
+    usbInputRef.current?.blur();
+    stopCameraScanner();
+
     setLastScannedCode(cleaned);
+    setLastScanSource(sourceLabel);
     setScanError(null);
 
     // 1. If capturing raw barcode string for item creation/editing
@@ -258,7 +261,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       playScanBeep('error', beepEnabled);
       setMatchedItem(null);
       setScanError(
-        `No catalog item matched barcode or code "${cleaned}" (${sourceLabel}). Register this barcode in Master Catalog first.`
+        `No catalog item matched barcode or code "${cleaned}" (${sourceLabel}). Click "Scan Now" below to scan again.`
       );
       setScanHistory((prev) => [
         { code: cleaned, timestamp: new Date().toLocaleTimeString() },
@@ -282,15 +285,16 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }
   };
 
-  // Listen to USB HID hardware barcode gun while modal is open
+  // Listen to USB HID hardware barcode gun ONLY while modal is open AND scanner is armed (isScannerActive)
   useUsbBarcodeScanner({
-    enabled: isOpen && usbEnabled,
+    enabled: isOpen && usbEnabled && isScannerActive,
     maxLatencyMs: config.usbScanMaxLatencyMs || 60,
     minLength: 2,
     captureInInputs: true,
     onScan: (code) => {
+      if (scanLockRef.current) return;
       setManualOrUsbCode('');
-      handleProcessScannedValue(code, 'USB Hardware Scanner');
+      handleProcessScannedValue(code, 'USB Hardware Gun');
     },
   });
 
@@ -364,7 +368,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           <div className="p-3 bg-slate-100 border-b border-slate-200 grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setScanTab('usb')}
+              onClick={() => {
+                setScanTab('usb');
+              }}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 scanTab === 'usb'
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -377,7 +383,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
             <button
               type="button"
-              onClick={() => setScanTab('camera')}
+              onClick={() => {
+                setScanTab('camera');
+              }}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 scanTab === 'camera'
                   ? 'bg-emerald-600 text-white shadow-sm'
@@ -403,201 +411,232 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                     onChange={(e) => setKeepScanningMulti(e.target.checked)}
                     className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span>Keep Scanner Open for Multi-Item Batch Scanning</span>
+                  <span>Keep Modal Open for Multi-Item Scanning</span>
                 </label>
               </div>
             )}
 
-            {/* TAB 1: USB / WIRELESS HARDWARE SCANNER */}
-            {scanTab === 'usb' && (
-              <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl border border-slate-700 shadow-inner">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5" />
-                      <span>USB / Bluetooth HID Scanner Ready</span>
-                    </span>
-                    <span className="text-[11px] font-mono text-slate-400">
-                      Auto-Enter / Tab Detection
-                    </span>
+            {/* WHEN A BARCODE HAS BEEN DETECTED: HIDE CAMERA/GUN INPUT AND SHOW 'SCAN NOW' BUTTON */}
+            {!isScannerActive ? (
+              <div className="p-4 rounded-2xl bg-slate-900 text-white border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed mb-3">
-                    Point your USB or Wireless 2.4GHz/Bluetooth barcode scanner at any item label and pull the trigger—or type/paste a barcode below and press <strong>Enter</strong>.
-                  </p>
-
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (manualOrUsbCode.trim()) {
-                        const code = manualOrUsbCode.trim();
-                        setManualOrUsbCode('');
-                        handleProcessScannedValue(code, 'USB / Manual Entry');
-                      }
-                    }}
-                    className="flex gap-2"
-                  >
-                    <div className="relative flex-1">
-                      <Barcode className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        ref={usbInputRef}
-                        data-usb-scanner-input="true"
-                        type="text"
-                        value={manualOrUsbCode}
-                        onChange={(e) => setManualOrUsbCode(e.target.value)}
-                        placeholder="Waiting for USB gun trigger or type barcode / item code..."
-                        className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white text-slate-900 font-mono text-xs sm:text-sm font-bold border-2 border-emerald-500 focus:outline-none"
-                        autoFocus
-                      />
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">
+                        Barcode Detected · Scanner Paused
+                      </span>
+                      {lastScanSource && (
+                        <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-semibold border border-slate-700">
+                          {lastScanSource}
+                        </span>
+                      )}
                     </div>
-                    <button
-                      type="submit"
-                      className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs whitespace-nowrap cursor-pointer transition"
-                    >
-                      Match Code
-                    </button>
-                  </form>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Scanned Code: <strong className="font-mono text-white">{lastScannedCode}</strong> — Scanner automatically stopped after detection.
+                    </p>
+                  </div>
                 </div>
 
-                {/* Quick Test / Instant Tap from Registered Catalog */}
-                {activeItems.length > 0 && mode !== 'captureRaw' && (
-                  <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/70">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Quick-Scan Registered Catalog Barcodes ({activeItems.length})
-                      </span>
-                      <span className="text-[11px] text-slate-400">Click any item to simulate scan</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                      {activeItems.slice(0, 20).map((item) => {
-                        const bCode = item.barcode || item.itemCode;
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => handleProcessScannedValue(bCode, 'Quick Barcode Tap')}
-                            className="px-2.5 py-1 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-xs font-mono font-bold text-slate-800 flex items-center gap-1.5 transition cursor-pointer"
-                            title={`${item.itemName} (Barcode: ${bCode})`}
-                          >
-                            <Barcode className="w-3 h-3 text-emerald-600 shrink-0" />
-                            <span>{bCode}</span>
-                            <span className="font-sans font-medium text-slate-500 truncate max-w-[110px]">
-                              {item.itemName}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={handleScanNow}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer shrink-0"
+                >
+                  <ScanLine className="w-4 h-4" />
+                  <span>Scan Now</span>
+                </button>
               </div>
-            )}
+            ) : (
+              <>
+                {/* TAB 1: USB / WIRELESS HARDWARE SCANNER (ACTIVE) */}
+                {scanTab === 'usb' && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl border border-slate-700 shadow-inner">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>USB / Bluetooth HID Gun Ready (Single-Shot Lock)</span>
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-400">
+                          Auto-Stops on Detection
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                        Point your USB or Wireless barcode gun at the label and pull the trigger once—or type a barcode below and press <strong>Enter</strong>.
+                      </p>
 
-            {/* TAB 2: MOBILE PHONE / WEBCAM CAMERA SCANNER */}
-            {scanTab === 'camera' && (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="font-bold text-slate-700">Camera Lens:</span>
-                    {cameras.length > 1 ? (
-                      <select
-                        value={selectedCameraId}
-                        onChange={(e) => {
-                          setSelectedCameraId(e.target.value);
-                          startCameraScanner(e.target.value);
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (manualOrUsbCode.trim()) {
+                            const code = manualOrUsbCode.trim();
+                            setManualOrUsbCode('');
+                            handleProcessScannedValue(code, 'USB / Manual Entry');
+                          }
                         }}
-                        className="px-2.5 py-1 border border-slate-300 rounded-lg text-xs font-semibold bg-white"
+                        className="flex gap-2"
                       >
-                        <option value="">Back / Environment Camera (Default)</option>
-                        {cameras.map((cam) => (
-                          <option key={cam.id} value={cam.id}>
-                            {cam.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-slate-600 font-medium">Auto (Rear / Environment Lens)</span>
+                        <div className="relative flex-1">
+                          <Barcode className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            ref={usbInputRef}
+                            data-usb-scanner-input="true"
+                            type="text"
+                            value={manualOrUsbCode}
+                            onChange={(e) => setManualOrUsbCode(e.target.value)}
+                            placeholder="Waiting for USB gun trigger or type barcode / item code..."
+                            className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white text-slate-900 font-mono text-xs sm:text-sm font-bold border-2 border-emerald-500 focus:outline-none"
+                            autoFocus
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs whitespace-nowrap cursor-pointer transition"
+                        >
+                          Match Code
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Quick Test / Instant Tap from Registered Catalog */}
+                    {activeItems.length > 0 && mode !== 'captureRaw' && (
+                      <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/70">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Quick-Select Registered Catalog Barcodes ({activeItems.length})
+                          </span>
+                          <span className="text-[11px] text-slate-400">Click any item to inspect</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                          {activeItems.slice(0, 20).map((item) => {
+                            const bCode = item.barcode || item.itemCode;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => handleProcessScannedValue(bCode, 'Quick Catalog Select')}
+                                className="px-2.5 py-1 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-xs font-mono font-bold text-slate-800 flex items-center gap-1.5 transition cursor-pointer"
+                                title={`${item.itemName} (Barcode: ${bCode})`}
+                              >
+                                <Barcode className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>{bCode}</span>
+                                <span className="font-sans font-medium text-slate-500 truncate max-w-[110px]">
+                                  {item.itemName}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
                   </div>
+                )}
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startCameraScanner(selectedCameraId || undefined)}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      <span>Restart Camera</span>
-                    </button>
+                {/* TAB 2: MOBILE PHONE / WEBCAM CAMERA SCANNER (ACTIVE) */}
+                {scanTab === 'camera' && (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="font-bold text-slate-700">Camera Lens:</span>
+                        {cameras.length > 1 ? (
+                          <select
+                            value={selectedCameraId}
+                            onChange={(e) => {
+                              setSelectedCameraId(e.target.value);
+                              startCameraScanner(e.target.value);
+                            }}
+                            className="px-2.5 py-1 border border-slate-300 rounded-lg text-xs font-semibold bg-white"
+                          >
+                            <option value="">Back / Environment Camera (Default)</option>
+                            {cameras.map((cam) => (
+                              <option key={cam.id} value={cam.id}>
+                                {cam.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-slate-600 font-medium">Auto (Rear / Environment Lens)</span>
+                        )}
+                      </div>
 
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handlePhotoUploadScan}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      disabled={isScanningFile}
-                      onClick={() => photoInputRef.current?.click()}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    >
-                      <Upload className="w-3 h-3" />
-                      <span>{isScanningFile ? 'Decoding Photo...' : 'Scan from Photo / Camera Snap'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Live Video Viewport */}
-                <div className="relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-800 min-h-[240px] flex flex-col items-center justify-center">
-                  <div id={readerContainerId} className="w-full max-w-[440px] mx-auto" />
-
-                  {!isCameraRunning && !cameraError && (
-                    <div className="p-6 text-center text-slate-300 space-y-2">
-                      <RefreshCw className="w-6 h-6 animate-spin mx-auto text-emerald-400" />
-                      <p className="text-xs font-semibold">Initializing Mobile / Webcam Barcode Lens...</p>
-                    </div>
-                  )}
-
-                  {cameraError && (
-                    <div className="p-5 text-center max-w-md mx-auto space-y-3">
-                      <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
-                      <p className="text-xs font-bold text-white">Camera Stream Unavailable</p>
-                      <p className="text-[11px] text-slate-300 leading-relaxed">{cameraError}</p>
-                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => photoInputRef.current?.click()}
-                          className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                          onClick={() => startCameraScanner(selectedCameraId || undefined)}
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <Camera className="w-3.5 h-3.5" />
-                          <span>Take Barcode Photo / Upload Image</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setScanTab('usb')}
-                          className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Usb className="w-3.5 h-3.5" />
-                          <span>Switch to USB / Manual</span>
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Restart Camera</span>
                         </button>
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
+
+                    {/* Live Video Viewport — Automatically hidden as soon as a barcode is detected */}
+                    <div className="relative rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-800 min-h-[240px] flex flex-col items-center justify-center">
+                      <div id={readerContainerId} className="w-full max-w-[440px] mx-auto" />
+
+                      {!isCameraRunning && !cameraError && (
+                        <div className="p-6 text-center text-slate-300 space-y-2">
+                          <RefreshCw className="w-6 h-6 animate-spin mx-auto text-emerald-400" />
+                          <p className="text-xs font-semibold">Initializing Live Barcode Camera...</p>
+                        </div>
+                      )}
+
+                      {cameraError && (
+                        <div className="p-5 text-center max-w-md mx-auto space-y-3">
+                          <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
+                          <p className="text-xs font-bold text-white">Camera Stream Unavailable</p>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">{cameraError}</p>
+                          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => startCameraScanner(selectedCameraId || undefined)}
+                              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Retry Camera</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setScanTab('usb')}
+                              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Usb className="w-3.5 h-3.5" />
+                              <span>Switch to USB / Manual</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Scan Error Feedback */}
             {scanError && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-bold">Unrecognized Barcode</p>
-                  <p className="mt-0.5">{scanError}</p>
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-bold">Unrecognized Barcode</p>
+                    <p className="mt-0.5">{scanError}</p>
+                  </div>
                 </div>
+                {!isScannerActive && (
+                  <button
+                    type="button"
+                    onClick={handleScanNow}
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <ScanLine className="w-3.5 h-3.5" />
+                    <span>Scan Now</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -663,8 +702,22 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   </div>
                 </div>
 
-                {mode === 'select' && resolvedOnSelect && (
-                  <div className="flex justify-end pt-1">
+                {/* Bottom Action Row inside Matched Item Card: 'Scan Now' button + optional 'Use Selected Item' */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-200/80">
+                  {!isScannerActive ? (
+                    <button
+                      type="button"
+                      onClick={handleScanNow}
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold inline-flex items-center gap-2 shadow-sm cursor-pointer transition-all"
+                    >
+                      <ScanLine className="w-4 h-4 text-emerald-400" />
+                      <span>Scan Now (Scan Next Item)</span>
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+
+                  {mode === 'select' && resolvedOnSelect && (
                     <button
                       type="button"
                       onClick={() => {
@@ -676,8 +729,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       <Check className="w-4 h-4" />
                       <span>Use Selected Item &amp; Close</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
 

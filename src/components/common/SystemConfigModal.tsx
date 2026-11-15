@@ -297,10 +297,10 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     <div className="text-xs">
                       <div className="font-bold text-slate-900 flex items-center gap-1.5">
                         <Camera className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Allow Mobile Phone Camera &amp; Photo Scan</span>
+                        <span>Allow Mobile Phone Camera Scan</span>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Enables live rear/front mobile camera scanning and image file barcode decoding.
+                        Enables live rear/front mobile camera barcode scanning.
                       </p>
                     </div>
                   </label>

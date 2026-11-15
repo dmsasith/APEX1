@@ -1419,7 +1419,7 @@ export const StockRequestsView: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
-                    Requesting Site Branch (අදාළ Site Branch එක) *
+                    Requesting Site Branch *
                   </label>
                   <select
                     value={formSiteId}

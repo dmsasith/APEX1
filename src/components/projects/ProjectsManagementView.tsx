@@ -1954,7 +1954,7 @@ export const ProjectsManagementView: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5 uppercase tracking-wide">
                     <Building2 className="w-4 h-4 text-emerald-700" />
-                    <span>Assigned Site Branch (අදාළ Site Branch එක) *</span>
+                    <span>Assigned Site Branch *</span>
                   </label>
                   <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-700 text-white uppercase">
                     Mandatory Branch Link
