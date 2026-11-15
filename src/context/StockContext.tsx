@@ -507,7 +507,7 @@ interface StockContextType {
   updateTenantSubscription: (tenantId: string, subscriptionUpdates: Partial<TenantSubscription>) => void;
   updateTenantDetails: (
     tenantId: string,
-    updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug'>>
+    updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug' | 'emailVerified'>>
   ) => void;
   deleteTenant: (tenantId: string) => void;
 
@@ -2798,7 +2798,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateTenantDetails = (
     tenantId: string,
-    updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug'>>
+    updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug' | 'emailVerified'>>
   ) => {
     setTenants((prev) => {
       const updated = persistTenantsLocal(

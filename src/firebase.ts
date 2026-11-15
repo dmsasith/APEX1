@@ -1,5 +1,12 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  reload,
+} from 'firebase/auth';
+import {
   getDatabase,
   ref,
   onValue,
@@ -48,8 +55,166 @@ export const firebaseConfig = {
 // Initialize Firebase App safely (singleton)
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Realtime Database
+// Initialize Firebase Authentication & Realtime Database
+export const firebaseAuth = getAuth(app);
 export const rtdb = getDatabase(app);
+
+/**
+ * Deterministic internal password helper for Email Verification via Firebase Auth
+ */
+function buildVerificationAuthPassword(email: string, customPassword?: string): string {
+  if (customPassword && customPassword.trim().length >= 6) {
+    return customPassword.trim();
+  }
+  return `ApexVerify#${email.trim().toLowerCase()}#2026`;
+}
+
+/**
+ * Dispatches a REAL Verification Email from Firebase Authentication (`noreply@apexdevoloper-31068.firebaseapp.com`)
+ */
+export async function sendRealFirebaseVerificationEmail(
+  email: string,
+  customPassword?: string
+): Promise<{
+  status: 'sent' | 'already_verified' | 'error';
+  message: string;
+  errorCode?: string;
+}> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return {
+      status: 'error',
+      message: 'Please enter a valid email address (e.g. name@gmail.com).',
+    };
+  }
+
+  const primaryPass = buildVerificationAuthPassword(cleanEmail, customPassword);
+  const fallbackPass = buildVerificationAuthPassword(cleanEmail);
+
+  try {
+    let fbUser = firebaseAuth.currentUser;
+
+    if (!fbUser || fbUser.email?.toLowerCase() !== cleanEmail) {
+      try {
+        const cred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, primaryPass);
+        fbUser = cred.user;
+      } catch (createErr: any) {
+        if (createErr?.code === 'auth/email-already-in-use') {
+          try {
+            const signInCred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, primaryPass);
+            fbUser = signInCred.user;
+          } catch (signInErr: any) {
+            if (primaryPass !== fallbackPass) {
+              const fallbackCred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, fallbackPass);
+              fbUser = fallbackCred.user;
+            } else {
+              throw signInErr;
+            }
+          }
+        } else {
+          throw createErr;
+        }
+      }
+    }
+
+    if (!fbUser) {
+      return {
+        status: 'error',
+        message: 'Could not initialize Firebase Authentication session for this email.',
+      };
+    }
+
+    await reload(fbUser);
+    if (fbUser.emailVerified) {
+      return {
+        status: 'already_verified',
+        message: `Email "${cleanEmail}" is already verified in Firebase Authentication!`,
+      };
+    }
+
+    await sendEmailVerification(fbUser);
+    return {
+      status: 'sent',
+      message: `Real verification email sent via Firebase to "${cleanEmail}"! Please check your Inbox (and Spam/Promotions folder) and click the verification link.`,
+    };
+  } catch (err: any) {
+    const code = err?.code || '';
+    if (code === 'auth/operation-not-allowed' || code === 'auth/configuration-not-found') {
+      return {
+        status: 'error',
+        errorCode: code,
+        message:
+          'Firebase Authentication "Email/Password" provider is not enabled yet in your Firebase Console (apexdevoloper-31068). Follow the Step-by-Step guide below to turn it on in 30 seconds!',
+      };
+    }
+    if (code === 'auth/too-many-requests') {
+      return {
+        status: 'error',
+        errorCode: code,
+        message:
+          'Firebase has already sent a verification email recently. Please check your Inbox / Spam folder or wait 1-2 minutes before requesting another link.',
+      };
+    }
+    return {
+      status: 'error',
+      errorCode: code,
+      message: err?.message || 'Failed to send verification email via Firebase.',
+    };
+  }
+}
+
+/**
+ * Checks in real-time with Firebase Authentication whether the user clicked the verification link in their email
+ */
+export async function checkRealFirebaseEmailVerified(
+  email: string,
+  customPassword?: string
+): Promise<{
+  verified: boolean;
+  message: string;
+}> {
+  const cleanEmail = email.trim().toLowerCase();
+  const primaryPass = buildVerificationAuthPassword(cleanEmail, customPassword);
+  const fallbackPass = buildVerificationAuthPassword(cleanEmail);
+
+  try {
+    let fbUser = firebaseAuth.currentUser;
+    if (!fbUser || fbUser.email?.toLowerCase() !== cleanEmail) {
+      try {
+        const cred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, primaryPass);
+        fbUser = cred.user;
+      } catch {
+        const cred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, fallbackPass);
+        fbUser = cred.user;
+      }
+    }
+
+    if (!fbUser) {
+      return {
+        verified: false,
+        message: 'No active Firebase verification session found. Click "Send Verification Email" first.',
+      };
+    }
+
+    await reload(fbUser);
+    if (fbUser.emailVerified) {
+      return {
+        verified: true,
+        message: `Verified! Firebase confirmed that "${cleanEmail}" has been verified.`,
+      };
+    }
+
+    return {
+      verified: false,
+      message: `Not verified yet. Please open the email sent to "${cleanEmail}" (check Spam/Junk folder too), click the verification link inside it, and then click this button again.`,
+    };
+  } catch (err: any) {
+    return {
+      verified: false,
+      message: err?.message || 'Could not verify email status from Firebase.',
+    };
+  }
+}
 
 // Helper to normalize objects or arrays from Firebase Realtime Database
 function normalizeFirebaseList<T>(snapshotVal: unknown): T[] {
