@@ -33,6 +33,8 @@ import {
   MapPin,
   Plus,
   X,
+  Lock,
+  RefreshCw,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } from '../../types';
@@ -60,6 +62,7 @@ export const ClientFreeIssueView: React.FC = () => {
     updateProject,
     clientFreeIssues,
     addClientFreeIssue,
+    updateClientFreeIssue,
     deleteClientFreeIssue,
     clearClientFreeIssues,
     getClientFreeStockBalance,
@@ -85,6 +88,7 @@ export const ClientFreeIssueView: React.FC = () => {
 
   // Modals
   const [showLogModal, setShowLogModal] = useState(false);
+  const [editingVoucher, setEditingVoucher] = useState<ClientFreeIssueEntry | null>(null);
   const [showNewClientModal, setShowNewClientModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [clientToast, setClientToast] = useState<string | null>(null);
@@ -533,6 +537,7 @@ export const ClientFreeIssueView: React.FC = () => {
   };
 
   const handleOpenLogModal = (preselectedClientName?: string) => {
+    setEditingVoucher(null);
     setFormClientName(preselectedClientName || activeClients[0]?.name || '');
     const mainProjs = activeProjects.filter(
       (p) => p.projectScope === 'main' || activeProjects.some((sp) => sp.parentProjectId === p.id)
@@ -550,6 +555,48 @@ export const ClientFreeIssueView: React.FC = () => {
     setFormStorageLocation(mainWarehouseName);
     setFormNotes('');
     setFormItems([{ itemId: '', itemCode: '', itemName: '', quantity: '', unit: 'm', remarks: '' }]);
+    setFormError(null);
+    setShowLogModal(true);
+  };
+
+  // Open Admin Correction / Edit Modal for an existing Client FOC Voucher
+  const handleOpenEditVoucherModal = (entry: ClientFreeIssueEntry) => {
+    setEditingVoucher(entry);
+    setViewingVoucher(null);
+    setFormClientName(entry.clientName || activeClients[0]?.name || '');
+
+    const targetProj =
+      activeProjects.find((p) => p.id === entry.projectId) ||
+      projects.find((p) => p.id === entry.projectId);
+    const isMain =
+      entry.projectScope === 'main' ||
+      targetProj?.projectScope === 'main' ||
+      activeProjects.some((sp) => sp.parentProjectId === entry.projectId);
+
+    setFormProjectMode(isMain ? 'main' : 'individual');
+    setFormProjectId(entry.projectId);
+
+    const resolvedBranch = resolveProjectBranch(targetProj);
+    setFormAssignedSiteId(entry.assignedSiteId || resolvedBranch.siteId || branchSites[0]?.id || '');
+    setFormDispatchNoteNo(entry.dispatchNoteNo || '');
+    setFormReceivedDate(
+      entry.receivedDate ? entry.receivedDate.split('T')[0] : new Date().toISOString().split('T')[0]
+    );
+    setFormReceivedBy(entry.receivedBy || currentUser?.fullName || 'Logistics Coordinator');
+    setFormStorageLocation(mainWarehouseName);
+    setFormNotes(entry.notes || '');
+    setFormItems(
+      entry.items && entry.items.length > 0
+        ? entry.items.map((it) => ({
+            itemId: it.itemId,
+            itemCode: it.itemCode || '',
+            itemName: it.itemName || '',
+            quantity: it.quantity,
+            unit: it.unit || 'units',
+            remarks: it.remarks || '',
+          }))
+        : [{ itemId: '', itemCode: '', itemName: '', quantity: '', unit: 'm', remarks: '' }]
+    );
     setFormError(null);
     setShowLogModal(true);
   };
@@ -598,7 +645,9 @@ export const ClientFreeIssueView: React.FC = () => {
     }
 
     const targetProj = activeProjects.find((p) => p.id === formProjectId) || projects.find((p) => p.id === formProjectId);
-    const allocatedBranch = sites.find((s) => s.id === formAssignedSiteId);
+    const resolvedProjBranch = resolveProjectBranch(targetProj);
+    const finalBranchId = resolvedProjBranch.siteId || formAssignedSiteId;
+    const allocatedBranch = sites.find((s) => s.id === finalBranchId);
 
     // Sync project scope and Assigned Site Branch onto the target project (and its sub-projects)
     if (targetProj) {
@@ -606,7 +655,7 @@ export const ClientFreeIssueView: React.FC = () => {
       if (formProjectMode === 'main' && !targetProj.parentProjectId && targetProj.projectScope !== 'main') {
         projUpdates.projectScope = 'main';
       }
-      if (allocatedBranch && targetProj.siteId !== allocatedBranch.id) {
+      if (allocatedBranch && !targetProj.siteId) {
         projUpdates.siteId = allocatedBranch.id;
         projUpdates.siteName = allocatedBranch.name;
       }
@@ -617,7 +666,7 @@ export const ClientFreeIssueView: React.FC = () => {
         activeProjects
           .filter((sp) => sp.parentProjectId === targetProj.id)
           .forEach((sp) => {
-            if (sp.siteId !== allocatedBranch.id) {
+            if (!sp.siteId) {
               updateProject(sp.id, {
                 siteId: allocatedBranch.id,
                 siteName: allocatedBranch.name,
@@ -627,11 +676,11 @@ export const ClientFreeIssueView: React.FC = () => {
       }
     }
 
-    addClientFreeIssue({
+    const payload = {
       clientName: formClientName.trim(),
       projectId: formProjectId,
       projectName: targetProj?.projectName || 'Assigned Project',
-      projectScope: formProjectMode === 'main' ? 'main' : (targetProj?.projectScope || 'individual'),
+      projectScope: (formProjectMode === 'main' ? 'main' : (targetProj?.projectScope || 'individual')) as 'individual' | 'main' | 'sub',
       parentProjectId: targetProj?.parentProjectId,
       parentProjectName: targetProj?.parentProjectName,
       assignedSiteId: allocatedBranch?.id || targetProj?.siteId,
@@ -640,10 +689,22 @@ export const ClientFreeIssueView: React.FC = () => {
       dispatchNoteNo: formDispatchNoteNo.trim(),
       receivedDate: formReceivedDate,
       receivedBy: formReceivedBy.trim(),
-      storageLocation: formStorageLocation.trim() || mainWarehouseName,
+      storageLocation: mainWarehouseName,
       items: validRows,
       notes: formNotes.trim() || undefined,
-    });
+    };
+
+    if (editingVoucher) {
+      updateClientFreeIssue(editingVoucher.id, payload);
+      setEditingVoucher(null);
+      setShowLogModal(false);
+      triggerToast(
+        `FOC Voucher ${editingVoucher.voucherNumber} corrected & reassigned to Project "${targetProj?.projectName || 'Project'}" (Branch: ${allocatedBranch?.name || 'Site Branch'})!`
+      );
+      return;
+    }
+
+    addClientFreeIssue(payload);
 
     setShowLogModal(false);
     triggerToast(
@@ -1073,6 +1134,66 @@ export const ClientFreeIssueView: React.FC = () => {
                         </table>
                       </div>
 
+                      {/* Logged FOC Vouchers for this Project (with Admin Correction / Reassign Project Action) */}
+                      {(() => {
+                        const childIds = new Set(childSubProjects.map((sp) => sp.id));
+                        const projectVouchers = activeVouchers.filter(
+                          (v) =>
+                            v.projectId === project.id ||
+                            v.parentProjectId === project.id ||
+                            childIds.has(v.projectId)
+                        );
+                        if (projectVouchers.length === 0) return null;
+                        return (
+                          <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50/80 px-3.5 py-2.5 rounded-xl border border-slate-200/70">
+                            <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
+                              <FileCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                              <span>
+                                Logged FOC Shipments ({projectVouchers.length}):
+                              </span>
+                              {isCentralAdmin && (
+                                <span className="text-[11px] text-amber-700 font-medium hidden md:inline">
+                                  • Logged under wrong project? Click a voucher below to reassign or correct items:
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {projectVouchers.map((pv) => (
+                                <div
+                                  key={pv.id}
+                                  className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 shadow-2xs text-xs"
+                                >
+                                  <span className="font-mono font-bold text-indigo-700">{pv.voucherNumber}</span>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="font-mono text-[11px] font-semibold text-slate-700">
+                                    {pv.dispatchNoteNo}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingVoucher(pv)}
+                                    className="text-slate-400 hover:text-indigo-600 p-0.5 cursor-pointer"
+                                    title="View Voucher Details"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                  {isCentralAdmin && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditVoucherModal(pv)}
+                                      className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white border border-amber-300 text-[10px] font-extrabold transition-colors cursor-pointer"
+                                      title="Admin Correction: Change Project or Edit FOC Items"
+                                    >
+                                      <RefreshCw className="w-3 h-3" />
+                                      <span>Correct / Reassign Project</span>
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Sub-Project Consumption Breakdown (for Major / Main Projects) */}
                       {isMainProject && childSubProjects.length > 0 && (
                         <div className="mt-4 pt-3.5 border-t border-indigo-100 bg-indigo-50/40 rounded-xl p-3.5">
@@ -1241,6 +1362,16 @@ export const ClientFreeIssueView: React.FC = () => {
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
+                              {isCentralAdmin && (
+                                <button
+                                  onClick={() => handleOpenEditVoucherModal(v)}
+                                  className="px-2 py-1 text-amber-800 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-300 rounded-lg text-[10px] font-extrabold transition-colors cursor-pointer inline-flex items-center gap-1"
+                                  title="Admin Correction: Reassign Project or Edit FOC Items"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                  <span>Correct / Edit</span>
+                                </button>
+                              )}
                               <button
                                 onClick={() => setPrintingVoucher(v)}
                                 className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
@@ -1829,33 +1960,66 @@ export const ClientFreeIssueView: React.FC = () => {
         </div>
       )}
 
-      {/* ------------------ MODAL: LOG NEW CLIENT FREE-ISSUE STOCK ------------------ */}
+      {/* ------------------ MODAL: LOG / ADMIN CORRECT CLIENT FREE-ISSUE STOCK ------------------ */}
       {showLogModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 my-auto max-h-[94vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center">
-                  <Gift className="w-5 h-5" />
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 shrink-0">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs ${
+                    editingVoucher
+                      ? 'bg-amber-50 border-amber-300 text-amber-700'
+                      : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                  }`}
+                >
+                  {editingVoucher ? <RefreshCw className="w-5 h-5" /> : <Gift className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
-                    Log Client Free-Issue Stock (FOC Materials)
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Direct entry of project materials issued free of charge by registered clients or principals
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
+                      {editingVoucher
+                        ? `Admin Correction: Edit / Reassign Client FOC Voucher (${editingVoucher.voucherNumber})`
+                        : 'Log Client Free-Issue Stock (FOC Materials)'}
+                    </h3>
+                    {editingVoucher && (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold uppercase tracking-wider">
+                        Admin Correction Mode
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {editingVoucher
+                      ? 'Reassign this FOC shipment to the correct Project or update material quantities — all project balances & branch allocations update automatically.'
+                      : 'Direct entry of project materials issued free of charge by registered clients or principals'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setShowLogModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 text-lg font-bold"
+                onClick={() => {
+                  setEditingVoucher(null);
+                  setShowLogModal(false);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
+
+            {/* Admin Correction Helper Banner */}
+            {editingVoucher && (
+              <div className="mt-3 p-3 bg-amber-50/90 border border-amber-300 rounded-xl text-xs text-amber-950 flex items-start gap-2.5 shrink-0">
+                <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-extrabold">Correcting Logged FOC Shipment ({editingVoucher.voucherNumber}): </span>
+                  <span>
+                    Currently assigned to <strong>{editingVoucher.projectName}</strong>. If this shipment was accidentally logged under the wrong project, select the correct <strong>Target Project</strong> below — its <strong>Allocated Site Branch</strong> will automatically lock to that project&apos;s branch.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Error Message */}
             {formError && (
@@ -1867,229 +2031,304 @@ export const ClientFreeIssueView: React.FC = () => {
 
             {/* Scrollable Form Body */}
             <form onSubmit={handleSubmitNewIssue} className="overflow-y-auto pr-1 py-4 space-y-4">
-              {/* Row 1: Registered Client Selector + Quick New Client Register & Project Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Registered Client / Principal <span className="text-rose-500">*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleOpenNewClientModal}
-                      className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-lg transition-all cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3 text-emerald-600" />
-                      <span>New Client Register</span>
-                    </button>
-                  </div>
-                  <select
-                    required
-                    value={formClientName}
-                    onChange={(e) => setFormClientName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">-- Select Registered Client / Principal --</option>
-                    {activeClients.map((clt) => (
-                      <option key={clt.id} value={clt.name}>
-                        [{clt.clientCode}] {clt.name} {clt.category ? `— ${clt.category}` : ''}
-                      </option>
-                    ))}
-                    {formClientName && !activeClients.some((c) => c.name === formClientName) && (
-                      <option value={formClientName}>{formClientName}</option>
-                    )}
-                  </select>
+              {/* STEP 1: CLIENT & TARGET PROJECT SELECTION */}
+              <div className="p-4 bg-slate-50/80 border border-slate-200/90 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-indigo-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                      1
+                    </span>
+                    <span>Client & Target Project Selection</span>
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Select the Client Principal and Target Project
+                  </span>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Target Project Mode <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  {/* Column 1: Registered Client / Principal */}
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between h-7 mb-1.5">
+                      <label className="block text-xs font-extrabold text-slate-800">
+                        Registered Client / Principal <span className="text-rose-500">*</span>
+                      </label>
                       <button
                         type="button"
-                        onClick={() => {
-                          setFormProjectMode('main');
-                          const mainProjs = activeProjects.filter(
-                            (p) => !p.parentProjectId && p.projectScope !== 'sub'
-                          );
-                          if (mainProjs.length > 0) handleProjectSelectionChange(mainProjs[0].id);
-                        }}
-                        className={`px-2 py-0.5 rounded transition cursor-pointer ${
-                          formProjectMode === 'main'
-                            ? 'bg-indigo-600 text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                        onClick={handleOpenNewClientModal}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                       >
-                        🏢 Under Main Project
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormProjectMode('individual');
-                          const indProjs = activeProjects.filter(
-                            (p) =>
-                              !p.parentProjectId &&
-                              p.projectScope !== 'main' &&
-                              !activeProjects.some((sp) => sp.parentProjectId === p.id)
-                          );
-                          if (indProjs.length > 0) handleProjectSelectionChange(indProjs[0].id);
-                        }}
-                        className={`px-2 py-0.5 rounded transition cursor-pointer ${
-                          formProjectMode === 'individual'
-                            ? 'bg-slate-900 text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        📄 Individual Project
+                        <Plus className="w-3 h-3 text-emerald-600" />
+                        <span>New Client Register</span>
                       </button>
                     </div>
+                    <select
+                      required
+                      value={formClientName}
+                      onChange={(e) => setFormClientName(e.target.value)}
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                    >
+                      <option value="">-- Select Registered Client / Principal --</option>
+                      {activeClients.map((clt) => (
+                        <option key={clt.id} value={clt.name}>
+                          [{clt.clientCode}] {clt.name} {clt.category ? `— ${clt.category}` : ''}
+                        </option>
+                      ))}
+                      {formClientName && !activeClients.some((c) => c.name === formClientName) && (
+                        <option value={formClientName}>{formClientName}</option>
+                      )}
+                    </select>
                   </div>
-                  <select
-                    required
-                    value={formProjectId}
-                    onChange={(e) => handleProjectSelectionChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {(() => {
-                      const candidateProjects =
-                        formProjectMode === 'main'
-                          ? activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub')
-                          : formProjectMode === 'individual'
-                          ? activeProjects.filter(
+
+                  {/* Column 2: Target Project Mode & Project Dropdown */}
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between h-7 mb-1.5">
+                      <label className="block text-xs font-extrabold text-slate-800">
+                        Target Project <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/80 text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormProjectMode('main');
+                            const mainProjs = activeProjects.filter(
+                              (p) => !p.parentProjectId && p.projectScope !== 'sub'
+                            );
+                            if (mainProjs.length > 0) handleProjectSelectionChange(mainProjs[0].id);
+                          }}
+                          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                            formProjectMode === 'main'
+                              ? 'bg-indigo-600 text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          🏢 Under Main Project
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormProjectMode('individual');
+                            const indProjs = activeProjects.filter(
                               (p) =>
                                 !p.parentProjectId &&
                                 p.projectScope !== 'main' &&
                                 !activeProjects.some((sp) => sp.parentProjectId === p.id)
-                            )
-                          : activeProjects;
+                            );
+                            if (indProjs.length > 0) handleProjectSelectionChange(indProjs[0].id);
+                          }}
+                          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                            formProjectMode === 'individual'
+                              ? 'bg-slate-900 text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          📄 Individual Project
+                        </button>
+                      </div>
+                    </div>
+                    <select
+                      required
+                      value={formProjectId}
+                      onChange={(e) => handleProjectSelectionChange(e.target.value)}
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                    >
+                      {(() => {
+                        const candidateProjects =
+                          formProjectMode === 'main'
+                            ? activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub')
+                            : formProjectMode === 'individual'
+                            ? activeProjects.filter(
+                                (p) =>
+                                  !p.parentProjectId &&
+                                  p.projectScope !== 'main' &&
+                                  !activeProjects.some((sp) => sp.parentProjectId === p.id)
+                              )
+                            : activeProjects;
 
-                      if (candidateProjects.length === 0) {
-                        return <option value="">-- No Matching Projects Found --</option>;
-                      }
+                        if (candidateProjects.length === 0) {
+                          return <option value="">-- No Matching Projects Found --</option>;
+                        }
 
-                      return candidateProjects.map((p) => {
-                        const subCount = activeProjects.filter((sp) => sp.parentProjectId === p.id).length;
-                        const resolvedBranch = resolveProjectBranch(p);
-                        const prefix =
-                          formProjectMode === 'main' || p.projectScope === 'main' || subCount > 0
-                            ? `🏢 [Under Main Project] `
-                            : `📄 `;
-                        return (
-                          <option key={p.id} value={p.id}>
-                            {prefix}{p.projectName} ({p.projectId}){resolvedBranch.siteName ? ` — Branch: ${resolvedBranch.siteName}` : ''}{subCount > 0 ? ` — ${subCount} Sub-Projects` : ''}
-                          </option>
-                        );
-                      });
-                    })()}
-                  </select>
-                  {formProjectMode === 'main' && (
-                    <p className="text-[11px] text-indigo-700 font-medium mt-1">
-                      ✓ Stock received under this Main Project will automatically deduct whenever material usage is logged on any of its Sub-Projects.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Row 2: Dispatch Note #, Date, Physical Receiving Yard (Default Central Main), and Auto-Allocated Site Branch */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 bg-slate-50/90 border border-slate-200 rounded-xl">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Client Dispatch Note # / Gate Pass <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. DN-2026-0412"
-                    value={formDispatchNoteNo}
-                    onChange={(e) => setFormDispatchNoteNo(e.target.value)}
-                    className="w-full px-3 py-2 font-mono font-bold bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Received Date <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formReceivedDate}
-                    onChange={(e) => setFormReceivedDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                        return candidateProjects.map((p) => {
+                          const subCount = activeProjects.filter((sp) => sp.parentProjectId === p.id).length;
+                          const resolvedBranch = resolveProjectBranch(p);
+                          const prefix =
+                            formProjectMode === 'main' || p.projectScope === 'main' || subCount > 0
+                              ? `🏢 [Main Project] `
+                              : `📄 `;
+                          return (
+                            <option key={p.id} value={p.id}>
+                              {prefix}{p.projectName} ({p.projectId}){resolvedBranch.siteName ? ` — Branch: ${resolvedBranch.siteName}` : ''}{subCount > 0 ? ` (${subCount} Sub-Projects)` : ''}
+                            </option>
+                          );
+                        });
+                      })()}
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Receiving Storage Yard (Inbound)
-                    </label>
-                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-800 uppercase">
-                      Default HQ
+                {formProjectMode === 'main' && (
+                  <div className="px-3 py-2 rounded-xl bg-indigo-50/90 border border-indigo-200/80 text-[11px] text-indigo-900 font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span>
+                      Stock received under this Main Project automatically deducts whenever material usage or site requisitions are logged on this Main Project or any of its Sub-Projects.
                     </span>
                   </div>
-                  <select
-                    value={mainWarehouseName}
-                    onChange={(e) => setFormStorageLocation(e.target.value)}
-                    className="w-full px-3 py-2 bg-indigo-50/80 border border-indigo-300 rounded-xl text-xs font-extrabold text-indigo-950 focus:outline-none"
-                  >
-                    <option value={mainWarehouseName}>
-                      {mainWarehouseName} (Central Yard)
-                    </option>
-                  </select>
-                  <p className="text-[10px] text-slate-500 mt-1 leading-tight">
-                    FOC materials always enter Central Main Stock first.
-                  </p>
+                )}
+              </div>
+
+              {/* STEP 2: DISPATCH DETAILS, INBOUND YARD & LOCKED SITE BRANCH ALLOCATION */}
+              <div className="p-4 bg-slate-50/80 border border-slate-200/90 rounded-2xl space-y-3.5">
+                <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-indigo-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                      2
+                    </span>
+                    <span>Dispatch Voucher, Inbound Yard & Locked Site Branch Allocation</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    <span>Branch Auto-Locked to Selected Project</span>
+                  </span>
                 </div>
 
-                <div>
-                  {(() => {
-                    const selectedProjObj = activeProjects.find((p) => p.id === formProjectId);
-                    const hasRegisteredBranch = Boolean(selectedProjObj?.siteId);
-                    return (
-                      <>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-xs font-extrabold text-emerald-900">
-                            Allocated Site Branch <span className="text-rose-500">*</span>
-                          </label>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-emerald-700 text-white uppercase">
-                            {hasRegisteredBranch ? 'Auto-Linked' : 'Select Branch'}
-                          </span>
-                        </div>
-                        <select
-                          required
-                          value={formAssignedSiteId}
-                          onChange={(e) => setFormAssignedSiteId(e.target.value)}
-                          className="w-full px-3 py-2 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-xs font-extrabold text-emerald-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
-                        >
-                          <option value="">-- Select Site Branch --</option>
-                          {branchSites.map((bs) => (
-                            <option key={bs.id} value={bs.id}>
-                              🏢 {bs.name} {bs.location ? `(${bs.location})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                        <p className="text-[10px] text-emerald-800 font-semibold mt-1 leading-tight">
-                          ✓ Exclusively available for requisition by this Site Branch.
-                        </p>
-                      </>
-                    );
-                  })()}
+                {/* Clean 2x2 Grid so labels never wrap unevenly */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Top-Left: Client Dispatch Note # / Gate Pass */}
+                  <div>
+                    <div className="flex items-center justify-between h-6 mb-1">
+                      <label className="block text-xs font-extrabold text-slate-800">
+                        Client Dispatch Note # / Gate Pass <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] font-semibold text-slate-400">Document Ref</span>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. DN-2026-0412"
+                      value={formDispatchNoteNo}
+                      onChange={(e) => setFormDispatchNoteNo(e.target.value)}
+                      className="w-full h-10 px-3.5 font-mono font-bold bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Top-Right: Received Date */}
+                  <div>
+                    <div className="flex items-center justify-between h-6 mb-1">
+                      <label className="block text-xs font-extrabold text-slate-800">
+                        Received Date <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] font-semibold text-slate-400">Inbound Date</span>
+                    </div>
+                    <input
+                      type="date"
+                      required
+                      value={formReceivedDate}
+                      onChange={(e) => setFormReceivedDate(e.target.value)}
+                      className="w-full h-10 px-3.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Bottom-Left: Receiving Storage Yard (Locked to Default Central Main Warehouse) */}
+                  <div>
+                    <div className="flex items-center justify-between h-6 mb-1">
+                      <label className="block text-xs font-extrabold text-indigo-950">
+                        Receiving Storage Yard (Inbound)
+                      </label>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Default HQ</span>
+                      </span>
+                    </div>
+                    <div
+                      className="w-full h-10 px-3.5 bg-indigo-50/90 border border-indigo-300 rounded-xl text-xs font-extrabold text-indigo-950 flex items-center justify-between select-none"
+                      title="Client FOC materials always enter Main Central Warehouse first"
+                    >
+                      <span className="truncate">🏢 {mainWarehouseName} (Central Yard)</span>
+                      <Lock className="w-3.5 h-3.5 text-indigo-500 shrink-0 ml-2" />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      All Client FOC materials enter Central Main Stock first.
+                    </p>
+                  </div>
+
+                  {/* Bottom-Right: Allocated Site Branch (Auto-Linked & Locked to Project's Registered Branch) */}
+                  <div>
+                    {(() => {
+                      const selectedProjObj =
+                        activeProjects.find((p) => p.id === formProjectId) ||
+                        projects.find((p) => p.id === formProjectId);
+                      const resolvedProjBranch = resolveProjectBranch(selectedProjObj);
+                      const isBranchLocked = Boolean(resolvedProjBranch.siteId);
+                      const lockedSiteObj = sites.find(
+                        (s) => s.id === (resolvedProjBranch.siteId || formAssignedSiteId)
+                      );
+                      const lockedBranchDisplay =
+                        lockedSiteObj
+                          ? `${lockedSiteObj.name}${lockedSiteObj.location ? ` (${lockedSiteObj.location})` : ''}`
+                          : resolvedProjBranch.siteName || 'Assigned Site Branch';
+
+                      return (
+                        <>
+                          <div className="flex items-center justify-between h-6 mb-1">
+                            <label className="block text-xs font-extrabold text-emerald-950">
+                              Allocated Site Branch <span className="text-rose-500">*</span>
+                            </label>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-700 text-white uppercase shadow-2xs">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>{isBranchLocked ? 'Locked to Project' : 'Select Branch'}</span>
+                            </span>
+                          </div>
+
+                          {isBranchLocked ? (
+                            <div
+                              className="w-full h-10 px-3.5 bg-emerald-50 border-2 border-emerald-500 rounded-xl text-xs font-extrabold text-emerald-950 flex items-center justify-between select-none cursor-not-allowed shadow-2xs"
+                              title="Locked to the Site Branch registered for this Project so stock cannot be accidentally issued to another branch"
+                            >
+                              <span className="truncate">🏢 {lockedBranchDisplay}</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-md shrink-0 ml-2">
+                                <Lock className="w-3 h-3 text-emerald-800" />
+                                <span>Auto-Locked</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <select
+                              required
+                              value={formAssignedSiteId}
+                              onChange={(e) => setFormAssignedSiteId(e.target.value)}
+                              className="w-full h-10 px-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-xs font-extrabold text-emerald-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
+                            >
+                              <option value="">-- Select Site Branch --</option>
+                              {branchSites.map((bs) => (
+                                <option key={bs.id} value={bs.id}>
+                                  🏢 {bs.name} {bs.location ? `(${bs.location})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
+                          <p className="text-[11px] text-emerald-800 font-semibold mt-1">
+                            🔒 Locked to this project&apos;s branch — prevents accidental issue to other sites.
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
 
-              {/* Line Items Table */}
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                    Received Material Items (Cables, Hardware, Accessories)
-                  </label>
+              {/* STEP 3: RECEIVED MATERIAL ITEMS TABLE */}
+              <div className="p-4 bg-slate-50/80 border border-slate-200/90 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-indigo-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                      3
+                    </span>
+                    <span>Received Material Items (Cables, Hardware, Accessories)</span>
+                  </span>
                   <button
                     type="button"
                     onClick={handleAddRow}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
                   >
                     <PlusCircle className="w-3.5 h-3.5" />
                     <span>Add Item Line</span>
@@ -2100,17 +2339,17 @@ export const ClientFreeIssueView: React.FC = () => {
                   {formItems.map((row, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-2.5"
+                      className="p-3 bg-white border border-slate-200/90 rounded-xl grid grid-cols-1 sm:grid-cols-12 gap-3 items-end shadow-2xs"
                     >
-                      <div className="flex-1 min-w-[200px] w-full">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                          Select Item *
+                      <div className="sm:col-span-5">
+                        <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1">
+                          {idx + 1}. Material / Cable Item <span className="text-rose-500">*</span>
                         </label>
                         <select
                           value={row.itemId}
                           onChange={(e) => handleItemSelect(idx, e.target.value)}
                           required
-                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full h-9 px-2.5 text-xs bg-slate-50 focus:bg-white border border-slate-300 rounded-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
                           <option value="">-- Select Material / Cable --</option>
                           {activeItems.map((itm) => (
@@ -2121,9 +2360,9 @@ export const ClientFreeIssueView: React.FC = () => {
                         </select>
                       </div>
 
-                      <div className="w-full sm:w-32">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                          Quantity ({row.unit || 'units'}) *
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1">
+                          Quantity ({row.unit || 'units'}) <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="number"
@@ -2135,12 +2374,12 @@ export const ClientFreeIssueView: React.FC = () => {
                           onChange={(e) =>
                             handleRowChange(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))
                           }
-                          className="w-full px-2.5 py-1.5 font-mono font-bold text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-right"
+                          className="w-full h-9 px-3 font-mono font-bold text-xs bg-slate-50 focus:bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-right"
                         />
                       </div>
 
-                      <div className="flex-1 min-w-[140px] w-full">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1">
                           Drum / Serial / Batch Remarks
                         </label>
                         <input
@@ -2148,17 +2387,17 @@ export const ClientFreeIssueView: React.FC = () => {
                           placeholder="e.g. Drum #DR-8821, Batch #B-04"
                           value={row.remarks}
                           onChange={(e) => handleRowChange(idx, 'remarks', e.target.value)}
-                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full h-9 px-2.5 text-xs bg-slate-50 focus:bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
 
-                      <div className="pt-4 sm:pt-3">
+                      <div className="sm:col-span-1 flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleRemoveRow(idx)}
                           disabled={formItems.length <= 1}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:pointer-events-none rounded-lg cursor-pointer"
-                          title="Remove Row"
+                          className="h-9 w-9 inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 disabled:opacity-30 disabled:pointer-events-none rounded-lg cursor-pointer transition-colors"
+                          title="Remove Item Line"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -2168,7 +2407,7 @@ export const ClientFreeIssueView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* Optional Delivery Notes */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   General Delivery / Inspection Notes (Optional)
@@ -2186,17 +2425,28 @@ export const ClientFreeIssueView: React.FC = () => {
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setShowLogModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  onClick={() => {
+                    setEditingVoucher(null);
+                    setShowLogModal(false);
+                  }}
+                  className="px-4 py-2.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-indigo-600/30"
+                  className={`px-5 py-2.5 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md ${
+                    editingVoucher
+                      ? 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 shadow-amber-600/30'
+                      : 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-indigo-600/30'
+                  }`}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Save Client Free-Issue Stock</span>
+                  <span>
+                    {editingVoucher
+                      ? 'Save Corrected Project & FOC Voucher'
+                      : 'Save Client Free-Issue Stock'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -2215,7 +2465,7 @@ export const ClientFreeIssueView: React.FC = () => {
                   Client Free-Issue Voucher: {viewingVoucher.voucherNumber}
                 </h3>
               </div>
-              <button onClick={() => setViewingVoucher(null)} className="p-1 text-slate-400 hover:text-slate-700">
+              <button onClick={() => setViewingVoucher(null)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer">
                 ✕
               </button>
             </div>
@@ -2233,6 +2483,11 @@ export const ClientFreeIssueView: React.FC = () => {
                 <div>
                   <span className="text-slate-500 block text-[10px] uppercase font-bold">Assigned Project</span>
                   <span className="font-bold text-slate-900">{viewingVoucher.projectName}</span>
+                  {viewingVoucher.assignedSiteName && (
+                    <span className="block text-[10px] font-bold text-emerald-700 mt-0.5">
+                      🏢 Allocated Branch: {viewingVoucher.assignedSiteName}
+                    </span>
+                  )}
                   {viewingVoucher.siteIdentifier && (
                     <span className="block text-[10px] text-slate-500">Site: {viewingVoucher.siteIdentifier}</span>
                   )}
@@ -2287,7 +2542,16 @@ export const ClientFreeIssueView: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <div className="pt-3 border-t border-slate-200 flex flex-wrap justify-end gap-2">
+              {isCentralAdmin && (
+                <button
+                  onClick={() => handleOpenEditVoucherModal(viewingVoucher)}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Correct / Reassign Project</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setPrintingVoucher(viewingVoucher);

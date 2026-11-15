@@ -7081,19 +7081,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateClientFreeIssue = (id: string, updates: Partial<ClientFreeIssueEntry>) => {
+    const existing = clientFreeIssues.find((e) => e.id === id);
     setClientFreeIssues((prev) => {
       const next = prev.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry));
       saveToStorage('clientFreeIssues', next);
       saveTenantData(currentTenantIdRef.current, 'clientFreeIssues', next);
       return next;
     });
-    const entry = clientFreeIssues.find((e) => e.id === id);
-    if (entry) {
+    if (existing) {
+      const updatedProjName = updates.projectName || existing.projectName;
+      const updatedBranchName = updates.assignedSiteName || existing.assignedSiteName || 'Site Branch';
+      const projChangeNote =
+        updates.projectId && updates.projectId !== existing.projectId
+          ? `Reassigned Project from "${existing.projectName}" to "${updatedProjName}" (Branch: ${updatedBranchName})`
+          : `Updated FOC voucher for Project "${updatedProjName}" (Branch: ${updatedBranchName})`;
       addAuditLog(
         'CLIENT_FREE_ISSUE_RECEIVED',
-        entry.voucherNumber,
-        entry.storageLocation || 'Main Warehouse',
-        `Updated Client Free-Issue Stock voucher ${entry.voucherNumber} for Project "${entry.projectName}"`
+        existing.voucherNumber,
+        updates.storageLocation || existing.storageLocation || 'Main Warehouse',
+        `Admin Corrected Client FOC Voucher ${existing.voucherNumber} (DN: ${updates.dispatchNoteNo || existing.dispatchNoteNo}): ${projChangeNote}`
       );
     }
   };

@@ -76,14 +76,14 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     icon: Boxes,
     steps: [
       {
-        stepTitle: '1. Create Your Company Workspace',
+        stepTitle: '1. Create Your Company Workspace & Sequential 0001 Numbering',
         detail:
-          'Click "Start 7-Day Free Trial" and enter your Company Name, Admin Username, and Password. Your private cloud database is created immediately with no credit card required.',
+          'Click "Start 7-Day Free Trial" and enter your Company Name, Admin Username, and Password. All system codes, Item Codes (ITM-0001, MCH-0001), Barcodes (APX-0001), Project IDs (PRJ-2026-0001, MAJ-2026-0001), and Voucher Reference Numbers (PO, GRN, RN, DN, IN, PU, RV, BRM) automatically start from 0001 and increment sequentially.',
       },
       {
-        stepTitle: '2. Register Materials & Heavy Machinery (or Bulk Import Excel)',
+        stepTitle: '2. Register Materials, Heavy Machinery & Single-Shot Barcode Scanning ("Scan Now")',
         detail:
-          'Open "Master Registrations -> Item Catalog" to add Consumable Materials (cables, cement, pipes, fittings) and Returnable Machinery/Tools (excavators, generators, fusion splicers) with minimum low-stock alert levels - or import thousands of items at once via Excel/CSV.',
+          'Open "Master Registrations -> Item Catalog" to add Consumable Materials and Returnable Machinery/Tools or bulk import via Excel/CSV. When scanning barcodes via Mobile Camera or USB/Wireless Barcode Gun (including Live Inventory Barcode Lookup), the scanner detects once, automatically stops and hides the camera view to prevent continuous duplicate scans, and provides a "Scan Now" button to re-activate the scanner for the next item.',
       },
       {
         stepTitle: '3. Register Field Teams with Auto-Calculated Crew Size & Usage Protection',
@@ -97,9 +97,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Master Material & Machinery Catalog + Excel Import',
-      'Auto-Calculated Crew Size (1 Leader + N Members)',
-      'Unique Team Name & Historical Usage Ledger Protection',
+      'Sequential 0001-Based Codes, IDs & Document References',
+      'Single-Shot Camera & USB Gun Barcode Scanner with "Scan Now" Button',
+      'Auto-Calculated Crew Size (1 Leader + N Members) & Usage Protection',
       'Single-Site & Multi-Site Branch Supervisor Locks',
     ],
   },
@@ -110,18 +110,18 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     categoryLabel: 'Warehouse, PO / GRN & RTV',
     title: 'Central Warehouse, Supplier Orders (PO / GRN), Vendor Returns (RTV) & Client Free Stock',
     summary:
-      'Manage company-purchased stock, partial/full Goods Receipt Notes (GRN), supplier returns with official Debit Notes (RTV), damaged stock restoration, and client-supplied free materials.',
+      'Manage company-purchased stock, multi-item Goods Receipt Notes (GRN), supplier returns with official Debit Notes (RTV), damaged stock restoration, and client-supplied free materials with automatic branch allocation.',
     icon: Gift,
     steps: [
       {
         stepTitle: '1. Issue Official Supplier Purchase Orders (PO)',
         detail:
-          'In "Supplier Orders (PO)", generate numbered Purchase Orders for your approved vendors with commercial terms, tax/discount calculations, and 3-signature approval blocks, and print official A4 PO documents.',
+          'In "Supplier Orders (PO)", generate sequential 0001-numbered Purchase Orders for your approved vendors with commercial terms, tax/discount calculations, and 3-signature approval blocks, and print official A4 PO documents.',
       },
       {
-        stepTitle: '2. Receive Stock into Central Warehouse & Print GRN Vouchers',
+        stepTitle: '2. Receive Multi-Item PO Stock into Central Warehouse & Print GRN Vouchers',
         detail:
-          'Record full or partial Goods Received Notes (GRN) from Supplier POs or direct warehouse entries. Every inbound delivery batch has a dedicated "Print GRN" button in both Supplier Orders and Main Stock Inbound History.',
+          'Record full or partial Goods Received Notes (GRN) from Supplier POs or direct warehouse entries. All line items in a multi-item PO are atomically added into Central Main Stock with a dedicated "Print GRN" voucher.',
       },
       {
         stepTitle: '3. Return to Vendor (RTV), Official Debit Notes & Damaged Stock Restoration',
@@ -129,15 +129,15 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'For defective or excess vendor deliveries, create an official Return to Vendor (RTV) / Debit Note with outward Gate Pass and credit claim tracking. For site-damaged items, inspect and restore repaired units back into Main Stock via the Damaged Stock ledger.',
       },
       {
-        stepTitle: '4. Record Client-Supplied Free Materials (FOC) — Under Main Project or Individual Project',
+        stepTitle: '4. Record Client-Supplied Free Materials (FOC) — Central HQ Default Inbound & Auto Site Branch Allocation',
         detail:
-          'When a client/principal supplies free materials for an entire area or multi-stage contract, open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" (or "Individual Project"). Bulk FOC stock received under a Major / Main Project acts as a shared material pool that automatically deducts whenever field usage is logged on any of its child Sub-Projects, while displaying a separate Sub-Projects Individual Usage Breakdown.',
+          'Open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" or "Individual Project". Physical FOC materials always enter "Main Central Warehouse (Central Yard)" by default as the inbound storage location, while selecting the Target Project automatically detects and allocates the stock exclusively to that project\'s Assigned Site Branch so only that branch can request it.',
       },
     ],
     keyOutputs: [
-      'Printable Purchase Orders (PO) & Batch GRN Vouchers',
+      'Printable Purchase Orders (PO) & Multi-Item Batch GRN Vouchers',
       'Return to Vendor (RTV) Debit Notes & Outward Gate Passes',
-      'Client Free-Issue (FOC) Main Project Pool & Sub-Project Breakdown',
+      'Client FOC Default Central Main Stock Inbound + Auto Site Branch Allocation',
     ],
   },
   {
@@ -145,20 +145,20 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     number: 'Chapter 03',
     category: 'operations',
     categoryLabel: 'Site Transfers & Field Dispatch',
-    title: 'Site Stock Requisitions (RN), HQ Dispatches & Crew Issuance (IN)',
+    title: '2-Tab Site Stock Requisitions (Normal Stock vs. Project Client FOC), HQ Dispatches & Crew Issuance (IN)',
     summary:
-      'Control every movement of stock from Central Headquarters to Regional Site Yards, and from Site Yards into the hands of Field Teams.',
+      'Submit Normal Stock or Branch-Exclusive Client Free Stock (FOC) requisitions with automatic Site Low-Stock priority sorting, and control every movement from Central HQ to Regional Site Yards and Field Teams.',
     icon: Send,
     steps: [
       {
-        stepTitle: '1. Digital Stock Requisitions (RN) with Available Stock Filter',
+        stepTitle: '1. Two-Tab Stock Requisition Form: Normal Stock vs. Client Free Stock (FOC) for Assigned Project',
         detail:
-          'Site Supervisors submit a Stock Requisition Note (RN) from their assigned Site Branch to Central HQ. Use the 1-click "Available Stock Only" filter to view only items currently in stock at the Central Warehouse.',
+          'In "Stock Requisitions -> + New Stock Requirement Form", choose your Requesting Site Branch first, then switch between two dedicated tabs: (1) "Normal Stock Request" for regular warehouse stock (where items that are Low Stock at your site automatically appear at the very top of the list with "Site Low" & "Site Avl:" badges alongside "Main:" stock), or (2) "Client Free Stock for Assigned Project Request" which filters and displays ONLY the Major/Main Projects and Individual Projects allocated to your selected Site Branch.',
       },
       {
-        stepTitle: '2. Smart Shortage Check & HQ Dispatch Approval',
+        stepTitle: '2. HQ Dispatch Approval & Automatic MainStock / FOC Pool Deduction to Site Branch',
         detail:
-          'Central HQ reviews the request against live warehouse stock. If any item is short, HQ can click "Send Available Only" or remove out-of-stock lines in 1 click, generating an official Transfer & Dispatch Note.',
+          'Central HQ reviews the requisition table (displaying full Item Code + Material Description, wrapped Date/Time, and project badges). When approved and confirmed as received at the Site Branch, Normal requests deduct from Central Main Stock and add to Site Branch Stock, while FOC requests deduct from the Central Main FOC Pool and transfer into the Site Branch Yard for Sub-Project or Individual Project usage.',
       },
       {
         stepTitle: '3. Daily Issuance to Field Crews (IN / Gate Pass)',
@@ -172,9 +172,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Stock Requisition Notes (RN) with Available Stock Filter',
-      'Printable Numbered Issue Notes (IN) & Gate Passes',
-      'Live Field Crew In-Hand Custody & TSR Audit Reports',
+      '2-Tab Stock Requisitions: Normal Stock vs. Branch-Exclusive Client FOC',
+      'Auto Low-Stock Top Sorting & Live "Site Avl:" + "Main:" Balances in Dropdowns',
+      'Printable Numbered Issue Notes (IN), Gate Passes & TSR Audit Reports',
     ],
   },
   {
@@ -182,25 +182,25 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     number: 'Chapter 04',
     category: 'projects',
     categoryLabel: 'Projects, Sub-Projects & Reconciliation',
-    title: 'Major / Main Projects, Sub-Projects, Individual Projects, Material Usage (PU) & Returns (RV / BRM)',
+    title: 'Project Registry with Mandatory Assigned Site Branch, Sub-Projects, Material Usage (PU) & Returns (RV / BRM)',
     summary:
-      'Organize Major / Main Umbrella Projects with multiple Sub-Projects or standalone Individual Projects, deduct shared Main Project Free Stock automatically when logging Sub-Project usage, and reconcile both total Main Projects and individual Sub-Projects.',
+      'Register Major / Main Projects, Sub-Projects, and Individual Projects with a mandatory Assigned Site Branch so Client Free Stock is automatically routed to the right branch and deducted when Sub-Project usage is logged.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Register Major / Main Projects, Sub-Projects & Individual Projects + Section Templates',
+        stepTitle: '1. Register Projects with Mandatory "Assigned Site Branch *"',
         detail:
-          'In "Project & New Section Registry", choose from 3 project structures when registering: (1) Major / Main Project (umbrella contract covering a whole area or multiple sub-projects — you can even add initial Sub-Projects in the same window), (2) Sub-Project (linked under a Parent Main Project, or added in 1 click via the "+ Sub-Project" button on any Main Project row), or (3) Individual Project (standalone single job). You can also configure reusable Material Templates (BOM) per engineering section.',
+          'In "Project & New Section Registry", click "Register Project", choose (1) Major / Main Project, (2) Sub-Project, or (3) Individual Project, and select the mandatory "Assigned Site Branch *". Sub-Projects automatically inherit their Parent Main Project\'s Assigned Site Branch. This branch link ensures that when Client Free-Issue (FOC) stock is logged, it is allocated exclusively to that Site Branch without cross-branch mix-ups.',
       },
       {
         stepTitle: '2. Sub-Project & Multi-Team Material Usage Logging (PU) with Auto Main Pool Deduction',
         detail:
-          'In "Material Usage" (Step 2), select an existing Sub-Project under a Major Project, pick an Individual Project, or register a new Sub-Project on the fly under a Main Project. When field teams log material usage on a Sub-Project, the system automatically deducts those quantities from the Parent Main Project\'s shared Client Free Stock (FOC) pool while recording the consumption under that specific Sub-Project.',
+          'In "Material Usage" (Step 2), select an existing Sub-Project under a Major Project, pick an Individual Project, or register a new Sub-Project on the fly. Once your Site Branch has requested and received the Main Project\'s FOC stock from Central HQ, logging daily material usage under any Sub-Project automatically deducts from that Main Project\'s FOC pool.',
       },
       {
         stepTitle: '3. Total Main Project Umbrella Reconciliation & Separate Sub-Project Breakdown',
         detail:
-          'Open the "Reconciliation" tab in Material Usage (or click the usage badge in Project Registry). Selecting a Major / Main Project reconciles the entire contract (Total FOC Stock Received under Main Project vs. Combined Installed Qty across all Sub-Projects = Net Remaining Balance) and displays a dedicated "Sub-Projects Individual Material Usage Breakdown" so you can inspect each Sub-Project and team separately.',
+          'Open the "Reconciliation" tab in Material Usage (or click the usage badge in Project Registry). Selecting a Major / Main Project reconciles the entire contract (Total FOC Stock Received under Main Project vs. Combined Installed Qty across all Sub-Projects = Net Remaining Balance) and displays a dedicated "Sub-Projects Individual Material Usage Breakdown".',
       },
       {
         stepTitle: '4. Team Returns (RV) & Branch-to-HQ Returns (BRM)',
@@ -209,7 +209,7 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      '3-Tier Project Structure (Major/Main, Sub-Project & Individual)',
+      'Mandatory Assigned Site Branch per Project (Main, Sub & Individual)',
       'Auto-Deduction of Sub-Project Usage from Main Project FOC Pool',
       'Umbrella Main Project & Individual Sub-Project Reconciliation + PU/RV/BRM Vouchers',
     ],
@@ -298,25 +298,25 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     number: '01 වන පරිච්ඡේදය',
     category: 'setup',
     categoryLabel: 'මූලික සැකසුම් සහ ලියාපදිංචි කිරීම් (Master Setup)',
-    title: 'ආයතන ගිණුම ආරම්භ කිරීම, ප්‍රධාන නාමාවලිය සහ වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය',
+    title: 'ආයතන ගිණුම ආරම්භ කිරීම, 0001 අනුක්‍රමික අංකනය, Single-Shot Barcode Scanner සහ Teams ලියාපදිංචිය',
     summary:
-      'විනාඩියක් ඇතුළත ඔබේ ආයතනයේ Cloud පද්ධතිය සකසාගෙන, භාණ්ඩ සහ යන්ත්‍රෝපකරණ, ශාඛා ගබඩා (Site Branches), වැඩ කණ්ඩායම් (Field Teams), සැපයුම්කරුවන් සහ සේවාදායකයින් (Clients) ලියාපදිංචි කරගන්නා ආකාරය.',
+      'විනාඩියක් ඇතුළත ඔබේ ආයතනයේ Cloud පද්ධතිය සකසාගෙන, 0001 සිට පිළිවෙළට අංකනය වන භාණ්ඩ සහ යන්ත්‍රෝපකරණ, Single-Shot Barcode Scanner ("Scan Now"), ශාඛා ගබඩා (Site Branches), සහ වැඩ කණ්ඩායම් (Field Teams) ලියාපදිංචි කරගන්නා ආකාරය.',
     icon: Boxes,
     steps: [
       {
-        stepTitle: '1. ඔබේ ආයතනයේ Workspace ගිණුම ආරම්භ කිරීම',
+        stepTitle: '1. ඔබේ ආයතනයේ Workspace ගිණුම සහ 0001 සිට ඇරඹෙන නිල අංකන පද්ධතිය',
         detail:
-          '"Start 7-Day Free Trial" බටන් එක ක්ලික් කර ඔබේ ආයතනයේ නම, ප්‍රධාන පරිපාලක (Admin) නාමය සහ මුරපදය ඇතුළත් කරන්න. ඔබේ ආයතනයටම වෙන්වූ ආරක්ෂිත Cloud දත්ත පද්ධතිය ක්ෂණිකව සකස් වේ.',
+          '"Start 7-Day Free Trial" බටන් එක ක්ලික් කර ඔබේ ආයතනයේ ගිණුම අරඹන්න. පද්ධතියේ සියලුම Item Codes (ITM-0001, MCH-0001), Barcodes (APX-0001), Project IDs (PRJ-2026-0001, MAJ-2026-0001) සහ සියලුම වවුචර් අංක (PO, GRN, RN, DN, IN, PU, RV, BRM) ඉබේම 0001 සිට පිළිවෙළට (Sequential) ජනනය වේ.',
       },
       {
-        stepTitle: '2. භාණ්ඩ (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ලියාපදිංචිය හෝ Excel Import කිරීම',
+        stepTitle: '2. භාණ්ඩ ලියාපදිංචිය, Excel Import සහ Single-Shot Barcode Scanner ("Scan Now" බටන් එක සමඟ)',
         detail:
-          '"Master Registrations -> Item Catalog" වෙත ගොස් භාවිතයට ගන්නා අමුද්‍රව්‍ය (Materials - කේබල්, සිමෙන්ති, පයිප්ප ආදිය) සහ නැවත භාරදෙන යන්ත්‍රෝපකරණ (Machinery - ජෙනරේටර්, එක්ස්කැවේටර්, ටූල්ස්) අවම තොග සීමාවන් (Low-stock alerts) සමඟ ඇතුළත් කරන්න. නැතහොත් Excel/CSV ගොනුවක් මගින් භාණ්ඩ දහස් ගණනක් එකවර පද්ධතියට ඇතුළත් කරන්න.',
+          '"Master Registrations -> Item Catalog" හරහා අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ඇතුළත් කරන්න හෝ Excel මගින් Import කරන්න. Mobile Camera එකෙන් හෝ USB Barcode Gun එකෙන් Scan කිරීමේදී (Live Inventory Barcode Lookup ඇතුළුව) එක වරක් Barcode එක Detect වූ සැණින් නොනවතී Scan වීම වැළැක්වීම සඳහා Camera Screen එක ස්වයංක්‍රීයව ඉවත් වී භාණ්ඩයේ Live Stock විස්තර පෙන්වයි. ඊළඟ භාණ්ඩය Scan කිරීමට එතැනම යටින් ඇති "Scan Now" බටන් එක ඔබා නැවත Scanner එක On කරගත හැක.',
       },
       {
         stepTitle: '3. වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය, Auto Crew Size සහ Usage දත්ත ආරක්ෂාව',
         detail:
-          '"Master Registrations -> Teams" තුළදී Team Leader ගේ නම දැමූ විට Crew Size එක ස්වයංක්‍රීයව 1 ලෙස ගණනය වේ. සාමාජිකයින් (Members) ජාතික හැඳුනුම්පත් අංකය (NIC/ID) සමඟ එකතු කරන විට Crew Size එක ඉබේම (1 Leader + සාමාජික ගණන ලෙස) වැඩි වේ. Material Usage දත්ත ආරක්ෂා කිරීම සඳහා එකම නමින් Teams දෙකක් සෑදීම වළක්වා ඇති අතර, කලින් මකා දැමූ (Recycle Bin හි ඇති) Team නමක් නැවත දැමුවහොත් පැරණි Usage ඉතිහාසය නොකැඩෙන සේ එම Team එකම Restore කර Update කිරීමට පද්ධතිය පහසුකම් සලසයි.',
+          '"Master Registrations -> Teams" තුළදී Team Leader ගේ නම දැමූ විට Crew Size එක ස්වයංක්‍රීයව 1 ලෙස ගණනය වේ. සාමාජිකයින් (Members) ජාතික හැඳුනුම්පත් අංකය (NIC/ID) සමඟ එකතු කරන විට Crew Size එක ඉබේම (1 Leader + සාමාජික ගණන ලෙස) වැඩි වේ. Material Usage දත්ත ආරක්ෂා කිරීම සඳහා එකම නමින් Teams දෙකක් සෑදීම වළක්වා ඇත.',
       },
       {
         stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Staff Logins) සහ ශාඛා බලතල සැකසීම',
@@ -325,9 +325,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'භාණ්ඩ හා යන්ත්‍රෝපකරණ නාමාවලිය සහ Excel Import පහසුකම',
+      '0001 සිට පිළිවෙළට යන Item Codes, Project IDs සහ Voucher References',
+      'Detect වූ විට ඉබේම නතර වන Camera / USB Gun Scanner සහ "Scan Now" බටන් එක',
       'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් සාමාජික සංඛ්‍යාව (Auto Crew Size)',
-      'Team නාමයන් සහ පැරණි Usage දත්ත ආරක්ෂා කිරීමේ පද්ධතිය',
       'ශාඛා මට්ටමින් සීමා කළ හැකි පරිශීලක ගිණුම් (Branch Security Locks)',
     ],
   },
@@ -338,18 +338,18 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     categoryLabel: 'ප්‍රධාන ගබඩාව, PO / GRN සහ RTV',
     title: 'ප්‍රධාන ගබඩාව, සැපයුම්කරු ඇණවුම් (PO / GRN), ආපසු යැවීම් (RTV) සහ සේවාදායක නොමිලේ තොග (FOC)',
     summary:
-      'ආයතනය මිලදී ගන්නා තොග, කොටස් වශයෙන් හෝ සම්පූර්ණයෙන් භාණ්ඩ භාරගැනීමේ පත්‍රිකා (GRN), සැපයුම්කරු වෙත ආපසු යැවීමේ හර සටහන් (RTV / Debit Note), හානි වූ භාණ්ඩ අලුත්වැඩියාව සහ සේවාදායකයා නොමිලේ සපයන (Client FOC) තොග කළමනාකරණය.',
+      'ආයතනය මිලදී ගන්නා තොග, භාණ්ඩ කිහිපයක් සහිත PO එකවර ප්‍රධාන ගබඩාවට භාරගැනීම (GRN), සැපයුම්කරු වෙත ආපසු යැවීමේ හර සටහන් (RTV / Debit Note), සහ Client Free Stock (FOC) ප්‍රධාන ගබඩාවට ගෙන අදාළ Site Branch එකට පමණක් ස්වයංක්‍රීයව වෙන් කිරීම.',
     icon: Gift,
     steps: [
       {
         stepTitle: '1. නිල සැපයුම්කරු ඇණවුම් පත්‍රිකා (Purchase Orders - PO) නිකුත් කිරීම',
         detail:
-          '"Supplier Orders (PO)" වෙත ගොස් අනුමත සැපයුම්කරුවන් සඳහා මිල ගණන්, බදු (VAT/Tax), වට්ටම් සහ අනුමත කිරීමේ අත්සන් තීරු 3 සහිත නිල Purchase Order (PO) සාදා A4 පත්‍රිකාවක් ලෙස Print හෝ PDF ලෙස ලබාගන්න.',
+          '"Supplier Orders (PO)" වෙත ගොස් අනුමත සැපයුම්කරුවන් සඳහා මිල ගණන්, බදු (VAT/Tax), වට්ටම් සහ අනුමත කිරීමේ අත්සන් තීරු 3 සහිත නිල Purchase Order (PO-2026-0001) සාදා A4 පත්‍රිකාවක් ලෙස Print හෝ PDF ලෙස ලබාගන්න.',
       },
       {
-        stepTitle: '2. ප්‍රධාන ගබඩාවට භාණ්ඩ භාරගැනීම සහ GRN පත්‍රිකා මුද්‍රණය',
+        stepTitle: '2. PO එකක සියලුම භාණ්ඩ ප්‍රධාන ගබඩාවට (Central Main Stock) භාරගැනීම සහ GRN මුද්‍රණය',
         detail:
-          'PO ඇණවුමකට අදාළව සම්පූර්ණ වශයෙන් හෝ කොටස් වශයෙන් (Partial Delivery) භාණ්ඩ ලැබුණු විට ඒවා ප්‍රධාන ගබඩාවට භාරගන්න. Supplier Orders සහ Main Stock Inbound History යන දෙකෙහිම ඇති "Print GRN" බටන් එකෙන් නිල GRN වවුචරය මුද්‍රණය කළ හැක.',
+          'PO ඇණවුමකට අදාළව භාණ්ඩ කිහිපයක් එකවර හෝ කොටස් වශයෙන් (Partial Delivery) ලැබුණු විට එම සියලුම Items එකවර නිවැරදිව ප්‍රධාන ගබඩාවට (Central Main Stock) එකතු වන අතර, "Print GRN" බටන් එකෙන් නිල GRN වවුචරය මුද්‍රණය කළ හැක.',
       },
       {
         stepTitle: '3. සැපයුම්කරු වෙත භාණ්ඩ ආපසු යැවීම (RTV / Debit Note) සහ Damaged Stock',
@@ -357,15 +357,15 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'ප්‍රමිතියෙන් තොර හෝ වැඩිපුර ලැබුණු භාණ්ඩ ආපසු සැපයුම්කරු වෙත යැවීමේදී "Return to Vendor (RTV) / Debit Note" සහ Gate Pass පත්‍රිකා නිකුත් කරන්න. වැඩබිම්වලදී හානි වූ භාණ්ඩ අලුත්වැඩියා කර නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිත කරන්න.',
       },
       {
-        stepTitle: '4. සේවාදායක නොමිලේ තොග (Client Free Stock - FOC) ප්‍රධාන ව්‍යාපෘතියක් (Under Main Project) හෝ තනි ව්‍යාපෘතියක් යටතේ භාරගැනීම',
+        stepTitle: '4. Client Free Stock (FOC) ප්‍රධාන ගබඩාවට (Central Main Stock) භාරගෙන අදාළ Site Branch එකට ස්වයංක්‍රීයව වෙන් කිරීම',
         detail:
-          'සේවාදායකයින් (Clients) විසින් සම්පූර්ණ කලාපයකට හෝ අනු-ව්‍යාපෘති (Sub-Projects) කිහිපයක් ඇති ප්‍රධාන ව්‍යාපෘතියකට (Major / Main Project) එකවර බඩු නිකුත් කරන විට, "Client Free Stock" හි "+ Log Client Free Stock" වෙත ගොස් "Under Main Project" (හෝ තනි ව්‍යාපෘතියක් නම් "Individual Project") තෝරා අදාළ බඩු තොගය භාරගන්න. එවිට එම ප්‍රධාන ව්‍යාපෘතිය යටතේ ඇති ඕනෑම Sub-Project එකකට බඩු Usage දැමූ විට මෙම ප්‍රධාන තොගයෙන් ස්වයංක්‍රීයව අඩු වන අතර, එක් එක් Sub-Project එකේ භාවිතය වෙන වෙනමද බලාගත හැක.',
+          '"Client Free Stock" හි "+ Log Client Free Stock" වෙත ගිය විට, භාණ්ඩ මුලින්ම ලැබෙන ගබඩාව (Receiving Storage Yard) ලෙස "Main Central Warehouse (Central Yard)" Default ලෙස පවතී. එහිදී "Under Main Project" හෝ "Individual Project" යටතේ අදාළ Project එක තේරූ සැණින්, එම Project එකට අදාළ Site Branch එක ස්වයංක්‍රීයව තේරී එම ශාඛාවට පමණක් එම FOC බඩු තොගය වෙන් (Allocate) වේ.',
       },
     ],
     keyOutputs: [
-      'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Batch GRN වවුචර්',
+      'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Multi-Item GRN වවුචර්',
       'Return to Vendor (RTV) Debit Notes සහ Outward Gate Pass පත්‍රිකා',
-      'Under Main Project Client Free Stock (FOC) Pool සහ Sub-Project Breakdown',
+      'Client FOC ප්‍රධාන ගබඩාවට භාරගැනීම සහ Project එකේ Site Branch එකට ඉබේම වෙන් වීම',
     ],
   },
   {
@@ -373,20 +373,20 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     number: '03 වන පරිච්ඡේදය',
     category: 'operations',
     categoryLabel: 'ශාඛා හුවමාරු සහ කණ්ඩායම් නිකුත් කිරීම්',
-    title: 'ශාඛා බඩු ඉල්ලුම්පත් (RN), ප්‍රධාන ගබඩා අනුමැතිය සහ වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීම (IN)',
+    title: 'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock හා Project Client FOC), Low Stock පෙරහන සහ වැඩ කණ්ඩායම් නිකුත් කිරීම් (IN)',
     summary:
-      'ප්‍රධාන ගබඩාවේ (Central HQ) සිට ප්‍රාදේශීය ශාඛා ගබඩා (Site Yards) වෙතත්, එතැන් සිට වැඩ කණ්ඩායම් (Field Crews) අතටත් ගලායන සියලුම තොග නිවැරදිව පාලනය කරන ආකාරය.',
+      'සාමාන්‍ය තොග (Normal Stock) සහ අදාළ ශාඛාවේ ව්‍යාපෘතිවලට වෙන් කළ Client Free Stock (FOC) පැටලෙන්නේ නැතිව වෙන වෙනම ටැබ් දෙකකින් ඉල්ලුම් කිරීම, ශාඛාවේ අඩු තොග (Low Stock) ලැයිස්තුවේ උඩටම පෙන්වීම සහ ප්‍රධාන ගබඩාවෙන් අනුමත කළ විට ශාඛා තොගයට එකතු වීම.',
     icon: Send,
     steps: [
       {
-        stepTitle: '1. ශාඛා මගින් බඩු ඉල්ලුම්පත් (Stock Requisitions - RN) යොමු කිරීම',
+        stepTitle: '1. Stock Requisition ෆෝම් එකේ ටැබ් 2: Normal Stock Request සහ Client Free Stock for Assigned Project Request',
         detail:
-          'ප්‍රාදේශීය වැඩබිම් පරීක්ෂකවරුන් තම ශාඛාවට අවශ්‍ය අමුද්‍රව්‍ය සහ යන්ත්‍රෝපකරණ "Stock Requisitions" හරහා ප්‍රධාන ගබඩාවෙන් ඉල්ලුම් කරයි. "Available Stock Only" බටන් එක මගින් ප්‍රධාන ගබඩාවේ දැනට තොග ඇති භාණ්ඩ පමණක් පෙරා බලාගත හැක.',
+          '"Stock Requisitions -> + New Stock Requirement Form" විවෘත කර පළමුව බඩු ඉල්ලන "Requesting Site Branch *" තෝරන්න. එහි පැහැදිලි ටැබ් 2ක් ඇත: (1) "1. Normal Stock Request" — සාමාන්‍ය ගබඩා තොග ඉල්ලුම් කිරීමට (මෙහිදී එම ශාඛාවේ දැනට Low Stock වී ඇති භාණ්ඩ ලැයිස්තුවේ උඩින්ම "Site Low" ලෙස පෙරී පෙන්වන අතර සෑම භාණ්ඩයකම ප්‍රධාන ගබඩාවේ තොගය "Main:" සහ ශාඛාවේ දැනට ඇති තොගය "Site Avl:" ලෙස එතැනම පෙන්වයි). (2) "2. Client Free Stock for Assigned Project Request" — තෝරාගත් Site Branch එකට අදාළව ලියාපදිංචි කර ඇති Major/Main Projects සහ Individual Projects පමණක් පෙන්වන බැවින් වෙනත් ශාඛාවක Project බඩු පැටලෙන්නේ නැත.',
       },
       {
-        stepTitle: '2. තොග හිඟතා පරීක්ෂාව සහ ප්‍රධාන ගබඩාවෙන් අනුමත කර යැවීම',
+        stepTitle: '2. ප්‍රධාන ගබඩාවෙන් Approve කිරීම සහ Main Stock / FOC Pool එකෙන් අඩු වී Site Branch එකට ලැබීම',
         detail:
-          'ප්‍රධාන ගබඩාව මගින් ඉල්ලුම්පත පරීක්ෂා කරන විට යම් භාණ්ඩයක තොග මදි නම් "Send Available Only" බටන් එකෙන් දැනට ඇති ප්‍රමාණය පමණක් එක ක්ලික් එකකින් අනුමත කර ශාඛාව වෙත නිකුත් කළ හැක.',
+          'Stock Requisitions වගුවේ සෑම ඉල්ලුම්පතකම Item Code එක සමඟ භාණ්ඩයේ සම්පූර්ණ නම (Material Description) සහ Project විස්තර පැහැදිලිව පෙන්වයි. ප්‍රධාන ගබඩාවෙන් Approve කර ශාඛාවෙන් භාරගත් පසු, සාමාන්‍ය තොග Main Stock එකෙන්ද, FOC තොග ප්‍රධාන FOC Pool එකෙන්ද අඩු වී අදාළ Site Branch Stock එකට නිවැරදිව එකතු වේ.',
       },
       {
         stepTitle: '3. එදිනෙදා වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (Issue to Teams - IN)',
@@ -396,13 +396,13 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       {
         stepTitle: '4. කණ්ඩායම් ළඟ දැනට පවතින තොග (Team In-Hand Stock) පරීක්ෂාව',
         detail:
-          '"Team In-Hand Stock" වෙත ගොස් එක් එක් කණ්ඩායම ළඟ දැනට ඉතිරිව ඇති භාණ්ඩ හා යන්ත්‍රෝපකරණ ප්‍රමාණය බලාගත හැකි අතර TSR වාර්තාව මුද්‍රණය කළ හැක. යම් කණ්ඩායමක් ළඟ නැවත භාර නොදුන් තොග (In-Hand Stock) තිබේ නම් එම Team එක අත්වැරදීමකින්වත් Delete කිරීමට පද්ධතිය ඉඩ නොදෙයි.',
+          '"Team In-Hand Stock" වෙත ගොස් එක් එක් කණ්ඩායම ළඟ දැනට ඉතිරිව ඇති භාණ්ඩ හා යන්ත්‍රෝපකරණ ප්‍රමාණය බලාගත හැකි අතර TSR වාර්තාව මුද්‍රණය කළ හැක.',
       },
     ],
     keyOutputs: [
-      'ශාඛා බඩු ඉල්ලුම්පත් (RN) සහ Available Stock Filter පහසුකම',
-      'අංකිත නිකුත් කිරීමේ පත්‍රිකා (IN) සහ Gate Pass මුද්‍රණය',
-      'වැඩ කණ්ඩායම් ළඟ ඇති තොග (In-Hand Custody) සහ TSR විගණන වාර්තා',
+      'Normal Stock සහ Branch-Exclusive Client FOC සඳහා වෙන් වූ Requisition ටැබ් 2',
+      'ශාඛාවේ Low Stock භාණ්ඩ ලැයිස්තුවේ උඩින්ම පෙන්වීම සහ "Site Avl:" තොග දර්ශකය',
+      'Material Description සහිත පැහැදිලි Requisition වගුව, IN සහ TSR වාර්තා',
     ],
   },
   {
@@ -410,25 +410,25 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     number: '04 වන පරිච්ඡේදය',
     category: 'projects',
     categoryLabel: 'ප්‍රධාන ව්‍යාපෘති, අනු-ව්‍යාපෘති (Sub-Projects) සහ ගැලපුම්',
-    title: 'Major / Main Projects, Sub-Projects, Individual Projects, Material Usage (PU) සහ Returns (RV / BRM)',
+    title: 'Project Registry හි අනිවාර්ය Site Branch තේරීම, Major/Main හා Sub-Projects, Material Usage (PU) සහ Returns (RV / BRM)',
     summary:
-      'ප්‍රධාන ව්‍යාපෘති (Major / Main Projects) යටතේ අනු-ව්‍යාපෘති (Sub-Projects) සහ තනි ව්‍යාපෘති (Individual Projects) පහසුවෙන් සකසාගැනීම, Sub-Project වලට බඩු Usage දැමූ විට Main Project Free Stock එකෙන් ස්වයංක්‍රීයව අඩු වීම සහ සම්පූර්ණ ව්‍යාපෘතියේ මෙන්ම Sub-Projects වල වෙන වෙනම Reconciliation බලාගැනීම.',
+      'Project Registry තුළ ව්‍යාපෘතියක් ලියාපදිංචි කිරීමේදී ඊට අදාළ Site Branch එක අනිවාර්යයෙන්ම සම්බන්ධ කිරීම, Main Project යටතේ ගෙන්වාගත් FOC බඩු Sub-Projects වලට Usage දැමීම සහ Reconciliation බලාගැනීම.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Project Registry තුළ Major / Main Project, Sub-Project සහ Individual Project සකසාගැනීම',
+        stepTitle: '1. Project Registry තුළ අනිවාර්ය "Assigned Site Branch *" සහිතව ව්‍යාපෘති ලියාපදිංචි කිරීම',
         detail:
-          '"Project & New Section Registry" හි "Register Project" ක්ලික් කළ විට ව්‍යුහයන් 3ක් දැකගත හැක: (1) Major / Main Project (සම්පූර්ණ කලාපයකට හෝ Sub-Projects කිහිපයකට අදාළ ප්‍රධාන ව්‍යාපෘතිය — මෙය සාදන විටම ඊට අදාළ Sub-Projects ලැයිස්තුවත් එකවර ඇතුළත් කළ හැක), (2) Sub-Project (ප්‍රධාන ව්‍යාපෘතියක් යටතේ ක්‍රියාත්මක වන අනු-ව්‍යාපෘතිය — Main Project පේළියේ ඇති "+ Sub-Project" බටන් එකෙන්ද ක්ෂණිකව එක් කළ හැක), සහ (3) Individual Project (වෙනම තනි ව්‍යාපෘතියක්).',
+          '"Project & New Section Registry" හි "Register Project" ක්ලික් කර (1) Major / Main Project, (2) Sub-Project, හෝ (3) Individual Project තෝරා, එම ව්‍යාපෘතිය අයත් වන ශාඛාව "Assigned Site Branch *" Dropdown එකෙන් අනිවාර්යයෙන්ම තෝරන්න (Sub-Project එකක් සාදන විට Main Project එකේ Site Branch එක ඉබේම තේරේ). එවිට Client FOC බඩු ලොග් කරන විට සහ ශාඛාවෙන් බඩු ඉල්ලුම් කරන විට එම ශාඛාවට අදාළ ව්‍යාපෘති පමණක් නිවැරදිව වෙන් වී පෙන්වයි.',
       },
       {
         stepTitle: '2. Sub-Project වලට Material Usage (PU) ඇතුළත් කිරීම සහ Main Project තොගයෙන් ස්වයංක්‍රීයව අඩු වීම',
         detail:
-          '"Material Usage" පිටුවේ 2 වන පියවරේදී ප්‍රධාන ව්‍යාපෘතියක් යටතේ ඇති Sub-Project එකක් තෝරා හෝ එතැනදීම නව Sub-Project එකක් සාදා ("+ Register New Sub-Project") වැය වූ බඩු ප්‍රමාණයන් ඇතුළත් කරන්න. Sub-Project එකකට බඩු Usage දැමූ සැණින් එය අදාළ Main Project එකට ලැබී ඇති Client Free Stock (FOC) තොගයෙන් ස්වයංක්‍රීයව අඩු වේ.',
+          'Main Project එක යටතේ ශාඛාවට ගෙන්වාගත් බඩු භාවිත කරන විට, "Material Usage" පිටුවේ 2 වන පියවරේදී එම ප්‍රධාන ව්‍යාපෘතිය යටතේ ඇති අදාළ Sub-Project එක තෝරා (හෝ "+ Register New Sub-Project" මගින් අලුත් Sub-Project එකක් සාදා) වැය වූ බඩු ප්‍රමාණයන් ඇතුළත් කරන්න. එවිට එය අදාළ Main Project එකේ FOC තොගයෙන් ස්වයංක්‍රීයව අඩු වේ.',
       },
       {
         stepTitle: '3. Total Main Project Reconciliation සහ Sub-Projects වල වෙන වෙනම විස්තර බලාගැනීම',
         detail:
-          '"Material Usage -> Reconciliation" (Tab 3) වෙත ගොස් Major / Main Project එක තේරූ විට, ප්‍රධාන ව්‍යාපෘතියට ලැබුණු මුළු Free Stock ප්‍රමාණය, සියලුම Sub-Projects හරහා වැය වූ මුළු එකතුව සහ ඉතිරි තොගය (Total Project Reconciliation) පෙන්වන අතර, ඊට පහළින් එක් එක් Sub-Project එකට වෙන වෙනම ගිය බඩු ප්‍රමාණයන් සහ Vouchers ("Sub-Projects Individual Breakdown") පැහැදිලිව බලාගත හැක.',
+          '"Material Usage -> Reconciliation" (Tab 3) වෙත ගොස් Major / Main Project එක තේරූ විට, ප්‍රධාන ව්‍යාපෘතියට ලැබුණු මුළු Free Stock ප්‍රමාණය, සියලුම Sub-Projects හරහා වැය වූ මුළු එකතුව සහ ඉතිරි තොගය පෙන්වන අතර, ඊට පහළින් එක් එක් Sub-Project එකට වෙන වෙනම ගිය බඩු ප්‍රමාණයන් ("Sub-Projects Individual Breakdown") පැහැදිලිව බලාගත හැක.',
       },
       {
         stepTitle: '4. කණ්ඩායම් ආපසු භාරදීම් (RV) සහ ශාඛාවෙන් ප්‍රධාන ගබඩාවට ආපසු යැවීම් (BRM)',
@@ -437,7 +437,7 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Major / Main Project, Sub-Project සහ Individual Project ව්‍යුහය',
+      'Project Registry හි අනිවාර්ය Assigned Site Branch සම්බන්ධතාවය',
       'Sub-Project Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වීම',
       'Total Main Project සහ Sub-Project වෙන වෙනම Reconciliation වාර්තා',
     ],
@@ -607,23 +607,23 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
   {
     group: 'Warehouse, Procurement & Inventory',
     items: [
+      'Sequential 0001-Based Codes, IDs & Voucher References (ITM-0001, PO-2026-0001, RN-2026-0001)',
       'Central HQ Warehouse + Unlimited Regional Site Yards',
-      'Consumable Materials vs. Heavy Machinery Classification',
-      'Supplier Purchase Orders (PO) & Printable Batch GRN Vouchers',
+      'Single-Shot Camera & USB Gun Barcode Scanner with Auto-Hide & "Scan Now" Button',
+      'Supplier Purchase Orders (PO) & Multi-Item Atomic GRN Vouchers',
       'Return to Vendor (RTV) Official Debit Notes & Outward Gate Passes',
-      'Client-Supplied Free Materials (FOC) Ledger & Damaged Stock Restoration',
+      'Client Free Stock (FOC) Default Central Main Stock Inbound + Auto Site Branch Allocation',
       'Excel / CSV Bulk Import, Multi-Sheet Export & Low-Stock Alerts',
     ],
   },
   {
     group: 'Field Operations, Teams & Projects',
     items: [
-      'Site-to-HQ Stock Requisitions (RN) with Available Stock Filter',
-      'Auto-Calculated Field Crew Size (1 Team Leader + N Members)',
-      'Unique Team Name Lock & Historical Usage Data Protection',
-      'Field Crew Issuance (IN) with Serial / Drum / Batch Remarks',
-      'Real-Time Field Crew In-Hand Custody & Deletion Guard',
-      'Major / Main Projects, Sub-Projects & Individual Project Hierarchy',
+      '2-Tab Stock Requisitions (RN): Normal Stock vs. Branch-Exclusive Client FOC Request',
+      'Auto Low-Stock Priority Top Sorting & Live "Site Avl:" + "Main:" Balances in Requisitions',
+      'Mandatory "Assigned Site Branch *" in Project Registry (Main, Sub-Project & Individual)',
+      'Auto-Calculated Field Crew Size (1 Team Leader + N Members) & Usage Protection',
+      'Field Crew Issuance (IN) with Serial / Drum / Batch Remarks & Live In-Hand Custody',
       'Shared Main Project Client FOC Pool & Sub-Project Auto-Deduction',
       'Total Main Project vs. Individual Sub-Project Reconciliation & Returns (PU/RV/BRM)',
     ],
@@ -644,20 +644,22 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
   {
     group: 'ගබඩා කළමනාකරණය සහ ප්‍රසම්පාදනය (Warehouse & Procurement)',
     items: [
+      '0001 සිට පිළිවෙළට ජනනය වන Item Codes, Project IDs සහ Voucher References',
       'ප්‍රධාන ගබඩාව (Central HQ) සහ සීමාවකින් තොර ප්‍රාදේශීය ශාඛා ගබඩා (Site Yards)',
-      'අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) වෙන් කර හඳුනාගැනීම',
-      'නිල Purchase Orders (PO) සහ කොටස් වශයෙන් ලැබෙන GRN මුද්‍රණය කිරීමේ පහසුකම',
+      'Detect වූ සැණින් නතර වී Camera ඉවත් වන Single-Shot Scanner සහ "Scan Now" බටන් එක',
+      'නිල Purchase Orders (PO) සහ Multi-Item GRN ප්‍රධාන ගබඩාවට එකවර භාරගැනීම',
       'සැපයුම්කරු වෙත ආපසු යැවීමේ (RTV) Debit Notes සහ Outward Gate Pass',
-      'Under Main Project / Individual Project ලෙස Client Free Stock (FOC) භාරගැනීම',
+      'Client Free Stock (FOC) ප්‍රධාන ගබඩාවට (Central Main) ගෙන අදාළ Site Branch එකට ඉබේම වෙන් කිරීම',
       'Excel / CSV Bulk Import, Multi-Sheet Export සහ අවම තොග අනතුරු ඇඟවීම්',
     ],
   },
   {
     group: 'වැඩබිම් මෙහෙයුම්, කණ්ඩායම් සහ ව්‍යාපෘති (Teams, Main/Sub-Projects)',
     items: [
-      'Available Stock Filter සහිත ශාඛා බඩු ඉල්ලුම්පත් (RN)',
+      'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock සහ Branch-Exclusive Client FOC Request)',
+      'ශාඛාවේ Low Stock භාණ්ඩ ලැයිස්තුවේ උඩින්ම පෙරී පෙන්වීම සහ "Site Avl:" / "Main:" තොග දර්ශකය',
+      'Project Registry හි අනිවාර්ය "Assigned Site Branch *" තේරීම (Main, Sub සහ Individual Projects)',
       'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් ප්‍රමාණය (Auto Crew Size: 1 Leader + N Members)',
-      'Major / Main Projects, Sub-Projects සහ Individual Projects ව්‍යුහය',
       'Sub-Project වලට Usage දැමූ විට Main Project Free Stock එකෙන් ස්වයංක්‍රීයව අඩු වීම',
       'Total Main Project Reconciliation සහ Sub-Projects වල වෙන වෙනම විස්තර බලාගැනීම',
       'ව්‍යාපෘති භාණ්ඩ භාවිතය (PU) සහ ආපසු භාරදීමේ වවුචර් (RV / BRM)',

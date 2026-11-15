@@ -163,36 +163,33 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
     ],
     answerEn: (ctx) =>
       `**How Major / Main Projects, Sub-Projects, Individual Projects & Free Stock (FOC) Reconciliation Work:**\n\n` +
-      `**Step 1 — Register Major / Main Projects, Sub-Projects & Individual Projects (Project & New Section Registry):**\n` +
+      `**Step 1 — Register Projects with Mandatory "Assigned Site Branch *" (Project & New Section Registry):**\n` +
       `1. Open **Project & New Section Registry** and click **Register Project**.\n` +
-      `2. Select the **Project Structure Type**:\n` +
+      `2. Select the **Project Structure Type** and choose the mandatory **Assigned Site Branch ***:\n` +
       `   • **🏢 Major / Main Project (Umbrella):** Use when a client issues bulk Free Stock for an entire area or contract containing multiple sub-projects. You can also add initial Sub-Projects right inside the same modal, or click **+ Sub-Project** on any Main Project row anytime.\n` +
-      `   • **↳ Sub-Project (Under Main Project):** Links a sub-project under a Parent Major / Main Project so it shares the Main Project's Free Stock pool.\n` +
-      `   • **📄 Individual Project (Standalone):** A single standalone project with its own independent stock & usage ledger.\n\n` +
-      `**Step 2 — Receive Client Free-Issue Stock (FOC) Under a Main Project:**\n` +
+      `   • **↳ Sub-Project (Under Main Project):** Links a sub-project under a Parent Major / Main Project (automatically inherits the Main Project's Assigned Site Branch).\n` +
+      `   • **📄 Individual Project (Standalone):** A single standalone project assigned to its Site Branch.\n\n` +
+      `**Step 2 — Receive Client Free-Issue Stock (FOC) into Central Main Stock with Auto Branch Allocation:**\n` +
       `1. Open **Client Free Stock (FOC)** and click **+ Log Client Free Stock**.\n` +
-      `2. Select **🏢 Under Main Project** (or **📄 Individual Project**), choose the Main Project name, and receive the client's bulk materials into the Main Project pool.\n\n` +
-      `**Step 3 — Enter Material Usage per Sub-Project & Reconcile Total vs. Sub-Projects:**\n` +
-      `1. Open **Material Usage** -> in Step 2, select the **Sub-Project** (or click **+ Register New Sub-Project** to create one under a Main Project on the fly).\n` +
-      `2. When you log material usage on a Sub-Project, it **automatically deducts from the Parent Main Project's Free Stock balance**.\n` +
-      `3. Open the **Reconciliation** tab (Tab 3): select the **🏢 Major / Main Project** to view the **Total Main Project Reconciliation** (Total Received vs. Total Used across all Sub-Projects = Net Remaining Balance) plus the **Sub-Projects Individual Breakdown**, or select any **↳ Sub-Project** to inspect its standalone details.${
+      `2. Select **🏢 Under Main Project** (or **📄 Individual Project**) and choose the project. **Receiving Storage Yard** defaults to **Main Central Warehouse (Central Yard)**, while the project's **Assigned Site Branch** is automatically detected and allocated exclusively to that branch.\n\n` +
+      `**Step 3 — Request FOC Stock from Site Branch & Enter Material Usage per Sub-Project:**\n` +
+      `1. In **Stock Requisitions -> + New Stock Requirement Form**, switch to Tab 2 (**2. Client Free Stock for Assigned Project Request**). Only projects assigned to your **Requesting Site Branch** are displayed. Once approved and received, the stock moves from Central HQ FOC Pool to your Site Branch.\n` +
+      `2. Open **Material Usage** -> in Step 2, select the **Sub-Project** (or **Individual Project**). Logging usage on a Sub-Project **automatically deducts from the Parent Main Project's Free Stock balance**.\n` +
+      `3. Open the **Reconciliation** tab (Tab 3) to inspect both the **Total Main Project Reconciliation** and the **Sub-Projects Individual Breakdown**.${
         ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
       }`,
     answerSi: (ctx) =>
       `**Major / Main Projects, Sub-Projects, Individual Projects සහ Free Stock (FOC) Reconciliation ක්‍රියාත්මක වන ආකාරය:**\n\n` +
-      `**1 වන පියවර — Project Registry තුළ Main Project, Sub-Project සහ Individual Project සෑදීම:**\n` +
+      `**1 වන පියවර — Project Registry තුළ අනිවාර්ය "Assigned Site Branch *" සමඟ ව්‍යාපෘති සෑදීම:**\n` +
       `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත ගොස් **"Register Project"** ක්ලික් කරන්න.\n` +
-      `2. එහි ඇති ව්‍යුහයන් 3න් අදාළ වර්ගය තෝරන්න:\n` +
-      `   • **🏢 Major / Main Project (Umbrella):** Client විසින් සම්පූර්ණ කලාපයකට හෝ Sub-Projects කිහිපයකට එකවර Free Stock නිකුත් කරන ප්‍රධාන ව්‍යාපෘතිය. (මෙය සාදන විටම ඊට අදාළ Sub-Projects ලැයිස්තුවත් එකවර ඇතුළත් කළ හැක. නැතිනම් Main Project පේළියේ ඇති **"+ Sub-Project"** බටන් එකෙන් ඕනෑම විටක Sub-Projects එකතු කළ හැක).\n` +
-      `   • **↳ Sub-Project (Under Main Project):** ප්‍රධාන ව්‍යාපෘතියක් යටතේ ක්‍රියාත්මක වන අනු-ව්‍යාපෘතිය.\n` +
-      `   • **📄 Individual Project (Standalone):** වෙනම තනි ව්‍යාපෘතියක් ලෙස ක්‍රියාත්මක වන සාමාන්‍ය ව්‍යාපෘති.\n\n` +
-      `**2 වන පියවර — Client Free Stock (FOC) බඩු Main Project එක යටතට භාරගැනීම:**\n` +
+      `2. ව්‍යාපෘති වර්ගය (**🏢 Major / Main Project**, **↳ Sub-Project**, හෝ **📄 Individual Project**) තෝරා, එම ව්‍යාපෘතිය අයත් වන ශාඛාව **"Assigned Site Branch *"** Dropdown එකෙන් අනිවාර්යයෙන්ම තෝරන්න (Sub-Project එකකට Main Project එකේ Site Branch එක ඉබේම ලැබේ).\n\n` +
+      `**2 වන පියවර — Client Free Stock (FOC) ප්‍රධාන ගබඩාවට භාරගැනීම සහ Auto Branch Allocation:**\n` +
       `1. **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
-      `2. **"🏢 Under Main Project"** (හෝ තනි ව්‍යාපෘතියක් නම් **"📄 Individual Project"**) තෝරා, අදාළ Main Project නම යටතට බඩු තොගය Receive කරන්න.\n\n` +
-      `**3 වන පියවර — Sub-Project වලට Material Usage දැමීම සහ Total / Sub-Project Reconciliation බැලීම:**\n` +
-      `1. **"Material Usage"** පිටුවේ 2 වන කොටසේදී අදාළ **Sub-Project** එක තෝරා (හෝ **"+ Register New Sub-Project"** මගින් අලුත් Sub-Project එකක් සාදා) බඩු Usage ඇතුළත් කරන්න.\n` +
-      `2. Sub-Project එකට බඩු Usage දැමූ සැණින් එය **ස්වයංක්‍රීයව Main Project එකේ Free Stock තොගයෙන් අඩු වේ**.\n` +
-      `3. **"Reconciliation"** (Tab 3) වෙත ගොස් **🏢 Major / Main Project** එක තේරූ විට සම්පූර්ණ ව්‍යාපෘතියේම ගැලපුම (Total Received vs. සියලුම Sub-Projects වල Total Used = Remaining Balance) සහ ඊට පහළින් **එක් එක් Sub-Project එකේ වෙන වෙනම විස්තර (Sub-Projects Individual Breakdown)** බලාගත හැක.${
+      `2. එහිදී බඩු මුලින්ම ලැබෙන ස්ථානය ලෙස **"Main Central Warehouse (Central Yard)"** Default පවතින අතර, Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එකට පමණක් එම FOC තොගය ස්වයංක්‍රීයව වෙන් (Allocate) වේ.\n\n` +
+      `**3 වන පියවර — අදාළ Site Branch එකෙන් FOC බඩු Request කිරීම සහ Sub-Project Usage දැමීම:**\n` +
+      `1. **"Stock Requisitions -> + New Stock Requirement Form"** හි 2 වන ටැබ් එකෙන් (**"2. Client Free Stock for Assigned Project Request"**) තෝරාගත් Site Branch එකට අදාළ Projects පමණක් පෙන්වන අතර, එය Approve වූ පසු Central FOC Pool එකෙන් අඩු වී Site Branch එකට එකතු වේ.\n` +
+      `2. **"Material Usage"** පිටුවේදී අදාළ **Sub-Project** එක තෝරා බඩු Usage දැමූ සැණින් එය **ස්වයංක්‍රීයව Main Project එකේ Free Stock තොගයෙන් අඩු වේ**.\n` +
+      `3. **"Reconciliation"** (Tab 3) වෙත ගොස් සම්පූර්ණ ව්‍යාපෘතියේම ගැලපුම සහ එක් එක් Sub-Project එකේ වෙන වෙනම විස්තර බලාගත හැක.${
         ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
   },
@@ -209,6 +206,7 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'sample csv',
       'district',
       'sub area',
+      'assigned site branch',
     ],
     phrases: [
       'how to register a project',
@@ -225,8 +223,8 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `   • **🏢 Major / Main Project:** Umbrella project that holds multiple Sub-Projects and a shared Client Free Stock pool.\n` +
       `   • **↳ Sub-Project:** Linked under a Parent Main Project (can also be added in 1 click via **+ Sub-Project** on any Main Project row).\n` +
       `   • **📄 Individual Project:** Standalone single project.\n` +
-      `3. **Enter Project Details:** Fill in Project ID, Reference No, Project/Customer Name, Customer Phone Number, Site ID, Client/Principal, Project Section, District, and Sub Area.\n` +
-      `4. **Bulk CSV Import / Export:** Use **Sample CSV**, **Import CSV**, or **Export CSV**.\n` +
+      `3. **Select Mandatory "Assigned Site Branch *":** Choose the Site Branch responsible for this project so Client FOC stock is automatically allocated exclusively to that branch.\n` +
+      `4. **Enter Project Details:** Fill in Project ID (auto-generated starting from 0001), Reference No, Project/Customer Name, Customer Phone Number, Site ID, Client/Principal, Project Section, District, and Sub Area.\n` +
       `5. **Reconciliation & Usage View:** Click the **usage entry(s)** badge on any Main Project or Sub-Project row to inspect the shared Free Stock pool, Sub-Project breakdown, and team consumption.${
         ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
       }`,
@@ -237,8 +235,8 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `   • **🏢 Major / Main Project:** Sub-Projects කිහිපයක් සහ පොදු Free Stock තොගයක් සහිත ප්‍රධාන ව්‍යාපෘතිය.\n` +
       `   • **↳ Sub-Project:** ප්‍රධාන ව්‍යාපෘතියක් යටතේ ඇති අනු-ව්‍යාපෘතිය (Main Project පේළියේ ඇති **"+ Sub-Project"** බටන් එකෙන්ද එක් කළ හැක).\n` +
       `   • **📄 Individual Project:** වෙනම තනි ව්‍යාපෘතියක්.\n` +
-      `3. **විස්තර ඇතුළත් කිරීම:** Project ID, Project/Customer Name, දුරකථන අංකය, Project Section, District සහ Sub Area ඇතුළත් කර Save කරන්න.\n` +
-      `4. **CSV Import / Export:** **"Sample CSV"** සහ **"Import CSV"** මගින් Projects රැසක් එකවර ඇතුළත් කළ හැක.${
+      `3. **අනිවාර්ය "Assigned Site Branch *" තේරීම:** ව්‍යාපෘතිය අදාළ වන Site Branch එක Dropdown එකෙන් අනිවාර්යයෙන්ම තෝරන්න.\n` +
+      `4. **විස්තර ඇතුළත් කිරීම:** Project ID (0001 සිට ඉබේම ජනනය වේ), Project/Customer Name, දුරකථන අංකය, Project Section, District සහ Sub Area ඇතුළත් කර Save කරන්න.${
         ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
   },
@@ -282,22 +280,24 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'branch ekata badu',
     ],
     answerEn: (ctx) =>
-      `**How to Request & Transfer Stock from Main Warehouse to a Branch Yard:**\n\n` +
-      `1. **Create a Stock Requisition:** Go to **Stock Requisitions** from the left sidebar and click **+ New Stock Requirement Form**.\n` +
-      `2. **Select Branch & Items:** Choose the destination **Branch / Site Yard**, select the required items and quantities, and submit.\n` +
-      `3. **Approve & Dispatch (HQ):** The **Super Admin** or **Main Storekeeper** reviews the request under **Stock Requisitions** and clicks **Approve & Dispatch** (partial dispatch quantities are also supported).\n` +
-      `4. **Confirm Receipt at Branch (GRN):** The **Branch Supervisor** clicks **Confirm Receipt (GRN)** on the dispatched request to add the items into their **Site Branch Stock**.\n\n` +
-      `*Tip:* Admins can also perform an instant **Direct Stock Transfer** from **Main Central Stock** without waiting for a request.${
+      `**How to Request & Transfer Stock (Normal Stock vs. Project Client FOC) from Main Warehouse to a Branch Yard:**\n\n` +
+      `1. **Open Stock Requisitions:** Go to **Stock Requisitions** from the left sidebar and click **+ New Stock Requirement Form**.\n` +
+      `2. **Select Requesting Site Branch & Choose Request Tab:**\n` +
+      `   • **Tab 1 — 1. Normal Stock Request:** Request regular warehouse stock. Items that are currently **Low Stock** at your requesting branch automatically appear at the top of the list with a **⚠️ Site Low** badge, showing both **Site Avl:** and **Main:** balances.\n` +
+      `   • **Tab 2 — 2. Client Free Stock for Assigned Project Request:** Exclusively shows **Major / Main Projects** and **Individual Projects** assigned to your selected **Requesting Site Branch** so client stock never mixes across branches.\n` +
+      `3. **Approve & Dispatch (HQ):** Central HQ reviews the requisition table (with full Item Code + Material Description) and clicks **Approve & Dispatch**.\n` +
+      `4. **Confirm Receipt at Branch (GRN):** Clicking **Confirm Receipt (GRN)** deducts from Central Main Stock (or Central FOC Pool) and adds the stock directly into **Site Branch Stock**.${
         ctx.pendingRequestsCount
           ? `\n\n📌 *Live Status:* **${ctx.pendingRequestsCount} pending stock request(s)** waiting for action.`
           : ''
       }`,
     answerSi: (ctx) =>
-      `**Main Warehouse (ප්‍රධාන ගබඩාවේ) සිට Branch / Site එකකට බඩු Request කර Transfer කරගන්නා ආකාරය:**\n\n` +
-      `1. **Request එකක් දැමීම:** වම් පස මෙනුවෙන් **"Stock Requisitions"** වෙත ගොස් **"+ New Stock Requirement Form"** බටන් එක ක්ලික් කරන්න.\n` +
-      `2. **Branch එක සහ බඩු තේරීම:** බඩු අවශ්‍ය **Branch / Site එක** තෝරා, අවශ්‍ය Items සහ ප්‍රමාණයන් ඇතුළත් කර Submit කරන්න.\n` +
-      `3. **Approve & Dispatch කිරීම:** ප්‍රධාන ගබඩාවේ **Super Admin** හෝ **Main Storekeeper** විසින් එම ඉල්ලීම පරීක්ෂා කර **"Approve & Dispatch"** ක්ලික් කළ විට Main Stock එකෙන් බඩු නිකුත් වේ.\n` +
-      `4. **Branch එකට භාරගැනීම (Confirm Receipt):** අදාළ Branch Supervisor විසින් **"Confirm Receipt (GRN)"** ක්ලික් කළ පසු එම බඩු **"Site Branch Stock"** එකට එකතු වේ.${
+      `**Main Warehouse (ප්‍රධාන ගබඩාවේ) සිට Branch / Site එකකට බඩු Request කර Transfer කරගන්නා ආකාරය (Normal Stock සහ Client FOC):**\n\n` +
+      `1. **Request ෆෝම් එක විවෘත කිරීම:** වම් පස මෙනුවෙන් **"Stock Requisitions"** වෙත ගොස් **"+ New Stock Requirement Form"** බටන් එක ක්ලික් කර පළමුව **"Requesting Site Branch *"** තෝරන්න.\n` +
+      `2. **ටැබ් දෙකෙන් අදාළ වර්ගය තේරීම:**\n` +
+      `   • **1. Normal Stock Request:** සාමාන්‍ය ගබඩා තොග ඉල්ලුම් කිරීමට. මෙහිදී එම Site එකේ දැනට අඩු තොග (Low Stock) ඇති භාණ්ඩ ලැයිස්තුවේ උඩින්ම **"⚠️ Site Low"** ලෙස පෙරී පෙන්වන අතර සෑම භාණ්ඩයකම **"Site Avl:"** සහ **"Main:"** තොග ප්‍රමාණයන් එතැනම පෙන්වයි.\n` +
+      `   • **2. Client Free Stock for Assigned Project Request:** තෝරාගත් Site Branch එකට අදාළව වෙන් කර ඇති **Major / Main Projects** සහ **Individual Projects** පමණක් පෙන්වන අතර, එම ව්‍යාපෘතියේ FOC බඩු පැටලෙන්නේ නැතිව ශාඛාවට ගෙන්වාගත හැක.\n` +
+      `3. **Approve කර Branch එකට භාරගැනීම:** ප්‍රධාන ගබඩාවෙන් Approve කර Branch එකෙන් Confirm කළ පසු, අදාළ ප්‍රමාණයන් Main Stock / FOC Pool එකෙන් අඩු වී **"Site Branch Stock"** එකට එකතු වේ.${
         ctx.pendingRequestsCount
           ? `\n\n📌 *දැනට පද්ධතියේ Pending Requests **${ctx.pendingRequestsCount}ක්** ඇත.*`
           : ''
@@ -400,12 +400,12 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
     answerEn: () =>
       `**How to Manage Supplier Orders (PO), GRN Batches, Supplier Returns (RTV) & Debit Notes:**\n\n` +
       `1. **Create a Purchase Order:** Open **Supplier Orders (PO)** and click **+ New Purchase Order**. Select the supplier, items, and unit prices.\n` +
-      `2. **Full or Partial GRN Receipt:** When goods arrive, click **Receive GRN** on the PO to receive full or partial batch quantities directly into **Main Central Stock** (or close remaining balances).\n` +
+      `2. **Full or Partial Multi-Item GRN Receipt:** When goods arrive, click **Receive GRN** on the PO to atomically receive all full or partial batch quantities directly into **Main Central Stock**.\n` +
       `3. **Supplier Returns (RTV) & Debit Notes:** For defective or damaged deliveries, create a **Supplier Return**, dispatch with Gate Pass & vehicle details, print an official **Debit Note**, and record supplier settlement (Replacement, Credit Note, or Refund).`,
     answerSi: () =>
       `**Supplier Orders (PO), Supplier Returns සහ Debit Notes කළමනාකරණය:**\n\n` +
       `1. **Purchase Order සෑදීම:** වම් පස මෙනුවෙන් **"Supplier Orders (PO)"** වෙත ගොස් අලුත් PO එකක් සාදන්න.\n` +
-      `2. **PO එකට බඩු භාරගැනීම (Full / Partial GRN):** Supplier බඩු එවූ පසු **"Receive GRN"** මගින් සම්පූර්ණ හෝ කොටස් වශයෙන් Main Stock එකට බඩු භාරගත හැක.\n` +
+      `2. **PO එකට බඩු භාරගැනීම (Full / Partial GRN):** Supplier බඩු එවූ පසු **"Receive GRN"** මගින් භාණ්ඩ කිහිපයක් වුවද එකවර හෝ කොටස් වශයෙන් Main Central Stock එකට නිවැරදිව භාරගත හැක.\n` +
       `3. **Supplier Return & Debit Note:** හානි වූ බඩු නැවත Supplier වෙත යැවීමට, Gate Pass සහ **Debit Note** මුද්‍රණය කිරීමට සහ Settlement සටහන් කිරීමට Supplier Return පහසුකම භාවිතා කරන්න.`,
   },
   {
@@ -414,43 +414,43 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
     keywords: ['client free', 'foc', 'free issue', 'customer supplied', 'principal', 'client stock', 'free stock'],
     phrases: ['client free stock', 'free of charge', 'client material', 'under main project'],
     answerEn: () =>
-      `**How to Manage Client Free Stock (FOC) — Under Main Project or Individual Project:**\n\n` +
+      `**How to Manage Client Free Stock (FOC) — Default Central Main Stock & Auto Branch Allocation:**\n\n` +
       `1. Open **Client Free Stock (FOC)** from the left sidebar and click **+ Log Client Free Stock**.\n` +
-      `2. Choose the **Target Project Mode**:\n` +
-      `   • **🏢 Under Main Project (Shared Pool for Sub-Projects):** Select a Major / Main Project to receive bulk FOC materials covering all its child Sub-Projects.\n` +
-      `   • **📄 Individual Project (Standalone):** Receive FOC materials for a single standalone project.\n` +
-      `3. **Automatic Drawdown & Breakdown:** Whenever field usage is logged on any Sub-Project under that Main Project, it automatically deducts from the Main Project's FOC balance, and the **Project Free Stock Balances** tab shows both the **Main Project Net Balance** and the **Sub-Projects Individual Usage Breakdown**.`,
+      `2. Choose **🏢 Under Main Project** or **📄 Individual Project** and select the project:\n` +
+      `   • **Receiving Storage Yard (Inbound):** Defaults to **Main Central Warehouse (Central Yard)** because physical client materials enter Central Main Stock first.\n` +
+      `   • **Allocated Site Branch:** Automatically detects the selected project's **Assigned Site Branch** and allocates the stock exclusively to that branch.\n` +
+      `3. **Branch Requisition & Sub-Project Usage:** Only the allocated Site Branch sees that project in **Stock Requisitions -> 2. Client Free Stock for Assigned Project Request**. Once transferred to the branch, logging usage on any **Sub-Project** automatically deducts from the Main Project's FOC balance.`,
     answerSi: () =>
-      `**Client Free Stock (FOC - සේවාදායකයින් නොමිලේ ලබාදෙන බඩු) Under Main Project හෝ Individual Project ලෙස කළමනාකරණය:**\n\n` +
+      `**Client Free Stock (FOC) — ප්‍රධාන ගබඩාවට (Central Main Stock) භාරගැනීම සහ Auto Site Branch Allocation:**\n\n` +
       `1. වම් පස මෙනුවෙන් **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
-      `2. **Target Project Mode** තෝරන්න:\n` +
-      `   • **🏢 Under Main Project:** Sub-Projects කිහිපයක් ඇති ප්‍රධාන ව්‍යාපෘතියකට (Main Project) සම්පූර්ණ බඩු තොගය භාරගැනීමට.\n` +
-      `   • **📄 Individual Project:** තනි ව්‍යාපෘතියකට බඩු භාරගැනීමට.\n` +
-      `3. **ස්වයංක්‍රීය අඩු වීම:** එම Main Project එක යටතේ ඇති ඕනෑම Sub-Project එකකට Material Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වන අතර, එක් එක් Sub-Project එකේ භාවිතය වෙන වෙනමද බලාගත හැක.`,
+      `2. **Target Project Mode** (**🏢 Under Main Project** හෝ **📄 Individual Project**) තෝරා අදාළ Project එක තෝරන්න:\n` +
+      `   • **Receiving Storage Yard (Inbound):** බඩු මුලින්ම ලැබෙන්නේ ප්‍රධාන ගබඩාවට බැවින් **"Main Central Warehouse (Central Yard)"** Default ලෙස පවතී.\n` +
+      `   • **Allocated Site Branch:** Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එක ස්වයංක්‍රීයව තේරී එම ශාඛාවට පමණක් බඩු වෙන් වේ.\n` +
+      `3. **ශාඛාවට Request කිරීම සහ භාවිතය:** **"Stock Requisitions"** හි 2 වන ටැබ් එකෙන් එම අදාළ Site Branch එකට පමණක් එම Project FOC බඩු Request කර ගෙන්වාගත හැකි අතර, Sub-Projects වලට Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වේ.`,
   },
   {
     id: 'items-barcodes-machinery',
     suggestedTab: 'items',
-    keywords: ['barcode', 'qr', 'scanner', 'usb scanner', 'camera scan', 'machinery', 'plant', 'equipment', 'excel import', 'item catalog'],
+    keywords: ['barcode', 'qr', 'scanner', 'usb scanner', 'camera scan', 'machinery', 'plant', 'equipment', 'excel import', 'item catalog', 'scan now'],
     phrases: [
       'item catalog',
       'plant & equipment',
       'print barcode',
       'barcode scanner',
       'import items excel',
+      'scan now',
     ],
     answerEn: (ctx) =>
-      `**Item Catalog, Plant & Equipment, Excel Import & Barcode Scanning:**\n\n` +
-      `• **Item Catalog & Plant/Equipment:** Open **Item Catalog** for all items or **Plant & Equipment** specifically for machinery and tools. Items can also be marked as **Project-Reserved**.\n` +
+      `**Item Catalog, Plant & Equipment, Excel Import & Single-Shot Barcode Scanning ("Scan Now"):**\n\n` +
+      `• **Item Catalog & Plant/Equipment:** Open **Item Catalog** for all items or **Plant & Equipment** specifically for machinery and tools (auto-numbered starting from **ITM-0001** / **MCH-0001**).\n` +
       `• **Excel Bulk Import / Export:** Import items from Excel/CSV using **Sync (Add + Update)**, **Append Only**, or **Replace** modes.\n` +
-      `• **Barcode Labels & Scanning:** Auto-generate missing barcodes, print **Barcode Sticker Labels** (` +
-      `CODE128, CODE39, EAN13), and scan items using a **USB HID Barcode Scanner** or **Mobile Camera Scanner**.\n\n` +
+      `• **Single-Shot Barcode Scanner ("Scan Now"):** When scanning with a **Mobile Camera** or **USB / Wireless Barcode Gun** (including **Live Inventory Barcode Lookup** on the top header), the scanner detects once, immediately stops and hides the live camera feed so it never scans repeatedly, and displays a **"Scan Now"** button to turn the scanner back on for the next item.\n\n` +
       `📌 *Current Catalog:* **${ctx.activeItemsCount ?? 0}** active items (**${ctx.lowStockItemsCount ?? 0}** low-stock alerts).`,
     answerSi: (ctx) =>
-      `**Item Catalog, Plant & Equipment, Excel Import සහ Barcode පහසුකම්:**\n\n` +
-      `• **Item Catalog & Plant/Equipment:** සියලුම භාණ්ඩ **"Item Catalog"** මගින්ද, යන්ත්‍රෝපකරණ සහ Tools **"Plant & Equipment"** මගින්ද කළමනාකරණය කළ හැක.\n` +
+      `**Item Catalog, Plant & Equipment, Excel Import සහ Single-Shot Barcode Scanner ("Scan Now"):**\n\n` +
+      `• **Item Catalog & Plant/Equipment:** සියලුම භාණ්ඩ **"Item Catalog"** මගින්ද, යන්ත්‍රෝපකරණ සහ Tools **"Plant & Equipment"** මගින්ද (0001 සිට අංකනය වන සේ) කළමනාකරණය කළ හැක.\n` +
       `• **Excel Import / Export:** Excel ගොනුවක් මගින් භාණ්ඩ සිය ගණනක් එකවර පද්ධතියට ඇතුළත් කළ හැක.\n` +
-      `• **Barcode Print & Scan:** භාණ්ඩ සඳහා Barcode ලේබල් මුද්‍රණය කිරීමට සහ USB Barcode Scanner හෝ ජංගම දුරකථන කැමරාවෙන් Scan කිරීමට පහසුකම් ඇත.\n\n` +
+      `• **Single-Shot Barcode Scanner ("Scan Now"):** Mobile Camera එකෙන් හෝ USB Barcode Gun එකෙන් Scan කරන විට එක වරක් Detect වූ සැණින් Scanner එක ස්වයංක්‍රීයව නතර වී Camera Screen එක ඉවත් වේ (එක දිගට නොනවතී Scan වීම වළක්වයි). නැවත ඊළඟ භාණ්ඩය Scan කිරීමට එතැනම යටින් ඇති **"Scan Now"** බටන් එක ඔබන්න.\n\n` +
       `📌 *දැනට පද්ධතියේ:* සක්‍රීය Items **${ctx.activeItemsCount ?? 0}**ක් ඇත.`,
   },
   {
