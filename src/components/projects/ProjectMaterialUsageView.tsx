@@ -475,6 +475,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
         const resolvedCustomerName =
           entryCustomerName.trim() || parentMainObj?.customerName || resolvedProjectName;
 
+        const selectedSiteObj = sites.find((s) => s.id === selectedSiteId);
         const registeredProject = addProject({
           projectId: generatedProjId,
           projectName: resolvedProjectName,
@@ -482,6 +483,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
           parentProjectId: parentMainObj?.id,
           parentProjectCode: parentMainObj?.projectId,
           parentProjectName: parentMainObj?.projectName,
+          siteId: selectedSiteObj?.id || parentMainObj?.siteId,
+          siteName: selectedSiteObj?.name || parentMainObj?.siteName,
           customerName: resolvedCustomerName,
           customerPhone: entryCustomerPhone.trim() || parentMainObj?.customerPhone || undefined,
           siteIdentifier: entrySiteId.trim().toUpperCase() || undefined,
@@ -491,7 +494,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
           district:
             entryDistrict.trim() ||
             parentMainObj?.district ||
-            (sites.find((s) => s.id === selectedSiteId)?.location || 'General'),
+            (selectedSiteObj?.location || selectedSiteObj?.name || 'General'),
           subArea: entrySubArea.trim() || 'Field Site',
           status: 'Active',
         });

@@ -113,10 +113,63 @@ export const ClientFreeIssueView: React.FC = () => {
   const [newClientTaxNo, setNewClientTaxNo] = useState('');
   const [newClientNotes, setNewClientNotes] = useState('');
 
+  const branchSites = useMemo(
+    () => sites.filter((s) => !s.isMainWarehouse && !s.isDeleted),
+    [sites]
+  );
+  const mainWarehouseName = useMemo(
+    () => sites.find((s) => s.isMainWarehouse)?.name || 'Main Central Warehouse',
+    [sites]
+  );
+
+  // Helper to resolve which Site Branch a project is assigned to
+  const resolveProjectBranch = (p?: typeof activeProjects[0]): { siteId: string; siteName: string } => {
+    if (!p) return { siteId: '', siteName: '' };
+    if (p.siteId) {
+      const matched = sites.find((s) => s.id === p.siteId);
+      return { siteId: p.siteId, siteName: matched?.name || p.siteName || '' };
+    }
+    if (p.parentProjectId) {
+      const parent = projects.find((mp) => mp.id === p.parentProjectId);
+      if (parent?.siteId) {
+        const matched = sites.find((s) => s.id === parent.siteId);
+        return { siteId: parent.siteId, siteName: matched?.name || parent.siteName || '' };
+      }
+    }
+    const voucherWithBranch = clientFreeIssues.find(
+      (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id) && v.assignedSiteId
+    );
+    if (voucherWithBranch?.assignedSiteId) {
+      const matched = sites.find((s) => s.id === voucherWithBranch.assignedSiteId);
+      return {
+        siteId: voucherWithBranch.assignedSiteId,
+        siteName: matched?.name || voucherWithBranch.assignedSiteName || '',
+      };
+    }
+    if (p.siteName) {
+      const byName = branchSites.find(
+        (s) => s.name.trim().toLowerCase() === p.siteName!.trim().toLowerCase()
+      );
+      if (byName) return { siteId: byName.id, siteName: byName.name };
+    }
+    if (p.district) {
+      const dLow = p.district.trim().toLowerCase();
+      const byDist = branchSites.find(
+        (s) =>
+          s.name.trim().toLowerCase().includes(dLow) ||
+          dLow.includes(s.name.trim().toLowerCase()) ||
+          (s.location && s.location.trim().toLowerCase().includes(dLow))
+      );
+      if (byDist) return { siteId: byDist.id, siteName: byDist.name };
+    }
+    return { siteId: '', siteName: p.siteName || '' };
+  };
+
   // Form State for Logging Client Free-Issue Shipment (DN)
   const [formClientName, setFormClientName] = useState(activeClients[0]?.name || '');
   const [formProjectMode, setFormProjectMode] = useState<'main' | 'individual' | 'all'>('main');
   const [formProjectId, setFormProjectId] = useState(activeProjects[0]?.id || '');
+  const [formAssignedSiteId, setFormAssignedSiteId] = useState('');
   const [formDispatchNoteNo, setFormDispatchNoteNo] = useState('');
   const [formReceivedDate, setFormReceivedDate] = useState(new Date().toISOString().split('T')[0]);
   const [formReceivedBy, setFormReceivedBy] = useState(currentUser?.fullName || 'Logistics Coordinator');
@@ -465,6 +518,20 @@ export const ClientFreeIssueView: React.FC = () => {
     setFormItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleProjectSelectionChange = (nextProjectId: string) => {
+    setFormProjectId(nextProjectId);
+    const proj = activeProjects.find((p) => p.id === nextProjectId) || projects.find((p) => p.id === nextProjectId);
+    const resolved = resolveProjectBranch(proj);
+    if (resolved.siteId) {
+      setFormAssignedSiteId(resolved.siteId);
+    } else if (!formAssignedSiteId && branchSites[0]?.id) {
+      setFormAssignedSiteId(branchSites[0].id);
+    }
+    if (proj?.customerName && activeClients.some((c) => c.name === proj.customerName)) {
+      setFormClientName(proj.customerName);
+    }
+  };
+
   const handleOpenLogModal = (preselectedClientName?: string) => {
     setFormClientName(preselectedClientName || activeClients[0]?.name || '');
     const mainProjs = activeProjects.filter(
@@ -472,11 +539,15 @@ export const ClientFreeIssueView: React.FC = () => {
     );
     const defaultMode = mainProjs.length > 0 ? 'main' : 'all';
     setFormProjectMode(defaultMode);
-    setFormProjectId(mainProjs[0]?.id || activeProjects.find((p) => !p.parentProjectId)?.id || activeProjects[0]?.id || '');
+    const initialProj =
+      mainProjs[0] || activeProjects.find((p) => !p.parentProjectId) || activeProjects[0];
+    setFormProjectId(initialProj?.id || '');
+    const resolvedBranch = resolveProjectBranch(initialProj);
+    setFormAssignedSiteId(resolvedBranch.siteId || branchSites[0]?.id || '');
     setFormDispatchNoteNo(`DN-${new Date().getFullYear()}-${String(clientFreeIssues.length + 1).padStart(4, '0')}`);
     setFormReceivedDate(new Date().toISOString().split('T')[0]);
     setFormReceivedBy(currentUser?.fullName || 'Logistics Coordinator');
-    setFormStorageLocation(sites[0]?.name || 'Main Central Warehouse');
+    setFormStorageLocation(mainWarehouseName);
     setFormNotes('');
     setFormItems([{ itemId: '', itemCode: '', itemName: '', quantity: '', unit: 'm', remarks: '' }]);
     setFormError(null);
@@ -493,6 +564,10 @@ export const ClientFreeIssueView: React.FC = () => {
     }
     if (!formProjectId) {
       setFormError('Please select the Target Assigned Project.');
+      return;
+    }
+    if (branchSites.length > 0 && !formAssignedSiteId) {
+      setFormError('Please select the Allocated Site Branch for this project.');
       return;
     }
     if (!formDispatchNoteNo.trim()) {
@@ -523,10 +598,33 @@ export const ClientFreeIssueView: React.FC = () => {
     }
 
     const targetProj = activeProjects.find((p) => p.id === formProjectId) || projects.find((p) => p.id === formProjectId);
+    const allocatedBranch = sites.find((s) => s.id === formAssignedSiteId);
 
-    // If user explicitly received stock "Under Main Project", ensure targetProj is marked as a Main Project
-    if (formProjectMode === 'main' && targetProj && !targetProj.parentProjectId && targetProj.projectScope !== 'main') {
-      updateProject(targetProj.id, { projectScope: 'main' });
+    // Sync project scope and Assigned Site Branch onto the target project (and its sub-projects)
+    if (targetProj) {
+      const projUpdates: Partial<typeof targetProj> = {};
+      if (formProjectMode === 'main' && !targetProj.parentProjectId && targetProj.projectScope !== 'main') {
+        projUpdates.projectScope = 'main';
+      }
+      if (allocatedBranch && targetProj.siteId !== allocatedBranch.id) {
+        projUpdates.siteId = allocatedBranch.id;
+        projUpdates.siteName = allocatedBranch.name;
+      }
+      if (Object.keys(projUpdates).length > 0) {
+        updateProject(targetProj.id, projUpdates);
+      }
+      if (allocatedBranch) {
+        activeProjects
+          .filter((sp) => sp.parentProjectId === targetProj.id)
+          .forEach((sp) => {
+            if (sp.siteId !== allocatedBranch.id) {
+              updateProject(sp.id, {
+                siteId: allocatedBranch.id,
+                siteName: allocatedBranch.name,
+              });
+            }
+          });
+      }
     }
 
     addClientFreeIssue({
@@ -536,17 +634,21 @@ export const ClientFreeIssueView: React.FC = () => {
       projectScope: formProjectMode === 'main' ? 'main' : (targetProj?.projectScope || 'individual'),
       parentProjectId: targetProj?.parentProjectId,
       parentProjectName: targetProj?.parentProjectName,
+      assignedSiteId: allocatedBranch?.id || targetProj?.siteId,
+      assignedSiteName: allocatedBranch?.name || targetProj?.siteName,
       siteIdentifier: targetProj?.siteIdentifier || '',
       dispatchNoteNo: formDispatchNoteNo.trim(),
       receivedDate: formReceivedDate,
       receivedBy: formReceivedBy.trim(),
-      storageLocation: formStorageLocation.trim(),
+      storageLocation: formStorageLocation.trim() || mainWarehouseName,
       items: validRows,
       notes: formNotes.trim() || undefined,
     });
 
     setShowLogModal(false);
-    triggerToast(`Client Free-Issue Shipment (${formDispatchNoteNo.trim()}) logged under ${targetProj?.projectName || 'Project'}.`);
+    triggerToast(
+      `Client FOC Shipment (${formDispatchNoteNo.trim()}) received into ${mainWarehouseName} & allocated exclusively to ${allocatedBranch?.name || 'Site Branch'} (${targetProj?.projectName || 'Project'}).`
+    );
   };
 
   const handleDeleteEntry = (entry: ClientFreeIssueEntry) => {
@@ -849,6 +951,15 @@ export const ClientFreeIssueView: React.FC = () => {
                             <h3 className="text-base font-extrabold text-slate-900">
                               {project.projectName}
                             </h3>
+                            {(() => {
+                              const resolvedBranch = resolveProjectBranch(project);
+                              return resolvedBranch.siteName ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-extrabold">
+                                  <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Allocated Branch: {resolvedBranch.siteName}</span>
+                                </span>
+                              ) : null;
+                            })()}
                             {project.siteIdentifier && (
                               <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                                 Site: {project.siteIdentifier}
@@ -1093,17 +1204,29 @@ export const ClientFreeIssueView: React.FC = () => {
                               <span>{v.clientName}</span>
                             </div>
                           </td>
-                          <td className="py-3 px-3.5 text-slate-800 max-w-xs truncate" title={v.projectName}>
-                            <div className="font-semibold">{v.projectName}</div>
-                            {v.siteIdentifier && (
-                              <div className="text-[10px] text-slate-500">Site: {v.siteIdentifier}</div>
-                            )}
+                          <td className="py-3 px-3.5 text-slate-800 max-w-xs" title={v.projectName}>
+                            <div className="font-semibold truncate">{v.projectName}</div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {(() => {
+                                const projObj = projects.find((p) => p.id === v.projectId);
+                                const branchName = v.assignedSiteName || resolveProjectBranch(projObj).siteName;
+                                return branchName ? (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                                    <Building2 className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span>Branch: {branchName}</span>
+                                  </span>
+                                ) : null;
+                              })()}
+                              {v.siteIdentifier && (
+                                <span className="text-[10px] text-slate-500">Site: {v.siteIdentifier}</span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-3.5 text-slate-600 whitespace-nowrap">
                             {formatDate(v.receivedDate)}
                           </td>
                           <td className="py-3 px-3.5 text-slate-600 whitespace-nowrap">
-                            {v.storageLocation || 'Main Warehouse'}
+                            <span className="font-semibold text-slate-800">{v.storageLocation || 'Main Central Warehouse'}</span>
                           </td>
                           <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                             <span>{v.items.length} items</span>{' '}
@@ -1791,7 +1914,7 @@ export const ClientFreeIssueView: React.FC = () => {
                           const mainProjs = activeProjects.filter(
                             (p) => !p.parentProjectId && p.projectScope !== 'sub'
                           );
-                          if (mainProjs.length > 0) setFormProjectId(mainProjs[0].id);
+                          if (mainProjs.length > 0) handleProjectSelectionChange(mainProjs[0].id);
                         }}
                         className={`px-2 py-0.5 rounded transition cursor-pointer ${
                           formProjectMode === 'main'
@@ -1811,7 +1934,7 @@ export const ClientFreeIssueView: React.FC = () => {
                               p.projectScope !== 'main' &&
                               !activeProjects.some((sp) => sp.parentProjectId === p.id)
                           );
-                          if (indProjs.length > 0) setFormProjectId(indProjs[0].id);
+                          if (indProjs.length > 0) handleProjectSelectionChange(indProjs[0].id);
                         }}
                         className={`px-2 py-0.5 rounded transition cursor-pointer ${
                           formProjectMode === 'individual'
@@ -1826,7 +1949,7 @@ export const ClientFreeIssueView: React.FC = () => {
                   <select
                     required
                     value={formProjectId}
-                    onChange={(e) => setFormProjectId(e.target.value)}
+                    onChange={(e) => handleProjectSelectionChange(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     {(() => {
@@ -1848,13 +1971,14 @@ export const ClientFreeIssueView: React.FC = () => {
 
                       return candidateProjects.map((p) => {
                         const subCount = activeProjects.filter((sp) => sp.parentProjectId === p.id).length;
+                        const resolvedBranch = resolveProjectBranch(p);
                         const prefix =
                           formProjectMode === 'main' || p.projectScope === 'main' || subCount > 0
                             ? `🏢 [Under Main Project] `
                             : `📄 `;
                         return (
                           <option key={p.id} value={p.id}>
-                            {prefix}{p.projectName} ({p.projectId}){subCount > 0 ? ` — ${subCount} Sub-Projects` : ''}{p.siteIdentifier ? ` — Site: ${p.siteIdentifier}` : ''}
+                            {prefix}{p.projectName} ({p.projectId}){resolvedBranch.siteName ? ` — Branch: ${resolvedBranch.siteName}` : ''}{subCount > 0 ? ` — ${subCount} Sub-Projects` : ''}
                           </option>
                         );
                       });
@@ -1868,8 +1992,8 @@ export const ClientFreeIssueView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 2: Dispatch Note #, Date, Location */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Row 2: Dispatch Note #, Date, Physical Receiving Yard (Default Central Main), and Auto-Allocated Site Branch */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 bg-slate-50/90 border border-slate-200 rounded-xl">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Client Dispatch Note # / Gate Pass <span className="text-rose-500">*</span>
@@ -1880,7 +2004,7 @@ export const ClientFreeIssueView: React.FC = () => {
                     placeholder="e.g. DN-2026-0412"
                     value={formDispatchNoteNo}
                     onChange={(e) => setFormDispatchNoteNo(e.target.value)}
-                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 font-mono font-bold bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
@@ -1893,26 +2017,66 @@ export const ClientFreeIssueView: React.FC = () => {
                     required
                     value={formReceivedDate}
                     onChange={(e) => setFormReceivedDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Receiving Storage Yard / Site
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Receiving Storage Yard (Inbound)
+                    </label>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-800 uppercase">
+                      Default HQ
+                    </span>
+                  </div>
                   <select
-                    value={formStorageLocation}
+                    value={mainWarehouseName}
                     onChange={(e) => setFormStorageLocation(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-indigo-50/80 border border-indigo-300 rounded-xl text-xs font-extrabold text-indigo-950 focus:outline-none"
                   >
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.name}>
-                        {s.name} {s.isMainWarehouse ? '(Central Yard)' : ''}
-                      </option>
-                    ))}
-                    <option value="Direct to Project Site">Direct to Project Site</option>
+                    <option value={mainWarehouseName}>
+                      {mainWarehouseName} (Central Yard)
+                    </option>
                   </select>
+                  <p className="text-[10px] text-slate-500 mt-1 leading-tight">
+                    FOC materials always enter Central Main Stock first.
+                  </p>
+                </div>
+
+                <div>
+                  {(() => {
+                    const selectedProjObj = activeProjects.find((p) => p.id === formProjectId);
+                    const hasRegisteredBranch = Boolean(selectedProjObj?.siteId);
+                    return (
+                      <>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-extrabold text-emerald-900">
+                            Allocated Site Branch <span className="text-rose-500">*</span>
+                          </label>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-emerald-700 text-white uppercase">
+                            {hasRegisteredBranch ? 'Auto-Linked' : 'Select Branch'}
+                          </span>
+                        </div>
+                        <select
+                          required
+                          value={formAssignedSiteId}
+                          onChange={(e) => setFormAssignedSiteId(e.target.value)}
+                          className="w-full px-3 py-2 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-xs font-extrabold text-emerald-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
+                        >
+                          <option value="">-- Select Site Branch --</option>
+                          {branchSites.map((bs) => (
+                            <option key={bs.id} value={bs.id}>
+                              🏢 {bs.name} {bs.location ? `(${bs.location})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-emerald-800 font-semibold mt-1 leading-tight">
+                          ✓ Exclusively available for requisition by this Site Branch.
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

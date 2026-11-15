@@ -35,6 +35,8 @@ import { ConfirmModal } from '../common/ConfirmModal';
 
 export const ProjectsManagementView: React.FC = () => {
   const {
+    sites,
+    activeSites,
     activeProjects,
     activeProjectTypes,
     items,
@@ -52,8 +54,47 @@ export const ProjectsManagementView: React.FC = () => {
     getProjectFreeStockList,
   } = useStock();
 
+  const branchSites = useMemo(
+    () => activeSites.filter((s) => !s.isMainWarehouse),
+    [activeSites]
+  );
+
+  // Helper to resolve a project's effective Site Branch (including legacy fallback by parent or district/name)
+  const resolveProjectSite = (p?: Project): { siteId: string; siteName: string } => {
+    if (!p) return { siteId: '', siteName: '' };
+    if (p.siteId) {
+      const matched = sites.find((s) => s.id === p.siteId);
+      return { siteId: p.siteId, siteName: matched?.name || p.siteName || '' };
+    }
+    if (p.parentProjectId) {
+      const parent = activeProjects.find((mp) => mp.id === p.parentProjectId);
+      if (parent?.siteId) {
+        const matched = sites.find((s) => s.id === parent.siteId);
+        return { siteId: parent.siteId, siteName: matched?.name || parent.siteName || '' };
+      }
+    }
+    if (p.siteName) {
+      const byName = branchSites.find(
+        (s) => s.name.trim().toLowerCase() === p.siteName!.trim().toLowerCase()
+      );
+      if (byName) return { siteId: byName.id, siteName: byName.name };
+    }
+    if (p.district) {
+      const dLow = p.district.trim().toLowerCase();
+      const byDist = branchSites.find(
+        (s) =>
+          s.name.trim().toLowerCase().includes(dLow) ||
+          dLow.includes(s.name.trim().toLowerCase()) ||
+          (s.location && s.location.trim().toLowerCase().includes(dLow))
+      );
+      if (byDist) return { siteId: byDist.id, siteName: byDist.name };
+    }
+    return { siteId: '', siteName: p.siteName || '' };
+  };
+
   const [activeTab, setActiveTab] = useState<'projects' | 'sections'>('projects');
   const [searchQuery, setSearchQuery] = useState('');
+  const [siteBranchFilter, setSiteBranchFilter] = useState('all');
   const [districtFilter, setDistrictFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'main' | 'sub' | 'individual'>('all');
@@ -65,6 +106,7 @@ export const ProjectsManagementView: React.FC = () => {
   // Form states for Project
   const [projectScope, setProjectScope] = useState<ProjectScope>('individual');
   const [parentProjectId, setParentProjectId] = useState<string>('');
+  const [assignedSiteId, setAssignedSiteId] = useState<string>('');
   const [projectId, setProjectId] = useState('');
   const [projectName, setProjectName] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -151,6 +193,7 @@ export const ProjectsManagementView: React.FC = () => {
   const filteredProjects = useMemo(() => {
     const raw = activeProjects.filter((p) => {
       const q = searchQuery.toLowerCase();
+      const resolvedSite = resolveProjectSite(p);
       const matchesSearch =
         p.projectId.toLowerCase().includes(q) ||
         p.projectName.toLowerCase().includes(q) ||
@@ -162,8 +205,11 @@ export const ProjectsManagementView: React.FC = () => {
         (p.projectTypeName && p.projectTypeName.toLowerCase().includes(q)) ||
         (p.referenceNo && p.referenceNo.toLowerCase().includes(q)) ||
         (p.district && p.district.toLowerCase().includes(q)) ||
-        (p.subArea && p.subArea.toLowerCase().includes(q));
+        (p.subArea && p.subArea.toLowerCase().includes(q)) ||
+        (resolvedSite.siteName && resolvedSite.siteName.toLowerCase().includes(q));
 
+      const matchesSiteBranch =
+        siteBranchFilter === 'all' || resolvedSite.siteId === siteBranchFilter;
       const matchesDistrict = districtFilter === 'all' || p.district === districtFilter;
       const matchesSection = sectionFilter === 'all' || p.projectTypeId === sectionFilter;
       const effScope = getEffectiveScope(p);
@@ -171,7 +217,14 @@ export const ProjectsManagementView: React.FC = () => {
       const matchesParent =
         parentFilterId === 'all' || p.id === parentFilterId || p.parentProjectId === parentFilterId;
 
-      return matchesSearch && matchesDistrict && matchesSection && matchesScope && matchesParent;
+      return (
+        matchesSearch &&
+        matchesSiteBranch &&
+        matchesDistrict &&
+        matchesSection &&
+        matchesScope &&
+        matchesParent
+      );
     });
 
     // Sort so Main Projects appear followed immediately by their Sub-Projects, then Individual Projects
@@ -203,7 +256,7 @@ export const ProjectsManagementView: React.FC = () => {
     });
 
     return result;
-  }, [activeProjects, searchQuery, districtFilter, sectionFilter, scopeFilter, parentFilterId]);
+  }, [activeProjects, searchQuery, siteBranchFilter, districtFilter, sectionFilter, scopeFilter, parentFilterId, branchSites, sites]);
 
   // Duplicate / existing project match check in modal
   const existingMatchesInModal = useMemo(() => {
@@ -252,9 +305,18 @@ export const ProjectsManagementView: React.FC = () => {
     setProjectScope(defaultScope);
     setInitialSubProjects([]);
 
+    const defaultBranchId =
+      siteBranchFilter !== 'all' ? siteBranchFilter : (branchSites[0]?.id || '');
+    const defaultBranchObj = branchSites.find((b) => b.id === defaultBranchId);
+
     if (defaultScope === 'sub' && preselectedParent) {
       const existingSubsCount = activeProjects.filter((sp) => sp.parentProjectId === preselectedParent.id).length;
+      const resolvedParentSite = resolveProjectSite(preselectedParent);
+      const chosenBranchId = resolvedParentSite.siteId || defaultBranchId;
+      const chosenBranchObj = branchSites.find((b) => b.id === chosenBranchId);
+
       setParentProjectId(preselectedParent.id);
+      setAssignedSiteId(chosenBranchId);
       setProjectId(`${preselectedParent.projectId}-SUB-${String(existingSubsCount + 1).padStart(4, '0')}`);
       setProjectName('');
       setCustomerName(preselectedParent.customerName || '');
@@ -262,11 +324,12 @@ export const ProjectsManagementView: React.FC = () => {
       setSiteIdentifier('');
       setProjectTypeId(preselectedParent.projectTypeId || defaultSectionId || activeProjectTypes[0]?.id || '');
       setReferenceNo(preselectedParent.referenceNo || `REF-${String(activeProjects.length + 1).padStart(4, '0')}`);
-      setDistrict(preselectedParent.district || '');
+      setDistrict(preselectedParent.district || chosenBranchObj?.location || chosenBranchObj?.name || '');
       setSubArea('');
     } else if (defaultScope === 'main') {
       const nextMain = getNextMainProjectSeq();
       setParentProjectId('');
+      setAssignedSiteId(defaultBranchId);
       setProjectId(nextMain.projectId);
       setProjectName('');
       setCustomerName('');
@@ -275,11 +338,12 @@ export const ProjectsManagementView: React.FC = () => {
       const targetSec = defaultSectionId || (sectionFilter !== 'all' ? sectionFilter : (activeProjectTypes[0]?.id || ''));
       setProjectTypeId(targetSec);
       setReferenceNo(nextMain.referenceNo);
-      setDistrict('');
+      setDistrict(defaultBranchObj?.location || defaultBranchObj?.name || '');
       setSubArea('');
     } else {
       const nextInd = getNextIndividualProjectSeq();
       setParentProjectId(mainProjects[0]?.id || '');
+      setAssignedSiteId(defaultBranchId);
       setProjectId(nextInd.projectId);
       setProjectName('');
       setCustomerName('');
@@ -288,7 +352,7 @@ export const ProjectsManagementView: React.FC = () => {
       const targetSec = defaultSectionId || (sectionFilter !== 'all' ? sectionFilter : (activeProjectTypes[0]?.id || ''));
       setProjectTypeId(targetSec);
       setReferenceNo(nextInd.referenceNo);
-      setDistrict('');
+      setDistrict(defaultBranchObj?.location || defaultBranchObj?.name || '');
       setSubArea('');
     }
 
@@ -299,21 +363,29 @@ export const ProjectsManagementView: React.FC = () => {
   const handleParentProjectChange = (newParentId: string) => {
     setParentProjectId(newParentId);
     const parentObj = activeProjects.find((p) => p.id === newParentId);
-    if (parentObj && !editingProject) {
-      const existingSubsCount = activeProjects.filter((sp) => sp.parentProjectId === parentObj.id).length;
-      setProjectId(`${parentObj.projectId}-SUB-${String(existingSubsCount + 1).padStart(4, '0')}`);
-      if (parentObj.projectTypeId) setProjectTypeId(parentObj.projectTypeId);
-      if (parentObj.customerName) setCustomerName(parentObj.customerName);
-      if (parentObj.district) setDistrict(parentObj.district);
-      if (parentObj.referenceNo) setReferenceNo(parentObj.referenceNo);
+    if (parentObj) {
+      const resolvedParentSite = resolveProjectSite(parentObj);
+      if (resolvedParentSite.siteId) {
+        setAssignedSiteId(resolvedParentSite.siteId);
+      }
+      if (!editingProject) {
+        const existingSubsCount = activeProjects.filter((sp) => sp.parentProjectId === parentObj.id).length;
+        setProjectId(`${parentObj.projectId}-SUB-${String(existingSubsCount + 1).padStart(4, '0')}`);
+        if (parentObj.projectTypeId) setProjectTypeId(parentObj.projectTypeId);
+        if (parentObj.customerName) setCustomerName(parentObj.customerName);
+        if (parentObj.district) setDistrict(parentObj.district);
+        if (parentObj.referenceNo) setReferenceNo(parentObj.referenceNo);
+      }
     }
   };
 
   const handleOpenEditModal = (p: Project) => {
     setEditingProject(p);
     const effScope = getEffectiveScope(p);
+    const resolvedSite = resolveProjectSite(p);
     setProjectScope(effScope);
     setParentProjectId(p.parentProjectId || '');
+    setAssignedSiteId(resolvedSite.siteId || branchSites[0]?.id || '');
     setProjectId(p.projectId);
     setProjectName(p.projectName);
     setCustomerName(p.customerName || '');
@@ -337,6 +409,11 @@ export const ProjectsManagementView: React.FC = () => {
       return;
     }
 
+    if (branchSites.length > 0 && !assignedSiteId) {
+      setFormError('Please select the Assigned Site Branch for this project.');
+      return;
+    }
+
     if (projectScope === 'sub' && !parentProjectId) {
       setFormError('Please select the Parent Major / Main Project for this Sub-Project.');
       return;
@@ -346,10 +423,22 @@ export const ProjectsManagementView: React.FC = () => {
     const pTypeName = selectedTypeObj ? selectedTypeObj.name : '';
     const parentObj =
       projectScope === 'sub' ? activeProjects.find((p) => p.id === parentProjectId) : undefined;
+    const selectedBranchObj = sites.find((s) => s.id === assignedSiteId);
 
     // If user linked a Sub-Project to an existing Individual project, promote that parent to 'main'
-    if (projectScope === 'sub' && parentObj && parentObj.projectScope !== 'main') {
-      updateProject(parentObj.id, { projectScope: 'main' });
+    // Also ensure the parent project has the assignedSiteId if it was missing
+    if (projectScope === 'sub' && parentObj) {
+      const parentUpdates: Partial<Project> = {};
+      if (parentObj.projectScope !== 'main') {
+        parentUpdates.projectScope = 'main';
+      }
+      if (!parentObj.siteId && selectedBranchObj) {
+        parentUpdates.siteId = selectedBranchObj.id;
+        parentUpdates.siteName = selectedBranchObj.name;
+      }
+      if (Object.keys(parentUpdates).length > 0) {
+        updateProject(parentObj.id, parentUpdates);
+      }
     }
 
     if (editingProject) {
@@ -360,16 +449,31 @@ export const ProjectsManagementView: React.FC = () => {
         parentProjectId: projectScope === 'sub' ? parentObj?.id : undefined,
         parentProjectCode: projectScope === 'sub' ? parentObj?.projectId : undefined,
         parentProjectName: projectScope === 'sub' ? parentObj?.projectName : undefined,
+        siteId: selectedBranchObj?.id || undefined,
+        siteName: selectedBranchObj?.name || undefined,
         customerName: customerName.trim() || undefined,
         customerPhone: customerPhone.trim() || undefined,
         siteIdentifier: siteIdentifier.trim().toUpperCase() || undefined,
         projectTypeId: projectTypeId || undefined,
         projectTypeName: pTypeName || undefined,
         referenceNo: referenceNo.trim(),
-        district: district.trim(),
+        district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
         subArea: subArea.trim(),
       });
-      showToast(`Project "${projectName}" updated successfully.`);
+
+      // If this is a Main Project, sync the assigned Site Branch to all its child Sub-Projects
+      if (projectScope === 'main' && selectedBranchObj) {
+        activeProjects
+          .filter((sp) => sp.parentProjectId === editingProject.id)
+          .forEach((sp) => {
+            updateProject(sp.id, {
+              siteId: selectedBranchObj.id,
+              siteName: selectedBranchObj.name,
+            });
+          });
+      }
+
+      showToast(`Project "${projectName}" updated successfully (Assigned Branch: ${selectedBranchObj?.name || 'Updated'}).`);
     } else {
       const createdMainOrProj = addProject({
         projectId: projectId.trim().toUpperCase(),
@@ -378,13 +482,15 @@ export const ProjectsManagementView: React.FC = () => {
         parentProjectId: projectScope === 'sub' ? parentObj?.id : undefined,
         parentProjectCode: projectScope === 'sub' ? parentObj?.projectId : undefined,
         parentProjectName: projectScope === 'sub' ? parentObj?.projectName : undefined,
+        siteId: selectedBranchObj?.id || undefined,
+        siteName: selectedBranchObj?.name || undefined,
         customerName: customerName.trim() || undefined,
         customerPhone: customerPhone.trim() || undefined,
         siteIdentifier: siteIdentifier.trim().toUpperCase() || undefined,
         projectTypeId: projectTypeId || undefined,
         projectTypeName: pTypeName || undefined,
         referenceNo: referenceNo.trim(),
-        district: district.trim(),
+        district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
         subArea: subArea.trim(),
         status: 'Active',
       });
@@ -403,13 +509,15 @@ export const ProjectsManagementView: React.FC = () => {
             parentProjectId: createdMainOrProj.id,
             parentProjectCode: createdMainOrProj.projectId,
             parentProjectName: createdMainOrProj.projectName,
+            siteId: selectedBranchObj?.id || undefined,
+            siteName: selectedBranchObj?.name || undefined,
             customerName: customerName.trim() || undefined,
             customerPhone: customerPhone.trim() || undefined,
             siteIdentifier: sp.siteId.trim().toUpperCase() || undefined,
             projectTypeId: projectTypeId || undefined,
             projectTypeName: pTypeName || undefined,
             referenceNo: referenceNo.trim(),
-            district: district.trim(),
+            district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
             subArea: sp.subArea.trim() || subArea.trim(),
             status: 'Active',
           });
@@ -418,14 +526,14 @@ export const ProjectsManagementView: React.FC = () => {
 
       if (projectScope === 'main' && createdSubCount > 0) {
         showToast(
-          `Major Project "${projectName}" and ${createdSubCount} Sub-Project(s) registered successfully!`
+          `Major Project "${projectName}" and ${createdSubCount} Sub-Project(s) registered under ${selectedBranchObj?.name || 'Site Branch'}!`
         );
       } else if (projectScope === 'sub' && parentObj) {
         showToast(
-          `Sub-Project "${projectName}" registered under Main Project "${parentObj.projectName}".`
+          `Sub-Project "${projectName}" registered under Main Project "${parentObj.projectName}" (${selectedBranchObj?.name || 'Site Branch'}).`
         );
       } else {
-        showToast(`Project "${projectName}" registered successfully.`);
+        showToast(`Project "${projectName}" registered under ${selectedBranchObj?.name || 'Site Branch'} successfully.`);
       }
     }
 
@@ -1141,6 +1249,26 @@ export const ProjectsManagementView: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+              {/* Assigned Site Branch Filter */}
+              <div className="flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                <select
+                  value={siteBranchFilter}
+                  onChange={(e) => setSiteBranchFilter(e.target.value)}
+                  className="px-2.5 py-1.5 border border-emerald-300 rounded-lg text-xs bg-emerald-50/50 text-slate-900 font-bold focus:outline-none"
+                >
+                  <option value="all">All Site Branches ({branchSites.length})</option>
+                  {branchSites.map((bs) => {
+                    const count = activeProjects.filter((p) => resolveProjectSite(p).siteId === bs.id).length;
+                    return (
+                      <option key={bs.id} value={bs.id}>
+                        🏢 {bs.name} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
               {/* Structure Scope Filter */}
               <div className="flex items-center gap-1.5">
                 <FolderTree className="w-3.5 h-3.5 text-indigo-600" />
@@ -1237,6 +1365,7 @@ export const ProjectsManagementView: React.FC = () => {
                   <tr>
                     <th className="py-3 px-3">Project ID & Structure</th>
                     <th className="py-3 px-4">Project / Main & Sub-Project Details</th>
+                    <th className="py-3 px-3">Assigned Site Branch</th>
                     <th className="py-3 px-3">Section / Type</th>
                     <th className="py-3 px-3">Reference No</th>
                     <th className="py-3 px-3">District & Area</th>
@@ -1247,7 +1376,7 @@ export const ProjectsManagementView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {filteredProjects.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
                         <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                         <div>No projects match your filter.</div>
                         <div className="text-[11px] text-slate-400 mt-1">
@@ -1262,6 +1391,7 @@ export const ProjectsManagementView: React.FC = () => {
                       const parentProj = p.parentProjectId
                         ? activeProjects.find((mp) => mp.id === p.parentProjectId)
                         : undefined;
+                      const resolvedSite = resolveProjectSite(p);
 
                       const directUsagesCount = projectUsages.filter(
                         (pu) => pu.projectId === p.id && !pu.isDeleted
@@ -1372,6 +1502,25 @@ export const ProjectsManagementView: React.FC = () => {
                                   </button>
                                 ))}
                               </div>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {resolvedSite.siteName ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-300 text-xs font-extrabold shadow-2xs">
+                                <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>{resolvedSite.siteName}</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(p)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-bold cursor-pointer"
+                                title="Click to assign a Site Branch to this project"
+                              >
+                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                <span>Assign Branch</span>
+                              </button>
                             )}
                           </td>
 
@@ -1728,11 +1877,14 @@ export const ProjectsManagementView: React.FC = () => {
                         className="w-full px-3 py-2 border border-teal-300 rounded-lg text-xs font-bold text-slate-900 bg-teal-50/50 focus:bg-white focus:ring-2 focus:ring-teal-600 focus:outline-none"
                       >
                         <option value="">-- Choose Parent Main Project --</option>
-                        {selectableParentProjects.map((mp) => (
-                          <option key={mp.id} value={mp.id}>
-                            [{mp.projectId}] {mp.projectName} {mp.customerName ? `— Client: ${mp.customerName}` : ''} ({mp.district || 'General'})
-                          </option>
-                        ))}
+                        {selectableParentProjects.map((mp) => {
+                          const mpSite = resolveProjectSite(mp);
+                          return (
+                            <option key={mp.id} value={mp.id}>
+                              [{mp.projectId}] {mp.projectName} {mpSite.siteName ? `— Branch: ${mpSite.siteName}` : ''} {mp.customerName ? `— Client: ${mp.customerName}` : ''}
+                            </option>
+                          );
+                        })}
                       </select>
                     )}
                     <p className="text-[11px] text-teal-700 mt-1 font-medium">
@@ -1795,6 +1947,42 @@ export const ProjectsManagementView: React.FC = () => {
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none"
                 />
+              </div>
+
+              {/* MANDATORY ASSIGNED SITE BRANCH SELECTOR */}
+              <div className="p-3.5 bg-emerald-50/80 border-2 border-emerald-300 rounded-xl space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5 uppercase tracking-wide">
+                    <Building2 className="w-4 h-4 text-emerald-700" />
+                    <span>Assigned Site Branch (අදාළ Site Branch එක) *</span>
+                  </label>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-700 text-white uppercase">
+                    Mandatory Branch Link
+                  </span>
+                </div>
+                <select
+                  required
+                  value={assignedSiteId}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    setAssignedSiteId(nextId);
+                    const chosenSite = branchSites.find((b) => b.id === nextId);
+                    if (chosenSite && (!district.trim() || branchSites.some((b) => b.name === district || b.location === district))) {
+                      setDistrict(chosenSite.location || chosenSite.name);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 border-2 border-emerald-400 rounded-xl text-xs sm:text-sm font-bold text-slate-900 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs cursor-pointer"
+                >
+                  <option value="">-- Select Assigned Site Branch * --</option>
+                  {branchSites.map((bs) => (
+                    <option key={bs.id} value={bs.id}>
+                      🏢 {bs.name} {bs.location ? `(${bs.location})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-emerald-800 font-medium leading-snug">
+                  ✓ When Client Free-Issue (FOC) stock is logged for this project, it enters <strong>Main Central Warehouse</strong> first and is <strong>automatically allocated exclusively to this Site Branch</strong> so only this branch can request it.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

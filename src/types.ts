@@ -451,6 +451,8 @@ export interface Project {
   parentProjectId?: string; // ID of parent Major/Main Project when projectScope === 'sub'
   parentProjectCode?: string; // Display code of parent Major/Main Project
   parentProjectName?: string; // Display name of parent Major/Main Project
+  siteId?: string; // Assigned Site Branch ID (e.g. Kaluthara, Matale)
+  siteName?: string; // Assigned Site Branch Name
   customerName?: string;
   customerPhone?: string;
   siteIdentifier?: string; // Physical Site ID, Connection ID, Work Order No
@@ -533,11 +535,13 @@ export interface ClientFreeIssueEntry {
   projectScope?: ProjectScope;
   parentProjectId?: string;
   parentProjectName?: string;
+  assignedSiteId?: string; // Exclusive Site Branch ID allocated for this project's FOC stock
+  assignedSiteName?: string; // Exclusive Site Branch Name allocated for this project's FOC stock
   siteIdentifier?: string;
   dispatchNoteNo?: string; // Client Gate Pass / Dispatch Note Number
   receivedDate: string;
   receivedBy: string;
-  storageLocation?: string; // Central Yard, Site Branch, etc.
+  storageLocation?: string; // Physical receiving yard (defaults to Main Central Warehouse)
   items: ClientFreeIssueItemRow[];
   notes?: string;
   createdAt: string;

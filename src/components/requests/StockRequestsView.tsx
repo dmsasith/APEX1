@@ -44,6 +44,7 @@ export const StockRequestsView: React.FC = () => {
     activeItems,
     projects,
     activeProjects,
+    updateProject,
     currentUser,
     stockRequests,
     createStockRequest,
@@ -76,19 +77,91 @@ export const StockRequestsView: React.FC = () => {
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
 
+  // Requisition Form State (scoped to user's assigned sites if not Central/All-Sites)
+  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+
+  // Helper to resolve which Site Branch a Project (and its FOC pool) belongs to
+  const resolveProjectBranch = (p?: typeof activeProjects[0]): { siteId: string; siteName: string } => {
+    if (!p) return { siteId: '', siteName: '' };
+    if (p.siteId) {
+      const matched = sites.find((s) => s.id === p.siteId);
+      return { siteId: p.siteId, siteName: matched?.name || p.siteName || '' };
+    }
+    if (p.parentProjectId) {
+      const parent = projects.find((mp) => mp.id === p.parentProjectId);
+      if (parent?.siteId) {
+        const matched = sites.find((s) => s.id === parent.siteId);
+        return { siteId: parent.siteId, siteName: matched?.name || parent.siteName || '' };
+      }
+    }
+    // Check if any FOC voucher for this project has assignedSiteId
+    const voucherWithBranch = (clientFreeIssues || []).find(
+      (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id) && v.assignedSiteId
+    );
+    if (voucherWithBranch?.assignedSiteId) {
+      const matched = sites.find((s) => s.id === voucherWithBranch.assignedSiteId);
+      return {
+        siteId: voucherWithBranch.assignedSiteId,
+        siteName: matched?.name || voucherWithBranch.assignedSiteName || '',
+      };
+    }
+    // Check if an Approved or Accepted FOC Stock Request exists for this project
+    const approvedFocReq = stockRequests.find(
+      (r) =>
+        (r.status === 'Approved / In-Transit' || r.status === 'Accepted') &&
+        r.focProjectId === p.id &&
+        r.siteId
+    );
+    if (approvedFocReq?.siteId) {
+      const matched = sites.find((s) => s.id === approvedFocReq.siteId);
+      if (matched && !matched.isMainWarehouse) {
+        return { siteId: matched.id, siteName: matched.name };
+      }
+    }
+    if (p.siteName) {
+      const byName = branchSites.find(
+        (s) => s.name.trim().toLowerCase() === p.siteName!.trim().toLowerCase()
+      );
+      if (byName) return { siteId: byName.id, siteName: byName.name };
+    }
+    if (p.district) {
+      const dLow = p.district.trim().toLowerCase();
+      const byDist = branchSites.find(
+        (s) =>
+          s.name.trim().toLowerCase().includes(dLow) ||
+          dLow.includes(s.name.trim().toLowerCase()) ||
+          (s.location && s.location.trim().toLowerCase().includes(dLow))
+      );
+      if (byDist) return { siteId: byDist.id, siteName: byDist.name };
+    }
+    return { siteId: '', siteName: p.siteName || '' };
+  };
+
   // Filter client FOC materials by selected branch / user assigned site(s)
   const filteredClientFocMaterials = useMemo(() => {
     return (clientFreeIssues || []).filter((v) => {
       if (v.isDeleted) return false;
+      const projObj = projects.find((p) => p.id === v.projectId);
+      const resolvedBranch = resolveProjectBranch(projObj);
+      const effectiveSiteId = v.assignedSiteId || resolvedBranch.siteId;
+
       if (isCentralAdmin) {
         if (selectedBranchFilter !== 'all') {
+          if (effectiveSiteId) {
+            return effectiveSiteId === selectedBranchFilter;
+          }
           const targetSite = sites.find((s) => s.id === selectedBranchFilter);
           if (!targetSite) return true;
-          const matchLoc = v.storageLocation && v.storageLocation.trim().toLowerCase() === targetSite.name.trim().toLowerCase();
+          const matchLoc =
+            v.storageLocation &&
+            v.storageLocation.trim().toLowerCase() === targetSite.name.trim().toLowerCase();
           return matchLoc;
         }
         return true;
       } else {
+        if (effectiveSiteId) {
+          return userAssignedIds.includes(effectiveSiteId);
+        }
         const userSiteNames = userAssignedIds
           .map((sid) => sites.find((s) => s.id === sid)?.name.trim().toLowerCase())
           .filter((n): n is string => Boolean(n));
@@ -97,7 +170,7 @@ export const StockRequestsView: React.FC = () => {
         return userSiteNames.includes(locLower);
       }
     });
-  }, [clientFreeIssues, isCentralAdmin, selectedBranchFilter, userAssignedIds, sites]);
+  }, [clientFreeIssues, isCentralAdmin, selectedBranchFilter, userAssignedIds, sites, projects, stockRequests]);
 
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
@@ -125,8 +198,6 @@ export const StockRequestsView: React.FC = () => {
   const [receivedItems, setReceivedItems] = useState<Array<{ itemId: string; receivedQty: number }>>([]);
   const [acceptanceNotes, setAcceptanceNotes] = useState('');
 
-  // Requisition Form State (scoped to user's assigned sites if not Central/All-Sites)
-  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
   const allowedRequisitionSites = isCentralAdmin
     ? branchSites
     : branchSites.filter((s) => userHasSiteAccess(currentUser, s.id, activeSites));
@@ -199,8 +270,8 @@ export const StockRequestsView: React.FC = () => {
   ]);
   const [formError, setFormError] = useState('');
 
-  // Build structured list of Root Projects (Major / Main Projects & Individual Projects) for FOC Requisitions
-  const focRootProjectsWithMeta = useMemo(() => {
+  // Build structured list of all Root Projects (Major / Main Projects & Individual Projects) with their Resolved Site Branch
+  const allFocRootProjectsWithMeta = useMemo(() => {
     const rootProjs = activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub');
     return rootProjs
       .map((p) => {
@@ -214,6 +285,7 @@ export const StockRequestsView: React.FC = () => {
           (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id)
         );
         const clientName = p.customerName || matchingVoucher?.clientName || '';
+        const resolvedBranch = resolveProjectBranch(p);
         return {
           project: p,
           effectiveScope,
@@ -222,13 +294,26 @@ export const StockRequestsView: React.FC = () => {
           totalFocReceived,
           totalHqAvail,
           clientName,
+          resolvedSiteId: resolvedBranch.siteId,
+          resolvedSiteName: resolvedBranch.siteName,
         };
       })
       .sort((a, b) => {
         if (b.totalHqAvail !== a.totalHqAvail) return b.totalHqAvail - a.totalHqAvail;
         return b.totalFocReceived - a.totalFocReceived;
       });
-  }, [activeProjects, getProjectFreeStockList, clientFreeIssues]);
+  }, [activeProjects, getProjectFreeStockList, clientFreeIssues, sites, projects, stockRequests]);
+
+  // Filter FOC Root Projects strictly to those allocated to the currently selected Requesting Site Branch (formSiteId)
+  const focRootProjectsWithMeta = useMemo(() => {
+    if (!formSiteId) return allFocRootProjectsWithMeta;
+    return allFocRootProjectsWithMeta.filter((entry) => entry.resolvedSiteId === formSiteId);
+  }, [allFocRootProjectsWithMeta, formSiteId]);
+
+  // Any legacy projects that do not yet have a Site Branch assigned
+  const unassignedFocProjects = useMemo(() => {
+    return allFocRootProjectsWithMeta.filter((entry) => !entry.resolvedSiteId);
+  }, [allFocRootProjectsWithMeta]);
 
   const filteredFocProjects = useMemo(() => {
     if (focScopeFilter === 'all') return focRootProjectsWithMeta;
@@ -237,6 +322,7 @@ export const StockRequestsView: React.FC = () => {
 
   const selectedFocProjectMeta = useMemo(() => {
     return (
+      filteredFocProjects.find((entry) => entry.project.id === selectedFocProjectId) ||
       focRootProjectsWithMeta.find((entry) => entry.project.id === selectedFocProjectId) ||
       filteredFocProjects[0] ||
       focRootProjectsWithMeta[0] ||
@@ -244,9 +330,9 @@ export const StockRequestsView: React.FC = () => {
     );
   }, [focRootProjectsWithMeta, filteredFocProjects, selectedFocProjectId]);
 
-  const applyFocProjectSelection = (projId: string) => {
+  const applyFocProjectSelection = (projId: string, sourceList = allFocRootProjectsWithMeta) => {
     setSelectedFocProjectId(projId);
-    const meta = focRootProjectsWithMeta.find((e) => e.project.id === projId);
+    const meta = sourceList.find((e) => e.project.id === projId);
     if (meta) {
       const scopeTag = meta.effectiveScope === 'main' ? 'Main Project' : 'Individual Project';
       setPurpose(`Client FOC Transfer (${scopeTag}): [${meta.project.projectId}] ${meta.project.projectName}`);
@@ -272,6 +358,9 @@ export const StockRequestsView: React.FC = () => {
       const targetMeta = selectedFocProjectMeta || focRootProjectsWithMeta[0];
       if (targetMeta) {
         applyFocProjectSelection(targetMeta.project.id);
+      } else {
+        setSelectedFocProjectId('');
+        setPurpose('');
       }
     } else {
       if (purpose.startsWith('Client FOC Transfer')) {
@@ -1326,21 +1415,85 @@ export const StockRequestsView: React.FC = () => {
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-5 flex-1 flex flex-col">
+              {/* STEP 1: REQUESTING SITE BRANCH & PRIORITY (Controls Exclusive Branch Project Filtering) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                    Requesting Site Branch (අදාළ Site Branch එක) *
+                  </label>
+                  <select
+                    value={formSiteId}
+                    onChange={(e) => {
+                      const nextSiteId = e.target.value;
+                      setFormSiteId(nextSiteId);
+                      setFormError('');
+                      if (formRequestCategory === 'normal' && rows.length === 1) {
+                        const sortedMat = sortItemsForRequestingSite(activeMaterialItems, nextSiteId);
+                        if (sortedMat[0]) {
+                          setRows([{ itemId: sortedMat[0].id, requestedQty: rows[0].requestedQty || 50 }]);
+                        }
+                      } else if (formRequestCategory === 'foc') {
+                        const siteProjects = allFocRootProjectsWithMeta.filter(
+                          (entry) => entry.resolvedSiteId === nextSiteId && (focScopeFilter === 'all' || entry.effectiveScope === focScopeFilter)
+                        );
+                        const fallbackAllScope = allFocRootProjectsWithMeta.filter(
+                          (entry) => entry.resolvedSiteId === nextSiteId
+                        );
+                        const targetMeta = siteProjects[0] || fallbackAllScope[0];
+                        if (targetMeta) {
+                          if (!siteProjects[0] && fallbackAllScope[0]) {
+                            setFocScopeFilter('all');
+                          }
+                          applyFocProjectSelection(targetMeta.project.id);
+                        } else {
+                          setSelectedFocProjectId('');
+                          setPurpose('');
+                        }
+                      }
+                    }}
+                    disabled={!isCentralAdmin && allowedRequisitionSites.length <= 1}
+                    className="w-full px-3.5 py-2.5 border-2 border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-bold text-slate-900 shadow-2xs disabled:bg-slate-100 cursor-pointer"
+                    required
+                  >
+                    {(allowedRequisitionSites.length > 0 ? allowedRequisitionSites : branchSites).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        🏢 {s.name} ({s.location || 'Site Branch'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                    Requisition Priority *
+                  </label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value as RequestPriority)}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium shadow-2xs"
+                  >
+                    <option value="Normal">🟢 Normal (Regular project restocking)</option>
+                    <option value="Urgent">🟠 Urgent (Critical upcoming project milestone)</option>
+                    <option value="Emergency">🔴 Emergency (Imminent site stoppage risk)</option>
+                  </select>
+                </div>
+              </div>
+
               {/* DEDICATED CLIENT FREE STOCK (FOC) PROJECT SELECTION PANEL */}
               {formRequestCategory === 'foc' && (
                 <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-white to-violet-50/70 border-2 border-indigo-200 shadow-xs space-y-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-indigo-200/80 pb-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-indigo-700 text-white uppercase tracking-wider">
                           🎁 Client Free Stock (FOC) Allocation
                         </span>
-                        <span className="text-xs font-semibold text-indigo-900">
-                          Select Main Project or Individual Project
+                        <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          🏢 Exclusive Branch Filter: {branchSites.find((s) => s.id === formSiteId)?.name || 'Selected Site Branch'} ({focRootProjectsWithMeta.length} Assigned Projects)
                         </span>
                       </div>
                       <p className="text-xs text-slate-600 mt-1">
-                        Major Project FOC requests deduct from the <strong>Main Project Central Pool</strong> and transfer into your Site Yard so you can enter daily usage under any <strong>Sub-Project</strong>. Individual Projects transfer separately.
+                        Only projects allocated to <strong>{branchSites.find((s) => s.id === formSiteId)?.name || 'this Site Branch'}</strong> are shown below so client free stock never mixes between branches. Materials are dispatched from <strong>Main Central Warehouse (HQ FOC Pool)</strong> to your branch.
                       </p>
                     </div>
 
@@ -1410,11 +1563,44 @@ export const StockRequestsView: React.FC = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                     <div className="lg:col-span-6">
                       <label className="block text-xs font-bold text-indigo-950 mb-1.5 uppercase tracking-wide">
-                        Assigned Project (Main Project or Individual Project) *
+                        Assigned Project for {branchSites.find((s) => s.id === formSiteId)?.name || 'Selected Branch'} *
                       </label>
                       {filteredFocProjects.length === 0 ? (
-                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
-                          No projects found in this filter. Switch filter above or register a Project in <strong>Project Registry</strong>.
+                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
+                          <div className="font-bold">
+                            ⚠️ No {focScopeFilter === 'main' ? 'Major / Main ' : focScopeFilter === 'individual' ? 'Individual ' : ''}Projects are currently assigned to <span className="underline">{branchSites.find((s) => s.id === formSiteId)?.name || 'this Site Branch'}</span>.
+                          </div>
+                          <div className="text-[11px] text-amber-800">
+                            Projects belonging to other branches are hidden to prevent cross-branch stock mix-ups. Register or assign a project to <strong>{branchSites.find((s) => s.id === formSiteId)?.name}</strong> in <strong>7. Project Registry</strong>.
+                          </div>
+                          {unassignedFocProjects.length > 0 && (
+                            <div className="pt-2 border-t border-amber-200/80 space-y-1.5">
+                              <div className="text-[11px] font-bold text-indigo-950">
+                                🔗 Quick-Assign an Unassigned Project to {branchSites.find((s) => s.id === formSiteId)?.name}:
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {unassignedFocProjects.map((uMeta) => (
+                                  <button
+                                    key={uMeta.project.id}
+                                    type="button"
+                                    onClick={async () => {
+                                      const targetBranch = branchSites.find((s) => s.id === formSiteId);
+                                      if (!targetBranch) return;
+                                      await updateProject(uMeta.project.id, {
+                                        siteId: targetBranch.id,
+                                        siteName: targetBranch.name,
+                                      });
+                                      setFocScopeFilter('all');
+                                      applyFocProjectSelection(uMeta.project.id);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
+                                  >
+                                    + Assign {uMeta.project.projectId} ({uMeta.project.projectName}) to {branchSites.find((s) => s.id === formSiteId)?.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <select
@@ -1454,9 +1640,12 @@ export const StockRequestsView: React.FC = () => {
                               <span className="font-mono text-xs font-bold text-indigo-800">
                                 {selectedFocProjectMeta.project.projectId}
                               </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                🏢 Branch: {selectedFocProjectMeta.resolvedSiteName}
+                              </span>
                             </div>
                             <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                              {selectedFocProjectMeta.focList.length} FOC Item Types in HQ Pool
+                              {selectedFocProjectMeta.focList.length} FOC Item Types in Central HQ Pool
                             </span>
                           </div>
 
@@ -1467,9 +1656,9 @@ export const StockRequestsView: React.FC = () => {
                               </span>
                             )}
                             <span>
-                              HQ Pool Available:{' '}
+                              Central Main Stock (HQ FOC Pool):{' '}
                               <strong className="text-indigo-800 font-mono">
-                                {formatNumber(selectedFocProjectMeta.totalHqAvail)} units
+                                {formatNumber(selectedFocProjectMeta.totalHqAvail)} units available
                               </strong>
                             </span>
                           </div>
@@ -1544,51 +1733,6 @@ export const StockRequestsView: React.FC = () => {
                   </div>
                 </div>
               )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
-                    Requesting Site Branch *
-                  </label>
-                  <select
-                    value={formSiteId}
-                    onChange={(e) => {
-                      const nextSiteId = e.target.value;
-                      setFormSiteId(nextSiteId);
-                      if (formRequestCategory === 'normal' && rows.length === 1) {
-                        const sortedMat = sortItemsForRequestingSite(activeMaterialItems, nextSiteId);
-                        if (sortedMat[0]) {
-                          setRows([{ itemId: sortedMat[0].id, requestedQty: rows[0].requestedQty || 50 }]);
-                        }
-                      }
-                    }}
-                    disabled={!isCentralAdmin && allowedRequisitionSites.length <= 1}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium shadow-2xs disabled:bg-slate-100"
-                    required
-                  >
-                    {(allowedRequisitionSites.length > 0 ? allowedRequisitionSites : branchSites).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.location || 'Site Branch'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
-                    Requisition Priority *
-                  </label>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value as RequestPriority)}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium shadow-2xs"
-                  >
-                    <option value="Normal">🟢 Normal (Regular project restocking)</option>
-                    <option value="Urgent">🟠 Urgent (Critical upcoming project milestone)</option>
-                    <option value="Emergency">🔴 Emergency (Imminent site stoppage risk)</option>
-                  </select>
-                </div>
-              </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
