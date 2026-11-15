@@ -30,7 +30,7 @@ import {
   ClientFreeIssueEntry,
   ClientFreeIssueItemRow,
 } from '../../types';
-import { formatNumber, formatDateTime } from '../../utils/exportUtils';
+import { formatNumber, formatDateTime, formatDateTimeParts } from '../../utils/exportUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -722,15 +722,15 @@ export const StockRequestsView: React.FC = () => {
                   </div>
 
                   <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                         <tr>
-                          <th className="py-2.5 px-3">Item Code</th>
-                          <th className="py-2.5 px-3">Material Description</th>
-                          <th className="py-2.5 px-3 text-center">Unit</th>
-                          <th className="py-2.5 px-3 text-right">FOC Received Qty</th>
-                          <th className="py-2.5 px-3 text-right">Dispatched to Sites</th>
-                          <th className="py-2.5 px-3 text-right">Central Pool Bal</th>
+                          <th className="py-3 px-3.5">Item Code</th>
+                          <th className="py-3 px-3.5">Material Description</th>
+                          <th className="py-3 px-3.5 text-center">Unit</th>
+                          <th className="py-3 px-3.5 text-right">FOC Received Qty</th>
+                          <th className="py-3 px-3.5 text-right">Dispatched to Sites</th>
+                          <th className="py-3 px-3.5 text-right">Central Pool Bal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -738,21 +738,21 @@ export const StockRequestsView: React.FC = () => {
                           const itm = items.find((i) => i.id === row.itemId);
                           const bal = getClientFreeStockBalance(foc.projectId, row.itemId);
                           return (
-                            <tr key={idx} className="bg-white">
-                              <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            <tr key={idx} className="bg-white hover:bg-slate-50/80">
+                              <td className="py-3 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                                 {itm?.itemCode || 'ITEM'}
                               </td>
-                              <td className="py-2.5 px-3 font-medium text-slate-800">
+                              <td className="py-3 px-3.5 font-bold text-slate-900">
                                 {itm?.itemName || 'Material Item'}
                               </td>
-                              <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
-                              <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
+                              <td className="py-3 px-3.5 text-center font-medium text-slate-600">{itm?.unit || 'units'}</td>
+                              <td className="py-3 px-3.5 text-right font-mono font-bold text-indigo-700">
                                 {formatNumber(row.quantity)} {itm?.unit}
                               </td>
-                              <td className="py-2.5 px-3 text-right font-mono font-bold text-sky-700">
+                              <td className="py-3 px-3.5 text-right font-mono font-bold text-sky-700">
                                 {bal.dispatchedToSites > 0 ? `-${formatNumber(bal.dispatchedToSites)}` : '0'} {itm?.unit}
                               </td>
-                              <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
+                              <td className="py-3 px-3.5 text-right font-mono font-extrabold text-emerald-700">
                                 {formatNumber(bal.centralWarehouseAvailable)} {itm?.unit}
                               </td>
                             </tr>
@@ -968,16 +968,16 @@ export const StockRequestsView: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
               <tr>
-                <th className="py-3 px-3">Request Note #</th>
-                <th className="py-3 px-3">Date</th>
-                <th className="py-3 px-3">Site Branch</th>
-                <th className="py-3 px-3">Priority</th>
-                <th className="py-3 px-4">Items & Project Summary</th>
-                <th className="py-3 px-3">Status</th>
-                <th className="py-3 px-4 text-right">Workflow Actions</th>
+                <th className="py-3 px-2.5 w-32">Request Note #</th>
+                <th className="py-3 px-2 w-24">Date & Time</th>
+                <th className="py-3 px-2.5 w-36">Site Branch</th>
+                <th className="py-3 px-2 w-20">Priority</th>
+                <th className="py-3 px-2.5">Items & Material Description Summary</th>
+                <th className="py-3 px-2.5 w-28">Status</th>
+                <th className="py-3 px-2.5 text-right w-36">Workflow Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -989,7 +989,7 @@ export const StockRequestsView: React.FC = () => {
                 return true;
               }).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
                     No stock transfer requisitions match this filter.
                   </td>
                 </tr>
@@ -1005,31 +1005,37 @@ export const StockRequestsView: React.FC = () => {
                   .map((req) => {
                   const site = sites.find((s) => s.id === req.siteId);
                   const isSiteReceiver = isCentralAdmin || userHasSiteAccess(currentUser, req.siteId, activeSites);
+                  const dtParts = formatDateTimeParts(req.requestedDate);
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                        <div>{req.requestNoteNumber}</div>
+                      <td className="py-3 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
+                        <div className="text-sm leading-tight">{req.requestNoteNumber}</div>
                         {req.requestCategory === 'foc' ? (
-                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                            🎁 Client FOC Request
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[11px] font-sans font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                            🎁 Client FOC
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[11px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                             📦 Normal Stock
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap font-mono text-[11px]">
-                        {formatDateTime(req.requestedDate)}
+                      <td className="py-3 px-2 text-slate-700 font-mono text-xs whitespace-nowrap align-top leading-tight">
+                        <div className="font-semibold text-slate-800">{dtParts.date}</div>
+                        {dtParts.time && (
+                          <div className="text-[11px] text-slate-500 mt-0.5">{dtParts.time}</div>
+                        )}
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <span className="font-semibold text-slate-900">{site?.name}</span>
-                        <div className="text-[10px] text-slate-500">By: {req.requestedBy}</div>
+                      <td className="py-3 px-2.5 align-top">
+                        <div className="font-bold text-slate-900 text-sm leading-tight">{site?.name}</div>
+                        <div className="text-xs text-slate-500 mt-0.5 truncate max-w-[140px]" title={req.requestedBy}>
+                          By: {req.requestedBy}
+                        </div>
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
+                      <td className="py-3 px-2 whitespace-nowrap align-top">
                         <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${
                             req.priority === 'Emergency'
                               ? 'bg-red-100 text-red-800 border border-red-300'
                               : req.priority === 'Urgent'
@@ -1040,11 +1046,11 @@ export const StockRequestsView: React.FC = () => {
                           {req.priority}
                         </span>
                       </td>
-                      <td className="py-3 px-4 max-w-sm">
+                      <td className="py-3 px-2.5 align-top">
                         {req.requestCategory === 'foc' && (req.focProjectName || req.focProjectCode) && (
-                          <div className="mb-1.5 p-1.5 rounded-lg bg-indigo-50/80 border border-indigo-200 text-[10px] text-indigo-950">
+                          <div className="mb-1.5 p-1.5 rounded-lg bg-indigo-50/80 border border-indigo-200 text-xs text-indigo-950">
                             <div className="flex items-center gap-1.5 flex-wrap font-bold">
-                              <span className="px-1.5 py-0.2 rounded bg-indigo-700 text-white text-[9px] uppercase tracking-wider">
+                              <span className="px-1.5 py-0.5 rounded bg-indigo-700 text-white text-[10px] uppercase tracking-wider">
                                 {req.focProjectScope === 'main' ? '🏢 Main Project' : '📄 Individual Project'}
                               </span>
                               <span className="font-mono text-indigo-800">{req.focProjectCode}</span>
@@ -1052,7 +1058,7 @@ export const StockRequestsView: React.FC = () => {
                               <span className="truncate">{req.focProjectName}</span>
                             </div>
                             {req.focClientName && (
-                              <div className="text-[9px] text-indigo-700 mt-0.5">
+                              <div className="text-[11px] text-indigo-700 mt-0.5">
                                 Client Free Pool: <strong>{req.focClientName}</strong>
                               </div>
                             )}
@@ -1063,28 +1069,37 @@ export const StockRequestsView: React.FC = () => {
                             const itm = items.find((i) => i.id === row.itemId);
                             const isMach = itm ? isMachineryItem(itm) : false;
                             return (
-                              <div key={row.itemId} className="flex items-center gap-1.5 text-slate-700 flex-wrap">
-                                <span className="font-mono font-semibold text-slate-900 bg-slate-100 px-1 py-0.2 rounded text-[10px] border border-slate-200">
-                                  {itm?.itemCode || 'ITEM'}:
+                              <div
+                                key={row.itemId}
+                                className="flex items-center gap-1.5 text-slate-800 flex-wrap bg-slate-50/90 px-2 py-1 rounded-lg border border-slate-200/80"
+                              >
+                                <span className="font-mono font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded text-xs border border-slate-300 shadow-2xs">
+                                  {itm?.itemCode || 'ITEM'}
                                 </span>
                                 {isMach ? (
-                                  <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                                  <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
                                     🚜 Machinery
                                   </span>
                                 ) : (
-                                  <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                  <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
                                     🧱 Material
                                   </span>
                                 )}
-                                <span className="font-semibold text-slate-800">{row.requestedQty} {itm?.unit}</span>
+                                <span className="font-bold text-slate-900 text-sm">
+                                  {itm?.itemName || 'Material Item'}
+                                </span>
+                                <span className="text-slate-300 font-bold">·</span>
+                                <span className="font-mono font-extrabold text-slate-900 text-sm bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                  {formatNumber(row.requestedQty)} {itm?.unit}
+                                </span>
                                 {row.approvedQty !== undefined && (
-                                  <span className="text-slate-500 text-[10px]">
-                                    (Apprv: <strong>{row.approvedQty}</strong>)
+                                  <span className="text-slate-600 text-xs font-medium">
+                                    (Apprv: <strong className="text-slate-900">{formatNumber(row.approvedQty)}</strong>)
                                   </span>
                                 )}
                                 {row.receivedQty !== undefined && (
-                                  <span className="text-emerald-700 text-[10px] font-bold">
-                                    (Recv: {row.receivedQty})
+                                  <span className="text-emerald-700 text-xs font-bold">
+                                    (Recv: {formatNumber(row.receivedQty)})
                                   </span>
                                 )}
                               </div>
@@ -1092,14 +1107,14 @@ export const StockRequestsView: React.FC = () => {
                           })}
                         </div>
                         {req.purpose && (
-                          <div className="text-[10px] text-slate-500 italic mt-1 truncate">
+                          <div className="text-xs text-slate-500 italic mt-1">
                             Purpose: {req.purpose}
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
+                      <td className="py-3 px-2.5 whitespace-nowrap align-top">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-semibold ${
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold ${
                             req.status === 'Accepted'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : req.status === 'Approved / In-Transit'
@@ -1109,22 +1124,22 @@ export const StockRequestsView: React.FC = () => {
                               : 'bg-slate-100 text-slate-600'
                           }`}
                         >
-                          {req.status === 'Accepted' && <CheckCircle className="w-3 h-3 text-emerald-600" />}
-                          {req.status === 'Approved / In-Transit' && <Clock className="w-3 h-3 text-blue-600" />}
+                          {req.status === 'Accepted' && <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />}
+                          {req.status === 'Approved / In-Transit' && <Clock className="w-3.5 h-3.5 text-blue-600" />}
                           <span>{req.status}</span>
                         </span>
                       </td>
 
                       {/* Workflow Actions */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-3 px-2.5 text-right whitespace-nowrap align-top">
+                        <div className="flex items-center justify-end gap-1">
                           {/* 1. Print Official Request Note */}
                           <button
                             onClick={() => setSelectedRequestForPrint(req)}
                             className="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"
                             title="View / Print Official Request Note"
                           >
-                            <Printer className="w-3.5 h-3.5" />
+                            <Printer className="w-4 h-4" />
                           </button>
 
                           {/* Delete Requisition Note (Main Admin only) */}
@@ -1134,16 +1149,16 @@ export const StockRequestsView: React.FC = () => {
                               className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
                               title="Delete / cancel this requisition note"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
 
                           {/* 2. Central Admin Review & Approve or Reject */}
                           {req.status === 'Pending Approval' && isCentralAdmin && (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleOpenApproveModal(req)}
-                                className="px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
+                                className="px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
                                 title="Set approved quantities to give and issue transfer note"
                               >
                                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -1154,7 +1169,7 @@ export const StockRequestsView: React.FC = () => {
                                   setReviewingRequest(req);
                                   setShowRejectInline(true);
                                 }}
-                                className="px-2.5 py-1.5 rounded bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
+                                className="px-2 py-1.5 rounded bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
                                 title="Reject this requisition request"
                               >
                                 <XCircle className="w-3.5 h-3.5 text-rose-600" />
@@ -1165,10 +1180,10 @@ export const StockRequestsView: React.FC = () => {
 
                           {/* 3. Site Admin Acceptance Actions (Accept directly OR Edit Received Amount) */}
                           {req.status === 'Approved / In-Transit' && isSiteReceiver && (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleDirectAccept(req)}
-                                className="px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
+                                className="px-2.5 py-1.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
                                 title="Confirm full shipment received into site inventory"
                               >
                                 <CheckCircle className="w-3.5 h-3.5" />
@@ -1176,7 +1191,7 @@ export const StockRequestsView: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => handleOpenEditAcceptModal(req)}
-                                className="px-2.5 py-1.5 rounded bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 transition-colors flex items-center gap-1 shadow-2xs"
+                                className="px-2 py-1.5 rounded bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 transition-colors flex items-center gap-1 shadow-2xs"
                                 title="Edit Received Amount before accepting (in case of damages or shortage)"
                               >
                                 <Edit2 className="w-3 h-3 text-slate-600" />
@@ -1186,7 +1201,7 @@ export const StockRequestsView: React.FC = () => {
                           )}
 
                           {req.status === 'Accepted' && (
-                            <span className="text-[11px] text-emerald-700 font-semibold px-2 py-0.5">
+                            <span className="text-xs text-emerald-700 font-bold px-1.5 py-0.5">
                               Stock Received
                             </span>
                           )}
@@ -2256,16 +2271,16 @@ export const StockRequestsView: React.FC = () => {
 
               {/* Items Table Container: Spacious to display at least 5 rows comfortably without vertical cramped box */}
               <div className="border border-slate-200 rounded-xl overflow-x-auto overflow-y-auto min-h-[300px] max-h-[460px] flex-1 mb-2.5 bg-white shadow-2xs">
-                <table className="w-full text-xs text-left min-w-[640px]">
-                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-semibold sticky top-0 z-10">
+                <table className="w-full text-sm text-left min-w-[640px]">
+                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold text-xs uppercase tracking-wider sticky top-0 z-10">
                     <tr>
-                      <th className="py-2 px-3">Item Specs</th>
-                      <th className="py-2 px-3 text-right">
+                      <th className="py-2.5 px-3.5">Item Code & Material Description</th>
+                      <th className="py-2.5 px-3.5 text-right">
                         {reviewingRequest.requestCategory === 'foc' ? 'Project FOC Pool Avail.' : 'Main Warehouse Avail.'}
                       </th>
-                      <th className="py-2 px-3 text-right">Site Requested</th>
-                      <th className="py-2 px-3 text-right w-48 font-bold text-slate-900">Approved Qty to Dispatch</th>
-                      <th className="py-2 px-3 text-center w-28">Item Action</th>
+                      <th className="py-2.5 px-3.5 text-right">Site Requested</th>
+                      <th className="py-2.5 px-3.5 text-right w-48 font-bold text-slate-900">Approved Qty to Dispatch</th>
+                      <th className="py-2.5 px-3.5 text-center w-28">Item Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -2289,24 +2304,24 @@ export const StockRequestsView: React.FC = () => {
                               : 'hover:bg-slate-50/50 border-l-4 border-l-transparent'
                           }`}
                         >
-                          <td className="py-2.5 px-3">
+                          <td className="py-3 px-3.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200">
+                              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-xs border border-slate-200">
                                 {itm?.itemCode}
                               </span>
                               {itm && isMachineryItem(itm) ? (
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                   🚜 Machinery
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                   🧱 Material
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{itm?.itemName}</div>
+                            <div className="text-sm font-bold text-slate-900 mt-1">{itm?.itemName}</div>
                             {itm?.description && (
-                              <div className="text-[10px] text-slate-500 italic line-clamp-1 max-w-[240px]">{itm.description}</div>
+                              <div className="text-xs text-slate-500 italic line-clamp-1 max-w-[260px]">{itm.description}</div>
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono whitespace-nowrap">
@@ -2515,13 +2530,13 @@ export const StockRequestsView: React.FC = () => {
             </p>
 
             <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-700 border-b border-slate-200">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-700 border-b border-slate-200 text-xs font-bold uppercase tracking-wider">
                   <tr>
-                    <th className="py-2.5 px-3">Item Description</th>
-                    <th className="py-2.5 px-3 text-center">Unit</th>
-                    <th className="py-2.5 px-3 text-right">Dispatched Qty</th>
-                    <th className="py-2.5 px-3 text-right">Actually Received Qty</th>
+                    <th className="py-2.5 px-3.5">Material Description</th>
+                    <th className="py-2.5 px-3.5 text-center">Unit</th>
+                    <th className="py-2.5 px-3.5 text-right">Dispatched Qty</th>
+                    <th className="py-2.5 px-3.5 text-right">Actually Received Qty</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -2532,25 +2547,25 @@ export const StockRequestsView: React.FC = () => {
 
                     return (
                       <tr key={row.itemId}>
-                        <td className="py-2.5 px-3">
+                        <td className="py-3 px-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono font-semibold text-slate-900 bg-slate-100 px-1.5 py-0.2 rounded text-[11px] border border-slate-200">
+                            <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-xs border border-slate-200">
                               {itm?.itemCode}
                             </span>
                             {itm && isMachineryItem(itm) ? (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                 🚜 Machinery
                               </span>
                             ) : (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 🧱 Material
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] font-semibold text-slate-800 truncate max-w-[200px] mt-0.5">{itm?.itemName}</div>
+                          <div className="text-sm font-bold text-slate-900 mt-1">{itm?.itemName}</div>
                         </td>
-                        <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-500">
+                        <td className="py-3 px-3.5 text-center font-medium text-slate-600">{itm?.unit}</td>
+                        <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-600">
                           {formatNumber(row.approvedQty ?? row.requestedQty)}
                         </td>
                         <td className="py-2.5 px-3 text-right">

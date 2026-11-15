@@ -54,6 +54,27 @@ export function formatDateTime(isoString?: string): string {
   }
 }
 
+export function formatDateTimeParts(isoString?: string): { date: string; time: string } {
+  if (!isoString) return { date: '—', time: '' };
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return { date: isoString, time: '' };
+    const date = d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+    const time = d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    return { date, time };
+  } catch {
+    return { date: isoString, time: '' };
+  }
+}
+
 export function formatDate(isoString?: string): string {
   if (!isoString) return '—';
   try {

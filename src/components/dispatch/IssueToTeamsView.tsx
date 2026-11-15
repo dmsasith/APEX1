@@ -24,7 +24,7 @@ import {
   getUserAssignedSiteIds,
   userHasSiteAccess,
 } from '../../types';
-import { formatNumber, formatDateTime } from '../../utils/exportUtils';
+import { formatNumber, formatDateTime, formatDateTimeParts } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { StockBalanceCell } from '../common/LowStockIndicator';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -685,23 +685,23 @@ export const IssueToTeamsView: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
               <tr>
-                <th className="py-3 px-3">Issue Note #</th>
-                <th className="py-3 px-3">Date & Time</th>
-                <th className="py-3 px-3">Site Branch</th>
-                <th className="py-3 px-3">Field Team</th>
-                <th className="py-3 px-3">Work Order</th>
-                <th className="py-3 px-4">Materials Dispatched</th>
-                <th className="py-3 px-3">Issued By</th>
-                <th className="py-3 px-3 text-right">Actions</th>
+                <th className="py-3 px-2.5">Issue Note #</th>
+                <th className="py-3 px-2 w-24">Date & Time</th>
+                <th className="py-3 px-2.5">Site Branch</th>
+                <th className="py-3 px-2.5">Field Team</th>
+                <th className="py-3 px-2.5">Work Order</th>
+                <th className="py-3 px-2.5">Materials Dispatched</th>
+                <th className="py-3 px-2.5">Issued By</th>
+                <th className="py-3 px-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {visibleIssues.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400 text-sm">
                     No issues logged yet.
                   </td>
                 </tr>
@@ -709,41 +709,53 @@ export const IssueToTeamsView: React.FC = () => {
                 visibleIssues.map((iss) => {
                   const s = sites.find((site) => site.id === iss.siteId);
                   const t = teams.find((team) => team.id === iss.teamId);
+                  const dtParts = formatDateTimeParts(iss.issueDate);
 
                   return (
                     <tr key={iss.id} className="hover:bg-slate-50">
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                      <td className="py-3 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
                         {iss.issueNoteNumber}
                       </td>
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap font-mono text-[11px]">
-                        {formatDateTime(iss.issueDate)}
+                      <td className="py-3 px-2 text-slate-600 whitespace-nowrap font-mono text-xs align-top leading-tight">
+                        <div className="font-semibold text-slate-800">{dtParts.date}</div>
+                        {dtParts.time && <div className="text-[11px] text-slate-500 mt-0.5">{dtParts.time}</div>}
                       </td>
-                      <td className="py-3 px-3 text-slate-700 whitespace-nowrap font-medium">
+                      <td className="py-3 px-2.5 text-slate-800 whitespace-nowrap font-bold align-top">
                         {s?.name}
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <span className="font-semibold text-blue-700">{t?.teamName || 'Team'}</span>
-                        <div className="text-[10px] text-slate-500">Lead: {t?.teamLeaderName}</div>
+                      <td className="py-3 px-2.5 whitespace-nowrap align-top">
+                        <span className="font-bold text-blue-700">{t?.teamName || 'Team'}</span>
+                        <div className="text-xs text-slate-500">Lead: {t?.teamLeaderName}</div>
                       </td>
-                      <td className="py-3 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                      <td className="py-3 px-2.5 font-mono font-semibold text-slate-900 whitespace-nowrap align-top">
                         {iss.workOrderRef}
                       </td>
-                      <td className="py-3 px-4 max-w-xs">
-                        <div className="space-y-0.5">
+                      <td className="py-3 px-2.5 align-top">
+                        <div className="space-y-1.5">
                           {iss.items.map((row) => {
                             const itm = items.find((i) => i.id === row.itemId);
                             return (
-                              <div key={row.itemId} className="text-slate-700 text-xs">
-                                <strong className="font-mono text-slate-900">{itm?.itemCode}:</strong> {row.quantity} {itm?.unit}
+                              <div
+                                key={row.itemId}
+                                className="flex items-center gap-2 flex-wrap bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/80 text-slate-800 text-sm"
+                              >
+                                <span className="font-mono font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded text-xs border border-slate-200">
+                                  {itm?.itemCode}
+                                </span>
+                                <span className="font-bold text-slate-900">{itm?.itemName || 'Material Item'}</span>
+                                <span className="text-slate-300">·</span>
+                                <span className="font-mono font-extrabold text-emerald-700">
+                                  {formatNumber(row.quantity)} {itm?.unit}
+                                </span>
                               </div>
                             );
                           })}
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap text-[11px]">
+                      <td className="py-3.5 px-3.5 text-slate-600 whitespace-nowrap text-xs">
                         {iss.issuedBy}
                       </td>
-                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                      <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSelectedIssueForPrint(iss)}

@@ -876,17 +876,17 @@ export const MainStockView: React.FC = () => {
       {activeTab === 'inventory' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1150px] text-xs text-left">
-              <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <table className="w-full min-w-[1150px] text-sm text-left">
+              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="py-3 px-3 w-40">Item Code</th>
-                  <th className="py-3 px-4 w-96">Item Name</th>
-                  <th className="py-3 px-3 w-64">Category</th>
-                  <th className="py-3 px-3 text-center w-24">Unit</th>
-                  <th className="py-3 px-3 text-right w-32">Total Received</th>
-                  <th className="py-3 px-3 text-right w-32">Dispatched to Sites</th>
-                  <th className="py-3 px-4 text-right w-40">Main In-Stock Balance</th>
-                  <th className="py-3 px-3 text-center w-28">Action</th>
+                  <th className="py-3.5 px-3.5 w-40">Item Code</th>
+                  <th className="py-3.5 px-4 w-96">Material Description (Item Name)</th>
+                  <th className="py-3.5 px-3.5 w-64">Category</th>
+                  <th className="py-3.5 px-3.5 text-center w-24">Unit</th>
+                  <th className="py-3.5 px-3.5 text-right w-32">Total Received</th>
+                  <th className="py-3.5 px-3.5 text-right w-32">Dispatched to Sites</th>
+                  <th className="py-3.5 px-4 text-right w-40">Main In-Stock Balance</th>
+                  <th className="py-3.5 px-3.5 text-center w-28">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -918,47 +918,47 @@ export const MainStockView: React.FC = () => {
                     const stock = getMainWarehouseStock(item.id);
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                        <td className="py-3.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                           {item.itemCode}
                         </td>
-                        <td className="py-3 px-4 text-slate-800 font-medium whitespace-normal break-words">
-                          <div>{item.itemName}</div>
+                        <td className="py-3.5 px-4 text-slate-900 font-bold whitespace-normal break-words">
+                          <div className="text-sm">{item.itemName}</div>
                           {stock.focReceived > 0 && (
-                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
                                 🎁 Includes Client FOC: {formatNumber(stock.focReceived)} {item.unit}
                               </span>
                               {stock.companyReceived > 0 && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                                   📦 GRN: {formatNumber(stock.companyReceived)} {item.unit}
                                 </span>
                               )}
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-slate-600 whitespace-normal break-words font-medium">
+                        <td className="py-3.5 px-3.5 text-slate-600 whitespace-normal break-words font-medium">
                           {item.category}
                         </td>
-                        <td className="py-3 px-3 text-center text-slate-600 font-medium">
+                        <td className="py-3.5 px-3.5 text-center text-slate-600 font-semibold">
                           {item.unit}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-slate-700 font-semibold">
+                        <td className="py-3.5 px-3.5 text-right font-mono text-slate-800 font-bold">
                           <div>{formatNumber(stock.totalReceived)}</div>
                           {stock.focReceived > 0 && (
-                            <div className="text-[10px] text-indigo-700 font-sans font-bold">
+                            <div className="text-xs text-indigo-700 font-sans font-bold">
                               🎁 {formatNumber(stock.focReceived)} FOC
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-slate-700 font-semibold">
+                        <td className="py-3.5 px-3.5 text-right font-mono text-slate-800 font-bold">
                           <div>{stock.dispatched > 0 ? `-${formatNumber(stock.dispatched)}` : '0'}</div>
                           {stock.focDispatched > 0 && (
-                            <div className="text-[10px] text-indigo-700 font-sans font-bold">
+                            <div className="text-xs text-indigo-700 font-sans font-bold">
                               🎁 -{formatNumber(stock.focDispatched)} FOC
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3.5 px-4 text-right">
                           {/* Low Stock Red Indicator requirement */}
                           <StockBalanceCell
                             balance={stock.availableBalance}
@@ -966,14 +966,14 @@ export const MainStockView: React.FC = () => {
                             unit={item.unit}
                           />
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3.5 px-3.5 text-center">
                           <button
                             onClick={() => {
                               setSelectedItemId(item.id);
                               setUnitCost(item.unitPrice);
                               setShowLogModal(true);
                             }}
-                            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition-colors"
+                            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors"
                           >
                             + Inbound
                           </button>
@@ -1494,26 +1494,26 @@ export const MainStockView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="py-3 px-3">Date & Time</th>
-                  <th className="py-3 px-3">Type</th>
-                  <th className="py-3 px-3">Reference / PO #</th>
-                  <th className="py-3 px-3">Supplier / Origin</th>
-                  <th className="py-3 px-3">Item Code</th>
-                  <th className="py-3 px-4">Item Name</th>
-                  <th className="py-3 px-3 text-right">Qty Received</th>
-                  <th className="py-3 px-3 text-right">Unit Cost</th>
-                  <th className="py-3 px-3 text-right">Total Cost</th>
-                  <th className="py-3 px-3">Received By</th>
-                  <th className="py-3 px-3 text-right">Action</th>
+                  <th className="py-3.5 px-3.5">Date & Time</th>
+                  <th className="py-3.5 px-3.5">Type</th>
+                  <th className="py-3.5 px-3.5">Reference / PO #</th>
+                  <th className="py-3.5 px-3.5">Supplier / Origin</th>
+                  <th className="py-3.5 px-3.5">Item Code</th>
+                  <th className="py-3.5 px-4">Material Description</th>
+                  <th className="py-3.5 px-3.5 text-right">Qty Received</th>
+                  <th className="py-3.5 px-3.5 text-right">Unit Cost</th>
+                  <th className="py-3.5 px-3.5 text-right">Total Cost</th>
+                  <th className="py-3.5 px-3.5">Received By</th>
+                  <th className="py-3.5 px-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-10 text-center text-slate-400">
+                    <td colSpan={11} className="py-10 text-center text-slate-400 text-sm">
                       No inbound transactions found.
                     </td>
                   </tr>
@@ -1522,12 +1522,12 @@ export const MainStockView: React.FC = () => {
                     const itm = items.find((i) => i.id === entry.itemId);
                     return (
                       <tr key={entry.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-3 text-slate-600 whitespace-nowrap font-mono text-[11px]">
+                        <td className="py-3.5 px-3.5 text-slate-600 whitespace-nowrap font-mono text-xs">
                           {formatDateTime(entry.timestamp)}
                         </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
+                        <td className="py-3.5 px-3.5 whitespace-nowrap">
                           <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                            className={`px-2 py-0.5 rounded text-xs font-bold ${
                               entry.entryType === 'Purchase'
                                 ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                 : 'bg-purple-50 text-purple-700 border border-purple-200'
@@ -1536,42 +1536,42 @@ export const MainStockView: React.FC = () => {
                             {entry.entryType}
                           </span>
                         </td>
-                        <td className="py-3 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                        <td className="py-3.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                           {entry.referenceNo}
                         </td>
-                        <td className="py-3 px-3 text-slate-700 whitespace-nowrap">
+                        <td className="py-3.5 px-3.5 text-slate-800 font-semibold whitespace-nowrap">
                           {entry.supplier}
                         </td>
-                        <td className="py-3 px-3 font-mono text-slate-800 whitespace-nowrap font-semibold">
+                        <td className="py-3.5 px-3.5 font-mono text-slate-900 whitespace-nowrap font-bold">
                           {itm?.itemCode}
                         </td>
-                        <td className="py-3 px-4 text-slate-800 max-w-xs truncate" title={itm?.itemName}>
+                        <td className="py-3.5 px-4 text-slate-900 font-bold max-w-xs" title={itm?.itemName}>
                           {itm?.itemName}
                           {entry.notes && (
-                            <div className="text-[10px] text-slate-500 italic mt-0.5">{entry.notes}</div>
+                            <div className="text-xs text-slate-500 font-normal italic mt-0.5">{entry.notes}</div>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                          +{formatNumber(entry.quantity)} <span className="text-[10px] text-slate-500 font-normal">{itm?.unit}</span>
+                        <td className="py-3.5 px-3.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                          +{formatNumber(entry.quantity)} <span className="text-xs text-slate-500 font-normal">{itm?.unit}</span>
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
+                        <td className="py-3.5 px-3.5 text-right font-mono text-slate-600 whitespace-nowrap">
                           {config.currencySymbol}{Number(entry.unitCost).toFixed(2)}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-semibold text-slate-900 whitespace-nowrap">
+                        <td className="py-3.5 px-3.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                           {config.currencySymbol}{formatNumber(Math.round(entry.quantity * entry.unitCost))}
                         </td>
-                        <td className="py-3 px-3 text-slate-600 whitespace-nowrap text-[11px]">
+                        <td className="py-3.5 px-3.5 text-slate-600 whitespace-nowrap text-xs">
                           {entry.receivedBy}
                         </td>
-                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => setSelectedEntryForPrint(entry)}
-                              className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                               title="Print Official GRN / Stock Receipt Voucher"
                             >
-                              <Printer className="w-3 h-3" />
+                              <Printer className="w-3.5 h-3.5" />
                               <span>Print GRN</span>
                             </button>
                             {isCentralAdmin && (

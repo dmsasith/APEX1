@@ -21,7 +21,7 @@ import {
   getUserAssignedSiteIds,
   userHasSiteAccess,
 } from '../../types';
-import { formatNumber, formatDateTime } from '../../utils/exportUtils';
+import { formatNumber, formatDateTimeParts } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
@@ -481,13 +481,13 @@ export const TeamReturnsView: React.FC = () => {
               </div>
             ) : (
               <div className="border border-slate-200 rounded-lg overflow-hidden max-h-72 overflow-y-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                     <tr>
-                      <th className="py-2 px-3">Item Code</th>
-                      <th className="py-2 px-3">Description</th>
-                      <th className="py-2 px-3 text-right">In-Hand</th>
-                      <th className="py-2 px-3 text-center">Yard Documented</th>
+                      <th className="py-2.5 px-3">Item Code</th>
+                      <th className="py-2.5 px-3">Material Description</th>
+                      <th className="py-2.5 px-3 text-right">In-Hand</th>
+                      <th className="py-2.5 px-3 text-center">Yard Documented</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -496,18 +496,18 @@ export const TeamReturnsView: React.FC = () => {
                       const isDoc = st.received > 0;
                       return (
                         <tr key={item.itemId} className="hover:bg-slate-50">
-                          <td className="py-2 px-3 font-mono font-semibold text-slate-900">{item.itemCode}</td>
-                          <td className="py-2 px-3 text-slate-700 font-medium max-w-[150px] truncate">{item.itemName}</td>
-                          <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                            {formatNumber(item.currentInHand)} <span className="text-[10px] text-slate-500">{item.unit}</span>
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{item.itemCode}</td>
+                          <td className="py-2.5 px-3 text-slate-900 font-bold max-w-[180px] truncate">{item.itemName}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                            {formatNumber(item.currentInHand)} <span className="text-xs text-slate-500">{item.unit}</span>
                           </td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-2.5 px-3 text-center">
                             {isDoc ? (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800" title={`Documented transfer: ${st.received} ${item.unit}`}>
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800" title={`Documented transfer: ${st.received} ${item.unit}`}>
                                 ✓ Documented ({st.received})
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-800" title="No transfer documented from Main Yard">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800" title="No transfer documented from Main Yard">
                                 ✕ Blocked (0)
                               </span>
                             )}
@@ -560,24 +560,24 @@ export const TeamReturnsView: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
               <tr>
-                <th className="py-3 px-3">Voucher #</th>
-                <th className="py-3 px-3">Date</th>
-                <th className="py-3 px-3">Site Branch</th>
-                <th className="py-3 px-3">Field Team</th>
-                <th className="py-3 px-3">Item Code</th>
-                <th className="py-3 px-4">Material Description</th>
-                <th className="py-3 px-3 text-right">Returned Qty</th>
-                <th className="py-3 px-3">Condition</th>
-                <th className="py-3 px-3 text-right">Actions</th>
+                <th className="py-3 px-2.5">Voucher #</th>
+                <th className="py-3 px-2 w-24">Date & Time</th>
+                <th className="py-3 px-2.5">Site Branch</th>
+                <th className="py-3 px-2.5">Field Team</th>
+                <th className="py-3 px-2.5">Item Code</th>
+                <th className="py-3 px-3">Material Description</th>
+                <th className="py-3 px-2.5 text-right">Returned Qty</th>
+                <th className="py-3 px-2.5">Condition</th>
+                <th className="py-3 px-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {visibleReturns.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400">
+                  <td colSpan={9} className="py-8 text-center text-slate-400 text-sm">
                     No return vouchers recorded yet.
                   </td>
                 </tr>
@@ -586,35 +586,37 @@ export const TeamReturnsView: React.FC = () => {
                   const s = sites.find((site) => site.id === ret.siteId);
                   const t = teams.find((team) => team.id === ret.teamId);
                   const itm = items.find((i) => i.id === ret.itemId);
+                  const dtParts = formatDateTimeParts(ret.returnDate);
 
                   return (
                     <tr key={ret.id} className="hover:bg-slate-50">
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                      <td className="py-3 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
                         {ret.returnVoucherNumber}
                       </td>
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap font-mono text-[11px]">
-                        {formatDateTime(ret.returnDate)}
+                      <td className="py-3 px-2 text-slate-600 whitespace-nowrap font-mono text-xs align-top leading-tight">
+                        <div className="font-semibold text-slate-800">{dtParts.date}</div>
+                        {dtParts.time && <div className="text-[11px] text-slate-500 mt-0.5">{dtParts.time}</div>}
                       </td>
-                      <td className="py-3 px-3 text-slate-700 whitespace-nowrap font-medium">
+                      <td className="py-3 px-2.5 text-slate-800 whitespace-nowrap font-bold align-top">
                         {s?.name}
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <span className="font-semibold text-slate-900">{t?.teamName}</span>
-                        <div className="text-[10px] text-slate-500">By: {ret.returnedBy}</div>
+                      <td className="py-3 px-2.5 whitespace-nowrap align-top">
+                        <span className="font-bold text-slate-900">{t?.teamName}</span>
+                        <div className="text-xs text-slate-500">By: {ret.returnedBy}</div>
                       </td>
-                      <td className="py-3 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                      <td className="py-3 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
                         {itm?.itemCode}
                       </td>
-                      <td className="py-3 px-4 text-slate-800 max-w-xs truncate" title={itm?.itemName}>
+                      <td className="py-3 px-3 text-slate-900 font-bold max-w-xs align-top" title={itm?.itemName}>
                         {itm?.itemName}
-                        {ret.reason && <div className="text-[10px] text-slate-500 italic mt-0.5 truncate">{ret.reason}</div>}
+                        {ret.reason && <div className="text-xs text-slate-500 font-normal italic mt-0.5 truncate">{ret.reason}</div>}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                        {formatNumber(ret.quantity)} <span className="text-[10px] text-slate-500 font-normal">{itm?.unit}</span>
+                      <td className="py-3 px-2.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap align-top">
+                        {formatNumber(ret.quantity)} <span className="text-xs text-slate-500 font-normal">{itm?.unit}</span>
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
+                      <td className="py-3 px-2.5 whitespace-nowrap align-top">
                         <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
                             ret.condition.includes('Good')
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-amber-50 text-amber-700 border border-amber-200'
@@ -623,7 +625,7 @@ export const TeamReturnsView: React.FC = () => {
                           {ret.condition}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                      <td className="py-3 px-2.5 text-right whitespace-nowrap align-top">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSelectedReturnForPrint(ret)}

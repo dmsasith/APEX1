@@ -2058,22 +2058,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+            <table className="w-full text-left text-sm text-slate-700">
+              <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-xs border-b border-slate-200">
                 <tr>
-                  <th className="py-2.5 px-3">Voucher #</th>
-                  <th className="py-2.5 px-3">Date</th>
-                  <th className="py-2.5 px-3">Project & Section</th>
-                  <th className="py-2.5 px-3">Team & Supervisor</th>
-                  <th className="py-2.5 px-3">Materials Consumed</th>
-                  <th className="py-2.5 px-3">Work Scope</th>
-                  <th className="py-2.5 px-3 text-right">Actions</th>
+                  <th className="py-3 px-3.5">Voucher #</th>
+                  <th className="py-3 px-3.5">Date</th>
+                  <th className="py-3 px-3.5">Project & Section</th>
+                  <th className="py-3 px-3.5">Team & Supervisor</th>
+                  <th className="py-3 px-4 min-w-[300px]">Materials Consumed (Code & Description)</th>
+                  <th className="py-3 px-3.5">Work Scope</th>
+                  <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {filteredUsages.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
                       No project material usage records match your search filter.
                     </td>
                   </tr>
@@ -2083,60 +2083,74 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                     return (
                       <tr key={usage.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-2.5 px-3 font-mono font-bold text-teal-700 whitespace-nowrap">
+                        <td className="py-3 px-3.5 font-mono font-bold text-teal-700 whitespace-nowrap">
                           {usage.usageVoucherNumber}
                         </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap text-slate-600">
+                        <td className="py-3 px-3.5 whitespace-nowrap text-slate-600 font-mono text-xs">
                           {usage.usageDate || usage.date}
                         </td>
-                        <td className="py-2.5 px-3">
-                          <div className="font-semibold text-slate-800">{usage.projectName}</div>
+                        <td className="py-3 px-3.5">
+                          <div className="font-bold text-slate-900 text-sm">{usage.projectName}</div>
                           {(usage.parentProjectName || projects.find((p) => p.id === usage.projectId)?.parentProjectName) && (
-                            <div className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                            <div className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
                               ↳ Under Main: {usage.parentProjectName || projects.find((p) => p.id === usage.projectId)?.parentProjectName}
                             </div>
                           )}
-                          <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
                             {usage.projectTypeName && (
-                              <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-200 font-bold">
+                              <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 font-bold">
                                 {usage.projectTypeName}
                               </span>
                             )}
-                            <span className="font-mono text-slate-400">
+                            <span className="font-mono text-slate-500">
                               ID: {projects.find((p) => p.id === usage.projectId)?.projectId || usage.projectId}
                             </span>
                           </div>
                         </td>
-                        <td className="py-2.5 px-3">
+                        <td className="py-3 px-3.5">
                           <div className="font-bold text-slate-900">{usage.teamName}</div>
-                          <div className="text-[10px] text-slate-500">
+                          <div className="text-xs text-slate-500">
                             Lead: {usage.supervisorOrLeader || usage.supervisorOrLeaderName}
                           </div>
                         </td>
-                        <td className="py-2.5 px-3">
-                          <div className="font-bold text-slate-900">
-                            {totalItemsQty} units ({usage.items.length} line items)
+                        <td className="py-3 px-4 min-w-[300px]">
+                          <div className="text-xs font-bold text-slate-500 mb-1">
+                            {totalItemsQty} total units ({usage.items.length} line item{usage.items.length === 1 ? '' : 's'})
                           </div>
-                          <div className="text-[10px] text-slate-500 line-clamp-1">
-                            {usage.items
-                              .map((row) => {
-                                const itm = items.find((i) => i.id === row.itemId);
-                                return `${row.quantity}x ${itm?.itemCode || itm?.itemName || 'Item'}`;
-                              })
-                              .join(', ')}
+                          <div className="space-y-1">
+                            {usage.items.map((row) => {
+                              const itm = items.find((i) => i.id === row.itemId);
+                              return (
+                                <div
+                                  key={row.itemId}
+                                  className="flex items-center gap-1.5 flex-wrap bg-slate-50 px-2 py-1 rounded border border-slate-200/80 text-xs"
+                                >
+                                  <span className="font-mono font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                    {itm?.itemCode || 'ITEM'}
+                                  </span>
+                                  <span className="font-bold text-slate-900 text-sm">
+                                    {itm?.itemName || 'Material Item'}
+                                  </span>
+                                  <span className="text-slate-300">·</span>
+                                  <span className="font-mono font-extrabold text-teal-800 text-sm">
+                                    {formatNumber(row.quantity)} {itm?.unit}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </td>
-                        <td className="py-2.5 px-3 max-w-xs truncate text-slate-600">
+                        <td className="py-3 px-3.5 max-w-xs truncate text-slate-600">
                           {usage.workDetails || 'N/A'}
                         </td>
-                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <td className="py-3 px-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => setSelectedUsageForPrint(usage)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded border border-teal-200"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded border border-teal-200"
                               title="Print Usage Voucher"
                             >
-                              <Printer className="w-3 h-3" />
+                              <Printer className="w-3.5 h-3.5" />
                               <span>Voucher</span>
                             </button>
 

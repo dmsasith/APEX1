@@ -613,17 +613,17 @@ export const SiteInventoriesView: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                   <tr>
-                    <th className="py-3 px-3">Item Code</th>
-                    <th className="py-3 px-4">Material Description</th>
-                    <th className="py-3 px-3">Category</th>
-                    <th className="py-3 px-3 text-center">Unit</th>
-                    <th className="py-3 px-3 text-right">Received (HQ)</th>
-                    <th className="py-3 px-3 text-right">Returned (Teams)</th>
-                    <th className="py-3 px-3 text-right">Issued (Teams)</th>
-                    <th className="py-3 px-4 text-right">Available Site Stock</th>
+                    <th className="py-3.5 px-3.5">Item Code</th>
+                    <th className="py-3.5 px-4">Material Description</th>
+                    <th className="py-3.5 px-3.5">Category</th>
+                    <th className="py-3.5 px-3.5 text-center">Unit</th>
+                    <th className="py-3.5 px-3.5 text-right">Received (HQ)</th>
+                    <th className="py-3.5 px-3.5 text-right">Returned (Teams)</th>
+                    <th className="py-3.5 px-3.5 text-right">Issued (Teams)</th>
+                    <th className="py-3.5 px-4 text-right">Available Site Stock</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -666,41 +666,41 @@ export const SiteInventoriesView: React.FC = () => {
 
                       return (
                         <tr key={item.id} className="hover:bg-slate-50">
-                          <td className="py-3 px-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                          <td className="py-3.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                             {item.itemCode}
                           </td>
-                          <td className="py-3 px-4 text-slate-800 font-medium max-w-xs">
-                            <div>{item.itemName}</div>
+                          <td className="py-3.5 px-4 text-slate-900 font-bold max-w-sm">
+                            <div className="text-sm">{item.itemName}</div>
                             {stock.focReceived > 0 && (
-                              <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
                                   🎁 Client FOC: {formatNumber(stock.focReceived)} {item.unit}
                                 </span>
                                 {stock.normalReceived > 0 && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                                     📦 Normal: {formatNumber(stock.normalReceived)} {item.unit}
                                   </span>
                                 )}
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-3 text-slate-600 whitespace-nowrap">{item.category}</td>
-                          <td className="py-3 px-3 text-center text-slate-600 font-medium">{item.unit}</td>
-                          <td className="py-3 px-3 text-right font-mono text-slate-700 font-semibold">
+                          <td className="py-3.5 px-3.5 text-slate-600 whitespace-nowrap font-medium">{item.category}</td>
+                          <td className="py-3.5 px-3.5 text-center text-slate-600 font-semibold">{item.unit}</td>
+                          <td className="py-3.5 px-3.5 text-right font-mono text-slate-800 font-bold">
                             <div>{formatNumber(stock.received)}</div>
                             {stock.focReceived > 0 && (
-                              <div className="text-[10px] text-indigo-700 font-sans font-bold">
+                              <div className="text-xs text-indigo-700 font-sans font-bold">
                                 🎁 {formatNumber(stock.focReceived)} FOC
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-3 text-right font-mono text-emerald-700 font-medium">
+                          <td className="py-3.5 px-3.5 text-right font-mono text-emerald-700 font-bold">
                             +{formatNumber(stock.returned)}
                           </td>
-                          <td className="py-3 px-3 text-right font-mono text-slate-600">
+                          <td className="py-3.5 px-3.5 text-right font-mono text-slate-700 font-semibold">
                             -{formatNumber(stock.issued)}
                           </td>
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             <StockBalanceCell
                               balance={stock.availableBalance}
                               threshold={stock.threshold}
@@ -1137,14 +1137,14 @@ export const SiteInventoriesView: React.FC = () => {
 
                     {/* Consumed Materials Table */}
                     <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                      <table className="w-full text-xs text-left">
-                        <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                           <tr>
-                            <th className="py-2 px-3">Item Code</th>
-                            <th className="py-2 px-3">Material Description</th>
-                            <th className="py-2 px-3">Category</th>
-                            <th className="py-2 px-3 text-center">Unit</th>
-                            <th className="py-2 px-3 text-right font-bold text-slate-900">Qty Consumed</th>
+                            <th className="py-2.5 px-3.5">Item Code</th>
+                            <th className="py-2.5 px-3.5">Material Description</th>
+                            <th className="py-2.5 px-3.5">Category</th>
+                            <th className="py-2.5 px-3.5 text-center">Unit</th>
+                            <th className="py-2.5 px-3.5 text-right font-bold text-slate-900">Qty Consumed</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -1152,15 +1152,15 @@ export const SiteInventoriesView: React.FC = () => {
                             const itm = items.find((i) => i.id === row.itemId);
                             return (
                               <tr key={iIdx} className="hover:bg-slate-50/80">
-                                <td className="py-2 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                <td className="py-2.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                                   {itm?.itemCode || 'ITEM'}
                                 </td>
-                                <td className="py-2 px-3 font-medium text-slate-800">
+                                <td className="py-2.5 px-3.5 font-bold text-slate-900">
                                   {itm?.itemName || 'Material Item'}
                                 </td>
-                                <td className="py-2 px-3 text-slate-500">{itm?.category || 'General'}</td>
-                                <td className="py-2 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
-                                <td className="py-2 px-3 text-right font-mono font-extrabold text-teal-800">
+                                <td className="py-2.5 px-3.5 text-slate-600 font-medium">{itm?.category || 'General'}</td>
+                                <td className="py-2.5 px-3.5 text-center font-medium text-slate-600">{itm?.unit || 'units'}</td>
+                                <td className="py-2.5 px-3.5 text-right font-mono font-extrabold text-teal-800">
                                   {formatNumber(row.quantity)} {itm?.unit}
                                 </td>
                               </tr>
