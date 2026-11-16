@@ -220,38 +220,38 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     id: 'ch-05',
     number: 'Chapter 05',
     category: 'formats',
-    categoryLabel: 'Document Formats & Print Studio',
-    title: 'How to Configure Company Document Formats (Upload PDF / Image)',
+    categoryLabel: 'ISO Format Settings, Signers & Digital Signatures',
+    title: 'How to Configure ISO 9001:2015 Document Formats, Auto Tenant Header, Signers & Digital Signatures',
     summary:
-      'Upload your existing company PDF or Image forms into 4 unified Format Slots so the system automatically adapts them and prints every operational voucher in your official company format.',
+      'Step-by-step guide to the 3 tabs inside Document Templates: (1) Section Formats (ISO 9001:2015 Standard & PDF/Image Upload), (2) Auto Tenant Header & Signer Roles, and (3) Digital Signatures Library + Isolated Single-Click A4 Printing.',
     icon: Upload,
     steps: [
       {
-        stepTitle: '1. Open Document Templates -> Section Formats (Upload PDF / Image)',
+        stepTitle: '1. Tab 1 — "1. Section Formats (ISO Standard & Upload PDF/Image)" & Format Settings',
         detail:
-          'Go to "Document Templates" in the sidebar and open the "Section Formats (Upload PDF / Image)" tab. All company printable documents are grouped into 4 standard Format Slots (FORMAT-01 to FORMAT-04) according to their table structure.',
+          'Open "Document Templates -> 1. Section Formats (ISO Standard & Upload PDF/Image)". By default, all 4 format groups (FORMAT-01 to FORMAT-04) use the official ISO 9001:2015 Controlled Document Format (ISO-9001-QMS-F01 to F04) with your logged-in Tenant Company Name, Phone, Email, and Address auto-populated into the header. You can also upload your own company PDF (.pdf) or Image (.png, .jpg, .webp) into any card, enable "Use FORMAT-01 across all GRN, FOC & Stock Return sections too" to unify Format-01 & 02 in 1 click, or click "Customize Format Settings & Preview" to edit Render Mode, Header Crop %, Table Column Labels, and Sign-Off Titles in the Live A4 Studio.',
       },
       {
-        stepTitle: '2. Upload Your Company Format (PDF or Image) & Check "This Format Affects To"',
+        stepTitle: '2. Tab 2 — "2. Auto Tenant Header & Signers" (Company Logo & Signer Matrix)',
         detail:
-          'Upload a PDF (.pdf) or Image (.png, .jpg, .webp) of your company form into any Format Slot. The system automatically extracts the top header banner, brand color, ISO form reference code, and table/signature metadata. Directly below each upload box, the "This Format Affects To" panel shows every system section and document code (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV) governed by that format.',
+          'Switch to Tab 2 ("2. Auto Tenant Header & Signers") to configure your ISO header and default Signers: (a) Under "1. Tenant Company Identity & ISO Header Details", review your auto-loaded Company Name, Scope Subtitle, Phone, Email, Address, and choose "Logo Monogram Text" or "Logo Image (Upload)" (click "Sync from Tenant Account" anytime to re-sync). (b) Under "2. ISO Signer Names, Designations & Department Matrix", enter the Signer Full Name, Designation, and Department for "Prepared & Checked By" and "Authorized & Approved By", plus "Reviewed By", "ISO Issue Number", and "ISO Revision Number", then click "Save ISO Header & Signers".',
       },
       {
-        stepTitle: '3. Use Unified Format Mode or Customize in the Live A4 Studio',
+        stepTitle: '3. Tab 3 — "3. Digital Signatures" (Draw on Pad or Upload Signature Image)',
         detail:
-          'If your company uses the same voucher layout for both Internal Issues/Usages (FORMAT-01) and Goods Receipts/Returns (FORMAT-02), enable the 1-click "Use Unified Format-01 & 02" toggle. Use the Live A4 Format Studio on the right to choose Render Mode (Header Banner + System Table, Full Page Background Watermark, or Smart Reconstructed Grid), adjust Header Crop %, and edit Column Headers & Sign-off Titles.',
+          'Switch to Tab 3 ("3. Digital Signatures") and click "+ Add Digital Signature". Enter the Signer Full Name (e.g., matching your Prepared By or Approved By name), Designation/Role, and Department. Then either draw the signature directly on the interactive Signature Pad or click "Upload Signature Image" to upload a PNG/JPG signature, and click "Save Signature". Saved signatures automatically match Signers by name on all vouchers — and inside any Voucher Print window ("Customize Voucher Header, Signers & Digital Signatures"), you can also pick any saved Digital Signature from the dropdowns on the fly.',
       },
       {
-        stepTitle: '4. Print Directly from Any Operational Section',
+        stepTitle: '4. Isolated Single-Click A4 Print Preview & Genuine PDF Export Across All Sections',
         detail:
-          'Once saved, clicking "Print / Save PDF" in Stock Requisitions (RN), Issue to Teams (IN), Project Usage (PU), Team Stock Audit (TSR), Goods Receipt (GRN), Client FOC (FOC), Team/Branch Returns (RV/BRM), Purchase Orders (PO), or Supplier Debit Notes (RTV) automatically prints in your configured company format.',
+          'Clicking "Print" on any voucher (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV) or report (including "Full Report for This Site (Project)", Team In-Hand, Branch Directory, Barcode Labels, and Audit Ledger) immediately opens a clean, isolated A4 print preview of ONLY that voucher or report without printing the full web page. Use the separate "Save PDF" / "Convert to PDF" button whenever you want to download an A4 PDF file directly.',
       },
     ],
     keyOutputs: [
-      '4 Grouped Company Format Slots (FORMAT-01 to FORMAT-04)',
-      'Client-Side PDF & Image Header / Brand Color Auto-Extractor',
-      '"This Format Affects To" Section Mapping Badges',
-      'Live A4 Format Builder & 3 Print Render Modes',
+      'Default ISO 9001:2015 Controlled Formats (FORMAT-01 to FORMAT-04) + Auto Tenant Header',
+      'Custom PDF/Image Upload, 1-Click Format Unification & Live A4 Column/Title Settings',
+      'ISO Signer Governance Matrix (Prepared By, Approved By, Reviewed By + Designations)',
+      'Digital Signatures Library (Draw or Upload) + Isolated Single-Click A4 Voucher Print',
     ],
   },
   {
@@ -259,9 +259,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     number: 'Chapter 06',
     category: 'admin',
     categoryLabel: 'Machinery, Audits & Backups',
-    title: 'Plant & Equipment Fleet, Corporate Letterheads, Audit Trail & Backups',
+    title: 'Plant & Equipment Fleet, Signer Governance, Audit Trail & Offline Backups',
     summary:
-      'Maintain full accountability over high-value machinery assets, global letterhead branding, user activity logs, and offline data backups.',
+      'Maintain full accountability over high-value machinery assets, ISO document control, user activity logs, and offline data backups.',
     icon: ShieldCheck,
     steps: [
       {
@@ -270,9 +270,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Track heavy machinery, generators, testing instruments, and power tools separately from consumables - know whether an asset is in the Central Yard, at a Site Branch, or with a Field Crew.',
       },
       {
-        stepTitle: '2. Global Letterhead & Company Branding Studio',
+        stepTitle: '2. Per-Voucher Live Customization (Header, Signers & Digital Signatures)',
         detail:
-          'In "Document Templates -> Global Letterhead Studio", configure your Company Name, Logo, Address, Header Style, and default Signature Blocks ("Prepared By", "Checked By", "Received By") across all system reports.',
+          'When opening any voucher for printing, click "Customize Voucher Header, Signers & Digital Signatures" at the top of the modal to override Document No, Date, Project Code, Prepared/Approved Signer Names, Designations, or Digital Signatures for that specific print.',
       },
       {
         stepTitle: '3. Tamper-Proof Audit Trail & Safe Recycle Bin',
@@ -287,6 +287,7 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     ],
     keyOutputs: [
       'Machinery & Returnable Tool Custody Ledger',
+      'Per-Voucher Live Signer & Digital Signature Selector',
       'Tamper-Proof Audit Trail & Protected Recycle Bin',
       '1-Click Full JSON Backup, Offline Viewer & Excel Export',
     ],
@@ -430,7 +431,7 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       {
         stepTitle: '3. Usage Vouchers History — "Full Report for This Site (Project)" සහ Reconciliation',
         detail:
-          '"Material Usage / Daily Progress Entry -> Usage Vouchers History" ටැබ් එකෙහි ඕනෑම Project එකක් තේරූ විට "Full Report for This Site (Project)" බටන් එක ලැබේ. එම වාර්තාව කොටස් 2කින් යුක්තය: (Part 1) එම Project එකට වැඩ කළ සියලුම Teams වෙන වෙනම භාවිතා කළ හා Wastage කළ ප්‍රමාණ + එක් එක් Team එකේ මුළු එකතුව, සහ (Part 2) සියලුම Teams වල මුළු එකතුව (Grand Total) — Print/PDF හෝ Excel CSV ලෙස බාගත කළ හැක.',
+          '"Material Usage / Daily Progress Entry -> Usage Vouchers History" ටැබ් එකෙහි ඕනෑම Project එකක් තේරූ විට "Full Report for This Site (Project)" බටන් එක ලැබේ. එම වාර්තාව කොටස් 2කින් යුක්තය: (Part 1) එම Project එකට වැඩ කළ සියලුම Teams වෙන වෙනම භාවිතා කළ හා Wastage කළ ප්‍රමාණ + එක් එක් Team එකේ මුළු එකතුව, සහ (Part 2) සියලුම Teams වල මුළු එකතුව (Grand Total) — Print Report හෝ Save PDF / Excel CSV ලෙස බාගත කළ හැක.',
       },
       {
         stepTitle: '4. කණ්ඩායම් ආපසු භාරදීම් (RV) සහ ශාඛාවෙන් ප්‍රධාන ගබඩාවට ආපසු යැවීම් (BRM)',
@@ -449,38 +450,38 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     id: 'ch-05',
     number: '05 වන පරිච්ඡේදය',
     category: 'formats',
-    categoryLabel: 'ආයතනයේ Document Formats සකස් කරන ආකාරය',
-    title: 'Company Document Formats (PDF හෝ Image) Upload කර පද්ධතියට සකස් කරගන්නා ආකාරය',
+    categoryLabel: 'Format Settings, Signers සහ Digital Signatures සකස් කිරීම',
+    title: 'ISO 9001:2015 Format Settings, Auto Tenant Header, Signers සහ Digital Signatures සකස් කරගන්නා ආකාරය',
     summary:
-      'ඔබේ ආයතනයේ දැනට භාවිත කරන නිල ආකෘති පත්‍ර (PDF හෝ Image) පද්ධතියට Upload කර, අදාළ සියලුම Sections වලින් එම ආකෘතියෙන්ම Print වන සේ සකස් කරගන්නා සම්පූර්ණ පියවර.',
+      '"Document Templates" හි ඇති ටැබ් 3 හරහා (1) ISO 9001:2015 Standard Format සහ PDF/Image Upload කිරීම, (2) Auto Tenant Header සහ Signers (අත්සන් කරන නිලධාරීන්ගේ නම් හා තනතුරු) සැකසීම, සහ (3) Digital Signatures එකතු කර තනි ක්ලික් එකකින් A4 Voucher Print කරගන්නා සම්පූර්ණ පියවර.',
     icon: Upload,
     steps: [
       {
-        stepTitle: '1. Document Templates -> Section Formats (Upload PDF / Image) වෙත පිවිසෙන්න',
+        stepTitle: '1. Tab 1 — "1. Section Formats (ISO Standard & Upload PDF/Image)" සහ Format Settings',
         detail:
-          'වම්පස මෙනුවෙන් "Document Templates" වෙත ගොස් උඩින්ම ඇති "Section Formats (Upload PDF / Image)" ටැබ් එක තෝරන්න. ආයතනයේ සමාන ආකෘතියක් ඇති ලේඛන සියල්ල ප්‍රධාන කාණ්ඩ 4කට (FORMAT-01 සිට FORMAT-04 දක්වා) එහි වෙන් කර ඇත.',
+          'වම්පස මෙනුවෙන් "Document Templates" වෙත ගොස් 1 වන ටැබ් එක ("1. Section Formats") විවෘත කරන්න. කිසිදු ගොනුවක් Upload නොකළද, කාණ්ඩ 4ම (FORMAT-01 සිට FORMAT-04 දක්වා) ජාත්‍යන්තර ISO 9001:2015 Controlled Document Format එකෙන් සහ ඔබේ ආයතනයේ නම (Tenant Company Name), දුරකථන, Email හා ලිපිනය ස්වයංක්‍රීයව Header එකට යොදාගනී. ඔබට ඔබේම PDF (.pdf) හෝ Image (.png/.jpg) ආකෘතියක් Upload කිරීමටත්, "Use FORMAT-01 across all GRN, FOC & Stock Return sections too" මගින් Format-01 සහ 02 ඒකාබද්ධ කිරීමටත්, "Customize Format Settings & Preview" ක්ලික් කර Table Column Names, Sign-off Titles හා Render Mode වෙනස් කිරීමටත් පුළුවන.',
       },
       {
-        stepTitle: '2. PDF හෝ Image එක Upload කර "This Format Affects To" පරීක්ෂා කරන්න',
+        stepTitle: '2. Tab 2 — "2. Auto Tenant Header & Signers" (ආයතනයේ විස්තර, Logo සහ Signers සැකසීම)',
         detail:
-          'අදාළ Format කාණ්ඩය තුළට ඔබේ ආයතනයේ Format එකේ PDF (.pdf) හෝ Image (.png, .jpg, .webp) ගොනුවක් Upload කරන්න. එවිට පද්ධතිය මගින් එහි උඩ Header/Letterhead කොටස, Brand Color එක, ISO Form Code එක සහ Table/Signature විස්තර ස්වයංක්‍රීයව හඳුනාගෙන සකස් කරගනී. හැම Upload box එකකටම යටින් ඇති "This Format Affects To" කොටසේ එම Format එක බලපාන සියලුම System Sections (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV) පැහැදිලිව පෙන්වයි.',
+          '2 වන ටැබ් එක ("2. Auto Tenant Header & Signers") වෙත ගොස්: (අ) "1. Tenant Company Identity & ISO Header Details" යටතේ ස්වයංක්‍රීයව ලැබී ඇති ආයතනයේ නම, ලිපිනය, දුරකථන අංක පරීක්ෂා කර "Logo Monogram Text" හෝ "Logo Image (Upload)" මගින් ඔබේ ලාංඡනය එක් කරන්න ("Sync from Tenant Account" බටන් එකෙන් ඕනෑම විටෙක Tenant ගිණුමේ විස්තර නැවත Auto-fill කරගත හැක). (ආ) "2. ISO Signer Names, Designations & Department Matrix" යටතේ වවුචර්වල අත්සන් තබන "Prepared & Checked By", "Authorized & Approved By" සහ "Reviewed By" නිලධාරීන්ගේ නම් (Signer Full Name), තනතුරු (Designation), අංශ (Department) සහ ISO Issue/Revision අංක ඇතුළත් කර "Save ISO Header & Signers" ක්ලික් කරන්න.',
       },
       {
-        stepTitle: '3. Unified Format පහසුකම සහ Live A4 Studio මගින් වෙනස්කම් සිදු කිරීම',
+        stepTitle: '3. Tab 3 — "3. Digital Signatures" (ඩිජිටල් අත්සන් ඇඳීම හෝ Image එකක් ලෙස Upload කිරීම)',
         detail:
-          'ඔබේ ආයතනයේ FORMAT-01 (නිකුත් කිරීම්/භාවිතයන්) සහ FORMAT-02 (GRN/Returns) යන දෙකටම එකම ආකෘතියක් භාවිත කරන්නේ නම්, "Use Unified Format-01 & 02" බටන් එකෙන් තනි Upload එකකින් Section 10ටම එම Format එක යෙදිය හැක. දකුණු පස ඇති Live A4 Preview එකෙන් Render Mode 3න් එකක් (Header Banner + System Table, Full Page Background Watermark, හෝ Smart Reconstructed Grid) තෝරාගෙන Header Crop %, Table Column Names සහ අත්සන් තීරු (Sign-off Titles) කැමති පරිදි සකසාගත හැක.',
+          '3 වන ටැබ් එක ("3. Digital Signatures") වෙත ගොස් "+ Add Digital Signature" බටන් එක ක්ලික් කරන්න. එහිදී අත්සන් කරන නිලධාරියාගේ නම (Signer Full Name), තනතුර (Designation/Role) සහ අංශය (Department) ඇතුළත් කර, තිරයේ ඇති කොටුව තුළ Mouse/Touch මගින් කෙලින්ම අත්සන අඳින්න (Draw Signature) නැතිනම් අත්සනේ PNG/JPG ඡායාරූපයක් Upload කර "Save Signature" ක්ලික් කරන්න. මෙසේ Save කළ අත්සන්, නිලධාරියාගේ නම අනුව ස්වයංක්‍රීයව වවුචර් වලට වැටෙන අතර ඕනෑම වවුචරයක් Print කරන විට "Customize Voucher Header, Signers & Digital Signatures" කොටසින්ද කැමති Digital Signature එකක් තෝරාගත හැක.',
       },
       {
-        stepTitle: '4. අදාළ Sections වලින් කෙලින්ම ඔබේ Format එකෙන්ම Print කරගන්න',
+        stepTitle: '4. සම්පූර්ණ Web Page එක නොව අදාළ Voucher / Report එක පමණක් තනි ක්ලික් එකෙන් Print හා PDF කිරීම',
         detail:
-          'මෙසේ සකසාගත් පසු, Stock Requisitions (RN), Issue to Teams (IN), Material Usage (PU), Team Stock (TSR), Supplier Orders (PO / GRN / RTV), Client Free Stock (FOC), හෝ Returns (RV / BRM) යන ඕනෑම Section එකකට ගොස් Print / Save PDF ක්ලික් කළ විට ඔබ Upload කළ ආයතනික Format එකෙන්ම කෙලින්ම Print වේ.',
+          'ඕනෑම Section එකක (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV හෝ Full Site Report) "Print" බටන් එක එබූ සැණින් සම්පූර්ණ වෙබ් පිටුව පෙන්වන්නේ නැතිව, අදාළ A4 වවුචරය හෝ වාර්තාව පමණක් වෙන් කරගත් පැහැදිලි Print Preview එකක් එකවරම විවෘත වේ. PDF ගොනුවක් ලෙස බාගත කිරීමට "Convert / Save as PDF" බටන් එක භාවිත කරන්න.',
       },
     ],
     keyOutputs: [
-      'සමාන ආකෘති ගොනු කළ Format Slots 4 (FORMAT-01 සිට FORMAT-04 දක්වා)',
-      'PDF සහ Image වලින් Header Banner සහ Brand Color ස්වයංක්‍රීයව ලබාගැනීම',
-      '"This Format Affects To" මගින් අදාළ වන සියලුම Sections පෙන්වීම',
-      'Live A4 Print Preview සහ Render Modes 3ක් මගින් පූර්ණ පාලනය',
+      'ISO 9001:2015 Controlled Formats (FORMAT-01 සිට 04) + Auto Tenant Header',
+      'Tab 2: ආයතනයේ Logo සහ Signers (Prepared / Approved / Reviewed) තනතුරු සැකසුම',
+      'Tab 3: Digital Signatures (අත්සන ඇඳීම හෝ Image Upload) සහ Auto Signer Matching',
+      'වවුචරය පමණක් එකවර Print වන Isolated Single-Click A4 Print සහ Direct PDF',
     ],
   },
   {
@@ -488,9 +489,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     number: '06 වන පරිච්ඡේදය',
     category: 'admin',
     categoryLabel: 'යන්ත්‍රෝපකරණ, විගණන වාර්තා සහ Backups',
-    title: 'යන්ත්‍රෝපකරණ කළමනාකරණය, Global Letterhead, Audit Trail සහ Offline Backups',
+    title: 'යන්ත්‍රෝපකරණ කළමනාකරණය, Voucher Print Customization, Audit Trail සහ Offline Backups',
     summary:
-      'වටිනා යන්ත්‍රෝපකරණ සහ ටූල්ස් පිළිබඳ පූර්ණ වගවීම, ආයතනික ලෙටර්හෙඩ් සැකසුම්, සියලු ක්‍රියාකාරකම් සටහන් වන Audit Trail සහ ආරක්ෂිත Offline දත්ත Backups.',
+      'වටිනා යන්ත්‍රෝපකරණ සහ ටූල්ස් පිළිබඳ පූර්ණ වගවීම, වවුචරයක් Print කරන මොහොතේදීම Signers/Signatures වෙනස් කිරීමේ පහසුව, Audit Trail සහ ආරක්ෂිත Offline දත්ත Backups.',
     icon: ShieldCheck,
     steps: [
       {
@@ -499,9 +500,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'සාමාන්‍ය අමුද්‍රව්‍ය වලින් වෙන්ව එක්ස්කැවේටර්, ජෙනරේටර්, ටෙස්ටින් මීටර් සහ බල මෙවලම් දැනට ප්‍රධාන ගබඩාවේද, ශාඛාවකද, නැතහොත් කවර වැඩ කණ්ඩායමක් ළඟද යන්න ක්ෂණිකව බලාගන්න.',
       },
       {
-        stepTitle: '2. Global Letterhead සහ ආයතනික ලාංඡන (Logo) සැකසුම',
+        stepTitle: '2. වවුචරයක් Print කිරීමට පෙර එතැනදීම Signers සහ Digital Signatures වෙනස් කිරීම',
         detail:
-          '"Document Templates -> Global Letterhead Studio" මගින් ඔබේ ආයතනයේ නම, ලාංඡනය (Logo), ලිපිනය, දුරකථන අංක සහ පොදු අත්සන් තීරු සකසාගන්න.',
+          'ඕනෑම වවුචරයක් Print කිරීමට විවෘත කළ විට උඩින් ඇති "Customize Voucher Header, Signers & Digital Signatures" ක්ලික් කිරීමෙන් එම වවුචරයට පමණක් අදාළව Document No, දිනය, Prepared/Approved නිලධාරීන්ගේ නම්, තනතුරු සහ Digital Signatures එතැනදීම තෝරා Print හෝ PDF කළ හැක.',
       },
       {
         stepTitle: '3. වෙනස් කළ නොහැකි Audit Trail සහ ආරක්ෂිත Recycle Bin',
@@ -516,6 +517,7 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     ],
     keyOutputs: [
       'යන්ත්‍රෝපකරණ සහ ටූල්ස් භාරකාරත්ව ලෙජරය (Machinery Custody)',
+      'Print Modal තුළදීම Signers සහ Digital Signatures තෝරාගැනීමේ පහසුකම',
       'සම්පූර්ණ Audit Trail වාර්තා සහ ආරක්ෂිත Recycle Bin',
       '1-Click JSON Backup, Offline Viewer සහ Excel Export පහසුකම',
     ],
@@ -525,19 +527,19 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
 const FORMAT_GROUPS_MATRIX_EN: FormatSlotGuide[] = [
   {
     code: 'FORMAT-01',
-    title: 'Material Requisition, Team Issue & Site Usage Format',
-    structure: '3-Column / Item Movement Table + 3 Approval Signatures',
+    title: 'ISO 9001:2015 Material Requisition, Team Issue & Site Usage Format (ISO-9001-QMS-F01)',
+    structure: 'ISO Controlled Header (Auto Tenant Details) + Item Movement Table + 3 Approval Signatures & Digital Sign-Off',
     affectsTo: [
       'RN - Stock Requisitions (Branch to Central HQ Request)',
       'IN - Issue to Teams (Daily Field Crew Dispatch & Gate Pass)',
-      'PU - Material Usage / Daily Progress Entry Vouchers',
+      'PU - Material Usage / Daily Progress Entry Vouchers (Used + Wastage)',
       'TSR - Team In-Hand Stock Balance Audit Report',
     ],
   },
   {
     code: 'FORMAT-02',
-    title: 'Goods Receipt (GRN), Client FOC & Stock Returns Format',
-    structure: 'Inbound Delivery / Return Table + Storekeeper Inspection Sign-off (Can be unified with FORMAT-01 in 1 click)',
+    title: 'ISO 9001:2015 Goods Receipt (GRN), Client FOC & Stock Returns Format (ISO-9001-QMS-F02)',
+    structure: 'ISO Controlled Header + Inbound / Return Table + Storekeeper Inspection Sign-Off (Can be unified with FORMAT-01 in 1 click)',
     affectsTo: [
       'GRN - Goods Receipt Notes (Supplier PO Delivery & Main Stock Inbound)',
       'FOC - Client Free-Issue Material Receipt Vouchers',
@@ -547,16 +549,16 @@ const FORMAT_GROUPS_MATRIX_EN: FormatSlotGuide[] = [
   },
   {
     code: 'FORMAT-03',
-    title: 'Official Supplier Purchase Order (PO) Format',
-    structure: '5-Column Priced Commercial Schedule + Tax/Discount + Commercial Terms',
+    title: 'ISO 9001:2015 Official Supplier Purchase Order Format (ISO-9001-QMS-F03)',
+    structure: 'ISO Controlled Header + 5-Column Priced Commercial Schedule + Tax/Discount + Commercial Terms & Digital Signatures',
     affectsTo: [
       'PO - Official Commercial Purchase Order (Procurement & PO Management)',
     ],
   },
   {
     code: 'FORMAT-04',
-    title: 'Return to Vendor (RTV) & Official Debit Note Format',
-    structure: '5-Column Return Valuation Table + Claim Reason + Outward Gate Pass',
+    title: 'ISO 9001:2015 Return to Vendor (RTV) & Official Debit Note Format (ISO-9001-QMS-F04)',
+    structure: 'ISO Controlled Header + 5-Column Return Valuation Table + Claim Reason + Outward Gate Pass & Digital Sign-Off',
     affectsTo: [
       'RTV - Supplier Return / Official Debit Note Voucher',
       'GATE-PASS - Supplier Outward Return Dispatch Gate Pass',
@@ -567,19 +569,19 @@ const FORMAT_GROUPS_MATRIX_EN: FormatSlotGuide[] = [
 const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
   {
     code: 'FORMAT-01',
-    title: 'අභ්‍යන්තර බඩු ඉල්ලුම්පත්, නිකුත් කිරීම් සහ වැඩබිම් භාවිත ආකෘතිය (Internal Issue, Request & Usage)',
-    structure: 'තීරු 3ක භාණ්ඩ වගුව + අනුමත කිරීමේ අත්සන් තීරු 3 (Prepared / Authorized / Received)',
+    title: 'ISO 9001:2015 අභ්‍යන්තර බඩු ඉල්ලුම්පත්, නිකුත් කිරීම් සහ වැඩබිම් භාවිත ආකෘතිය (ISO-9001-QMS-F01)',
+    structure: 'ISO Controlled Header (Auto Tenant විස්තර) + භාණ්ඩ වගුව + Prepared / Approved / Received Digital Signatures තීරු 3',
     affectsTo: [
       'RN - Stock Requisitions (ශාඛා මගින් ප්‍රධාන ගබඩාවෙන් බඩු ඉල්ලුම් කරන පත්‍රිකාව)',
       'IN - Issue to Teams (වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීමේ පත්‍රිකාව / Gate Pass)',
-      'PU - Material Usage / Daily Progress Entry (ව්‍යාපෘති සහ වැඩබිම් භාණ්ඩ භාවිත හා Wastage වවුචරය)',
+      'PU - Material Usage / Daily Progress Entry (ව්‍යාපෘති භාණ්ඩ භාවිත හා Wastage වවුචරය)',
       'TSR - Team In-Hand Stock (කණ්ඩායම් සතු තොග පරීක්ෂණ වාර්තාව)',
     ],
   },
   {
     code: 'FORMAT-02',
-    title: 'භාණ්ඩ භාරගැනීම් (GRN), සේවාදායක නොමිලේ තොග (FOC) සහ ආපසු භාරදීමේ ආකෘතිය',
-    structure: 'භාණ්ඩ ලැබීම් / ආපසු භාරදීම් වගුව + ගබඩා පරීක්ෂණ අත්සන් තීරු (අවශ්‍ය නම් FORMAT-01 සමඟ 1-Click එකෙන් ඒකාබද්ධ කළ හැක)',
+    title: 'ISO 9001:2015 භාණ්ඩ භාරගැනීම් (GRN), සේවාදායක නොමිලේ තොග (FOC) සහ ආපසු භාරදීමේ ආකෘතිය (ISO-9001-QMS-F02)',
+    structure: 'ISO Controlled Header + ලැබීම් / ආපසු භාරදීම් වගුව + ගබඩා පරීක්ෂණ අත්සන් තීරු (1-Click එකෙන් FORMAT-01 සමඟ ඒකාබද්ධ කළ හැක)',
     affectsTo: [
       'GRN - Goods Receipt Notes (සැපයුම්කරු PO භාණ්ඩ ලැබීම් සහ ප්‍රධාන ගබඩා GRN පත්‍රිකාව)',
       'FOC - Client Free Stock (සේවාදායකයා නොමිලේ සපයන භාණ්ඩ භාරගැනීමේ වවුචරය)',
@@ -589,16 +591,16 @@ const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
   },
   {
     code: 'FORMAT-03',
-    title: 'සැපයුම්කරු භාණ්ඩ ඇණවුම් කිරීමේ නිල ආකෘතිය (Official Purchase Order - PO)',
-    structure: 'මිල ගණන් සහිත තීරු 5ක වගුව + බදු/වට්ටම් + වාණිජ කොන්දේසි සහ අනුමත කිරීමේ අත්සන්',
+    title: 'ISO 9001:2015 සැපයුම්කරු භාණ්ඩ ඇණවුම් කිරීමේ නිල ආකෘතිය (Official Purchase Order - ISO-9001-QMS-F03)',
+    structure: 'ISO Controlled Header + මිල ගණන් සහිත තීරු 5ක වගුව + බදු/වට්ටම් + වාණිජ කොන්දේසි සහ Digital Signatures',
     affectsTo: [
       'PO - Supplier Orders (සැපයුම්කරුවන් වෙත නිකුත් කරන නිල Purchase Order පත්‍රිකාව)',
     ],
   },
   {
     code: 'FORMAT-04',
-    title: 'සැපයුම්කරු වෙත භාණ්ඩ ආපසු යැවීමේ සහ හර සටහන් ආකෘතිය (RTV / Debit Note)',
-    structure: 'තීරු 5ක ආපසු යැවීමේ වටිනාකම් වගුව + හේතුව + Outward Gate Pass පත්‍රිකාව',
+    title: 'ISO 9001:2015 සැපයුම්කරු වෙත භාණ්ඩ ආපසු යැවීමේ සහ හර සටහන් ආකෘතිය (RTV / Debit Note - ISO-9001-QMS-F04)',
+    structure: 'ISO Controlled Header + තීරු 5ක ආපසු යැවීමේ වටිනාකම් වගුව + හේතුව + Outward Gate Pass සහ Digital Signatures',
     affectsTo: [
       'RTV - Supplier Return / Debit Note (ප්‍රමිතියෙන් තොර/වැඩිපුර භාණ්ඩ සැපයුම්කරුට ආපසු යැවීමේ වවුචරය)',
       'GATE-PASS - Supplier Outward Return Gate Pass (භාණ්ඩ පිටතට යැවීමේ අවසර පත්‍රය)',
@@ -632,11 +634,13 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'Company Document Formats, Verification & Enterprise Control',
+    group: 'ISO 9001:2015 Format Settings, Signers, Digital Signatures & Enterprise Control',
     items: [
-      'PDF & Image Company Format Upload (Auto-Extracts Header & Brand Color)',
-      '4 Unified Format Slots with "This Format Affects To" Section Mapping',
-      'Live A4 Format Studio (Header Banner, Watermark, or Smart Grid Modes)',
+      'Default ISO 9001:2015 Controlled Formats (FORMAT-01 to 04) with Auto-Synced Tenant Company Header',
+      'Tab 2 Signer Governance: Prepared By, Approved By & Reviewed By Names, Designations & Departments',
+      'Tab 3 Digital Signatures Library: Draw on Interactive Pad or Upload PNG/JPG Signature + Auto-Match',
+      'Optional PDF / Image Company Format Upload + Live A4 Format Studio & Per-Voucher Customization',
+      'Isolated Single-Click A4 Print Preview (Prints Only the Voucher/Report) + Genuine A4 PDF Download',
       'Single-Site, Multi-Site & Central HQ Role Access Control + Auto Email Verification (apexstox.com)',
       'Tamper-Proof Audit Trail, Safe Recycle Bin & 1-Click JSON Backup',
     ],
@@ -669,11 +673,13 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'ආයතනික Document Formats, Email Verification සහ ආරක්ෂිත පාලනය',
+    group: 'ISO 9001:2015 Format Settings, Signers, Digital Signatures සහ ආරක්ෂිත පාලනය',
     items: [
-      'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කර සකසාගැනීමේ පහසුකම',
-      '"This Format Affects To" මගින් එක් එක් Format එකට අදාළ Sections පෙන්වීම',
-      'Live A4 Format Studio (Header Banner, Watermark සහ Smart Grid ක්‍රම 3)',
+      'Default ISO 9001:2015 Controlled Formats (FORMAT-01 සිට 04) සහ ස්වයංක්‍රීය Tenant Company Header',
+      'Tab 2 Signer Governance: Prepared By, Approved By සහ Reviewed By නිලධාරීන්ගේ නම්, තනතුරු සහ අංශ',
+      'Tab 3 Digital Signatures: තිරය මත අත්සන ඇඳීම (Draw) හෝ Image Upload කිරීම සහ වවුචර් වලට Auto-Match වීම',
+      'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කිරීම සහ Live A4 Format Studio සැකසුම්',
+      'සම්පූර්ණ වෙබ් පිටුව නොව අදාළ Voucher/Report එක පමණක් එකවර Print කරන Isolated A4 Print හා PDF',
       'Single-Site, Multi-Site, Central HQ බලතල සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
       'Audit Trail විගණන වාර්තා, Recycle Bin සහ 1-Click JSON Offline Backup',
     ],
@@ -1644,8 +1650,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'පියවර 06',
-                        title: 'Company Formats',
-                        desc: 'ආයතනයේ PDF/Image Format එක Upload කර සියලුම වවුචර් එම ආකෘතියෙන් මුද්‍රණය.',
+                        title: 'ISO Formats සහ Signatures',
+                        desc: 'ISO 9001:2015 Formats, Auto Tenant Header, Signers හා Digital Signatures සැකසීම.',
                         icon: Upload,
                       },
                     ]
@@ -1682,8 +1688,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'Stage 06',
-                        title: 'Company Formats',
-                        desc: 'Upload PDF/Image company forms to print all vouchers in your layout.',
+                        title: 'ISO Formats & Signatures',
+                        desc: 'ISO 9001:2015 formats, Auto Tenant Header, Signers, Digital Signatures & PDF/Image upload.',
                         icon: Upload,
                       },
                     ]
@@ -1724,7 +1730,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     { id: 'warehouse', label: '02. PO, GRN සහ RTV' },
                     { id: 'operations', label: '03. ශාඛා සහ Crew නිකුත් කිරීම්' },
                     { id: 'projects', label: '04. ව්‍යාපෘති සහ Returns' },
-                    { id: 'formats', label: '05. Format Upload Studio' },
+                    { id: 'formats', label: '05. Format, Signers සහ Signatures' },
                     { id: 'admin', label: '06. යන්ත්‍රෝපකරණ සහ Backups' },
                   ]
                 : [
@@ -1733,7 +1739,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     { id: 'warehouse', label: '02. PO, GRN & RTV' },
                     { id: 'operations', label: '03. Site & Crew Dispatch' },
                     { id: 'projects', label: '04. Projects & Returns' },
-                    { id: 'formats', label: '05. Format Upload Studio' },
+                    { id: 'formats', label: '05. ISO Formats, Signers & Signatures' },
                     { id: 'admin', label: '06. Machinery & Security' },
                   ]
               ).map((tab) => (

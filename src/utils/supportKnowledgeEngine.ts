@@ -652,27 +652,104 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `📌 *දැනට පද්ධතියේ:* සක්‍රීය Items **${ctx.activeItemsCount ?? 0}** අතරින් Items **${ctx.lowStockItemsCount ?? 0}**ක් Low Stock සීමාවේ පවතී.`,
   },
   {
-    id: 'directory-audit-letterhead-backup',
+    id: 'format-settings-signers-digital-signatures',
     suggestedTab: 'templates',
-    keywords: ['directory', 'audit', 'report', 'print', 'letterhead', 'signature', 'backup', 'flush', 'theme', 'config'],
+    keywords: [
+      'format',
+      'formats',
+      'iso',
+      '9001',
+      'signer',
+      'signers',
+      'signature',
+      'signatures',
+      'digital signature',
+      'letterhead',
+      'tenant header',
+      'prepared by',
+      'approved by',
+      'reviewed by',
+      'athsana',
+      'athsan',
+    ],
+    phrases: [
+      'format settings',
+      'document templates',
+      'digital signature',
+      'digital signatures',
+      'iso format',
+      'auto tenant header',
+      'signers',
+      'add digital signature',
+      'draw signature',
+      'upload signature',
+      'prepared by',
+      'approved by',
+      'format hadanne',
+      'signature danne',
+      'signers hadanne',
+      'digital signature',
+    ],
+    answerEn: () =>
+      `**How to Configure ISO 9001:2015 Format Settings, Auto Tenant Header, Signers & Digital Signatures ("Document Templates"):**\n\n` +
+      `Open **Document Templates** from the left sidebar — it is organized into **3 clear tabs**:\n\n` +
+      `**Tab 1 — "1. Section Formats (ISO Standard & Upload PDF/Image)":**\n` +
+      `1. **Default ISO 9001:2015 Standard:** All 4 format groups (**FORMAT-01** to **FORMAT-04**) automatically default to the **ISO 9001:2015 Controlled Document Format** with your logged-in **Tenant Company Name**, Phone, Email, and Address auto-populated in the header.\n` +
+      `2. **Upload Custom PDF / Image Format (Optional):** Click **Upload PDF or Image Format** on any card to upload your company's `.concat(
+        `own PDF or Image layout. Check **"Use FORMAT-01 across all GRN, FOC & Stock Return sections too"** to unify Format-01 & 02 in 1 click.\n` +
+          `3. **Format Settings & Live A4 Studio:** Click **Customize Format Settings & Preview** on any card to adjust **Render Mode** (*Header Banner + System Table*, *Full Page Watermark*, or *Smart Grid*), **Header Crop %**, **Table Column Labels**, and **Sign-Off Titles**, then click **Save Format Settings**.\n\n` +
+          `**Tab 2 — "2. Auto Tenant Header & Signers":**\n` +
+          `1. **Company Identity & Logo:** Review your auto-loaded **Tenant Registered Company Name**, Scope Subtitle, Phone, Email, Address, and choose **Logo Monogram Text** or **Logo Image (Upload)** (click **Sync from Tenant Account** anytime to re-sync).\n` +
+          `2. **ISO Signer Names, Designations & Department Matrix:** Enter the **Signer Full Name**, **Designation**, and **Department** for:\n` +
+          `   • **Prepared & Checked By** (Field / Site / Store Officer)\n` +
+          `   • **Authorized & Approved By** (Central Management / Logistics Controller)\n` +
+          `   • **Reviewed By**, **ISO Issue Number**, and **ISO Revision Number**\n` +
+          `3. Click **Save ISO Header & Signers**.\n\n` +
+          `**Tab 3 — "3. Digital Signatures" (Draw or Upload):**\n` +
+          `1. Click **+ Add Digital Signature**.\n` +
+          `2. Enter the **Signer Full Name** (matching your Prepared By or Approved By name), **Designation / Role**, and **Department**.\n` +
+          `3. Either **Draw Signature** directly on the interactive signature pad OR click **Upload Signature Image** (PNG/JPG), then click **Save Signature**.\n` +
+          `4. **Auto-Match & Live Voucher Selection:** Saved signatures automatically appear on vouchers matching the signer's name, or you can manually pick any signature inside any voucher's **"Customize Voucher Header, Signers & Digital Signatures"** panel before clicking **Print** (isolated single-click A4 preview) or **Convert to PDF**!`
+      ),
+    answerSi: () =>
+      `**Document Templates හි ISO 9001:2015 Format Settings, Auto Tenant Header, Signers සහ Digital Signatures සකස් කරගන්නා ආකාරය:**\n\n` +
+      `වම් පස මෙනුවෙන් **"Document Templates"** වෙත පිවිසෙන්න. එහි පැහැදිලි **ටැබ් 3ක්** ඇත:\n\n` +
+      `**1 වන ටැබ් එක — "1. Section Formats (ISO Standard & Upload PDF/Image)":**\n` +
+      `1. **Default ISO 9001:2015 Format:** කිසිදු ගොනුවක් Upload නොකළද, කාණ්ඩ 4ම (**FORMAT-01** සිට **FORMAT-04**) ජාත්‍යන්තර **ISO 9001:2015 Controlled Document Format** එකෙන් සහ ඔබේ ආයතනයේ නම (**Tenant Company Name**), දුරකථන, Email හා ලිපිනය ස්වයංක්‍රීයව Header එකට යොදාගෙන ක්‍රියාත්මක වේ.\n` +
+      `2. **PDF / Image Upload සහ Unified Format:** ඔබේම PDF (.pdf) හෝ Image (.png/.jpg) ආකෘතියක් Upload කිරීමටත්, **"Use FORMAT-01 across all GRN, FOC & Stock Return sections too"** මගින් Format-01 හා 02 එකවර ඒකාබද්ධ කිරීමටත් පුළුවන.\n` +
+      `3. **Format Settings වෙනස් කිරීම:** ඕනෑම කාණ්ඩයක **"Customize Format Settings & Preview"** ක්ලික් කර දකුණු පස Live A4 Studio එකෙන් **Render Mode**, **Header Crop %**, **Table Column Names** සහ **Sign-Off Titles** වෙනස් කර Save කළ හැක.\n\n` +
+      `**2 වන ටැබ් එක — "2. Auto Tenant Header & Signers" (Signers සහ Logo සැකසීම):**\n` +
+      `1. **Tenant Header & Logo:** ස්වයංක්‍රීයව ලැබී ඇති ආයතනයේ නම, දුරකථන, Email, ලිපිනය පරීක්ෂා කර **"Logo Monogram Text"** හෝ **"Logo Image (Upload)"** මගින් ආයතනික ලාංඡනය එක් කරන්න (**"Sync from Tenant Account"** මගින් නැවත Auto-fill කළ හැක).\n` +
+      `2. **Signers (අත්සන් කරන නිලධාරීන්ගේ නම් සහ තනතුරු):** **"2. ISO Signer Names, Designations & Department Matrix"** යටතේ:\n` +
+      `   • **Prepared & Checked By:** සකස් කරන නිලධාරියාගේ නම (Signer Full Name), තනතුර (Designation) සහ අංශය (Department)\n` +
+      `   • **Authorized & Approved By:** අනුමත කරන නිලධාරියාගේ නම, තනතුර සහ අංශය\n` +
+      `   • **Reviewed By** සහ **ISO Issue / Revision Numbers** ඇතුළත් කර **"Save ISO Header & Signers"** ක්ලික් කරන්න.\n\n` +
+      `**3 වන ටැබ් එක — "3. Digital Signatures" (ඩිජිටල් අත්සන් එකතු කිරීම):**\n` +
+      `1. **"+ Add Digital Signature"** බටන් එක ක්ලික් කරන්න.\n` +
+      `2. නිලධාරියාගේ නම (**Signer Full Name**), තනතුර (**Role**) සහ අංශය (**Department**) ඇතුළත් කරන්න.\n` +
+      `3. තිරයේ ඇති කොටුව මත Mouse/Touch මගින් කෙලින්ම අත්සන අඳින්න (**Draw Signature**) නැතිනම් අත්සනේ PNG/JPG Image එකක් **Upload** කර **"Save Signature"** ක්ලික් කරන්න.\n` +
+      `4. **වවුචර් වලට යෙදීම සහ තනි ක්ලික් Print:** Save කළ Digital Signatures නිලධාරියාගේ නම අනුව ස්වයංක්‍රීයව වවුචර් වලට වැටෙන අතර, ඕනෑම වවුචරයක් Print කරන විට උඩින් ඇති **"Customize Voucher Header, Signers & Digital Signatures"** කොටසින්ද කැමති අත්සනක් තෝරා එකවරම (Isolated Single-Click A4 Print) මුද්‍රණය හෝ PDF බාගත කළ හැක!`,
+  },
+  {
+    id: 'directory-audit-letterhead-backup',
+    suggestedTab: 'branch-directory',
+    keywords: ['directory', 'audit', 'report', 'print', 'backup', 'flush', 'theme', 'config'],
     phrases: [
       'branch staff & teams',
       'audit trail',
-      'document templates',
-      'letterhead template',
       'system backup',
       'system config',
     ],
     answerEn: () =>
-      `**Directory, Document Templates (Letterhead), Audit Trail & System Backups:**\n\n` +
+      `**Branch Directory, Isolated Single-Click Printing, Audit Trail & System Backups:**\n\n` +
       `• **Branch Staff & Teams:** View, filter, export to Excel (**Export Members**), and print the complete hierarchy of branches, supervisors, field teams, and crew members.\n` +
-      `• **Document Templates:** Customize your company letterhead, logo, digital signatures, and print layout for GRNs, POs, Debit Notes, Gate Passes, and Vouchers.\n` +
+      `• **Isolated Single-Click A4 Print & PDF Export:** Every Print button across all Vouchers, Full Site Reports, Barcode Labels, Team In-Hand, Branch Directory, and Audit Trail opens a clean, isolated A4 print preview of ONLY that document without printing the full web page.\n` +
       `• **Audit Trail:** Inspect chronological logs of every transaction and user action with PDF/CSV export.\n` +
       `• **System Backups & Config (Top Header):** Create/restore versioned JSON backups, open the **Offline Backup Viewer**, customize system theme/company settings, or perform an **Admin System Flush**.`,
     answerSi: () =>
-      `**Branch Directory, Document Templates (Letterhead), Audit Trail සහ System Backups:**\n\n` +
+      `**Branch Directory, Isolated Single-Click Print, Audit Trail සහ System Backups:**\n\n` +
       `• **Branch Staff & Teams:** සියලුම Branches, Supervisors, Teams සහ සාමාජිකයින්ගේ විස්තර බලාගැනීමට සහ Print / Excel Export කිරීමට.\n` +
-      `• **Document Templates:** Print කරන GRN, Gate Pass, PO සහ Vouchers සඳහා ආයතනයේ නම, ලාංඡනය (Logo), Digital Signatures සහ Letterhead සකස් කිරීමට.\n` +
+      `• **Isolated Single-Click A4 Print:** පද්ධතියේ ඕනෑම වවුචරයක හෝ වාර්තාවක Print එබූ විට සම්පූර්ණ වෙබ් පිටුව නොව අදාළ වවුචරය/වාර්තාව පමණක් එකවරම පැහැදිලිව Print Preview වේ.\n` +
       `• **Audit Trail:** පද්ධතියේ සිදු කළ සියලුම ගනුදෙනු පිළිබඳ වාර්තා ලබාගැනීමට.\n` +
       `• **System Backup & Config (ඉහළ Header තීරුව):** පද්ධතියේ සම්පූර්ණ Backup ලබාගැනීමට, Restore කිරීමට සහ ආයතනයේ Theme/Settings වෙනස් කිරීමට.`,
   },
@@ -758,7 +835,7 @@ export function resolveSmartSystemSupportAnswer(
         `5. **Issue to Teams & Team In-Hand Stock:** Branch එකෙන් Team වලට බඩු නිකුත් කිරීම (Gate Pass) සහ Team අතේ ඇති බඩු (Used + Wastage) පරීක්ෂාව.\n` +
         `6. **Project & New Section Registry:** අලුත් Project Sections සෑදීම (**+ New Section Registry**), **Material Templates (BOM)** සකස් කිරීම සහ Mandatory Site Branch සමඟ Projects ලියාපදිංචි කිරීම.\n` +
         `7. **Material Usage / Daily Progress Entry:** Section-filtered Projects, User-Site Branch Lock, **Qty Used + Wastage Qty** ඇතුළත් කිරීම සහ **Full Report for This Site (Project)** (Team Subtotals + Grand Total) ලබාගැනීම.\n` +
-        `8. **Team Returns & Branch Returns:** ඉතිරි හෝ හානි වූ බඩු නැවත ගබඩාවට භාරගැනීම.\n\n` +
+        `8. **Document Templates (ISO 9001:2015 Formats, Signers & Digital Signatures):** Auto Tenant Header, Signers (Prepared/Approved/Reviewed), Digital Signatures (ඇඳීම හෝ Upload කිරීම), PDF/Image Format Upload සහ Isolated Single-Click A4 Print.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
   }
@@ -775,7 +852,7 @@ export function resolveSmartSystemSupportAnswer(
       `5. **Issue to Teams & Team In-Hand Stock:** Issue materials to Field Teams with Gate Passes and monitor live Installed & Wastage balances.\n` +
       `6. **Project & New Section Registry:** Create Project Sections (**+ New Section Registry**), configure **Material Templates (BOM)**, and register Main, Sub & Individual Projects.\n` +
       `7. **Material Usage / Daily Progress Entry:** Section-filtered project dropdowns, User-Site Branch Lock, **Qty Used + Wastage Qty** entry, and **Full Report for This Site (Project)** (Team Subtotals + Full Grand Total).\n` +
-      `8. **Team Returns, Branch Returns, Document Templates, Audit Trail, Recycle Bin & Auto Email Verification (apexstox.com).**\n\n` +
+      `8. **Document Templates (ISO 9001:2015 Format Settings, Auto Tenant Header, Signers & Digital Signatures):** Configure ISO formats, upload PDF/Image layouts, manage Signer designations, draw/upload Digital Signatures, and use Isolated Single-Click A4 Printing.\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

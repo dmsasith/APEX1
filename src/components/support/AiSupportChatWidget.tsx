@@ -35,6 +35,14 @@ interface QuickPrompt {
 
 const QUICK_PROMPTS: QuickPrompt[] = [
   {
+    id: 'format-signers-digital-signatures',
+    labelEn: '✒️ Format Settings, Signers & Digital Signatures?',
+    labelSi: '✒️ Format Settings, Signers සහ Digital Signatures හදන්නේ කොහොමද?',
+    promptEn: 'How do I configure ISO 9001:2015 Format Settings, Auto Tenant Header, Signers (Prepared/Approved/Reviewed), and Digital Signatures (draw or upload) in Document Templates?',
+    promptSi: 'Document Templates වල ISO Format Settings, Auto Tenant Header, Signers (අත්සන් කරන නිලධාරීන්ගේ නම්/තනතුරු) සහ Digital Signatures (අඳින හෝ Upload කරන) සකස් කරගන්නේ කොහොමද?',
+    targetTab: 'templates',
+  },
+  {
     id: 'main-sub-projects-foc',
     labelEn: '🏢 Main & Sub-Projects + FOC Reconciliation?',
     labelSi: '🏢 Main Project, Sub-Projects සහ FOC Reconciliation කරන්නේ කොහොමද?',
@@ -143,8 +151,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Material Usage / Daily Progress Entry (with Wastage Qty, Section Filtering & Site Branch Lock), Full Site (Project) Reports, Major/Sub-Projects, Client FOC (Locked Branch & Admin Correction), Main Stock (GRN), Branch Transfers, Team Issues, Returns**, and Email Verification (apexstox.com).\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Material Usage / Daily Progress Entry (Wastage Qty, Section Filter සහ Site Lock), Full Report for This Site (Project), Main/Sub-Projects, Client FOC (Locked Branch සහ Admin Correction), Main Stock (GRN), Branch Transfers, Team Issues, Returns** හෝ Email Verification (apexstox.com) ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **ISO 9001:2015 Format Settings, Auto Tenant Header, Signers & Digital Signatures, Isolated Single-Click A4 Print, Material Usage / Daily Progress Entry (with Wastage Qty, Section Filtering & Site Branch Lock), Full Site (Project) Reports, Major/Sub-Projects, Client FOC, Main Stock (GRN), Branch Transfers, Team Issues, and Returns**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **ISO 9001:2015 Format Settings, Auto Tenant Header, Signers (අත්සන් කරන නිලධාරීන්), Digital Signatures, Isolated A4 Print, Material Usage / Daily Progress Entry (Wastage Qty, Section Filter සහ Site Lock), Full Report for This Site (Project), Main/Sub-Projects, Client FOC, Main Stock (GRN), Branch Transfers, Team Issues සහ Returns** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 

@@ -103,9 +103,12 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
    - **Team Returns**: Return unused or recovered items from a Field Team to their Site Branch Stock (**Good** condition restores usable branch stock; **Damaged** logs to Damaged Stock).
    - **Branch Returns**: Return surplus stock from a Site Branch Yard back to the Central Main Warehouse (HQ).
 
-8. **Document Templates ("Document Templates"), Audit Trail, Recycle Bin, Backups & Automatic Email Verification**:
-   - **Document Templates**: Customize company letterhead, logo, digital signatures, and print formatting for all vouchers, or upload custom PDF/Image formats in Section Formats.
-   - **Audit Trail & Recycle Bin**: Filterable chronological history with PDF/CSV export; restore or permanently delete soft-deleted records.
+8. **Document Templates ("Document Templates") — ISO 9001:2015 Format Settings, Auto Tenant Header, Signers & Digital Signatures**:
+   - Open **"Document Templates"** from the sidebar (organized into 3 tabs):
+     • **Tab 1 ("1. Section Formats (ISO Standard & Upload PDF/Image)")**: All 4 format groups (**FORMAT-01** to **FORMAT-04**) default to the **ISO 9001:2015 Controlled Document Format** with the logged-in **Tenant Company Name**, phone, email, and address auto-populated into the header. Users can also upload their own **PDF (.pdf)** or **Image (.png/.jpg)** format into any card, enable **"Use FORMAT-01 across all GRN, FOC & Stock Return sections too"** to unify Format-01 & 02 in 1 click, or click **"Customize Format Settings & Preview"** to adjust Render Mode, Header Crop %, Table Column Labels, and Sign-Off Titles in the Live A4 Studio.
+     • **Tab 2 ("2. Auto Tenant Header & Signers")**: Review/edit Tenant Company Identity, choose **Logo Monogram Text** or **Logo Image (Upload)** (or click **"Sync from Tenant Account"**), and configure the **ISO Signer Names, Designations & Department Matrix** (**Prepared & Checked By**, **Authorized & Approved By**, and **Reviewed By + ISO Issue/Revision Numbers**), then click **"Save ISO Header & Signers"**.
+     • **Tab 3 ("3. Digital Signatures")**: Click **"+ Add Digital Signature"**, enter **Signer Full Name**, **Designation / Role**, and **Department**, then either **Draw Signature** on the interactive signature pad or **Upload Signature Image (PNG/JPG)** and save. Saved signatures auto-match signers by name on vouchers, or can be manually selected inside any voucher's **"Customize Voucher Header, Signers & Digital Signatures"** panel before clicking **Print** (which opens an isolated single-click A4 print preview of ONLY that voucher/report) or **Convert to PDF**.
+   - **Audit Trail & Recycle Bin**: Filterable chronological history with isolated A4 Print & CSV export; restore or permanently delete soft-deleted records.
    - **Automatic Email Verification & Support**: Clicking **"Send Verification Email"** sends a Firebase link from **apexstox.com**; clicking the email link verifies the account automatically without extra buttons. Official domain: **apexstox.com** | Support email: **support@apexstox.com**.
    - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change theme/company settings, or use **Admin View-As Mode**.`;
 
@@ -166,6 +169,18 @@ function checkClientFairRate(clientId: string): boolean {
 function detectSuggestedModule(text: string): string | undefined {
   const lower = text.toLowerCase();
   if (
+    lower.includes('format setting') ||
+    lower.includes('document template') ||
+    lower.includes('letterhead') ||
+    lower.includes('digital signature') ||
+    lower.includes('signature') ||
+    lower.includes('signer') ||
+    lower.includes('iso 9001') ||
+    lower.includes('section format')
+  ) {
+    return 'templates';
+  }
+  if (
     lower.includes('section registry') ||
     lower.includes('project section') ||
     lower.includes('material template') ||
@@ -206,7 +221,6 @@ function detectSuggestedModule(text: string): string | undefined {
   if (lower.includes('team')) return 'teams';
   if (lower.includes('site') || lower.includes('branch')) return 'site-stock';
   if (lower.includes('recycle') || lower.includes('delete')) return 'recycle-bin';
-  if (lower.includes('letterhead') || lower.includes('document template')) return 'templates';
   if (lower.includes('item') || lower.includes('barcode') || lower.includes('excel')) return 'items';
   return undefined;
 }
