@@ -100,6 +100,13 @@ export function isUserAllSites(
   user?: Pick<User, 'siteId' | 'siteIds' | 'role' | 'username'> | null
 ): boolean {
   if (!user) return false;
+  const hasSpecificSites =
+    (Array.isArray(user.siteIds) &&
+      user.siteIds.length > 0 &&
+      user.siteIds.some((id) => id && id !== 'all' && id !== 'unassigned') &&
+      !user.siteIds.includes('all')) ||
+    (Boolean(user.siteId) && user.siteId !== 'all' && user.siteId !== 'unassigned');
+  if (hasSpecificSites) return false;
   if (user.username === 'admin' || isCentralOrAllSiteAdmin(user.role)) return true;
   if (user.siteId === 'all') return true;
   if (Array.isArray(user.siteIds) && user.siteIds.includes('all')) return true;
@@ -164,7 +171,7 @@ export function userHasSiteAccess(
   sites?: Site[]
 ): boolean {
   if (!user || !siteId) return false;
-  if (isUserAllSites(user) || isCentralOrAllSiteAdmin(user.role)) return true;
+  if (isUserAllSites(user)) return true;
   return getUserAssignedSiteIds(user, sites).includes(siteId);
 }
 

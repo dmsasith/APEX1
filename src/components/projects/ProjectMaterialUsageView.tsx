@@ -121,7 +121,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
   });
 
   // Site selection (supports All Sites, Single Site, and Multiple Assigned Sites)
-  const isAllSitesUser = isUserAllSites(currentUser) || isCentralOrAllSiteAdmin(currentUser.role);
+  const isAllSitesUser = isUserAllSites(currentUser);
   const isSiteRestricted = !isAllSitesUser;
   const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
   const branchSites = activeSites;
@@ -129,8 +129,27 @@ export const ProjectMaterialUsageView: React.FC = () => {
     ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
   const isSingleSiteLocked = isSiteRestricted && allowedSites.length <= 1;
-  const initialSiteId = allowedSites[0]?.id || activeSites[0]?.id || '';
+  const initialSiteId =
+    allowedSites.find((s) => !s.isMainWarehouse)?.id ||
+    allowedSites[0]?.id ||
+    activeSites[0]?.id ||
+    '';
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
+
+  // Keep selectedSiteId synced when active user switches
+  useEffect(() => {
+    if (allowedSites.length > 0 && !allowedSites.some((s) => s.id === selectedSiteId)) {
+      const nextSite = allowedSites.find((s) => !s.isMainWarehouse) || allowedSites[0];
+      if (nextSite) {
+        setSelectedSiteId(nextSite.id);
+        const siteTeams = activeTeams.filter((t) => t.assignedSiteId === nextSite.id);
+        const firstTeam = siteTeams[0]?.id || '';
+        setSelectedTeamId(firstTeam);
+        const tObj = teams.find((t) => t.id === firstTeam);
+        if (tObj) setSupervisorName(tObj.teamLeaderName);
+      }
+    }
+  }, [currentUser?.id, allowedSites, selectedSiteId, activeTeams, teams]);
 
   // Teams for selected site
   const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
@@ -154,20 +173,46 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [existingScopeFilter, setExistingScopeFilter] = useState<'all' | 'sub' | 'main' | 'individual'>('all');
   const [existingMainParentFilter, setExistingMainParentFilter] = useState<string>('all');
 
-  // Helper to classify projects
+  // Strict helper to check if a project belongs to the selected Project Section / Type
+  const doesProjectMatchSection = React.useCallback(
+    (p: (typeof activeProjects)[number], secId: string) => {
+      if (!secId) return true;
+      if (p.projectTypeId) {
+        return p.projectTypeId === secId;
+      }
+      if (p.parentProjectId) {
+        const parentObj = activeProjects.find((mp) => mp.id === p.parentProjectId);
+        if (parentObj?.projectTypeId) {
+          return parentObj.projectTypeId === secId;
+        }
+      }
+      const secObj = activeProjectTypes.find((pt) => pt.id === secId);
+      if (p.projectTypeName && secObj) {
+        return p.projectTypeName.trim().toLowerCase() === secObj.name.trim().toLowerCase();
+      }
+      return false;
+    },
+    [activeProjects, activeProjectTypes]
+  );
+
+  // Helper to classify Main Projects strictly within the selected Project Section / Type
   const mainProjectsList = React.useMemo(
     () =>
       activeProjects.filter(
-        (p) => p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id)
+        (p) =>
+          doesProjectMatchSection(p, selectedSectionId) &&
+          (p.projectScope === 'main' ||
+            activeProjects.some(
+              (sub) => sub.parentProjectId === p.id && doesProjectMatchSection(sub, selectedSectionId)
+            ))
       ),
-    [activeProjects]
+    [activeProjects, selectedSectionId, doesProjectMatchSection]
   );
 
-  // Existing Project selection (filtered by section when possible)
+  // Existing Project selection (strictly filtered by selected Project Section / Type)
   const sectionProjects = React.useMemo(() => {
     return activeProjects.filter((p) => {
-      const matchSection = !selectedSectionId || !p.projectTypeId || p.projectTypeId === selectedSectionId;
-      if (!matchSection) return false;
+      if (!doesProjectMatchSection(p, selectedSectionId)) return false;
       const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
       const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
       const isIndiv = !isMain && !isSub;
@@ -180,10 +225,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
       }
       return true;
     });
-  }, [activeProjects, selectedSectionId, existingScopeFilter, existingMainParentFilter]);
+  }, [activeProjects, selectedSectionId, existingScopeFilter, existingMainParentFilter, doesProjectMatchSection]);
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    sectionProjects[0]?.id || activeProjects[0]?.id || ''
+    sectionProjects[0]?.id || ''
   );
   const targetProject = projects.find((p) => p.id === selectedProjectId) || activeProjects.find((p) => p.id === selectedProjectId);
   const currentTargetProjId =
@@ -192,7 +237,93 @@ export const ProjectMaterialUsageView: React.FC = () => {
       : newProjectScope === 'sub' && newParentProjectId
       ? newParentProjectId
       : '';
+  const activeTargetProject =
+    projectEntryMode === 'existing'
+      ? targetProject
+      : newProjectScope === 'sub' && newParentProjectId
+      ? projects.find((p) => p.id === newParentProjectId) || activeProjects.find((p) => p.id === newParentProjectId)
+      : undefined;
   const projectFreeMaterials = currentTargetProjId ? getProjectFreeStockList(currentTargetProjId) : [];
+
+  // Resolve which Site Branch a Project (or its Parent Main Project) belongs to
+  const resolveProjectBranch = React.useCallback(
+    (p?: (typeof activeProjects)[number]): { siteId: string; siteName: string } => {
+      if (!p) return { siteId: '', siteName: '' };
+      if (p.siteId) {
+        const matched = sites.find((s) => s.id === p.siteId);
+        return { siteId: p.siteId, siteName: matched?.name || p.siteName || '' };
+      }
+      if (p.parentProjectId) {
+        const parent = projects.find((mp) => mp.id === p.parentProjectId);
+        if (parent?.siteId) {
+          const matched = sites.find((s) => s.id === parent.siteId);
+          return { siteId: parent.siteId, siteName: matched?.name || parent.siteName || '' };
+        }
+      }
+      const voucherWithBranch = (clientFreeIssues || []).find(
+        (v) =>
+          !v.isDeleted &&
+          (v.projectId === p.id ||
+            v.parentProjectId === p.id ||
+            (p.parentProjectId && v.projectId === p.parentProjectId)) &&
+          v.assignedSiteId
+      );
+      if (voucherWithBranch?.assignedSiteId) {
+        const matched = sites.find((s) => s.id === voucherWithBranch.assignedSiteId);
+        return {
+          siteId: voucherWithBranch.assignedSiteId,
+          siteName: matched?.name || voucherWithBranch.assignedSiteName || '',
+        };
+      }
+      const candidateName =
+        p.siteName || (p.parentProjectId ? projects.find((mp) => mp.id === p.parentProjectId)?.siteName : '');
+      if (candidateName) {
+        const byName = activeSites.find(
+          (s) => !s.isMainWarehouse && s.name.trim().toLowerCase() === candidateName.trim().toLowerCase()
+        );
+        if (byName) return { siteId: byName.id, siteName: byName.name };
+      }
+      const candidateDist =
+        p.district || (p.parentProjectId ? projects.find((mp) => mp.id === p.parentProjectId)?.district : '');
+      if (candidateDist) {
+        const dLow = candidateDist.trim().toLowerCase();
+        const byDist = activeSites.find(
+          (s) =>
+            !s.isMainWarehouse &&
+            (s.name.trim().toLowerCase().includes(dLow) ||
+              dLow.includes(s.name.trim().toLowerCase()) ||
+              (s.location && s.location.trim().toLowerCase().includes(dLow)))
+        );
+        if (byDist) return { siteId: byDist.id, siteName: byDist.name };
+      }
+      return { siteId: '', siteName: candidateName || '' };
+    },
+    [sites, activeSites, projects, clientFreeIssues]
+  );
+
+  const selectedProjectBranch = React.useMemo(
+    () => resolveProjectBranch(activeTargetProject),
+    [activeTargetProject, resolveProjectBranch]
+  );
+
+  const userOwnsProjectSite =
+    !selectedProjectBranch.siteId ||
+    userHasSiteAccess(currentUser, selectedProjectBranch.siteId, activeSites);
+
+  const matchesActiveSiteSelection =
+    !selectedProjectBranch.siteId ||
+    !selectedSiteId ||
+    selectedProjectBranch.siteId === selectedSiteId;
+
+  const isProjectSiteLocked = Boolean(
+    activeTargetProject &&
+      selectedProjectBranch.siteId &&
+      (!userOwnsProjectSite || !matchesActiveSiteSelection)
+  );
+
+  const userSiteLabel = isSiteRestricted
+    ? allowedSites.map((s) => s.name).join(', ') || 'Unassigned Site'
+    : sites.find((s) => s.id === selectedSiteId)?.name || 'Selected Site';
 
   // Supervisor / Team Leader
   const currentTeam = teams.find((t) => t.id === selectedTeamId) || activeTeams.find((t) => t.id === selectedTeamId);
@@ -224,9 +355,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
   // Reconciliation selected project
   const [reconcileProjectId, setReconcileProjectId] = useState<string>(activeProjects[0]?.id || '');
 
-  // Auto-load section template items when selectedSectionId changes (Strict Section Isolation)
+  // Auto-load section template items & strictly reset project filters when selectedSectionId changes
   const handleSelectSection = (secId: string) => {
     setSelectedSectionId(secId);
+    setExistingMainParentFilter('all');
     const sec = activeProjectTypes.find((pt) => pt.id === secId);
     if (sec && (sec.templateItems || []).length > 0) {
       const templateRows: ItemEntryRow[] = sec.templateItems.map((t) => ({
@@ -239,18 +371,41 @@ export const ProjectMaterialUsageView: React.FC = () => {
       // STRICT ISOLATION: Reset items so previous section's template is never retained
       setItemRows([{ itemId: activeItems[0]?.id || '', quantity: '' }]);
       if (sec) {
-        setSuccessToast(`Section "${sec.name}" selected. (No template configured for this section).`);
+        setSuccessToast(`Section "${sec.name}" selected. Showing projects registered under "${sec.name}".`);
       }
     }
 
-    // Also update existing project dropdown if in existing mode
-    const matchingProjs = activeProjects.filter((p) => p.projectTypeId === secId);
+    // Update existing project dropdown & new parent project dropdown to strictly match the selected section
+    const matchingProjs = activeProjects.filter((p) => doesProjectMatchSection(p, secId));
     if (matchingProjs.length > 0) {
       setSelectedProjectId(matchingProjs[0].id);
     } else {
       setSelectedProjectId('');
     }
+
+    const matchingMainProjs = matchingProjs.filter(
+      (p) => p.projectScope === 'main' || matchingProjs.some((sub) => sub.parentProjectId === p.id)
+    );
+    setNewParentProjectId(matchingMainProjs[0]?.id || '');
   };
+
+  // Keep selectedProjectId and existingMainParentFilter strictly synchronized with the active section
+  useEffect(() => {
+    if (
+      existingMainParentFilter !== 'all' &&
+      !mainProjectsList.some((mp) => mp.id === existingMainParentFilter)
+    ) {
+      setExistingMainParentFilter('all');
+    }
+  }, [existingMainParentFilter, mainProjectsList]);
+
+  useEffect(() => {
+    if (sectionProjects.length === 0) {
+      if (selectedProjectId !== '') setSelectedProjectId('');
+    } else if (!sectionProjects.some((p) => p.id === selectedProjectId)) {
+      setSelectedProjectId(sectionProjects[0].id);
+    }
+  }, [sectionProjects, selectedProjectId]);
 
   // Initial load of first section's template on component mount
   useEffect(() => {
@@ -391,6 +546,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
         setErrorMsg('Please select a project from the list.');
         return;
       }
+    }
+
+    if (isProjectSiteLocked) {
+      setErrorMsg(
+        `Access Locked: Selected project "${activeTargetProject?.projectName || ''}" belongs to "${selectedProjectBranch.siteName}" site and is not under ${currentUser?.fullName || 'current user'}'s site (${userSiteLabel}).`
+      );
+      return;
     }
 
     if (!selectedTeamId) {
@@ -1177,8 +1339,12 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               className="w-full text-xs font-bold px-3 py-2 border border-amber-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                               required={newProjectScope === 'sub'}
                             >
-                              <option value="">-- Choose Major / Main Project --</option>
-                              {(mainProjectsList.length > 0 ? mainProjectsList : activeProjects.filter((p) => !p.parentProjectId)).map((mp) => (
+                              <option value="">
+                                {mainProjectsList.length > 0
+                                  ? `-- Choose Major / Main Project (${targetSection?.code || 'Section'}) --`
+                                  : `-- No Major / Main Projects in ${targetSection?.name || 'this Section'} --`}
+                              </option>
+                              {mainProjectsList.map((mp) => (
                                 <option key={mp.id} value={mp.id}>
                                   🏢 [{mp.projectId}] {mp.projectName} {mp.customerName ? `(${mp.customerName})` : ''}
                                 </option>
@@ -1332,6 +1498,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             onClick={() => {
                               setExistingScopeFilter(tab.id);
                               const nextList = activeProjects.filter((p) => {
+                                if (!doesProjectMatchSection(p, selectedSectionId)) return false;
                                 const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
                                 const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
                                 const isIndiv = !isMain && !isSub;
@@ -1340,7 +1507,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 if (tab.id === 'individual') return isIndiv;
                                 return true;
                               });
-                              if (nextList.length > 0) setSelectedProjectId(nextList[0].id);
+                              setSelectedProjectId(nextList[0]?.id || '');
                             }}
                             className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                               existingScopeFilter === tab.id
@@ -1353,27 +1520,34 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         ))}
                       </div>
 
-                      {mainProjectsList.length > 0 && (
-                        <select
-                          value={existingMainParentFilter}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setExistingMainParentFilter(val);
-                            if (val !== 'all') {
-                              const firstSub = activeProjects.find((p) => p.parentProjectId === val);
-                              setSelectedProjectId(firstSub ? firstSub.id : val);
-                            }
-                          }}
-                          className="text-[11px] font-bold px-2.5 py-1 border border-purple-200 rounded-md bg-purple-50 text-purple-900 focus:outline-none"
-                        >
-                          <option value="all">🏢 Filter by Main Project: All</option>
-                          {mainProjectsList.map((mp) => (
-                            <option key={mp.id} value={mp.id}>
-                              🏢 [{mp.projectId}] {mp.projectName}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      <select
+                        value={existingMainParentFilter}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setExistingMainParentFilter(val);
+                          if (val !== 'all') {
+                            const firstSub = activeProjects.find(
+                              (p) => p.parentProjectId === val && doesProjectMatchSection(p, selectedSectionId)
+                            );
+                            setSelectedProjectId(firstSub ? firstSub.id : val);
+                          } else {
+                            const firstInSec = activeProjects.find((p) => doesProjectMatchSection(p, selectedSectionId));
+                            setSelectedProjectId(firstInSec ? firstInSec.id : '');
+                          }
+                        }}
+                        className="text-[11px] font-bold px-2.5 py-1 border border-purple-200 rounded-md bg-purple-50 text-purple-900 focus:outline-none"
+                      >
+                        <option value="all">
+                          {mainProjectsList.length > 0
+                            ? `🏢 Filter by Main Project (${targetSection?.code || 'Section'}): All (${mainProjectsList.length})`
+                            : `🏢 Filter by Main Project (${targetSection?.code || 'Section'}): None Registered`}
+                        </option>
+                        {mainProjectsList.map((mp) => (
+                          <option key={mp.id} value={mp.id}>
+                            🏢 [{mp.projectId}] {mp.projectName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
@@ -1397,9 +1571,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               : isMain
                               ? '🏢 [MAIN PROJECT]'
                               : '📄 [INDIVIDUAL]';
+                            const pBranch = resolveProjectBranch(p);
                             return (
                               <option key={p.id} value={p.id}>
-                                {prefix} [{p.projectId}] {p.projectName} {p.subArea ? `· ${p.subArea}` : ''}
+                                {prefix} [{p.projectId}] {p.projectName}{pBranch.siteName ? ` — [Site: ${pBranch.siteName}]` : ''} {p.subArea ? `· ${p.subArea}` : ''}
                               </option>
                             );
                           })
@@ -1669,24 +1844,52 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Step 4 Card: Materials Consumed Table */}
-              <div className="p-4 bg-indigo-50/70 border border-indigo-200/90 rounded-xl shadow-2xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-200/60 pb-2.5 mb-3">
+              {/* Step 4 Card: Materials Consumed Table (Automatically Locks if Selected Project is Not Under User's Site) */}
+              <div
+                className={`p-4 rounded-xl shadow-2xs border transition-colors ${
+                  isProjectSiteLocked
+                    ? 'bg-rose-50/75 border-rose-300 ring-2 ring-rose-200/70'
+                    : 'bg-indigo-50/70 border-indigo-200/90'
+                }`}
+              >
+                <div
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 mb-3 ${
+                    isProjectSiteLocked ? 'border-rose-200' : 'border-indigo-200/60'
+                  }`}
+                >
                   <div>
-                    <span className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <Boxes className="w-4 h-4 text-indigo-600" />
-                      <span>4. Materials Consumed (Deducted from {currentTeam?.teamName || 'Team'} Custody)</span>
+                    <span
+                      className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                        isProjectSiteLocked ? 'text-rose-950' : 'text-indigo-950'
+                      }`}
+                    >
+                      {isProjectSiteLocked ? (
+                        <Lock className="w-4 h-4 text-rose-600" />
+                      ) : (
+                        <Boxes className="w-4 h-4 text-indigo-600" />
+                      )}
+                      <span>
+                        4. Materials Consumed (Deducted from {currentTeam?.teamName || 'Team'} Custody)
+                      </span>
+                      {isProjectSiteLocked && (
+                        <span className="ml-1 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                          LOCKED
+                        </span>
+                      )}
                     </span>
                     <span className="text-[11px] text-slate-600 block mt-0.5">
-                      Standard section template items pre-loaded below. Enter actual quantities used or add extra items.
+                      {isProjectSiteLocked
+                        ? `Material usage entry is disabled because the selected project belongs to another site branch.`
+                        : `Standard section template items pre-loaded below. Enter actual quantities used or add extra items.`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                     {config.barcodeEnabled !== false && (
                       <button
                         type="button"
+                        disabled={isProjectSiteLocked}
                         onClick={() => setScannerOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition cursor-pointer shadow-xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer shadow-xs"
                       >
                         <ScanLine className="w-3.5 h-3.5" />
                         <span>Scan Barcode (USB / Mobile)</span>
@@ -1694,8 +1897,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     )}
                     <button
                       type="button"
+                      disabled={isProjectSiteLocked}
                       onClick={handleAddItemRow}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 transition cursor-pointer shadow-xs"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer shadow-xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>+ Add Extra Item</span>
@@ -1703,120 +1907,171 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
                 </div>
 
-                {eligibleItems.length === 0 && (
-                  <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium flex items-center gap-2 shadow-2xs">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>
-                      Notice: <strong>{currentTeam?.teamName || 'Selected team'}</strong> currently holds 0 units in custody. Items can be entered, but ensure materials are issued to this team via <em>Issue to Teams</em> to permit deduction.
-                    </span>
+                {/* Prominent Site Mismatch Lock Banner */}
+                {isProjectSiteLocked && (
+                  <div className="mb-3.5 p-4 bg-white border-2 border-rose-500 rounded-xl shadow-md space-y-2 animate-in fade-in duration-150">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0 text-rose-600">
+                        <Lock className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <div className="text-sm font-black text-rose-900 leading-snug">
+                          Selected project is not under &ldquo;{currentUser?.fullName || 'Current User'}&rdquo;&apos;s site ({userSiteLabel})!
+                        </div>
+                        <p className="text-xs font-semibold text-rose-800 leading-relaxed">
+                          The selected project{' '}
+                          <span className="font-mono font-black bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 text-rose-950">
+                            [{activeTargetProject?.projectId}] {activeTargetProject?.projectName}
+                          </span>{' '}
+                          is registered under{' '}
+                          <strong className="underline">{selectedProjectBranch.siteName || 'Another Site'}</strong>{' '}
+                          Site Branch — not under{' '}
+                          <strong>{currentUser?.fullName}&apos;s site ({userSiteLabel})</strong>. Material usage entry is locked.
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-600">
+                          තෝරාගත් ව්‍යාපෘතිය අයත් වන්නේ &ldquo;{selectedProjectBranch.siteName}&rdquo; ශාඛාවට බැවින්, {currentUser?.fullName} ({userSiteLabel}) යටතේ මෙම ව්‍යාපෘතියට Material Usage ඇතුළත් කළ නොහැක.
+                        </p>
+                        {userOwnsProjectSite &&
+                          allowedSites.some((s) => s.id === selectedProjectBranch.siteId) && (
+                            <div className="pt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleSiteChange(selectedProjectBranch.siteId)}
+                                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-xs cursor-pointer transition"
+                              >
+                                Switch Step 3 Site Branch to &ldquo;{selectedProjectBranch.siteName}&rdquo;
+                              </button>
+                            </div>
+                          )}
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  {itemRows.map((row, idx) => {
-                    const selectedItemCustody = teamInHand?.items.find((e) => e.itemId === row.itemId);
-                    const itemObj = items.find((i) => i.id === row.itemId);
-                    const inHandBalance = selectedItemCustody?.currentInHand || 0;
-                    const isOverLimit = typeof row.quantity === 'number' && row.quantity > inHandBalance;
+                <div
+                  className={
+                    isProjectSiteLocked
+                      ? 'opacity-40 pointer-events-none select-none space-y-2'
+                      : 'space-y-2'
+                  }
+                >
+                  {eligibleItems.length === 0 && (
+                    <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium flex items-center gap-2 shadow-2xs">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>
+                        Notice: <strong>{currentTeam?.teamName || 'Selected team'}</strong> currently holds 0 units in custody. Items can be entered, but ensure materials are issued to this team via <em>Issue to Teams</em> to permit deduction.
+                      </span>
+                    </div>
+                  )}
 
-                    return (
-                      <div
-                        key={idx}
-                        className={`bg-white border rounded-xl p-3 flex flex-col sm:flex-row items-center gap-3 transition-colors shadow-2xs ${
-                          isOverLimit ? 'border-rose-300 bg-rose-50/40' : 'border-indigo-100/90 hover:border-indigo-300'
-                        }`}
-                      >
-                        {/* Item select */}
-                        <div className="flex-1 w-full">
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                            Material Item #{idx + 1} *
-                          </label>
-                          <select
-                            value={row.itemId}
-                            onChange={(e) => handleRowChange(idx, 'itemId', e.target.value)}
-                            className="w-full text-xs font-semibold px-2.5 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            required
-                          >
-                            <option value="">-- Select Material Item --</option>
-                            {activeItems.map((itm) => {
-                              const custody = teamInHand?.items.find((x) => x.itemId === itm.id);
-                              const balance = custody?.currentInHand || 0;
-                              const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
-                              const focBal = currentTargetProjId ? getClientFreeStockBalance(currentTargetProjId, itm.id) : { remainingBalance: 0 };
-                              const focTag = focBal.remainingBalance > 0 ? ` [🎁 Client Free: ${formatNumber(focBal.remainingBalance)} ${itm.unit}]` : '';
-                              let resTag = '';
-                              if (itm.isProjectReserved && itm.reservedProjectId) {
-                                if (itm.reservedProjectId === currentTargetProjId) {
-                                  resTag = ` [🎯 Reserved for THIS Project]`;
-                                } else {
-                                  resTag = ` [🔒 Reserved for: ${itm.reservedProjectName || 'Project'}]`;
+                  <div className="space-y-2">
+                    {itemRows.map((row, idx) => {
+                      const selectedItemCustody = teamInHand?.items.find((e) => e.itemId === row.itemId);
+                      const itemObj = items.find((i) => i.id === row.itemId);
+                      const inHandBalance = selectedItemCustody?.currentInHand || 0;
+                      const isOverLimit = typeof row.quantity === 'number' && row.quantity > inHandBalance;
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`bg-white border rounded-xl p-3 flex flex-col sm:flex-row items-center gap-3 transition-colors shadow-2xs ${
+                            isOverLimit ? 'border-rose-300 bg-rose-50/40' : 'border-indigo-100/90 hover:border-indigo-300'
+                          }`}
+                        >
+                          {/* Item select */}
+                          <div className="flex-1 w-full">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                              Material Item #{idx + 1} *
+                            </label>
+                            <select
+                              value={row.itemId}
+                              disabled={isProjectSiteLocked}
+                              onChange={(e) => handleRowChange(idx, 'itemId', e.target.value)}
+                              className="w-full text-xs font-semibold px-2.5 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
+                              required
+                            >
+                              <option value="">-- Select Material Item --</option>
+                              {activeItems.map((itm) => {
+                                const custody = teamInHand?.items.find((x) => x.itemId === itm.id);
+                                const balance = custody?.currentInHand || 0;
+                                const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
+                                const focBal = currentTargetProjId ? getClientFreeStockBalance(currentTargetProjId, itm.id) : { remainingBalance: 0 };
+                                const focTag = focBal.remainingBalance > 0 ? ` [🎁 Client Free: ${formatNumber(focBal.remainingBalance)} ${itm.unit}]` : '';
+                                let resTag = '';
+                                if (itm.isProjectReserved && itm.reservedProjectId) {
+                                  if (itm.reservedProjectId === currentTargetProjId) {
+                                    resTag = ` [🎯 Reserved for THIS Project]`;
+                                  } else {
+                                    resTag = ` [🔒 Reserved for: ${itm.reservedProjectName || 'Project'}]`;
+                                  }
                                 }
-                              }
-                              return (
-                                <option key={itm.id} value={itm.id}>
-                                  [{itm.itemCode}] {itm.itemName}{resTag}{focTag} ({balance > 0 ? `Holds: ${balance} ${itm.unit}` : '0 in custody'})
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </div>
+                                return (
+                                  <option key={itm.id} value={itm.id}>
+                                    [{itm.itemCode}] {itm.itemName}{resTag}{focTag} ({balance > 0 ? `Holds: ${balance} ${itm.unit}` : '0 in custody'})
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
 
-                        {/* Available In-Hand Display */}
-                        <div className="w-full sm:w-32 text-center sm:text-left">
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                            Team In-Hand
-                          </label>
-                          <div
-                            className={`text-xs font-bold px-2.5 py-2 rounded-lg border text-center ${
-                              inHandBalance > 0
-                                ? 'text-teal-800 bg-teal-50 border-teal-200'
-                                : 'text-slate-500 bg-slate-100 border-slate-200'
-                            }`}
-                          >
-                            {inHandBalance} {itemObj?.unit || 'units'}
+                          {/* Available In-Hand Display */}
+                          <div className="w-full sm:w-32 text-center sm:text-left">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                              Team In-Hand
+                            </label>
+                            <div
+                              className={`text-xs font-bold px-2.5 py-2 rounded-lg border text-center ${
+                                inHandBalance > 0
+                                  ? 'text-teal-800 bg-teal-50 border-teal-200'
+                                  : 'text-slate-500 bg-slate-100 border-slate-200'
+                              }`}
+                            >
+                              {inHandBalance} {itemObj?.unit || 'units'}
+                            </div>
+                          </div>
+
+                          {/* Quantity input */}
+                          <div className="w-full sm:w-32">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                              Qty Used *
+                            </label>
+                            <input
+                              type="number"
+                              min="0.001"
+                              step="any"
+                              disabled={isProjectSiteLocked}
+                              value={row.quantity}
+                              onChange={(e) =>
+                                handleRowChange(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))
+                              }
+                              placeholder="Qty"
+                              className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-white focus:outline-none text-center font-mono ${
+                                isOverLimit ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900' : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
+                              }`}
+                              required
+                            />
+                          </div>
+
+                          {/* Remove Row Button */}
+                          <div className="pt-2 sm:pt-5">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItemRow(idx)}
+                              disabled={itemRows.length <= 1 || isProjectSiteLocked}
+                              className="p-2 text-slate-400 hover:text-rose-600 rounded-lg disabled:opacity-30 cursor-pointer transition-colors"
+                              title="Remove Row"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
-
-                        {/* Quantity input */}
-                        <div className="w-full sm:w-32">
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                            Qty Used *
-                          </label>
-                          <input
-                            type="number"
-                            min="0.001"
-                            step="any"
-                            value={row.quantity}
-                            onChange={(e) =>
-                              handleRowChange(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))
-                            }
-                            placeholder="Qty"
-                            className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-white focus:outline-none text-center font-mono ${
-                              isOverLimit ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900' : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
-                            }`}
-                            required
-                          />
-                        </div>
-
-                        {/* Remove Row Button */}
-                        <div className="pt-2 sm:pt-5">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItemRow(idx)}
-                            disabled={itemRows.length <= 1}
-                            className="p-2 text-slate-400 hover:text-rose-600 rounded-lg disabled:opacity-30 cursor-pointer transition-colors"
-                            title="Remove Row"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Admin Cross-Project Reserved Stock Override Section */}
-                {itemRows.some((row) => {
+                {!isProjectSiteLocked && itemRows.some((row) => {
                   if (!row.itemId) return false;
                   const itm = items.find((i) => i.id === row.itemId);
                   if (!itm || !itm.isProjectReserved || !itm.reservedProjectId) return false;
@@ -1917,11 +2172,26 @@ export const ProjectMaterialUsageView: React.FC = () => {
               <div className="pt-3 flex justify-end">
                 <button
                   type="submit"
-                  disabled={eligibleItems.length === 0}
-                  className="px-6 py-3 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-800 hover:to-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                  disabled={eligibleItems.length === 0 || isProjectSiteLocked}
+                  className={`px-6 py-3 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer active:scale-95 ${
+                    isProjectSiteLocked
+                      ? 'bg-rose-700 text-white'
+                      : 'bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-800 hover:to-emerald-800 text-white'
+                  }`}
                 >
-                  <FolderKanban className="w-4 h-4 text-emerald-300" />
-                  <span>Record Material Usage & Deduct In-Hand Stock</span>
+                  {isProjectSiteLocked ? (
+                    <>
+                      <Lock className="w-4 h-4 text-rose-200" />
+                      <span>
+                        Locked — Selected project not under {currentUser?.fullName || 'User'}&apos;s site ({userSiteLabel})
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <FolderKanban className="w-4 h-4 text-emerald-300" />
+                      <span>Record Material Usage & Deduct In-Hand Stock</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
