@@ -32,13 +32,24 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { config, activeTemplate, getEffectiveSectionFormat } = useStock();
+  const { currentTenant, config, activeTemplate, getEffectiveSectionFormat } = useStock();
   const printAreaRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen || !supplierReturn) return null;
 
   const rtvFormat = getEffectiveSectionFormat('SUPPLIER_RETURN_DEBIT_NOTE');
+  const tenantCompanyName =
+    currentTenant?.companyName ||
+    config.companyName ||
+    activeTemplate?.companyName ||
+    'ISO REGISTERED ENTERPRISE';
+  const tenantPhone = currentTenant?.contactPhone || config.phone || activeTemplate?.tel || '';
+  const tenantEmail = currentTenant?.contactEmail || config.email || activeTemplate?.email || '';
+  const tenantAddress =
+    config.address ||
+    activeTemplate?.address ||
+    'Head Office & Central Warehouse Operations';
 
   const handlePrint = () => {
     if (!printAreaRef.current) return;
@@ -61,7 +72,7 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
   const handleSendEmail = () => {
     const to = supplierReturn.supplierEmail || '';
     const subject = encodeURIComponent(
-      `DEBIT NOTE & RETURN TO VENDOR: ${supplierReturn.rtvNumber} - ${config.companyName || 'Comtec Systems'}`
+      `DEBIT NOTE & RETURN TO VENDOR: ${supplierReturn.rtvNumber} - ${tenantCompanyName}`
     );
     const bodyLines = [
       `Dear ${supplierReturn.supplierContactPerson || supplierReturn.supplierName},`,
@@ -88,8 +99,8 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
       '',
       `Sincerely,`,
       `${supplierReturn.preparedBy || 'Central Logistics & Procurement Dept'}`,
-      `${config.companyName || 'Comtec Systems'}`,
-      `${config.phone || ''} | ${config.email || ''}`
+      `${tenantCompanyName}`,
+      `${tenantPhone} | ${tenantEmail}`
     ].filter(Boolean);
 
     const body = encodeURIComponent(bodyLines.join('\n'));
@@ -200,42 +211,53 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
               </div>
             ) : (
               <div
-                className="border-b-2 pb-4 mb-5"
+                className="border-2 border-slate-900 mb-5 bg-white"
                 style={{ borderColor: rtvFormat.accentColor || '#0f172a' }}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
+                <div className="grid grid-cols-12 divide-x divide-slate-900">
+                  <div className="col-span-8 p-4">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-0.5">
+                      ISO 9001:2015 Controlled Non-Conformance & Return Document
+                    </div>
                     <h1
                       className="text-xl sm:text-2xl font-black uppercase tracking-tight"
                       style={{ color: rtvFormat.accentColor || '#0f172a' }}
                     >
-                      {activeTemplate?.companyName || config.companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
+                      {tenantCompanyName}
                     </h1>
-                    <p className="text-[11px] text-slate-600 leading-tight mt-1 max-w-xl">
+                    <p className="text-[11px] text-slate-600 leading-tight mt-1">
                       {activeTemplate?.subtitle ||
-                        'Civil Contractors, Telecommunication Engineers, Transport Services, Heavy Equipment & Logistics Operations'}
+                        'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document'}
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      {activeTemplate?.address || config.address || 'Central Logistics Yard & Operations Hub'}
+                    <p className="text-[11px] text-slate-700 font-semibold mt-1.5">
+                      {tenantAddress}
                     </p>
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 mt-0.5">
-                      <span><strong>Tel:</strong> {activeTemplate?.tel || config.phone || '+94 11 2549590'}</span>
-                      <span><strong>Email:</strong> {activeTemplate?.email || config.email || 'support@apexstox.com'}</span>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-700 mt-0.5">
+                      {tenantPhone && <span><strong>Tel:</strong> {tenantPhone}</span>}
+                      {tenantEmail && <span><strong>Email:</strong> {tenantEmail}</span>}
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="col-span-4 text-[10px] divide-y divide-slate-900 flex flex-col justify-between">
                     <div
-                      className="inline-block text-white font-black text-sm uppercase px-3 py-1.5 rounded tracking-wider"
+                      className="p-2 text-white font-black text-xs uppercase tracking-wider text-center"
                       style={{ backgroundColor: rtvFormat.accentColor || '#0f172a' }}
                     >
-                      {rtvFormat.customMainTitle || 'DEBIT NOTE'}
+                      {rtvFormat.customMainTitle || 'DEBIT NOTE / RTV'}
                     </div>
-                    <div className="text-[11px] font-bold text-amber-700 mt-1 uppercase">
-                      RETURN TO VENDOR (RTV)
+                    <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-50">
+                      <span className="font-bold text-slate-600">Form Code:</span>
+                      <span className="font-mono font-black text-slate-900">{rtvFormat.formRefCode || 'ISO-9001-QMS-F04'}</span>
                     </div>
-                    <div className="mt-2 text-right">
-                      {getStatusBadge()}
+                    <div className="px-2.5 py-1.5 flex items-center justify-between">
+                      <span className="font-bold text-slate-600">Issue / Rev:</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        ISS {activeTemplate?.issueNo || '01'} / REV {activeTemplate?.revisionNo || '00'}
+                      </span>
+                    </div>
+                    <div className="px-2.5 py-1.5 flex items-center justify-between">
+                      <span className="font-bold text-slate-600">Status:</span>
+                      <div>{getStatusBadge()}</div>
                     </div>
                   </div>
                 </div>

@@ -16,7 +16,7 @@ import { formatDateTime, formatDate, formatNumber } from '../../utils/exportUtil
 import { StockTransferRequest, TeamIssue, TeamReturn, TeamInHandSummary, LetterheadTemplate, DocumentFormatGroupId } from '../../types';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
-import { COMPANY_FORMAT_GROUPS } from '../../utils/formatAnalyzerUtils';
+import { COMPANY_FORMAT_GROUPS, deriveCompanyMonogram } from '../../utils/formatAnalyzerUtils';
 
 type DocType =
   | { type: 'REQUEST_NOTE'; data: StockTransferRequest }
@@ -66,6 +66,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     sites,
     items,
     teams,
+    currentTenant,
+    config,
+    currentUser,
     letterheadTemplates,
     activeTemplateId,
     activeTemplate: contextActiveTemplate,
@@ -75,12 +78,31 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     getEffectiveSectionFormat,
   } = useStock();
 
-  // Selected template for this print session
+  // Selected template for this print session (auto-enriched with Tenant Company Details from StockContext)
   const [currentTemplateId, setCurrentTemplateId] = useState<string>(activeTemplateId);
-  const activeTemplate: LetterheadTemplate =
-    letterheadTemplates.find((t) => t.id === currentTemplateId) ||
-    contextActiveTemplate ||
-    letterheadTemplates[0];
+  const activeTemplate: LetterheadTemplate = contextActiveTemplate || letterheadTemplates[0];
+
+  const tenantHeaderCompanyName =
+    currentTenant?.companyName ||
+    config?.companyName ||
+    activeTemplate?.companyName ||
+    'ISO REGISTERED ENTERPRISE';
+  const tenantHeaderTel =
+    currentTenant?.contactPhone ||
+    config?.phone ||
+    activeTemplate?.tel ||
+    '';
+  const tenantHeaderEmail =
+    currentTenant?.contactEmail ||
+    config?.email ||
+    activeTemplate?.email ||
+    '';
+  const tenantHeaderAddress =
+    config?.address ||
+    activeTemplate?.address ||
+    (currentTenant?.country ? `${currentTenant.country} — Head Office & Central Warehouse Operations` : 'Head Office & Central Warehouse Operations');
+  const tenantHeaderMonogram =
+    activeTemplate?.logoText || deriveCompanyMonogram(tenantHeaderCompanyName);
 
   // Determine which Company Format Group applies to this document
   const detectedGroupId: DocumentFormatGroupId = (() => {
@@ -126,33 +148,38 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
   const [customReviewedBy, setCustomReviewedBy] = useState<string>('');
   const [customRevSigId, setCustomRevSigId] = useState<string>('');
 
-  const [customIssueNo, setCustomIssueNo] = useState<string>('');
-  const [customRevisionNo, setCustomRevisionNo] = useState<string>('');
-  const [customProjectCode, setCustomProjectCode] = useState<string>('QP 2B');
-  const [customSiteLocation, setCustomSiteLocation] = useState<string>('MATALE');
+  const [customIssueNo, setCustomIssueNo] = useState<string>('01');
+  const [customRevisionNo, setCustomRevisionNo] = useState<string>('00');
+  const [customProjectCode, setCustomProjectCode] = useState<string>(
+    effectiveFormat.formRefCode || 'ISO-9001-QMS-F01'
+  );
+  const [customSiteLocation, setCustomSiteLocation] = useState<string>(
+    (sites.find((s) => s.isMainWarehouse)?.name || sites[0]?.name || 'CENTRAL WAREHOUSE').toUpperCase()
+  );
   const [customDocNumber, setCustomDocNumber] = useState<string>('');
   const [customDate, setCustomDate] = useState<string>('');
 
   // Sync state whenever activeTemplate or document changes
   useEffect(() => {
     if (activeTemplate) {
-      setCustomPreparedBy(activeTemplate.preparedBy || activeTemplate.reviewedBy || 'Dissanayake');
-      setCustomDesigneePrepared(activeTemplate.designeePrepared || 'Site In-Charge / Store Keeper');
-      setCustomDepartmentPrepared(activeTemplate.departmentPrepared || 'Civil & Telecom Operations');
+      const defaultOfficer = currentUser?.fullName || 'Authorized Officer';
+      setCustomPreparedBy(activeTemplate.preparedBy || activeTemplate.reviewedBy || defaultOfficer);
+      setCustomDesigneePrepared(activeTemplate.designeePrepared || 'Storekeeper / Site Officer');
+      setCustomDepartmentPrepared(activeTemplate.departmentPrepared || 'Warehouse & Site Logistics');
 
       setCustomApprovedBy(
         activeTemplate.approvedBy && activeTemplate.approvedBy !== 'Arthur Vance'
           ? activeTemplate.approvedBy
-          : 'Sasith Dissanayake'
+          : defaultOfficer
       );
-      setCustomDesigneeApproved(activeTemplate.designeeApproved || 'Central Project Engineer');
-      setCustomDepartmentApproved(activeTemplate.departmentApproved || 'Central Logistics & Procurement');
+      setCustomDesigneeApproved(activeTemplate.designeeApproved || 'Authorized Manager / Head of Operations');
+      setCustomDepartmentApproved(activeTemplate.departmentApproved || 'Central Operations & Quality Control');
 
-      setCustomReviewedBy(activeTemplate.reviewedBy || 'Dissanayake');
+      setCustomReviewedBy(activeTemplate.reviewedBy || defaultOfficer);
       setCustomIssueNo(activeTemplate.issueNo || '01');
       setCustomRevisionNo(activeTemplate.revisionNo || '00');
     }
-  }, [activeTemplate]);
+  }, [activeTemplate, currentUser]);
 
   // Derive initial doc number & date
   useEffect(() => {
@@ -208,8 +235,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     } else {
       setCustomDocNumber(documentNumber || 'DOC-2026-0001');
       setCustomDate(documentDate ? documentDate.split('T')[0] : new Date().toISOString().split('T')[0]);
+      setCustomProjectCode(effectiveFormat.formRefCode || 'ISO-9001-QMS');
     }
-  }, [document, documentNumber, documentDate, sites]);
+  }, [document, documentNumber, documentDate, sites, effectiveFormat.formRefCode]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && isOpen) {
@@ -253,7 +281,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     setIsProcessing(true);
     setStatusNotice('Generating genuine A4 PDF document...');
     try {
-      const docName = `${customDocNumber || 'Voucher'}_${activeTemplate.logoText || 'Comtec'}`;
+      const docName = `${customDocNumber || 'Voucher'}_${tenantHeaderMonogram || 'ISO'}`;
       await downloadElementAsPdf('letterhead-printable-area', docName);
       setStatusNotice('✓ PDF generated and downloaded successfully!');
     } catch (err) {
@@ -729,23 +757,10 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           </div>
 
           <div className="flex items-center flex-wrap gap-2">
-            {/* Template Selector Dropdown */}
-            <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700">
-              <span className="text-[11px] text-slate-400">Template:</span>
-              <select
-                value={currentTemplateId}
-                onChange={(e) => {
-                  setCurrentTemplateId(e.target.value);
-                  setActiveTemplateId(e.target.value);
-                }}
-                className="bg-transparent text-xs font-semibold text-white focus:outline-none cursor-pointer"
-              >
-                {letterheadTemplates.map((t) => (
-                  <option key={t.id} value={t.id} className="bg-slate-900 text-white">
-                    {t.templateName}
-                  </option>
-                ))}
-              </select>
+            {/* ISO Standard & Tenant Auto-Sync Badge */}
+            <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 text-[11px] text-emerald-300 font-semibold">
+              <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Tenant Header: <strong className="text-white">{tenantHeaderCompanyName}</strong></span>
             </div>
 
             {/* Customize Signers & Designations Toggle */}
@@ -967,73 +982,106 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                 effectiveFormat.uploadedFileDataUrl
               ) ? (
               <>
-                <div className="text-center pb-2">
-                  <div className="flex items-center justify-center gap-3 mb-1">
-                    {activeTemplate.logoType === 'image' && activeTemplate.logoImage ? (
-                      <img
-                        src={activeTemplate.logoImage}
-                        alt="Company Logo"
-                        className="h-9 max-w-[120px] object-contain"
-                      />
-                    ) : (
-                      <div
-                        className="w-10 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black tracking-widest uppercase"
-                        style={{ backgroundColor: effectiveFormat.accentColor || '#000000' }}
+                {/* ISO 9001:2015 CONTROLLED DOCUMENT HEADER WITH AUTO TENANT DETAILS */}
+                <div
+                  className="border-2 border-black mb-2 bg-white"
+                  style={{ borderColor: effectiveFormat.accentColor || '#000000' }}
+                >
+                  <div className="grid grid-cols-12 divide-x divide-black">
+                    {/* Left: Company Logo / Monogram */}
+                    <div className="col-span-2 p-2 flex flex-col items-center justify-center bg-slate-50/60">
+                      {activeTemplate.logoType === 'image' && activeTemplate.logoImage ? (
+                        <img
+                          src={activeTemplate.logoImage}
+                          alt="Company Logo"
+                          className="max-h-12 max-w-full object-contain"
+                        />
+                      ) : (
+                        <div
+                          className="w-12 h-10 rounded border border-black text-white flex items-center justify-center text-xs font-black tracking-widest uppercase"
+                          style={{ backgroundColor: effectiveFormat.accentColor || '#0f172a' }}
+                        >
+                          {tenantHeaderMonogram}
+                        </div>
+                      )}
+                      <span className="text-[8px] font-mono font-bold text-slate-600 uppercase mt-1 tracking-wider">
+                        ISO 9001:2015
+                      </span>
+                    </div>
+
+                    {/* Center: Auto-Populated Tenant Company Name & Contact Details */}
+                    <div className="col-span-6 p-2.5 flex flex-col justify-center text-center">
+                      <h1
+                        className="text-lg sm:text-xl font-black tracking-tight uppercase leading-tight"
+                        style={{ color: effectiveFormat.accentColor || '#000000' }}
                       >
-                        {activeTemplate.logoText || 'COM'}
-                      </div>
-                    )}
-                    <h1
-                      className="text-xl sm:text-2xl font-black font-serif tracking-tight uppercase"
-                      style={{ color: effectiveFormat.accentColor || '#000000' }}
-                    >
-                      {activeTemplate.companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
-                    </h1>
-                  </div>
-
-                  <p className="text-[9px] sm:text-[9.5px] leading-tight text-slate-900 max-w-2xl mx-auto font-sans font-medium">
-                    {activeTemplate.subtitle ||
-                      'Civil Contractors, Telecommunication Engineers and Transport Services, Building Maintenance, and Earth movers, Road Contractors, J.C.B.Backhoe Loader, Boom Truck, Drum Truck, Lories, Excavators, Forklift for Hire. Building Material suppliers.'}
-                  </p>
-
-                  <div className="flex justify-between items-start text-[9.5px] font-sans font-medium text-slate-900 mt-2 px-2 border-t pt-1">
-                    <div className="text-left space-y-0.5">
-                      <div>
-                        Tel: <span className="font-mono">{activeTemplate.tel || '+94 11 2549590'}</span>
-                      </div>
-                      <div>
-                        Fax: <span className="font-mono">{activeTemplate.fax || '+94 11 2549591'}</span>
-                      </div>
-                      <div>
-                        E-mail: <span className="font-mono underline">{activeTemplate.email || 'support@apexstox.com'}</span>
+                        {tenantHeaderCompanyName}
+                      </h1>
+                      <p className="text-[9px] leading-snug text-slate-700 font-medium mt-0.5">
+                        {activeTemplate.subtitle ||
+                          'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document'}
+                      </p>
+                      <div className="text-[9px] text-slate-900 font-semibold mt-1 pt-1 border-t border-slate-200 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5">
+                        <span>{tenantHeaderAddress}</span>
+                        {tenantHeaderTel && (
+                          <span>
+                            • Tel: <strong className="font-mono">{tenantHeaderTel}</strong>
+                          </span>
+                        )}
+                        {tenantHeaderEmail && (
+                          <span>
+                            • Email: <strong className="font-mono">{tenantHeaderEmail}</strong>
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right space-y-0.5">
-                      <div>{activeTemplate.address || 'No: 36, Udumulla, Malgama Road, Himbutana, Mulleriyawa.'}</div>
+
+                    {/* Right: ISO 9001:2015 Document Control Matrix */}
+                    <div className="col-span-4 text-[9px] font-sans divide-y divide-black">
+                      <div className="px-2 py-1 flex items-center justify-between bg-slate-100">
+                        <span className="font-bold text-slate-600 uppercase">Doc Form Code:</span>
+                        <span className="font-mono font-black text-black">
+                          {effectiveFormat.formRefCode || 'ISO-9001-QMS-F01'}
+                        </span>
+                      </div>
+                      <div className="px-2 py-1 flex items-center justify-between">
+                        <span className="font-bold text-slate-600 uppercase">Issue / Rev No:</span>
+                        <span className="font-mono font-bold text-black">
+                          ISS {customIssueNo || '01'} / REV {customRevisionNo || '00'}
+                        </span>
+                      </div>
+                      <div className="px-2 py-1 flex items-center justify-between">
+                        <span className="font-bold text-slate-600 uppercase">Effective Date:</span>
+                        <span className="font-mono font-bold text-black">
+                          {customDate || new Date().toISOString().split('T')[0]}
+                        </span>
+                      </div>
+                      <div className="px-2 py-1 flex items-center justify-between bg-emerald-50/60">
+                        <span className="font-bold text-slate-600 uppercase">QMS Status:</span>
+                        <span className="font-mono font-black text-emerald-900 uppercase">
+                          ISO CONTROLLED
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div
-                  className="border-t-2 my-1.5"
-                  style={{ borderColor: effectiveFormat.accentColor || '#000000' }}
-                ></div>
               </>
             ) : null}
 
             {/* 2. THREE-BOX METADATA BAR */}
             {effectiveFormat.showMetadataThreeBox !== false && (
-              <div className="border border-black flex items-stretch text-xs divide-x divide-black my-2">
+              <div className="border border-black flex items-stretch text-xs divide-x divide-black my-2 bg-slate-50/40">
                 <div className="w-1/3 p-1.5 flex items-center justify-between">
-                  <span className="font-bold text-[11px]">DATE OF DOC:</span>
+                  <span className="font-bold text-[10.5px] uppercase">DATE OF DOCUMENT:</span>
                   <span className="font-mono font-bold text-xs">{customDate || new Date().toISOString().split('T')[0]}</span>
                 </div>
                 <div className="w-1/3 p-1.5 text-center flex items-center justify-center font-bold">
-                  <span className="mr-1">DOCUMENT NO -</span>
+                  <span className="mr-1 text-[10.5px] uppercase">VOUCHER / DOC NO:</span>
                   <span className="font-mono font-black text-xs underline">{customDocNumber}</span>
                 </div>
-                <div className="w-1/3 p-1 text-center font-bold text-[11px] leading-tight flex flex-col justify-center">
-                  <div className="font-mono text-black font-extrabold">{customProjectCode || 'QP 2B'}</div>
-                  <div className="text-red-700 font-black uppercase text-[10px] tracking-wide">{customSiteLocation || 'MATALE'}</div>
+                <div className="w-1/3 p-1 text-center font-bold text-[10.5px] leading-tight flex flex-col justify-center">
+                  <div className="font-mono text-black font-extrabold">{customProjectCode || effectiveFormat.formRefCode || 'ISO-9001-QMS'}</div>
+                  <div className="text-slate-900 font-black uppercase text-[10px] tracking-wide">{customSiteLocation || 'CENTRAL WAREHOUSE'}</div>
                 </div>
               </div>
             )}
@@ -1064,18 +1112,20 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                           />
                         </div>
                       )}
-                      <div className="font-bold text-[11px] text-slate-900">{customPreparedBy || 'Dissanayake'}</div>
+                      <div className="font-bold text-[11px] text-slate-900">
+                        {customPreparedBy || currentUser?.fullName || 'Authorized Officer'}
+                      </div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
                       <div className="text-[9px] text-slate-600 font-bold">Designee</div>
                       <div className="font-medium text-slate-800 text-[10.5px]">
-                        {customDesigneePrepared || activeTemplate.designeePrepared || 'Site In-Charge'}
+                        {customDesigneePrepared || activeTemplate.designeePrepared || 'Storekeeper / Site Officer'}
                       </div>
                     </td>
                     <td className="w-1/4 p-1.5">
                       <div className="text-[9px] text-slate-600 font-bold">Department</div>
                       <div className="font-medium text-slate-800 text-[10.5px]">
-                        {customDepartmentPrepared || activeTemplate.departmentPrepared || 'Civil & Telecom Operations'}
+                        {customDepartmentPrepared || activeTemplate.departmentPrepared || 'Warehouse & Site Logistics'}
                       </div>
                     </td>
                   </tr>
@@ -1100,21 +1150,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                         </div>
                       )}
                       <div className="font-bold text-[11px] text-slate-900">
-                        {customApprovedBy && customApprovedBy !== 'Arthur Vance'
-                          ? customApprovedBy
-                          : 'Sasith Dissanayake'}
+                        {customApprovedBy || currentUser?.fullName || 'Authorized Manager'}
                       </div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
                       <div className="text-[9px] text-slate-600 font-bold">Designee</div>
                       <div className="font-medium text-slate-800 text-[10.5px]">
-                        {customDesigneeApproved || activeTemplate.designeeApproved || 'Central Project Engineer'}
+                        {customDesigneeApproved || activeTemplate.designeeApproved || 'Authorized Manager / Head of Operations'}
                       </div>
                     </td>
                     <td className="w-1/4 p-1.5">
                       <div className="text-[9px] text-slate-600 font-bold">Department</div>
                       <div className="font-medium text-slate-800 text-[10.5px]">
-                        {customDepartmentApproved || activeTemplate.departmentApproved || 'Central Logistics & Procurement'}
+                        {customDepartmentApproved || activeTemplate.departmentApproved || 'Central Operations & Quality Control'}
                       </div>
                     </td>
                   </tr>
@@ -1151,7 +1199,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             />
                           </div>
                         )}
-                        <div className="font-bold text-[9.5px]">{customReviewedBy || activeTemplate.reviewedBy || 'Dissanayake'}</div>
+                        <div className="font-bold text-[9.5px]">
+                          {customReviewedBy || activeTemplate.reviewedBy || currentUser?.fullName || 'Authorized Officer'}
+                        </div>
                       </td>
                       <td className="p-1">
                         <div className="text-[8.5px] text-slate-500">
@@ -1167,10 +1217,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                           </div>
                         )}
                         <div className="font-bold text-[9.5px]">
-                          {(customApprovedBy && customApprovedBy !== 'Arthur Vance' ? customApprovedBy : '') ||
-                            (activeTemplate.approvedBy && activeTemplate.approvedBy !== 'Arthur Vance'
-                              ? activeTemplate.approvedBy
-                              : 'Sasith Dissanayake')}
+                          {customApprovedBy || activeTemplate.approvedBy || currentUser?.fullName || 'Authorized Manager'}
                         </div>
                       </td>
                     </tr>
@@ -1180,9 +1227,13 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             </div>
 
             {/* Bottom Form ID Print Watermark */}
-            <div className="flex justify-between items-center text-[8px] text-slate-500 font-mono mt-2 pt-1 border-t border-slate-200">
-              <span>Form Ref: {effectiveFormat.formRefCode || 'CTS-MAT-REQ-022 / QP 2B'} • {customSiteLocation}</span>
-              <span>Generated via Apex Stock Management System · {activeTemplate.companyName}</span>
+            <div className="flex justify-between items-center text-[8px] text-slate-600 font-mono mt-2 pt-1 border-t border-slate-300">
+              <span>
+                ISO 9001:2015 Controlled Form: {effectiveFormat.formRefCode || 'ISO-9001-QMS-F01'} • {customSiteLocation}
+              </span>
+              <span>
+                Official Document · {tenantHeaderCompanyName}
+              </span>
             </div>
           </div>
         </div>

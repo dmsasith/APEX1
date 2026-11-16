@@ -132,66 +132,28 @@ export const INITIAL_CLIENTS: Client[] = [];
 
 export const DEFAULT_LETTERHEAD_TEMPLATES = [
   {
-    id: 'tpl-apex-developer-default',
-    templateName: 'Apex Developer (Software & Logistics Solutions)',
-    companyName: 'APEX DEVELOPER (PVT) LTD.',
-    subtitle: 'Software Engineering, Enterprise Stock Management Systems, Cloud Infrastructure Solutions, and Automated Supply Chain Logistics.',
-    tel: '+94 11 2549590',
-    fax: '+94 11 2549591',
-    email: 'support@apexstox.com',
-    address: 'Apex Software Tower, Colombo, Sri Lanka.',
-    logoText: 'APEX DEV',
-    designeePrepared: 'System Administrator',
-    designeeApproved: 'Lead Software Architect',
-    departmentPrepared: 'Software Engineering & R&D',
-    departmentApproved: 'Central Operations & Cloud Infrastructure',
+    id: 'tpl-iso-9001-standard',
+    templateName: 'ISO 9001:2015 Standard Controlled Format',
+    companyName: '',
+    subtitle: 'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document',
+    tel: '',
+    fax: '',
+    email: '',
+    address: 'Head Office & Central Warehouse Operations',
+    logoText: '',
+    designeePrepared: 'Storekeeper / Site Officer',
+    designeeApproved: 'Authorized Manager / Head of Operations',
+    departmentPrepared: 'Warehouse & Site Logistics',
+    departmentApproved: 'Central Operations & Quality Control',
     issueNo: '01',
     revisionNo: '00',
-    reviewedBy: 'Sasith Dissanayake',
-    approvedBy: 'Sasith Dissanayake',
-    preparedBy: 'Sasith Dissanayake',
-    paperSize: 'a4',
-    orientation: 'portrait'
+    reviewedBy: '',
+    approvedBy: '',
+    preparedBy: '',
+    paperSize: 'a4' as const,
+    orientation: 'portrait' as const,
   },
-  {
-    id: 'tpl-apex-eng',
-    templateName: 'Apex Engineering & Logistics (Pvt) Ltd',
-    companyName: 'APEX ENGINEERING & LOGISTICS (PVT) LTD.',
-    subtitle: 'Industrial Construction, Heavy Infrastructure Contractors, Electrical Substation Engineering & Turnkey Supply Chain.',
-    tel: '+94 11 2889900',
-    fax: '+94 11 2889901',
-    email: 'operations@apexengineering.lk',
-    address: 'Apex Tower, 120 Nawala Road, Nugegoda, Sri Lanka.',
-    logoText: 'APEX',
-    designeePrepared: 'Site Logistics Supervisor',
-    designeeApproved: 'Head of Operations',
-    departmentPrepared: 'Field Construction Dept',
-    departmentApproved: 'Central Stores Dept',
-    issueNo: '01',
-    revisionNo: '01',
-    reviewedBy: 'K. Perera',
-    approvedBy: 'Sasith Dissanayake',
-    preparedBy: 'K. Perera',
-    paperSize: 'a4',
-    orientation: 'portrait'
-  }
 ];
 
-export const DEFAULT_DIGITAL_SIGNATURES = [
-  {
-    id: 'sig-dissanayake',
-    name: 'Dissanayake',
-    role: 'Site In-Charge / Supervisor',
-    department: 'Civil & Telecom Operations',
-    signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="70" viewBox="0 0 220 70"><path d="M15,35 C30,15 45,55 60,30 C75,5 90,45 105,35 C125,20 140,48 165,28 C185,12 195,45 205,32 M45,45 L170,45" fill="none" stroke="%231e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    createdAt: '2026-01-01'
-  },
-  {
-    id: 'sig-sunil',
-    name: 'Sunil Perera',
-    role: 'Site Logistics Supervisor',
-    department: 'Field Construction Dept',
-    signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="70" viewBox="0 0 220 70"><path d="M20,42 C38,18 48,15 62,35 C70,48 88,20 102,30 C120,42 140,15 158,35 C175,50 188,25 200,35 M50,42 L130,42" fill="none" stroke="%23047857" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    createdAt: '2026-01-01'
-  }
-];
+export const DEFAULT_DIGITAL_SIGNATURES: any[] = [];
+

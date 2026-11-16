@@ -50,7 +50,7 @@ import {
   isUserAllSites,
   getUserAssignedSiteIds,
 } from '../types';
-import { DEFAULT_SECTION_FORMATS } from '../utils/formatAnalyzerUtils';
+import { DEFAULT_SECTION_FORMATS, deriveCompanyMonogram } from '../utils/formatAnalyzerUtils';
 import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
 import {
   INITIAL_CONFIG,
@@ -2750,8 +2750,23 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       saveTenantData(tenantId, 'suppliers', []);
       saveTenantData(tenantId, 'purchaseOrders', []);
       saveTenantData(tenantId, 'supplierReturns', []);
-      saveTenantData(tenantId, 'letterheadTemplates', DEFAULT_LETTERHEAD_TEMPLATES);
-      saveTenantData(tenantId, 'digitalSignatures', DEFAULT_DIGITAL_SIGNATURES);
+      const tenantInitialTemplate: LetterheadTemplate = {
+        ...DEFAULT_LETTERHEAD_TEMPLATES[0],
+        id: 'tpl-iso-9001-standard',
+        templateName: 'ISO 9001:2015 Standard Controlled Format',
+        companyName: cleanName.toUpperCase(),
+        subtitle: 'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document',
+        tel: form.contactPhone?.trim() || '',
+        fax: '',
+        email: form.adminEmail.trim(),
+        address: `${form.country || 'Sri Lanka'} — Head Office & Central Warehouse Operations`,
+        logoText: deriveCompanyMonogram(cleanName),
+        preparedBy: newAdminUser.fullName,
+        reviewedBy: newAdminUser.fullName,
+        approvedBy: newAdminUser.fullName,
+      };
+      saveTenantData(tenantId, 'letterheadTemplates', [tenantInitialTemplate]);
+      saveTenantData(tenantId, 'digitalSignatures', []);
 
       // Save tenant to global tenants registry
       const baseList = tenantsRef.current.length > 0 ? tenantsRef.current : tenants;
@@ -4633,14 +4648,92 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
   };
 
-  // Active Letterhead Template & Management
-  const activeTemplate = useMemo(() => {
+  // Helper to check if a string is a legacy hardcoded sample value
+  const isLegacySampleString = (val?: string): boolean => {
+    if (!val) return true;
+    const lower = val.trim().toLowerCase();
     return (
+      lower.includes('comtec') ||
+      lower.includes('apex engineering') ||
+      lower.includes('apex developer (pvt)') ||
+      lower.includes('udumulla') ||
+      lower.includes('nawala road') ||
+      lower.includes('apex software tower') ||
+      lower.includes('2549590') ||
+      lower.includes('2889900') ||
+      lower.includes('arthur vance') ||
+      lower === 'k. perera' ||
+      lower === 'dissanayake'
+    );
+  };
+
+  // Active Letterhead Template & Management (Auto-populated from logged-in Tenant & System Config)
+  const activeTemplate = useMemo<LetterheadTemplate>(() => {
+    const raw =
       letterheadTemplates.find((t) => t.id === activeTemplateId) ||
       letterheadTemplates[0] ||
-      DEFAULT_LETTERHEAD_TEMPLATES[0]
-    );
-  }, [letterheadTemplates, activeTemplateId]);
+      DEFAULT_LETTERHEAD_TEMPLATES[0];
+
+    const resolvedCompanyName =
+      (!isLegacySampleString(raw.companyName) ? raw.companyName : '') ||
+      currentTenant?.companyName ||
+      config?.companyName ||
+      'ISO REGISTERED ENTERPRISE';
+
+    const resolvedTel =
+      (!isLegacySampleString(raw.tel) ? raw.tel : '') ||
+      currentTenant?.contactPhone ||
+      config?.phone ||
+      '';
+
+    const resolvedEmail =
+      (!isLegacySampleString(raw.email) ? raw.email : '') ||
+      currentTenant?.contactEmail ||
+      config?.email ||
+      '';
+
+    const resolvedAddress =
+      (!isLegacySampleString(raw.address) && raw.address !== 'Head Office & Central Warehouse Operations'
+        ? raw.address
+        : '') ||
+      config?.address ||
+      (currentTenant?.country
+        ? `${currentTenant.country} — Head Office & Central Warehouse Operations`
+        : 'Head Office & Central Warehouse Operations');
+
+    const resolvedSubtitle =
+      !isLegacySampleString(raw.subtitle) &&
+      !raw.subtitle?.toLowerCase().includes('software engineering, enterprise stock')
+        ? raw.subtitle
+        : 'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document';
+
+    const resolvedLogoText =
+      (!isLegacySampleString(raw.logoText) && raw.logoText !== 'APEX DEV' && raw.logoText !== 'APEX' && raw.logoText !== 'COM'
+        ? raw.logoText
+        : '') || deriveCompanyMonogram(resolvedCompanyName);
+
+    const fallbackSigner = currentUser?.fullName || 'Authorized Officer';
+
+    return {
+      ...raw,
+      templateName:
+        isLegacySampleString(raw.templateName) || raw.templateName.includes('Apex Developer')
+          ? 'ISO 9001:2015 Standard Controlled Format'
+          : raw.templateName,
+      companyName: resolvedCompanyName,
+      subtitle: resolvedSubtitle,
+      tel: resolvedTel,
+      fax: !isLegacySampleString(raw.fax) ? raw.fax : '',
+      email: resolvedEmail,
+      address: resolvedAddress,
+      logoText: resolvedLogoText,
+      preparedBy: (!isLegacySampleString(raw.preparedBy) ? raw.preparedBy : '') || fallbackSigner,
+      reviewedBy: (!isLegacySampleString(raw.reviewedBy) ? raw.reviewedBy : '') || fallbackSigner,
+      approvedBy: (!isLegacySampleString(raw.approvedBy) ? raw.approvedBy : '') || fallbackSigner,
+      issueNo: raw.issueNo || '01',
+      revisionNo: raw.revisionNo || '00',
+    };
+  }, [letterheadTemplates, activeTemplateId, currentTenant, config, currentUser]);
 
   const setActiveTemplateId = (id: string) => {
     setActiveTemplateIdState(id);
@@ -4681,25 +4774,45 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   // Section-Specific Document Formats (stored inside activeTemplate.sectionFormats for automatic Firebase & Tenant Sync)
+  const sanitizeSectionFormatSlot = (
+    defaultSlot: SectionFormatConfig,
+    savedSlot?: SectionFormatConfig
+  ): SectionFormatConfig => {
+    if (!savedSlot) return defaultSlot;
+    const merged: SectionFormatConfig = {
+      ...defaultSlot,
+      ...savedSlot,
+    };
+    if (!merged.isCustomUploaded) {
+      const legacyCodes = ['CTS-MAT-REQ-022 / QP 2B', 'CTS-GRN-RET-014 / WH-01', 'PROC-PO-STD-001', 'PROC-RTV-DN-009'];
+      if (!merged.formRefCode || legacyCodes.includes(merged.formRefCode)) {
+        merged.formRefCode = defaultSlot.formRefCode;
+      }
+      merged.gridStyle = 'classic_bordered';
+      merged.groupName = defaultSlot.groupName;
+    }
+    return merged;
+  };
+
   const sectionFormats = useMemo<Record<DocumentFormatGroupId, SectionFormatConfig>>(() => {
     const saved = activeTemplate?.sectionFormats || {};
     return {
-      REQUISITION_ISSUE_USAGE: {
-        ...DEFAULT_SECTION_FORMATS.REQUISITION_ISSUE_USAGE,
-        ...(saved.REQUISITION_ISSUE_USAGE || {}),
-      },
-      RECEIPT_RETURN_FOC: {
-        ...DEFAULT_SECTION_FORMATS.RECEIPT_RETURN_FOC,
-        ...(saved.RECEIPT_RETURN_FOC || {}),
-      },
-      PURCHASE_ORDER: {
-        ...DEFAULT_SECTION_FORMATS.PURCHASE_ORDER,
-        ...(saved.PURCHASE_ORDER || {}),
-      },
-      SUPPLIER_RETURN_DEBIT_NOTE: {
-        ...DEFAULT_SECTION_FORMATS.SUPPLIER_RETURN_DEBIT_NOTE,
-        ...(saved.SUPPLIER_RETURN_DEBIT_NOTE || {}),
-      },
+      REQUISITION_ISSUE_USAGE: sanitizeSectionFormatSlot(
+        DEFAULT_SECTION_FORMATS.REQUISITION_ISSUE_USAGE,
+        saved.REQUISITION_ISSUE_USAGE
+      ),
+      RECEIPT_RETURN_FOC: sanitizeSectionFormatSlot(
+        DEFAULT_SECTION_FORMATS.RECEIPT_RETURN_FOC,
+        saved.RECEIPT_RETURN_FOC
+      ),
+      PURCHASE_ORDER: sanitizeSectionFormatSlot(
+        DEFAULT_SECTION_FORMATS.PURCHASE_ORDER,
+        saved.PURCHASE_ORDER
+      ),
+      SUPPLIER_RETURN_DEBIT_NOTE: sanitizeSectionFormatSlot(
+        DEFAULT_SECTION_FORMATS.SUPPLIER_RETURN_DEBIT_NOTE,
+        saved.SUPPLIER_RETURN_DEBIT_NOTE
+      ),
     };
   }, [activeTemplate]);
 
@@ -4779,7 +4892,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditLog('OTHER', id, 'System', `Deleted Digital Signature`);
   };
 
-  // Auto-clean any legacy persisted "Arthur Vance" demo references from sites, letterheadTemplates, and digitalSignatures
+  // Auto-clean any legacy persisted sample templates ("Comtec", "Apex Engineering", "Arthur Vance") and sample signatures
   useEffect(() => {
     if (isFlushingRef.current) return;
     const targetTenantId = currentTenantIdRef.current || currentTenantId;
@@ -4803,32 +4916,88 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     }
 
-    if (letterheadTemplates.some((t) => (t.approvedBy || '').trim().toLowerCase() === 'arthur vance')) {
+    const hasLegacySampleTemplates =
+      letterheadTemplates.length > 1 ||
+      letterheadTemplates.some(
+        (t) =>
+          t.id === 'tpl-apex-eng' ||
+          t.id === 'tpl-apex-developer-default' ||
+          isLegacySampleString(t.companyName) ||
+          isLegacySampleString(t.templateName)
+      );
+
+    if (hasLegacySampleTemplates && letterheadTemplates.length > 0) {
       setLetterheadTemplates((prev) => {
-        const next = prev.map((t) =>
-          (t.approvedBy || '').trim().toLowerCase() === 'arthur vance'
-            ? { ...t, approvedBy: 'Sasith Dissanayake' }
-            : t
-        );
+        const primary = prev.find((t) => t.id === activeTemplateId) || prev[0];
+        const cleanCompanyName =
+          (!isLegacySampleString(primary.companyName) ? primary.companyName : '') ||
+          currentTenant?.companyName ||
+          config?.companyName ||
+          '';
+        const cleanTel =
+          (!isLegacySampleString(primary.tel) ? primary.tel : '') ||
+          currentTenant?.contactPhone ||
+          config?.phone ||
+          '';
+        const cleanEmail =
+          (!isLegacySampleString(primary.email) ? primary.email : '') ||
+          currentTenant?.contactEmail ||
+          config?.email ||
+          '';
+        const cleanAddress =
+          (!isLegacySampleString(primary.address) ? primary.address : '') ||
+          config?.address ||
+          'Head Office & Central Warehouse Operations';
+
+        const unifiedIsoTemplate: LetterheadTemplate = {
+          ...DEFAULT_LETTERHEAD_TEMPLATES[0],
+          ...primary,
+          id: 'tpl-iso-9001-standard',
+          templateName: 'ISO 9001:2015 Standard Controlled Format',
+          companyName: cleanCompanyName,
+          subtitle:
+            !isLegacySampleString(primary.subtitle) &&
+            !primary.subtitle?.toLowerCase().includes('software engineering, enterprise stock')
+              ? primary.subtitle
+              : 'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document',
+          tel: cleanTel,
+          fax: !isLegacySampleString(primary.fax) ? primary.fax : '',
+          email: cleanEmail,
+          address: cleanAddress,
+          logoText: deriveCompanyMonogram(cleanCompanyName),
+          preparedBy: !isLegacySampleString(primary.preparedBy) ? primary.preparedBy : currentUser?.fullName || '',
+          reviewedBy: !isLegacySampleString(primary.reviewedBy) ? primary.reviewedBy : currentUser?.fullName || '',
+          approvedBy: !isLegacySampleString(primary.approvedBy) ? primary.approvedBy : currentUser?.fullName || '',
+        };
+        const next = [unifiedIsoTemplate];
         saveTenantData(targetTenantId, 'letterheadTemplates', next);
+        setActiveTemplateIdState(unifiedIsoTemplate.id);
         return next;
       });
     }
 
     if (
       digitalSignatures.some(
-        (sig) => sig.id === 'sig-arthur' || (sig.name || '').trim().toLowerCase() === 'arthur vance'
+        (sig) =>
+          sig.id === 'sig-arthur' ||
+          sig.id === 'sig-dissanayake' ||
+          sig.id === 'sig-sunil' ||
+          (sig.name || '').trim().toLowerCase() === 'arthur vance'
       )
     ) {
       setDigitalSignatures((prev) => {
         const next = prev.filter(
-          (sig) => sig.id !== 'sig-arthur' && (sig.name || '').trim().toLowerCase() !== 'arthur vance'
+          (sig) =>
+            sig.id !== 'sig-arthur' &&
+            sig.id !== 'sig-dissanayake' &&
+            sig.id !== 'sig-sunil' &&
+            (sig.name || '').trim().toLowerCase() !== 'arthur vance'
         );
         saveTenantData(targetTenantId, 'digitalSignatures', next);
         return next;
       });
     }
-  }, [sites, letterheadTemplates, digitalSignatures, currentTenantId]);
+  }, [sites, letterheadTemplates, digitalSignatures, currentTenantId, currentTenant, config, currentUser]);
 
   // Demo Data Reset and Clear
   const resetAllData = () => {

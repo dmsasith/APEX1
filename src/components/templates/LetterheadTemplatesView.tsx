@@ -43,10 +43,14 @@ import {
   FormatGroupDefinition,
   analyzeUploadedFormatFile,
   recropHeaderBannerFromImage,
+  deriveCompanyMonogram,
 } from '../../utils/formatAnalyzerUtils';
 
 export const LetterheadTemplatesView: React.FC = () => {
   const {
+    currentTenant,
+    config,
+    currentUser,
     letterheadTemplates,
     activeTemplateId,
     activeTemplate,
@@ -62,6 +66,28 @@ export const LetterheadTemplatesView: React.FC = () => {
     resetSectionFormat,
     getEffectiveSectionFormat,
   } = useStock();
+
+  const autoTenantCompanyName =
+    currentTenant?.companyName ||
+    config?.companyName ||
+    activeTemplate.companyName ||
+    'ISO REGISTERED ENTERPRISE';
+  const autoTenantTel =
+    currentTenant?.contactPhone ||
+    config?.phone ||
+    activeTemplate.tel ||
+    '';
+  const autoTenantEmail =
+    currentTenant?.contactEmail ||
+    config?.email ||
+    activeTemplate.email ||
+    '';
+  const autoTenantAddress =
+    config?.address ||
+    activeTemplate.address ||
+    (currentTenant?.country ? `${currentTenant.country} — Head Office & Central Warehouse Operations` : 'Head Office & Central Warehouse Operations');
+  const autoTenantMonogram = deriveCompanyMonogram(autoTenantCompanyName);
+  const autoTenantOfficer = currentUser?.fullName || 'Authorized Officer';
 
   const [activeTab, setActiveTab] = useState<'section-formats' | 'templates' | 'signatures'>('section-formats');
 
@@ -125,31 +151,84 @@ export const LetterheadTemplatesView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawing = useRef<boolean>(false);
 
-  // When selectedTemplateId changes, reload form
+  // When selectedTemplateId or activeTemplate changes, reload form with auto-populated Tenant details
   useEffect(() => {
-    const tpl = letterheadTemplates.find((t) => t.id === selectedTemplateId) || activeTemplate;
+    const tpl = activeTemplate;
     if (tpl) {
-      setTemplateName(tpl.templateName || '');
-      setCompanyName(tpl.companyName || '');
-      setSubtitle(tpl.subtitle || '');
-      setTel(tpl.tel || '');
+      setTemplateName('ISO 9001:2015 Standard Controlled Format');
+      setCompanyName(tpl.companyName || autoTenantCompanyName);
+      setSubtitle(
+        tpl.subtitle ||
+          'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document'
+      );
+      setTel(tpl.tel || autoTenantTel);
       setFax(tpl.fax || '');
-      setEmail(tpl.email || '');
-      setAddress(tpl.address || '');
-      setLogoText(tpl.logoText || 'COM');
+      setEmail(tpl.email || autoTenantEmail);
+      setAddress(tpl.address || autoTenantAddress);
+      setLogoText(tpl.logoText || autoTenantMonogram);
       setLogoType(tpl.logoType || 'text');
       setLogoImage(tpl.logoImage || '');
-      setDesigneePrepared(tpl.designeePrepared || 'Site In-Charge');
-      setDesigneeApproved(tpl.designeeApproved || 'Central Project Engineer');
-      setDepartmentPrepared(tpl.departmentPrepared || 'Civil & Telecom Operations');
-      setDepartmentApproved(tpl.departmentApproved || 'Central Logistics & Procurement');
+      setDesigneePrepared(tpl.designeePrepared || 'Storekeeper / Site Officer');
+      setDesigneeApproved(tpl.designeeApproved || 'Authorized Manager / Head of Operations');
+      setDepartmentPrepared(tpl.departmentPrepared || 'Warehouse & Site Logistics');
+      setDepartmentApproved(tpl.departmentApproved || 'Central Operations & Quality Control');
       setIssueNo(tpl.issueNo || '01');
       setRevisionNo(tpl.revisionNo || '00');
-      setReviewedBy(tpl.reviewedBy || 'Dissanayake');
-      setApprovedBy(tpl.approvedBy && tpl.approvedBy !== 'Arthur Vance' ? tpl.approvedBy : 'Sasith Dissanayake');
-      setPreparedBy(tpl.preparedBy || tpl.reviewedBy || 'Dissanayake');
+      setReviewedBy(tpl.reviewedBy || autoTenantOfficer);
+      setApprovedBy(tpl.approvedBy || autoTenantOfficer);
+      setPreparedBy(tpl.preparedBy || tpl.reviewedBy || autoTenantOfficer);
     }
-  }, [selectedTemplateId, letterheadTemplates]);
+  }, [
+    selectedTemplateId,
+    activeTemplate,
+    autoTenantCompanyName,
+    autoTenantTel,
+    autoTenantEmail,
+    autoTenantAddress,
+    autoTenantMonogram,
+    autoTenantOfficer,
+  ]);
+
+  const handleSyncFromTenantAccount = () => {
+    const syncedCompany = currentTenant?.companyName || config?.companyName || 'ISO REGISTERED ENTERPRISE';
+    const syncedTel = currentTenant?.contactPhone || config?.phone || '';
+    const syncedEmail = currentTenant?.contactEmail || config?.email || '';
+    const syncedAddress =
+      config?.address ||
+      (currentTenant?.country ? `${currentTenant.country} — Head Office & Central Warehouse Operations` : 'Head Office & Central Warehouse Operations');
+    const syncedMonogram = deriveCompanyMonogram(syncedCompany);
+    const syncedSubtitle =
+      'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document';
+
+    setTemplateName('ISO 9001:2015 Standard Controlled Format');
+    setCompanyName(syncedCompany);
+    setSubtitle(syncedSubtitle);
+    setTel(syncedTel);
+    setEmail(syncedEmail);
+    setAddress(syncedAddress);
+    setLogoText(syncedMonogram);
+    setPreparedBy(autoTenantOfficer);
+    setReviewedBy(autoTenantOfficer);
+    setApprovedBy(autoTenantOfficer);
+
+    const existingTpl = letterheadTemplates.find((t) => t.id === selectedTemplateId) || activeTemplate;
+    updateLetterheadTemplate({
+      ...existingTpl,
+      templateName: 'ISO 9001:2015 Standard Controlled Format',
+      companyName: syncedCompany,
+      subtitle: syncedSubtitle,
+      tel: syncedTel,
+      email: syncedEmail,
+      address: syncedAddress,
+      logoText: syncedMonogram,
+      preparedBy: autoTenantOfficer,
+      reviewedBy: autoTenantOfficer,
+      approvedBy: autoTenantOfficer,
+    });
+    showFeedback(
+      `✓ Auto-loaded Tenant Company Name (${syncedCompany}), Email & Phone into the ISO 9001:2015 Document Header!`
+    );
+  };
 
   const showFeedback = (text: string, type: 'success' | 'error' = 'success') => {
     setFeedbackMsg({ type, text });
@@ -179,7 +258,7 @@ export const LetterheadTemplatesView: React.FC = () => {
       const analysis = await analyzeUploadedFormatFile(
         file,
         cropPct,
-        activeTemplate.companyName || 'COMTEC SYSTEMS (PVT) LTD.'
+        autoTenantCompanyName
       );
 
       const newConfig: SectionFormatConfig = {
@@ -297,7 +376,7 @@ export const LetterheadTemplatesView: React.FC = () => {
       fax: fax.trim(),
       email: email.trim(),
       address: address.trim(),
-      logoText: logoText.trim() || 'COM',
+      logoText: logoText.trim() || autoTenantMonogram,
       logoType,
       logoImage: logoType === 'image' ? logoImage : undefined,
       designeePrepared: designeePrepared.trim(),
@@ -534,13 +613,13 @@ export const LetterheadTemplatesView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">
             <Award className="w-4 h-4 text-emerald-600" />
-            <span>Company Standard Formats, Letterheads & Sign-Off Governance</span>
+            <span>ISO 9001:2015 Controlled Document Formats • Auto Tenant Header</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900">
-            Document Templates & Format Uploader
+            ISO Standard Document Formats & PDF / Image Uploader
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
-            Upload your company&apos;s official voucher/order formats (PDF or Image) for each grouped operation. The system automatically builds the printable A4 format and applies it to all affected sections.
+            All 4 document format groups default to the clean <strong>ISO 9001:2015 Controlled Document Format</strong> with your logged-in Tenant Company Name (<strong>{autoTenantCompanyName}</strong>) and contact details auto-populated into the header. You can also upload a custom PDF or Image format to any group.
           </p>
         </div>
 
@@ -557,7 +636,7 @@ export const LetterheadTemplatesView: React.FC = () => {
               }`}
             >
               <FileUp className="w-3.5 h-3.5" />
-              <span>Section Formats (Upload PDF / Image)</span>
+              <span>1. Section Formats (ISO Standard & Upload PDF/Image)</span>
             </button>
             <button
               type="button"
@@ -569,7 +648,7 @@ export const LetterheadTemplatesView: React.FC = () => {
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
-              <span>Company Letterhead & Signers ({letterheadTemplates.length})</span>
+              <span>2. Auto Tenant Header & Signers</span>
             </button>
             <button
               type="button"
@@ -581,7 +660,7 @@ export const LetterheadTemplatesView: React.FC = () => {
               }`}
             >
               <PenTool className="w-3.5 h-3.5" />
-              <span>Digital Signatures ({digitalSignatures.length})</span>
+              <span>3. Digital Signatures ({digitalSignatures.length})</span>
             </button>
           </div>
         </div>
@@ -612,21 +691,22 @@ export const LetterheadTemplatesView: React.FC = () => {
         <div className="space-y-6">
           {/* Top Guidance + Unified Toggle Banner */}
           <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-md border border-slate-700/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-bold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Smart Grouped Format Engine • Upload Once, Print Everywhere</span>
+                <span>ISO 9001:2015 Standard Active • Tenant Header Auto-Synced ({autoTenantCompanyName})</span>
               </div>
               <h2 className="text-base sm:text-lg font-extrabold text-white">
-                Company Standard Document Formats (Grouped by Identical Structure)
+                How This Section Works (ISO 9001:2015 Standard + Optional PDF / Image Upload)
               </h2>
               <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-                Sections that share the same document layout are grouped together below. Upload a <strong>PDF (.pdf)</strong> or <strong>Image (.png / .jpg)</strong> of your company&apos;s format into any card — the system automatically extracts the header/layout and uses it whenever you print from the listed <strong>&ldquo;This Format Affects To&rdquo;</strong> sections.
+                <strong>1. Default ISO 9001:2015 Format:</strong> Without uploading anything, all 4 groups below automatically print using the international <strong>ISO 9001:2015 Controlled Document Format</strong> with your Tenant Company Name (<strong>{autoTenantCompanyName}</strong>), phone, email, and address in the header.<br />
+                <strong>2. Custom PDF / Image Format Upload:</strong> If your company has its own printed voucher format, upload a <strong>PDF (.pdf)</strong> or <strong>Image (.png / .jpg)</strong> into any of the 4 cards below — it will automatically apply to all sections listed under <strong>&ldquo;This Format Affects To&rdquo;</strong>.
               </p>
             </div>
 
             {/* 1-Click Unified Option for Format 01 & Format 02 */}
-            <div className="bg-slate-800/90 border border-slate-600 rounded-xl p-3.5 shrink-0 max-w-md">
+            <div className="bg-slate-800/90 border border-slate-600 rounded-xl p-3.5 shrink-0 max-w-md space-y-2.5">
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -643,6 +723,19 @@ export const LetterheadTemplatesView: React.FC = () => {
                   </div>
                 </div>
               </label>
+              <div className="pt-2 border-t border-slate-700 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-300">
+                  Tenant Header: <strong className="text-white">{autoTenantCompanyName}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSyncFromTenantAccount}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Sync Tenant Header</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -696,8 +789,8 @@ export const LetterheadTemplatesView: React.FC = () => {
                               <span>Custom {rawFmt.uploadedFileType?.toUpperCase()} Format Active</span>
                             </span>
                           ) : (
-                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-700">
-                              System Standard Format
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-900 text-emerald-300 border border-slate-700">
+                              ISO 9001:2015 Standard (Auto Tenant Header)
                             </span>
                           )}
                         </div>
@@ -1266,7 +1359,7 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                 {/* LIVE A4 SYSTEM PRINT PREVIEW FOR SELECTED FORMAT GROUP */}
                 <div className="border-2 border-slate-300 rounded-xl p-5 sm:p-6 bg-white text-black font-sans text-xs shadow-sm">
-                  {/* Header: Either Uploaded Header Banner OR Dynamic Letterhead */}
+                  {/* Header: Either Uploaded Header Banner OR ISO 9001:2015 Auto Tenant Header */}
                   {draftFormat.isCustomUploaded &&
                   (draftFormat.renderMode === 'uploaded_header_banner' ||
                     draftFormat.renderMode === 'full_page_stationery') &&
@@ -1280,52 +1373,100 @@ export const LetterheadTemplatesView: React.FC = () => {
                     </div>
                   ) : (
                     <div
-                      className="text-center pb-2 mb-2 border-b-2"
+                      className="border-2 border-black mb-2.5 bg-white"
                       style={{ borderColor: draftFormat.accentColor || '#0f172a' }}
                     >
-                      <div className="flex items-center justify-center gap-3 mb-1">
-                        {logoType === 'image' && logoImage ? (
-                          <img
-                            src={logoImage}
-                            alt="Company Logo"
-                            className="h-9 max-w-[120px] object-contain"
-                          />
-                        ) : (
-                          <div
-                            className="w-10 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black tracking-widest uppercase"
-                            style={{ backgroundColor: draftFormat.accentColor || '#0f172a' }}
+                      <div className="grid grid-cols-12 divide-x divide-black">
+                        {/* Left: Logo / Monogram */}
+                        <div className="col-span-2 p-2 flex flex-col items-center justify-center bg-slate-50/70">
+                          {logoType === 'image' && logoImage ? (
+                            <img
+                              src={logoImage}
+                              alt="Company Logo"
+                              className="max-h-10 max-w-full object-contain"
+                            />
+                          ) : (
+                            <div
+                              className="w-11 h-9 rounded border border-black text-white flex items-center justify-center text-[10px] font-black tracking-widest uppercase"
+                              style={{ backgroundColor: draftFormat.accentColor || '#0f172a' }}
+                            >
+                              {logoText || autoTenantMonogram}
+                            </div>
+                          )}
+                          <span className="text-[7.5px] font-mono font-bold text-slate-600 uppercase mt-1">
+                            ISO 9001:2015
+                          </span>
+                        </div>
+
+                        {/* Center: Auto-Populated Tenant Company Name & Contact Details */}
+                        <div className="col-span-6 p-2 flex flex-col justify-center text-center">
+                          <h2
+                            className="text-base sm:text-lg font-black tracking-tight uppercase leading-tight"
+                            style={{ color: draftFormat.accentColor || '#0f172a' }}
                           >
-                            {logoText || 'COM'}
+                            {companyName || autoTenantCompanyName}
+                          </h2>
+                          <p className="text-[8.5px] leading-snug text-slate-700 font-medium mt-0.5">
+                            {subtitle ||
+                              'ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document'}
+                          </p>
+                          <div className="text-[8.5px] text-slate-900 font-semibold mt-1 pt-1 border-t border-slate-200 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5">
+                            <span>{address || autoTenantAddress}</span>
+                            {(tel || autoTenantTel) && (
+                              <span>• Tel: <strong className="font-mono">{tel || autoTenantTel}</strong></span>
+                            )}
+                            {(email || autoTenantEmail) && (
+                              <span>• Email: <strong className="font-mono">{email || autoTenantEmail}</strong></span>
+                            )}
                           </div>
-                        )}
-                        <h2
-                          className="text-lg sm:text-xl font-black font-serif tracking-tight uppercase"
-                          style={{ color: draftFormat.accentColor || '#0f172a' }}
-                        >
-                          {companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
-                        </h2>
+                        </div>
+
+                        {/* Right: ISO 9001:2015 Document Control Matrix */}
+                        <div className="col-span-4 text-[8.5px] divide-y divide-black">
+                          <div className="px-2 py-1 flex items-center justify-between bg-slate-100">
+                            <span className="font-bold text-slate-600 uppercase">Form Code:</span>
+                            <span className="font-mono font-black text-black">
+                              {draftFormat.formRefCode || 'ISO-9001-QMS-F01'}
+                            </span>
+                          </div>
+                          <div className="px-2 py-1 flex items-center justify-between">
+                            <span className="font-bold text-slate-600 uppercase">Issue / Rev:</span>
+                            <span className="font-mono font-bold text-black">
+                              ISS {issueNo || '01'} / REV {revisionNo || '00'}
+                            </span>
+                          </div>
+                          <div className="px-2 py-1 flex items-center justify-between">
+                            <span className="font-bold text-slate-600 uppercase">Date:</span>
+                            <span className="font-mono font-bold text-black">
+                              {new Date().toISOString().split('T')[0]}
+                            </span>
+                          </div>
+                          <div className="px-2 py-1 flex items-center justify-between bg-emerald-50/70">
+                            <span className="font-bold text-slate-600 uppercase">QMS Status:</span>
+                            <span className="font-mono font-black text-emerald-900 uppercase">
+                              ISO CONTROLLED
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-[9px] leading-tight text-slate-700 max-w-xl mx-auto">
-                        {subtitle || 'Civil Contractors, Telecommunication Engineers and Transport Services'}
-                      </p>
                     </div>
                   )}
 
                   {/* 3-Box Metadata Bar */}
-                  <div className="border border-black flex items-stretch text-[11px] divide-x divide-black my-2.5">
+                  <div className="border border-black flex items-stretch text-[10.5px] divide-x divide-black my-2.5 bg-slate-50/40">
                     <div className="w-1/3 p-1.5 flex items-center justify-between">
                       <span className="font-bold">DATE OF DOC:</span>
                       <span className="font-mono font-bold">{new Date().toISOString().split('T')[0]}</span>
                     </div>
                     <div className="w-1/3 p-1.5 text-center flex items-center justify-center font-bold">
-                      <span>DOC NO - </span>
+                      <span>VOUCHER NO: </span>
                       <span className="font-mono font-black underline ml-1">
                         {currentEditingGroupDef.affectedSections[0]?.docCode || 'DOC-2026-0001'}
                       </span>
                     </div>
                     <div className="w-1/3 p-1 text-center font-bold leading-tight flex flex-col justify-center">
-                      <div className="font-mono font-extrabold">QP 2B</div>
-                      <div className="text-red-700 font-black uppercase text-[10px]">CENTRAL YARD</div>
+                      <div className="font-mono font-extrabold">{draftFormat.formRefCode || 'ISO-9001-QMS'}</div>
+                      <div className="text-slate-900 font-black uppercase text-[9.5px]">CENTRAL WAREHOUSE</div>
                     </div>
                   </div>
 
@@ -1344,7 +1485,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Sample Dynamic Items Table */}
+                  {/* Dynamic Items Table Structure Preview */}
                   <div className="border border-black my-2">
                     <table className="w-full text-[10.5px] border-collapse">
                       <thead>
@@ -1357,16 +1498,16 @@ export const LetterheadTemplatesView: React.FC = () => {
                           }
                         >
                           <th className="py-1.5 px-1.5 w-[10%] border-r border-black/30">
-                            {draftFormat.colItemNoLabel || '#'}
+                            {draftFormat.colItemNoLabel || 'Item No'}
                           </th>
                           <th className="py-1.5 px-2 w-[44%] text-left border-r border-black/30">
-                            {draftFormat.colDescriptionLabel || 'Item Description'}
+                            {draftFormat.colDescriptionLabel || 'Item Code & Material Description'}
                           </th>
                           <th className="py-1.5 px-1 w-[12%] border-r border-black/30">
-                            {draftFormat.colUnitLabel || 'Unit'}
+                            {draftFormat.colUnitLabel || 'UOM'}
                           </th>
                           <th className="py-1.5 px-1.5 w-[16%] border-r border-black/30 text-right">
-                            {draftFormat.colQtyLabel || 'Qty'}
+                            {draftFormat.colQtyLabel || 'Quantity'}
                           </th>
                           <th className="py-1.5 px-2 w-[18%] text-left">
                             {draftFormat.colRemarksLabel || 'Remarks'}
@@ -1375,24 +1516,24 @@ export const LetterheadTemplatesView: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-black">
                         <tr>
-                          <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">1</td>
+                          <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">01</td>
                           <td className="py-1.5 px-2 font-medium border-r border-black">
-                            <span className="font-mono font-bold mr-1">FOC-48C</span>
-                            FIBER OPTIC CABLE 48 CORE ARMORED
+                            <span className="font-mono font-bold mr-1">[ITM-001]</span>
+                            STANDARD CONTROLLED INVENTORY ITEM ROW 01
                           </td>
-                          <td className="py-1.5 px-1 text-center font-mono border-r border-black">Mtrs</td>
-                          <td className="py-1.5 px-1.5 text-right font-mono font-bold border-r border-black">1,250</td>
-                          <td className="py-1.5 px-2 text-slate-600 text-[10px]">Verified</td>
+                          <td className="py-1.5 px-1 text-center font-mono border-r border-black">NOS</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono font-bold border-r border-black">100</td>
+                          <td className="py-1.5 px-2 text-slate-600 text-[10px]">ISO Verified</td>
                         </tr>
                         <tr>
-                          <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">2</td>
+                          <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">02</td>
                           <td className="py-1.5 px-2 font-medium border-r border-black">
-                            <span className="font-mono font-bold mr-1">MH-HH-1</span>
-                            PRECAST CONCRETE HAND HOLE UNIT HH-1
+                            <span className="font-mono font-bold mr-1">[ITM-002]</span>
+                            STANDARD CONTROLLED INVENTORY ITEM ROW 02
                           </td>
-                          <td className="py-1.5 px-1 text-center font-mono border-r border-black">Pcs</td>
-                          <td className="py-1.5 px-1.5 text-right font-mono font-bold border-r border-black">12</td>
-                          <td className="py-1.5 px-2 text-slate-600 text-[10px]">Standard</td>
+                          <td className="py-1.5 px-1 text-center font-mono border-r border-black">MTRS</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono font-bold border-r border-black">250</td>
+                          <td className="py-1.5 px-2 text-slate-600 text-[10px]">ISO Verified</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1412,12 +1553,12 @@ export const LetterheadTemplatesView: React.FC = () => {
                             className="h-6 object-contain my-0.5 mix-blend-multiply"
                           />
                         )}
-                        <div className="font-bold text-slate-900">{preparedBy || 'Dissanayake'}</div>
+                        <div className="font-bold text-slate-900">{preparedBy || autoTenantOfficer}</div>
                         <div className="text-[9px] text-slate-600">{designeePrepared}</div>
                       </div>
                       <div className="p-2">
                         <div className="text-[9px] text-slate-500 font-bold">
-                          {draftFormat.signApprovedLabel || 'Approved By'}
+                          {draftFormat.signApprovedLabel || 'Authorized & Approved By'}
                         </div>
                         {apprSig && (
                           <img
@@ -1427,7 +1568,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                           />
                         )}
                         <div className="font-bold text-slate-900">
-                          {approvedBy && approvedBy !== 'Arthur Vance' ? approvedBy : 'Sasith Dissanayake'}
+                          {approvedBy || autoTenantOfficer}
                         </div>
                         <div className="text-[9px] text-slate-600">{designeeApproved}</div>
                       </div>
@@ -1438,14 +1579,14 @@ export const LetterheadTemplatesView: React.FC = () => {
                         <div className="h-6 flex items-end text-[9px] text-slate-400 italic">
                           Sign & Stamp
                         </div>
-                        <div className="font-bold text-slate-900">{reviewedBy || 'Authorized Officer'}</div>
+                        <div className="font-bold text-slate-900">{reviewedBy || autoTenantOfficer}</div>
                         <div className="text-[9px] text-slate-600">Issue: {issueNo} | Rev: {revisionNo}</div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-[8.5px] text-slate-500 font-mono mt-2 pt-1 border-t border-slate-200">
-                    <span>Form Ref: {draftFormat.formRefCode || 'CTS-MAT-REQ-022'}</span>
+                  <div className="flex justify-between items-center text-[8.5px] text-slate-600 font-mono mt-2 pt-1 border-t border-slate-200">
+                    <span>ISO 9001:2015 Controlled Form: {draftFormat.formRefCode || 'ISO-9001-QMS-F01'}</span>
                     <span>Applies to: {currentEditingGroupDef.affectedSections.map((s) => s.sectionName).join(' • ')}</span>
                   </div>
                 </div>
@@ -1456,168 +1597,117 @@ export const LetterheadTemplatesView: React.FC = () => {
       )}
 
       {/* =====================================================================================
-          TAB 2: MASTER COMPANY LETTERHEAD & SIGNERS GOVERNANCE
+          TAB 2: AUTO TENANT ISO HEADER & SIGNERS GOVERNANCE
          ===================================================================================== */}
       {activeTab === 'templates' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Template Selector List */}
+          {/* Left Column: Auto-Synced Tenant Account Status Card */}
           <div className="lg:col-span-4 space-y-4">
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Registered Templates
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleCreateNewTemplate}
-                  className="flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>New Template</span>
-                </button>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs">
+                    {autoTenantMonogram}
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+                      Auto-Detected Tenant Profile
+                    </h3>
+                    <p className="text-[11px] text-emerald-700 font-semibold">
+                      ISO 9001:2015 Header Source
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Auto-Active
+                </span>
               </div>
 
-              <div className="space-y-2">
-                {letterheadTemplates.map((tpl) => {
-                  const isSelected = tpl.id === selectedTemplateId;
-                  const isDefault = tpl.id === activeTemplateId;
-
-                  return (
-                    <div
-                      key={tpl.id}
-                      onClick={() => setSelectedTemplateId(tpl.id)}
-                      className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-emerald-600 bg-emerald-50/40 shadow-xs ring-1 ring-emerald-500/30'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-md bg-slate-900 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
-                              {tpl.logoText || 'COM'}
-                            </span>
-                            <span className="font-bold text-sm text-slate-900 truncate">
-                              {tpl.templateName}
-                            </span>
-                          </div>
-                          <div className="text-xs text-slate-500 mt-1 truncate">
-                            {tpl.companyName}
-                          </div>
-                        </div>
-
-                        {isDefault && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">
-                            Default
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
-                        <span>Signers: <strong className="text-slate-800">{tpl.designeePrepared}</strong> / <strong className="text-slate-800">{tpl.designeeApproved}</strong></span>
-                      </div>
-
-                      {isSelected && !isDefault && (
-                        <div className="mt-2 pt-2 border-t border-emerald-100 flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveTemplateId(tpl.id);
-                              showFeedback(`"${tpl.templateName}" set as system default template.`);
-                            }}
-                            className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
-                          >
-                            Set as Default Active
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <div>
+                  <div className="text-[10px] font-bold uppercase text-slate-400">Tenant Company Name</div>
+                  <div className="font-extrabold text-slate-900 text-sm">{autoTenantCompanyName}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold uppercase text-slate-400">Registered Email</div>
+                  <div className="font-mono font-semibold text-slate-700">{autoTenantEmail || 'Not set'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold uppercase text-slate-400">Contact Phone</div>
+                  <div className="font-mono font-semibold text-slate-700">{autoTenantTel || 'Not set'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold uppercase text-slate-400">Operations Address</div>
+                  <div className="font-medium text-slate-700">{autoTenantAddress}</div>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleSyncFromTenantAccount}
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Reload / Auto-Fill Header from Tenant Account</span>
+              </button>
             </div>
 
-            {/* Quick Tips Box */}
+            {/* Quick Explanation Box */}
             <div className="bg-slate-900 text-slate-100 rounded-xl p-5 shadow-xs text-xs space-y-2">
               <div className="flex items-center gap-2 font-bold text-emerald-400">
                 <Info className="w-4 h-4" />
-                <span>Custom Signer Designations</span>
+                <span>Automatic ISO 9001:2015 Header</span>
               </div>
               <p className="text-slate-300 leading-relaxed">
-                When printing transfer notes, daily issue notes, team return vouchers, or branch return slips, the names and designations entered on this template will automatically render in the official sign-off table.
+                Your workspace&apos;s Tenant Company Name, Phone, Email, Address, and Signatory designations are automatically placed into the <strong>ISO 9001:2015 Controlled Document Header</strong> on all printed Request Notes, Issue Notes, Material Usage Vouchers, GRNs, Purchase Orders, and Debit Notes.
               </p>
             </div>
           </div>
 
-          {/* Right Column: Template Editor Form & Live Preview */}
+          {/* Right Column: ISO Header & Signer Editor Form & Live Preview */}
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6">
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-emerald-600" />
                   <h2 className="text-base font-bold text-slate-900">
-                    Edit Letterhead & Signer Governance
+                    ISO 9001:2015 Company Header & Signer Governance
                   </h2>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleDuplicateTemplate}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Duplicate</span>
-                  </button>
-                  {letterheadTemplates.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const cur = letterheadTemplates.find((t) => t.id === selectedTemplateId);
-                        if (cur) {
-                          setTemplateToDelete(cur);
-                          setShowDeleteModal(true);
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
-                    </button>
-                  )}
-                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-mono font-bold">
+                  ISO 9001:2015 QMS
+                </span>
               </div>
 
               <form onSubmit={handleSaveTemplate} className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">
-                    1. Template Identity & Company Heading
+                    1. Tenant Company Identity & ISO Header Details
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Template Name *
+                        Standard Format Name *
                       </label>
                       <input
                         type="text"
                         required
                         value={templateName}
                         onChange={(e) => setTemplateName(e.target.value)}
-                        placeholder="e.g. Comtec Systems Standard Voucher"
+                        placeholder="ISO 9001:2015 Standard Controlled Format"
                         className="w-full text-xs px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Company Registered Name *
+                        Tenant Registered Company Name (Auto-Loaded) *
                       </label>
                       <input
                         type="text"
                         required
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="e.g. COMTEC SYSTEMS (PVT) LTD."
+                        placeholder={autoTenantCompanyName}
                         className="w-full text-xs px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
                       />
                     </div>
@@ -1625,13 +1715,13 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Business Description / Tagline (Printed below header)
+                      ISO Quality Management Scope / Header Subtitle
                     </label>
                     <textarea
                       rows={2}
                       value={subtitle}
                       onChange={(e) => setSubtitle(e.target.value)}
-                      placeholder="Civil Contractors, Telecommunication Engineers and Transport Services..."
+                      placeholder="ISO 9001:2015 Quality Management System — Official Inventory, Warehouse & Site Operations Controlled Document"
                       className="w-full text-xs px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
@@ -1650,7 +1740,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Fax
+                        Fax / Secondary Contact
                       </label>
                       <input
                         type="text"
@@ -1661,7 +1751,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Email
+                        Official Email
                       </label>
                       <input
                         type="text"
@@ -1680,7 +1770,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                           Company Logo Display Mode *
                         </label>
                         <p className="text-[11px] text-slate-500">
-                          Choose whether to display an oval Monogram Text badge or your custom Logo Image.
+                          Choose whether to display an ISO Monogram Text badge or your custom Logo Image.
                         </p>
                       </div>
                       <div className="flex items-center bg-white p-0.5 rounded-lg border border-slate-200 self-start sm:self-auto shrink-0">
@@ -1720,7 +1810,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                             maxLength={8}
                             value={logoText}
                             onChange={(e) => setLogoText(e.target.value)}
-                            placeholder="COM"
+                            placeholder={autoTenantMonogram}
                             className="w-28 text-xs px-3 py-2 border rounded-lg font-mono uppercase font-black text-center bg-slate-50"
                           />
                         </div>
@@ -1782,13 +1872,13 @@ export const LetterheadTemplatesView: React.FC = () => {
                   <div className="flex items-center gap-2 border-b pb-1">
                     <UserCheck className="w-4 h-4 text-emerald-600" />
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                      2. Signer Names, Designations & Department Matrix
+                      2. ISO Signer Names, Designations & Department Matrix
                     </h3>
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                     <div className="text-xs font-bold text-slate-800">
-                      Prepared & Checked By (Field / Site Requester)
+                      Prepared & Checked By (Field / Site / Store Officer)
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -1832,7 +1922,7 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                     <div className="text-xs font-bold text-slate-800">
-                      Approved By (Central Management / Logistics Controller)
+                      Authorized & Approved By (Central Management / Logistics Controller)
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -1876,7 +1966,7 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                     <div className="text-xs font-bold text-slate-800">
-                      Revision Tracking & Quality Reviewer
+                      ISO Revision Tracking & Quality Reviewer
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
@@ -1892,7 +1982,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                          Issue Number
+                          ISO Issue Number
                         </label>
                         <input
                           type="text"
@@ -1903,7 +1993,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                          Revision Number
+                          ISO Revision Number
                         </label>
                         <input
                           type="text"
@@ -1918,11 +2008,19 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                 <div className="flex items-center justify-end gap-3 pt-4 border-t">
                   <button
+                    type="button"
+                    onClick={handleSyncFromTenantAccount}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Sync from Tenant Account</span>
+                  </button>
+                  <button
                     type="submit"
                     className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
                   >
                     <Check className="w-4 h-4" />
-                    <span>Save Template & Signers</span>
+                    <span>Save ISO Header & Signers</span>
                   </button>
                 </div>
               </form>
@@ -1934,7 +2032,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Eye className="w-5 h-5 text-slate-600" />
                   <h3 className="font-bold text-sm text-slate-900">
-                    Live Letterhead & Sign-Off Matrix Preview
+                    Live ISO 9001:2015 Controlled Header Preview
                   </h3>
                 </div>
 
@@ -1963,34 +2061,56 @@ export const LetterheadTemplatesView: React.FC = () => {
                 id="template-preview-printable-area"
                 className="printable-voucher-sheet border border-slate-300 rounded-lg p-6 bg-white text-black font-sans text-xs shadow-xs max-w-3xl mx-auto"
               >
-                <div className="text-center pb-2">
-                  <div className="flex items-center justify-center gap-3 mb-1">
-                    {logoType === 'image' && logoImage ? (
-                      <img
-                        src={logoImage}
-                        alt="Company Logo"
-                        className="h-9 max-w-[120px] object-contain"
-                      />
-                    ) : (
-                      <div className="w-10 h-7 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-black tracking-widest uppercase">
-                        {logoText || 'COM'}
-                      </div>
-                    )}
-                    <h2 className="text-xl font-black font-serif tracking-tight uppercase text-black">
-                      {companyName || 'COMTEC SYSTEMS (PVT) LTD.'}
-                    </h2>
-                  </div>
-                  <p className="text-[9px] leading-tight text-slate-800 max-w-xl mx-auto font-medium">
-                    {subtitle}
-                  </p>
-                  <div className="flex justify-between items-start text-[9.5px] font-medium text-slate-900 mt-2 px-2 border-t pt-1">
-                    <div className="text-left space-y-0.5">
-                      <div>Tel: <span className="font-mono">{tel}</span></div>
-                      <div>Fax: <span className="font-mono">{fax}</span></div>
-                      <div>Email: <span className="font-mono">{email}</span></div>
+                <div className="border-2 border-black bg-white">
+                  <div className="grid grid-cols-12 divide-x divide-black">
+                    <div className="col-span-2 p-2 flex flex-col items-center justify-center bg-slate-50">
+                      {logoType === 'image' && logoImage ? (
+                        <img
+                          src={logoImage}
+                          alt="Company Logo"
+                          className="max-h-12 max-w-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-12 h-10 rounded border border-black bg-slate-900 text-white flex items-center justify-center text-xs font-black tracking-widest uppercase">
+                          {logoText || autoTenantMonogram}
+                        </div>
+                      )}
+                      <span className="text-[8px] font-mono font-bold text-slate-600 uppercase mt-1">
+                        ISO 9001:2015
+                      </span>
                     </div>
-                    <div className="text-right space-y-0.5">
-                      <div>{address}</div>
+                    <div className="col-span-6 p-2.5 flex flex-col justify-center text-center">
+                      <h2 className="text-lg sm:text-xl font-black tracking-tight uppercase text-black">
+                        {companyName || autoTenantCompanyName}
+                      </h2>
+                      <p className="text-[9px] leading-snug text-slate-700 font-medium mt-0.5">
+                        {subtitle}
+                      </p>
+                      <div className="text-[9px] font-semibold text-slate-900 mt-1 pt-1 border-t border-slate-200 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5">
+                        <span>{address || autoTenantAddress}</span>
+                        {(tel || autoTenantTel) && <span>• Tel: <span className="font-mono">{tel || autoTenantTel}</span></span>}
+                        {(email || autoTenantEmail) && <span>• Email: <span className="font-mono">{email || autoTenantEmail}</span></span>}
+                      </div>
+                    </div>
+                    <div className="col-span-4 text-[9px] divide-y divide-black">
+                      <div className="px-2 py-1 flex items-center justify-between bg-slate-100">
+                        <span className="font-bold text-slate-600 uppercase">Doc Form Code:</span>
+                        <span className="font-mono font-black text-black">ISO-9001-QMS</span>
+                      </div>
+                      <div className="px-2 py-1 flex items-center justify-between">
+                        <span className="font-bold text-slate-600 uppercase">Issue / Rev:</span>
+                        <span className="font-mono font-bold text-black">
+                          ISS {issueNo || '01'} / REV {revisionNo || '00'}
+                        </span>
+                      </div>
+                      <div className="px-2 py-1 flex items-center justify-between">
+                        <span className="font-bold text-slate-600 uppercase">Effective Date:</span>
+                        <span className="font-mono font-bold text-black">{new Date().toISOString().split('T')[0]}</span>
+                      </div>
+                      <div className="px-2 py-1 flex items-center justify-between bg-emerald-50/70">
+                        <span className="font-bold text-slate-600 uppercase">QMS Status:</span>
+                        <span className="font-mono font-black text-emerald-900 uppercase">ISO CONTROLLED</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2031,19 +2151,27 @@ export const LetterheadTemplatesView: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {digitalSignatures.map((sig) => (
-                <div
-                  key={sig.id}
-                  className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 shadow-xs space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-bold text-sm text-slate-900">{sig.name}</div>
-                      <div className="text-xs text-emerald-700 font-medium">{sig.role}</div>
-                      <div className="text-[11px] text-slate-500">{sig.department}</div>
-                    </div>
-                    {digitalSignatures.length > 1 && (
+            {digitalSignatures.length === 0 ? (
+              <div className="p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center space-y-2">
+                <PenTool className="w-8 h-8 text-slate-400 mx-auto" />
+                <div className="text-sm font-bold text-slate-800">No Digital Signatures Added Yet</div>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  All sample signatures have been removed. Click <strong>&ldquo;Add Digital Signature&rdquo;</strong> above to draw or upload your own official signatures for ISO voucher sign-off.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {digitalSignatures.map((sig) => (
+                  <div
+                    key={sig.id}
+                    className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 shadow-xs space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-bold text-sm text-slate-900">{sig.name}</div>
+                        <div className="text-xs text-emerald-700 font-medium">{sig.role}</div>
+                        <div className="text-[11px] text-slate-500">{sig.department}</div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => setDeleteSigId(sig.id)}
@@ -2052,23 +2180,23 @@ export const LetterheadTemplatesView: React.FC = () => {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="h-20 bg-slate-50 border border-dashed border-slate-200 rounded-lg flex items-center justify-center p-2">
-                    <img
-                      src={sig.signatureDataUrl}
-                      alt={sig.name}
-                      className="max-h-16 max-w-full object-contain mix-blend-multiply"
-                    />
-                  </div>
+                    <div className="h-20 bg-slate-50 border border-dashed border-slate-200 rounded-lg flex items-center justify-center p-2">
+                      <img
+                        src={sig.signatureDataUrl}
+                        alt={sig.name}
+                        className="max-h-16 max-w-full object-contain mix-blend-multiply"
+                      />
+                    </div>
 
-                  <div className="text-[10px] text-slate-400 font-mono text-right">
-                    Added: {sig.createdAt ? sig.createdAt.split('T')[0] : '2026-01-01'}
+                    <div className="text-[10px] text-slate-400 font-mono text-right">
+                      Added: {sig.createdAt ? sig.createdAt.split('T')[0] : '2026-01-01'}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2082,37 +2210,37 @@ export const LetterheadTemplatesView: React.FC = () => {
           title={
             sectionFormats[testPrintGroupId]?.customMainTitle ||
             COMPANY_FORMAT_GROUPS.find((g) => g.groupId === testPrintGroupId)?.affectedSections[0]?.voucherTitle.toUpperCase() ||
-            'OFFICIAL COMPANY VOUCHER FORMAT PREVIEW'
+            'ISO 9001:2015 CONTROLLED VOUCHER FORMAT PREVIEW'
           }
           documentNumber={
             COMPANY_FORMAT_GROUPS.find((g) => g.groupId === testPrintGroupId)?.affectedSections[0]?.docCode ||
             'DOC-2026-0001'
           }
           documentDate={new Date().toISOString()}
-          recipientLabel="SAMPLE DESTINATION / PARTY"
-          recipientName="Central Logistics Yard & Regional Site Operations"
-          recipientSubDetails={`Format Slot: ${testPrintGroupId} | Applied to: ${
+          recipientLabel="DESTINATION / CUSTODIAN"
+          recipientName={`${autoTenantCompanyName} — Warehouse & Site Operations`}
+          recipientSubDetails={`ISO Format Slot: ${testPrintGroupId} | Applied to: ${
             COMPANY_FORMAT_GROUPS.find((g) => g.groupId === testPrintGroupId)
               ?.affectedSections.map((s) => s.sectionName)
               .join(', ') || ''
           }`}
-          notes="Sample test printout demonstrating how your uploaded company format renders across all linked sections."
+          notes="Official ISO 9001:2015 Controlled Document format preview with auto-populated Tenant Company Header."
           items={[
             {
-              itemCode: 'FOC-48C',
-              itemName: 'FIBER OPTIC CABLE 48 CORE ARMORED',
-              category: 'Telecom Cable',
-              quantity: 1250,
-              unit: 'Mtrs',
-              remarks: 'Batch #01 Verified',
+              itemCode: 'ITM-001',
+              itemName: 'STANDARD CONTROLLED INVENTORY ITEM ROW 01',
+              category: 'Standard Material',
+              quantity: 100,
+              unit: 'NOS',
+              remarks: 'ISO QMS Verified',
             },
             {
-              itemCode: 'MH-HH-1',
-              itemName: 'PRECAST CONCRETE HAND HOLE ENCLOSURE HH-1',
-              category: 'Civil Assembly',
-              quantity: 10,
-              unit: 'Pcs',
-              remarks: 'Standard Issue',
+              itemCode: 'ITM-002',
+              itemName: 'STANDARD CONTROLLED INVENTORY ITEM ROW 02',
+              category: 'Standard Material',
+              quantity: 250,
+              unit: 'MTRS',
+              remarks: 'ISO QMS Verified',
             },
           ]}
         />
@@ -2146,7 +2274,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                   required
                   value={sigName}
                   onChange={(e) => setSigName(e.target.value)}
-                  placeholder="e.g. K. Dissanayake"
+                  placeholder={autoTenantOfficer}
                   className="w-full text-xs px-3 py-2 border rounded-lg font-bold"
                 />
               </div>

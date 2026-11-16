@@ -142,104 +142,122 @@ export const COMPANY_FORMAT_GROUPS: FormatGroupDefinition[] = [
   },
 ];
 
+export function deriveCompanyMonogram(companyName?: string): string {
+  const clean = (companyName || '').trim();
+  if (!clean) return 'ISO';
+  const words = clean
+    .replace(/\((pvt|ltd|inc|llc|plc)[^)]*\)/gi, '')
+    .replace(/\b(pvt|ltd|private|limited|inc|llc|plc)\b/gi, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return clean.substring(0, 3).toUpperCase();
+  if (words.length === 1) return words[0].substring(0, 4).toUpperCase();
+  return words
+    .slice(0, 3)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
 export const DEFAULT_SECTION_FORMATS: Record<DocumentFormatGroupId, SectionFormatConfig> = {
   REQUISITION_ISSUE_USAGE: {
     groupId: 'REQUISITION_ISSUE_USAGE',
-    groupName: 'Material Requisition, Team Issue & Site Usage Format',
+    groupName: 'ISO 9001:2015 — Material Requisition, Team Issue & Site Usage Format',
     isCustomUploaded: false,
     headerCropHeightPercent: 22,
     renderMode: 'smart_reconstructed',
     gridStyle: 'classic_bordered',
     accentColor: '#0f172a',
-    formRefCode: 'CTS-MAT-REQ-022 / QP 2B',
+    formRefCode: 'ISO-9001-QMS-F01',
     customMainTitle: '',
     showMetadataThreeBox: true,
     showIsoRevisionFooter: true,
     colItemNoLabel: 'Item No',
-    colDescriptionLabel: 'Item Description',
-    colUnitLabel: 'Unit',
+    colDescriptionLabel: 'Item Code & Material Description',
+    colUnitLabel: 'UOM',
     colQtyLabel: 'Quantity',
     colSecondaryLabel: 'Category',
     colRemarksLabel: 'Remarks / Custody',
     signPreparedLabel: 'Prepared & Checked By',
-    signApprovedLabel: 'Approved By',
-    signThirdLabel: 'Reviewed By',
+    signApprovedLabel: 'Authorized & Approved By',
+    signThirdLabel: 'Reviewed / Received By',
     linkedToGroupId: '',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
   RECEIPT_RETURN_FOC: {
     groupId: 'RECEIPT_RETURN_FOC',
-    groupName: 'Goods Receipt (GRN), Client FOC & Stock Returns Format',
+    groupName: 'ISO 9001:2015 — Goods Receipt (GRN), Client FOC & Stock Returns Format',
     isCustomUploaded: false,
     headerCropHeightPercent: 22,
     renderMode: 'smart_reconstructed',
     gridStyle: 'classic_bordered',
-    accentColor: '#065f46',
-    formRefCode: 'CTS-GRN-RET-014 / WH-01',
+    accentColor: '#0f172a',
+    formRefCode: 'ISO-9001-QMS-F02',
     customMainTitle: '',
     showMetadataThreeBox: true,
     showIsoRevisionFooter: true,
     colItemNoLabel: 'Item No',
-    colDescriptionLabel: 'Material Description',
-    colUnitLabel: 'Unit',
+    colDescriptionLabel: 'Item Code & Material Description',
+    colUnitLabel: 'UOM',
     colQtyLabel: 'Received / Returned Qty',
     colSecondaryLabel: 'Category / Condition',
-    colRemarksLabel: 'Remarks / Inspection',
-    signPreparedLabel: 'Received / Logged By',
+    colRemarksLabel: 'QA Inspection & Remarks',
+    signPreparedLabel: 'Received / Inspected By',
     signApprovedLabel: 'Verified & Approved By',
-    signThirdLabel: 'Store In-Charge',
+    signThirdLabel: 'Store / QA In-Charge',
     linkedToGroupId: '',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
   PURCHASE_ORDER: {
     groupId: 'PURCHASE_ORDER',
-    groupName: 'Official Supplier Purchase Order (PO) Format',
+    groupName: 'ISO 9001:2015 — Official Supplier Purchase Order (PO) Format',
     isCustomUploaded: false,
     headerCropHeightPercent: 22,
     renderMode: 'smart_reconstructed',
-    gridStyle: 'modern_corporate',
+    gridStyle: 'classic_bordered',
     accentColor: '#0f172a',
-    formRefCode: 'PROC-PO-STD-001',
-    customMainTitle: 'PURCHASE ORDER',
+    formRefCode: 'ISO-9001-QMS-F03',
+    customMainTitle: 'PURCHASE ORDER (ISO 9001:2015)',
     showMetadataThreeBox: true,
     showIsoRevisionFooter: true,
-    colItemNoLabel: '#',
-    colDescriptionLabel: 'Item Code & Material Description',
-    colUnitLabel: 'Unit',
-    colQtyLabel: 'Qty',
+    colItemNoLabel: 'Item No',
+    colDescriptionLabel: 'Item Code & Material Specification',
+    colUnitLabel: 'UOM',
+    colQtyLabel: 'Order Qty',
     colSecondaryLabel: 'Unit Price',
-    colRemarksLabel: 'Amount',
-    signPreparedLabel: 'Prepared By',
-    signApprovedLabel: 'Approved By',
+    colRemarksLabel: 'Line Total',
+    signPreparedLabel: 'Prepared By (Procurement)',
+    signApprovedLabel: 'Authorized & Approved By',
     signThirdLabel: 'Supplier Acknowledgment',
     termsAndConditionsText:
-      'Goods must be supplied strictly in accordance with specified standards. Delivery note & test certificates must accompany all shipments.',
+      'ISO 9001:2015 Quality Clause: All materials must strictly conform to specified quality standards. Official Delivery Note, Batch/Serial Details & QA Test Certificates must accompany all shipments.',
     linkedToGroupId: '',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
   SUPPLIER_RETURN_DEBIT_NOTE: {
     groupId: 'SUPPLIER_RETURN_DEBIT_NOTE',
-    groupName: 'Return to Vendor (RTV) & Official Debit Note Format',
+    groupName: 'ISO 9001:2015 — Return to Vendor (RTV) & Non-Conformance Debit Note Format',
     isCustomUploaded: false,
     headerCropHeightPercent: 22,
     renderMode: 'smart_reconstructed',
-    gridStyle: 'modern_corporate',
-    accentColor: '#78350f',
-    formRefCode: 'PROC-RTV-DN-009',
+    gridStyle: 'classic_bordered',
+    accentColor: '#0f172a',
+    formRefCode: 'ISO-9001-QMS-F04',
     customMainTitle: 'DEBIT NOTE / RETURN TO VENDOR (RTV)',
     showMetadataThreeBox: true,
     showIsoRevisionFooter: true,
-    colItemNoLabel: '#',
-    colDescriptionLabel: 'Description & Defect Reason',
-    colUnitLabel: 'Unit',
-    colQtyLabel: 'Quantity',
-    colSecondaryLabel: 'Rate',
+    colItemNoLabel: 'Item No',
+    colDescriptionLabel: 'Material Description & Non-Conformance Reason',
+    colUnitLabel: 'UOM',
+    colQtyLabel: 'Returned Qty',
+    colSecondaryLabel: 'Unit Rate',
     colRemarksLabel: 'Debit Amount',
-    signPreparedLabel: 'Prepared By',
+    signPreparedLabel: 'Prepared & Inspected By',
     signApprovedLabel: 'Authorized By',
     signThirdLabel: 'Supplier Acknowledgment',
     termsAndConditionsText:
-      'This Debit Note serves as an official accounting claim against delivered stock. Goods returned remain the property of the vendor pending credit note issuance or authorized replacement.',
+      'ISO 9001:2015 Non-Conforming Material Control: This Debit Note serves as an official claim against non-conforming or rejected goods. Returned items remain vendor property pending credit note or replacement.',
     linkedToGroupId: '',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
@@ -607,7 +625,7 @@ async function tryRasterizePdfFirstPage(arrayBuffer: ArrayBuffer): Promise<HTMLC
 export async function analyzeUploadedFormatFile(
   file: File,
   cropPercent = 22,
-  fallbackCompanyName = 'COMTEC SYSTEMS (PVT) LTD.'
+  fallbackCompanyName = 'ISO 9001:2015 CONTROLLED DOCUMENT'
 ): Promise<{
   fileType: 'image' | 'pdf';
   fullPageDataUrl: string;

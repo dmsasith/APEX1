@@ -59,6 +59,7 @@ import { SearchableItemSelect } from '../common/SearchableItemSelect';
 
 export const ProcurementView: React.FC = () => {
   const {
+    currentTenant,
     config,
     currentUser,
     activeItems,
@@ -85,6 +86,17 @@ export const ProcurementView: React.FC = () => {
   } = useStock();
 
   const poFormat = getEffectiveSectionFormat('PURCHASE_ORDER');
+  const tenantCompanyName =
+    currentTenant?.companyName ||
+    config.companyName ||
+    activeTemplate?.companyName ||
+    'ISO REGISTERED ENTERPRISE';
+  const tenantPhone = currentTenant?.contactPhone || config.phone || activeTemplate?.tel || '';
+  const tenantEmail = currentTenant?.contactEmail || config.email || activeTemplate?.email || '';
+  const tenantAddress =
+    config.address ||
+    activeTemplate?.address ||
+    'Head Office & Central Warehouse Operations';
   const theme = getThemeConfig(config?.themeId || config?.logoColor);
   const isCentralAdmin = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
@@ -639,13 +651,13 @@ Best regards,
 
 ${po.preparedBy || currentUser?.fullName || 'Procurement Team'}
 Central Logistics & Warehouse Operations
-${config.companyName || 'Apex Developer'}
-Contact: ${config.phone || '+94 11 2549590'}
-Email: ${config.email || 'support@apexstox.com'}`;
+${tenantCompanyName}
+Contact: ${tenantPhone}
+Email: ${tenantEmail}`;
   };
 
   const handleOpenEmailClient = (po: PurchaseOrder) => {
-    const subject = encodeURIComponent(`Purchase Order ${po.poNumber} - ${config.companyName || 'Comtec Systems'}`);
+    const subject = encodeURIComponent(`Purchase Order ${po.poNumber} - ${tenantCompanyName}`);
     const body = encodeURIComponent(generateEmailBody(po));
     const mailtoUrl = `mailto:${encodeURIComponent(po.supplierEmail)}?subject=${subject}&body=${body}`;
     window.location.href = mailtoUrl;
@@ -1819,7 +1831,7 @@ Email: ${config.email || 'support@apexstox.com'}`;
                     New Material Requisition & Purchase Order
                   </h3>
                   <p className="text-[11px] sm:text-xs text-slate-500 truncate">
-                    Issue order for Main Stock arrival • Comtec Systems Procurement
+                    Issue order for Main Stock arrival • {tenantCompanyName} Procurement
                   </p>
                 </div>
               </div>
@@ -2342,7 +2354,7 @@ Email: ${config.email || 'support@apexstox.com'}`;
 
                 <div className="p-3 rounded-xl border border-slate-200">
                   <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Ship To (Central Stock)</div>
-                  <div className="font-bold text-slate-900">{config.companyName || 'Comtec Systems (Pvt) Ltd'}</div>
+                  <div className="font-bold text-slate-900">{tenantCompanyName}</div>
                   <div className="text-slate-600">{viewingOrder.deliveryLocation}</div>
                   <div className="text-slate-500 mt-1">Recipient: Central Warehouse Store</div>
                 </div>
@@ -2913,36 +2925,49 @@ Email: ${config.email || 'support@apexstox.com'}`;
               </div>
             ) : (
               <div
-                className="flex justify-between items-start border-b-2 pb-5 mb-6"
+                className="border-2 border-slate-900 mb-6 bg-white"
                 style={{ borderColor: poFormat.accentColor || '#0f172a' }}
               >
-                <div>
-                  <h1
-                    className="text-2xl font-black tracking-tight uppercase"
-                    style={{ color: poFormat.accentColor || '#0f172a' }}
-                  >
-                    {activeTemplate?.companyName || config.companyName || 'APEX DEVELOPER (PVT) LTD'}
-                  </h1>
-                  <p className="text-xs text-slate-600 mt-1 max-w-md">
-                    {activeTemplate?.address || config.address || 'Apex Software Engineering & Logistics Hub, Colombo, Sri Lanka.'}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Tel: {activeTemplate?.tel || config.phone || '+94 11 2549590'} • Email: {activeTemplate?.email || config.email || 'support@apexstox.com'}
-                  </p>
-                </div>
+                <div className="grid grid-cols-12 divide-x divide-slate-900">
+                  <div className="col-span-8 p-4">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-0.5">
+                      ISO 9001:2015 Controlled Procurement Document
+                    </div>
+                    <h1
+                      className="text-2xl font-black tracking-tight uppercase"
+                      style={{ color: poFormat.accentColor || '#0f172a' }}
+                    >
+                      {tenantCompanyName}
+                    </h1>
+                    <p className="text-xs text-slate-700 font-semibold mt-1">
+                      {tenantAddress}
+                    </p>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      {tenantPhone ? `Tel: ${tenantPhone}` : ''}
+                      {tenantPhone && tenantEmail ? ' • ' : ''}
+                      {tenantEmail ? `Email: ${tenantEmail}` : ''}
+                    </p>
+                  </div>
 
-                <div className="text-right">
-                  <div
-                    className="inline-block text-white px-4 py-1 text-sm font-black uppercase tracking-wider rounded"
-                    style={{ backgroundColor: poFormat.accentColor || '#0f172a' }}
-                  >
-                    {poFormat.customMainTitle || 'PURCHASE ORDER'}
-                  </div>
-                  <div className="text-lg font-mono font-black text-slate-900 mt-2">
-                    #{printingOrder.poNumber}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    Date: {printingOrder.orderDate}
+                  <div className="col-span-4 text-[10px] divide-y divide-slate-900 flex flex-col justify-between">
+                    <div
+                      className="p-2 text-white text-xs font-black uppercase tracking-wider text-center"
+                      style={{ backgroundColor: poFormat.accentColor || '#0f172a' }}
+                    >
+                      {poFormat.customMainTitle || 'PURCHASE ORDER (ISO 9001:2015)'}
+                    </div>
+                    <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-50">
+                      <span className="font-bold text-slate-600">Form Code:</span>
+                      <span className="font-mono font-black text-slate-900">{poFormat.formRefCode || 'ISO-9001-QMS-F03'}</span>
+                    </div>
+                    <div className="px-2.5 py-1.5 flex items-center justify-between">
+                      <span className="font-bold text-slate-600">PO Number:</span>
+                      <span className="font-mono font-black text-slate-900">#{printingOrder.poNumber}</span>
+                    </div>
+                    <div className="px-2.5 py-1.5 flex items-center justify-between">
+                      <span className="font-bold text-slate-600">Order Date:</span>
+                      <span className="font-mono font-bold text-slate-900">{printingOrder.orderDate}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2976,7 +3001,7 @@ Email: ${config.email || 'support@apexstox.com'}`;
                   SHIP TO / DESTINATION
                 </div>
                 <div className="text-sm font-bold text-slate-900">
-                  {activeTemplate?.companyName || config.companyName || 'COMTEC SYSTEMS (PVT) LTD'} - MAIN STOCK
+                  {tenantCompanyName} - MAIN STOCK
                 </div>
                 <div className="text-xs text-slate-600 mt-1">{printingOrder.deliveryLocation}</div>
                 <div className="text-xs text-slate-600 mt-1">
