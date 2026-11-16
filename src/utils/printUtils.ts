@@ -76,6 +76,13 @@ export async function exportElementToPdf(
     let imgWidth: number;
     let imgHeight: number;
 
+    const prevOverflow = el.style.overflow;
+    const prevMaxHeight = el.style.maxHeight;
+    const prevHeight = el.style.height;
+    el.style.overflow = 'visible';
+    el.style.maxHeight = 'none';
+    el.style.height = 'auto';
+
     // Strategy 1: Use html-to-image which natively renders SVG foreignObject
     // This has 100% native support for Tailwind CSS v4 oklch colors!
     try {
@@ -83,6 +90,8 @@ export async function exportElementToPdf(
         quality: 0.98,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        skipFonts: true,
+        fontEmbedCSS: '',
         filter: (node) => {
           if (node instanceof HTMLElement && node.classList.contains('no-print')) {
             return false;
@@ -124,6 +133,10 @@ export async function exportElementToPdf(
       imgData = canvas.toDataURL('image/png', 1.0);
       imgWidth = canvas.width;
       imgHeight = canvas.height;
+    } finally {
+      el.style.overflow = prevOverflow;
+      el.style.maxHeight = prevMaxHeight;
+      el.style.height = prevHeight;
     }
 
     // Standard A4 dimensions in mm: 210 x 297

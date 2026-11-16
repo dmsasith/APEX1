@@ -697,6 +697,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       const link = document.createElement('link');
       link.id = fontId;
       link.rel = 'stylesheet';
+      link.crossOrigin = 'anonymous';
       link.href =
         'https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700;800&display=swap';
       document.head.appendChild(link);

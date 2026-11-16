@@ -47,6 +47,7 @@ import {
   userHasSiteAccess,
 } from '../../types';
 import { formatNumber, formatDateTime, exportToCsv } from '../../utils/exportUtils';
+import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
@@ -107,6 +108,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [sectionFilter, setSectionFilter] = useState('all');
   const [teamFilter, setTeamFilter] = useState('all');
   const [fullSiteReportProjectId, setFullSiteReportProjectId] = useState<string | null>(null);
+  const [isPrintingFullReport, setIsPrintingFullReport] = useState(false);
+  const [fullReportPrintNotice, setFullReportPrintNotice] = useState<string | null>(null);
 
   // Confirmation modal
   const [confirmState, setConfirmState] = useState<{
@@ -3621,11 +3624,32 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 {/* Print Report Button */}
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-900 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  disabled={isPrintingFullReport}
+                  onClick={async () => {
+                    setIsPrintingFullReport(true);
+                    setFullReportPrintNotice('Generating printable A4 report & PDF...');
+                    const docTitle = `Full_Site_Report_${fullSiteReportData.project.projectId}`;
+                    try {
+                      await printHtmlElement('full-site-report-printable-area', docTitle);
+                      setFullReportPrintNotice('✓ Full Site Report PDF generated & print dialog opened!');
+                    } catch {
+                      try {
+                        await downloadElementAsPdf('full-site-report-printable-area', docTitle);
+                        setFullReportPrintNotice('✓ Full Site Report A4 PDF downloaded successfully!');
+                      } catch {
+                        window.print();
+                      }
+                    } finally {
+                      setTimeout(() => {
+                        setIsPrintingFullReport(false);
+                        setTimeout(() => setFullReportPrintNotice(null), 3500);
+                      }, 900);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-900 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5 text-teal-700" />
-                  <span>Print / Save PDF</span>
+                  <span>{isPrintingFullReport ? 'Generating PDF...' : 'Print / Save PDF'}</span>
                 </button>
 
                 <button
@@ -3639,8 +3663,49 @@ export const ProjectMaterialUsageView: React.FC = () => {
               </div>
             </div>
 
+            {fullReportPrintNotice && (
+              <div className="no-print bg-emerald-950 text-emerald-200 px-5 py-2 text-xs font-bold border-b border-emerald-800 flex items-center justify-between">
+                <span>{fullReportPrintNotice}</span>
+              </div>
+            )}
+
             {/* Report Body */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 bg-slate-50 flex-1">
+            <div
+              id="full-site-report-printable-area"
+              className="printable-voucher-sheet p-4 sm:p-6 overflow-y-auto space-y-6 bg-white flex-1"
+            >
+              {/* Official Document Header (Included in Print / PDF) */}
+              <div className="border-b-2 border-slate-900 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-widest text-teal-700">
+                    {config.companyName || 'APEX STOCK ENTERPRISE'} — OFFICIAL PROJECT CONSUMPTION &amp; WASTAGE REPORT
+                  </div>
+                  <h1 className="text-lg sm:text-xl font-black text-slate-950 mt-0.5">
+                    FULL REPORT FOR THIS SITE (PROJECT): [{fullSiteReportData.project.projectId}] {fullSiteReportData.project.projectName}
+                  </h1>
+                  <div className="text-xs text-slate-700 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span>
+                      Site Branch: <strong>{fullSiteReportData.branchName}</strong>
+                    </span>
+                    <span>
+                      Section: <strong>{fullSiteReportData.project.projectTypeName || 'General'}</strong>
+                    </span>
+                    <span>
+                      Customer / Client: <strong>{fullSiteReportData.project.customerName || '—'}</strong>
+                    </span>
+                    {fullSiteReportData.isMainUmbrella && (
+                      <span className="font-bold text-purple-800">
+                        Scope: Main Project + {fullSiteReportData.childSubsCount} Sub-Project(s)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-left sm:text-right text-xs font-mono text-slate-600 shrink-0">
+                  <div className="font-bold text-slate-900">Report Date: {new Date().toISOString().split('T')[0]}</div>
+                  <div>Teams Count: {fullSiteReportData.teamsBreakdown.length} Team(s)</div>
+                  <div>Usage Vouchers: {fullSiteReportData.vouchersCount} Slip(s)</div>
+                </div>
+              </div>
               {/* Top KPI Summary Row */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
@@ -3956,6 +4021,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           </tr>
                         </tfoot>
                       </table>
+                    </div>
+                  </div>
+
+                  {/* Official Sign-Off Footer for Printed / Saved PDF Report */}
+                  <div className="pt-6 mt-4 border-t-2 border-slate-300 grid grid-cols-3 gap-6 text-xs text-slate-800">
+                    <div className="text-center pt-6 border-t border-slate-400">
+                      <div className="font-bold text-slate-900">Prepared By</div>
+                      <div className="text-[11px] text-slate-500">Site Storekeeper / Supervisor</div>
+                    </div>
+                    <div className="text-center pt-6 border-t border-slate-400">
+                      <div className="font-bold text-slate-900">Checked &amp; Verified By</div>
+                      <div className="text-[11px] text-slate-500">Project Engineer / Branch Manager</div>
+                    </div>
+                    <div className="text-center pt-6 border-t border-slate-400">
+                      <div className="font-bold text-slate-900">Approved By</div>
+                      <div className="text-[11px] text-slate-500">Central Logistics / Management</div>
                     </div>
                   </div>
                 </>
