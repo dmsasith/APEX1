@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatDateTime, exportToCsv } from '../../utils/exportUtils';
+import { printHtmlElement } from '../../utils/printUtils';
 import { AuditAction } from '../../types';
 import { ConfirmModal } from '../common/ConfirmModal';
 
@@ -116,8 +117,8 @@ export const AuditTrailReportsView: React.FC = () => {
             <span>Export CSV</span>
           </button>
           <button
-            onClick={() => window.print()}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+            onClick={() => printHtmlElement('audit-trail-printable-area', 'System_Audit_Trail_Ledger')}
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
           >
             <Printer className="w-4 h-4 text-emerald-400" />
             <span>Print Ledger</span>
@@ -178,7 +179,7 @@ export const AuditTrailReportsView: React.FC = () => {
       </div>
 
       {/* Audit Log Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      <div id="audit-trail-printable-area" className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-sm text-slate-900">Recorded Audit Entries ({filteredLogs.length})</h2>

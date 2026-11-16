@@ -27,6 +27,7 @@ import {
   Sparkles,
   Globe,
 } from 'lucide-react';
+import { printHtmlElement } from '../../utils/printUtils';
 
 interface SystemUserGuideViewProps {
   onBackToOverview: () => void;
@@ -1422,7 +1423,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
     } catch (err) {
       console.error('Failed to generate User Guide PDF:', err);
       try {
-        window.print();
+        await printHtmlElement('user-guide-printable-area', 'Apex_Stock_User_Guide');
       } catch {}
     } finally {
       setIsDownloadingPdf(false);

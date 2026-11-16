@@ -255,25 +255,23 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
   const handlePrint = async () => {
     setIsProcessing(true);
-    setStatusNotice('Processing voucher print & A4 document generation...');
+    setStatusNotice('Opening isolated A4 voucher print preview...');
     try {
-      window.focus();
       await printHtmlElement('letterhead-printable-area', `${customDocNumber || 'Voucher'}_Print`);
-      setStatusNotice('✓ Print dialog invoked and high-res A4 PDF document generated successfully!');
+      setStatusNotice('✓ Isolated A4 voucher print dialog opened!');
     } catch (err) {
       console.warn('Print invocation warning, falling back to PDF download:', err);
       try {
         await downloadElementAsPdf('letterhead-printable-area', `${customDocNumber || 'Voucher'}_Print`);
         setStatusNotice('✓ A4 PDF downloaded successfully for printing!');
       } catch (e) {
-        window.focus();
-        try { window.print(); } catch (err2) {}
+        console.error('Fallback PDF download failed:', e);
       }
     } finally {
       setTimeout(() => {
         setIsProcessing(false);
         setTimeout(() => setStatusNotice(null), 3000);
-      }, 1500);
+      }, 1000);
     }
   };
 
@@ -286,9 +284,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
       setStatusNotice('✓ PDF generated and downloaded successfully!');
     } catch (err) {
       console.error('Download PDF error:', err);
-      setStatusNotice('PDF generation failed, falling back to browser print...');
-      window.focus();
-      window.print();
+      setStatusNotice('PDF generation encountered an issue. Please try Print.');
     } finally {
       setTimeout(() => {
         setIsProcessing(false);

@@ -4,6 +4,7 @@ import {
   Plus,
   Trash2,
   Printer,
+  Download,
   CheckCircle2,
   Users2,
   Building,
@@ -3627,29 +3628,55 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   disabled={isPrintingFullReport}
                   onClick={async () => {
                     setIsPrintingFullReport(true);
-                    setFullReportPrintNotice('Generating printable A4 report & PDF...');
+                    setFullReportPrintNotice('Opening isolated A4 report print preview...');
                     const docTitle = `Full_Site_Report_${fullSiteReportData.project.projectId}`;
                     try {
                       await printHtmlElement('full-site-report-printable-area', docTitle);
-                      setFullReportPrintNotice('✓ Full Site Report PDF generated & print dialog opened!');
+                      setFullReportPrintNotice('✓ Isolated A4 Site Report print dialog opened!');
                     } catch {
                       try {
                         await downloadElementAsPdf('full-site-report-printable-area', docTitle);
                         setFullReportPrintNotice('✓ Full Site Report A4 PDF downloaded successfully!');
-                      } catch {
-                        window.print();
+                      } catch (err) {
+                        console.error('Report print/PDF error:', err);
                       }
                     } finally {
                       setTimeout(() => {
                         setIsPrintingFullReport(false);
                         setTimeout(() => setFullReportPrintNotice(null), 3500);
-                      }, 900);
+                      }, 700);
                     }
                   }}
                   className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-900 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5 text-teal-700" />
-                  <span>{isPrintingFullReport ? 'Generating PDF...' : 'Print / Save PDF'}</span>
+                  <span>{isPrintingFullReport ? 'Preparing Print...' : 'Print Report'}</span>
+                </button>
+
+                {/* Save PDF Button */}
+                <button
+                  type="button"
+                  disabled={isPrintingFullReport}
+                  onClick={async () => {
+                    setIsPrintingFullReport(true);
+                    setFullReportPrintNotice('Generating high-resolution A4 PDF...');
+                    const docTitle = `Full_Site_Report_${fullSiteReportData.project.projectId}`;
+                    try {
+                      await downloadElementAsPdf('full-site-report-printable-area', docTitle);
+                      setFullReportPrintNotice('✓ Full Site Report A4 PDF downloaded successfully!');
+                    } catch (err) {
+                      console.error('Report PDF download error:', err);
+                    } finally {
+                      setTimeout(() => {
+                        setIsPrintingFullReport(false);
+                        setTimeout(() => setFullReportPrintNotice(null), 3500);
+                      }, 700);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Save PDF</span>
                 </button>
 
                 <button

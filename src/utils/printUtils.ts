@@ -66,9 +66,7 @@ export async function exportElementToPdf(
       typeof element === 'string' ? document.getElementById(element) : element;
 
     if (!el) {
-      console.warn('exportElementToPdf: Target element not found, falling back to window.print()');
-      window.focus();
-      try { window.print(); } catch (e) {}
+      console.warn('exportElementToPdf: Target element not found');
       return false;
     }
 
@@ -175,34 +173,23 @@ export async function exportElementToPdf(
     const safeTitle = (filename || 'Official_Voucher').replace(/[^a-zA-Z0-9_-]/g, '_');
     const finalFilename = safeTitle.toLowerCase().endsWith('.pdf') ? safeTitle : `${safeTitle}.pdf`;
 
-    // Always generate and download the genuine high-res A4 PDF file
+    // Generate and download the genuine high-res A4 PDF file
     pdf.save(finalFilename);
 
     if (action === 'print') {
-      try {
-        window.focus();
-        window.print();
-      } catch (e) {
-        console.warn('Native window.print() suppressed by sandbox:', e);
-      }
+      await printHtmlElement(el, safeTitle);
     }
 
     return true;
   } catch (err) {
     console.error('exportElementToPdf error:', err);
-    try {
-      window.focus();
-      window.print();
-    } catch (e) {
-      console.error('Fallback print also failed:', e);
-    }
     return false;
   }
 }
 
 /**
- * Universal print trigger that isolates the printable element via an HTML print frame,
- * invokes browser print, and simultaneously produces the genuine A4 PDF so it never fails.
+ * Universal print trigger that isolates ONLY the target printable element inside a dedicated hidden iframe
+ * and opens a single, clean browser print preview for that voucher/report without printing the full web page.
  */
 export async function printHtmlElement(
   element: HTMLElement | string,
@@ -213,97 +200,159 @@ export async function printHtmlElement(
       typeof element === 'string' ? document.getElementById(element) : element;
 
     if (!el) {
-      window.focus();
-      try { window.print(); } catch (e) {}
+      console.warn('printHtmlElement: Target element not found:', element);
       return false;
     }
 
-    // 1. First: Try native browser print via dedicated isolated iframe
-    try {
-      const printFrame = document.createElement('iframe');
-      printFrame.style.position = 'fixed';
-      printFrame.style.right = '0';
-      printFrame.style.bottom = '0';
-      printFrame.style.width = '0';
-      printFrame.style.height = '0';
-      printFrame.style.border = '0';
-      printFrame.style.opacity = '0';
-      printFrame.style.pointerEvents = 'none';
-      document.body.appendChild(printFrame);
+    // Clone the target element so we can clean up scrollbars/no-print nodes without mutating live UI
+    const clonedEl = el.cloneNode(true) as HTMLElement;
+    clonedEl.classList.remove('hidden');
+    clonedEl.style.overflow = 'visible';
+    clonedEl.style.maxHeight = 'none';
+    clonedEl.style.height = 'auto';
 
-      const frameDoc = printFrame.contentWindow?.document;
-      if (frameDoc) {
-        const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-          .map((s) => s.outerHTML)
-          .join('\n');
+    // Remove any .no-print elements inside the cloned tree
+    clonedEl.querySelectorAll('.no-print').forEach((node) => node.remove());
 
-        frameDoc.open();
-        frameDoc.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>${title}</title>
-              <style>
-                @page { size: A4 portrait; margin: 8mm; }
-                * { box-sizing: border-box; }
-                body { margin: 0; padding: 12px; background: #ffffff !important; color: #000000 !important; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .printable-voucher-sheet { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid black; }
-              </style>
-              ${styles}
-            </head>
-            <body>
-              <div style="max-width: 820px; margin: 0 auto;">
-                ${el.outerHTML}
-              </div>
-            </body>
-          </html>
-        `);
-        frameDoc.close();
-
-        setTimeout(() => {
-          try {
-            printFrame.contentWindow?.focus();
-            printFrame.contentWindow?.print();
-          } catch (err) {
-            console.warn('Iframe print access restricted by sandbox:', err);
-          } finally {
-            setTimeout(() => {
-              if (document.body.contains(printFrame)) {
-                document.body.removeChild(printFrame);
-              }
-            }, 5000);
-          }
-        }, 300);
+    // Unhide any print-only blocks (e.g. .hidden.print\:block)
+    clonedEl.querySelectorAll('[class*="print:block"]').forEach((node) => {
+      if (node instanceof HTMLElement) {
+        node.classList.remove('hidden');
+        node.style.display = 'block';
       }
-    } catch (frameErr) {
-      console.warn('Print iframe creation warning:', frameErr);
+    });
+
+    // Ensure scrollable inner containers expand fully in print
+    clonedEl.querySelectorAll('.overflow-auto, .overflow-y-auto, .overflow-x-auto, .overflow-hidden').forEach((node) => {
+      if (node instanceof HTMLElement) {
+        node.style.overflow = 'visible';
+        node.style.maxHeight = 'none';
+        node.style.height = 'auto';
+      }
+    });
+
+    // Convert any <canvas> elements (barcodes, signatures) into <img> so they render in the print iframe
+    const origCanvases = el.querySelectorAll('canvas');
+    const clonedCanvases = clonedEl.querySelectorAll('canvas');
+    origCanvases.forEach((origCanvas, idx) => {
+      const clonedCanvas = clonedCanvases[idx];
+      if (clonedCanvas) {
+        try {
+          const dataUrl = origCanvas.toDataURL('image/png');
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          img.className = clonedCanvas.className;
+          img.style.cssText = clonedCanvas.style.cssText;
+          if (origCanvas.width) img.width = origCanvas.width;
+          if (origCanvas.height) img.height = origCanvas.height;
+          clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+        } catch {
+          // Ignore tainted canvas errors
+        }
+      }
+    });
+
+    // Remove any existing print iframe from previous print actions
+    const existingFrame = document.getElementById('isolated-print-iframe');
+    if (existingFrame && existingFrame.parentNode) {
+      existingFrame.parentNode.removeChild(existingFrame);
     }
 
-    // 2. Also try direct window.print() in case user is in an un-sandboxed tab
+    const printFrame = document.createElement('iframe');
+    printFrame.id = 'isolated-print-iframe';
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.style.opacity = '0';
+    printFrame.style.pointerEvents = 'none';
+    document.body.appendChild(printFrame);
+
+    const frameWin = printFrame.contentWindow;
+    const frameDoc = frameWin?.document;
+    if (!frameWin || !frameDoc) {
+      return await exportElementToPdf(el, title, { action: 'download' });
+    }
+
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((s) => s.outerHTML)
+      .join('\n');
+
+    frameDoc.open();
+    frameDoc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${title}</title>
+          ${styles}
+          <style>
+            @page { size: A4 portrait; margin: 8mm; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+              width: 100% !important;
+              height: auto !important;
+              overflow: visible !important;
+            }
+            .no-print { display: none !important; }
+            .printable-voucher-sheet, .printable-document {
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div style="width: 100%; max-width: 820px; margin: 0 auto; padding: 4px;">
+            ${clonedEl.outerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    frameDoc.close();
+
+    // Wait briefly for stylesheets and images inside the iframe to settle before opening the print dialog
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      };
+      const timer = setTimeout(done, 350);
+      printFrame.onload = () => {
+        clearTimeout(timer);
+        setTimeout(done, 80);
+      };
+    });
+
     try {
-      window.focus();
-      window.print();
-    } catch (e) {
-      console.warn('Direct print blocked by sandbox:', e);
+      frameWin.focus();
+      frameWin.print();
+    } catch (printErr) {
+      console.warn('Iframe print restricted by sandbox, downloading PDF fallback:', printErr);
+      await exportElementToPdf(el, title, { action: 'download' });
+    } finally {
+      setTimeout(() => {
+        if (document.body.contains(printFrame)) {
+          document.body.removeChild(printFrame);
+        }
+      }, 6000);
     }
-
-    // 3. To ensure the user ALWAYS gets their document even if the sandbox blocks print:
-    // Generate and download the high-resolution vector A4 PDF immediately!
-    await exportElementToPdf(el, title, { action: 'download' });
 
     return true;
   } catch (err) {
-    console.warn('printHtmlElement fallback:', err);
-    try {
-      window.focus();
-      window.print();
-    } catch (e) {
-      console.error('Final print fallback failed:', e);
-    }
-    return false;
+    console.warn('printHtmlElement error, falling back to PDF download:', err);
+    return await exportElementToPdf(element, title, { action: 'download' });
   }
 }
 

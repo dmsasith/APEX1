@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, formatDate, exportToCsv } from '../../utils/exportUtils';
+import { printHtmlElement } from '../../utils/printUtils';
 import { TeamInHandSummary } from '../../types';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 
@@ -100,12 +101,12 @@ export const TeamInHandDashboard: React.FC = () => {
   };
 
   // Requirement: Print All Report
-  const handlePrintAll = () => {
-    window.print();
+  const handlePrintAll = async () => {
+    await printHtmlElement('team-in-hand-printable-area', 'All_Teams_In_Hand_Stock_Report');
   };
 
   return (
-    <div className="space-y-6">
+    <div id="team-in-hand-printable-area" className="space-y-6">
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -123,7 +124,7 @@ export const TeamInHandDashboard: React.FC = () => {
         </div>
 
         {/* Global Export & Print Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="no-print flex items-center gap-2 shrink-0">
           <button
             onClick={handleExportCsv}
             className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
@@ -189,7 +190,7 @@ export const TeamInHandDashboard: React.FC = () => {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className="no-print bg-white p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative w-full sm:w-80 md:w-96 min-w-[220px]">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input

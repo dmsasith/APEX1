@@ -472,19 +472,17 @@ export const LetterheadTemplatesView: React.FC = () => {
   };
 
   const handlePrintPreview = async () => {
-    showFeedback('Processing voucher print & A4 document generation...');
+    showFeedback('Opening isolated A4 voucher print preview...');
     try {
-      window.focus();
       await printHtmlElement('template-preview-printable-area', `${templateName || 'Voucher'}_Template_Preview`);
-      showFeedback('✓ Print dialog invoked and high-res A4 PDF document generated successfully!');
+      showFeedback('✓ Isolated A4 voucher print dialog opened!');
     } catch (err) {
       console.warn('Print preview fallback:', err);
       try {
         await downloadElementAsPdf('template-preview-printable-area', `${templateName || 'Voucher'}_Template_Preview`);
         showFeedback('✓ A4 PDF document downloaded successfully for printing!');
       } catch (e) {
-        window.focus();
-        try { window.print(); } catch (err2) {}
+        console.error('Fallback PDF download failed:', e);
       }
     }
   };
@@ -496,9 +494,7 @@ export const LetterheadTemplatesView: React.FC = () => {
       showFeedback('✓ Genuine PDF document downloaded successfully!');
     } catch (err) {
       console.error('PDF export failed:', err);
-      showFeedback('PDF generation error, trying print dialog...', 'error');
-      window.focus();
-      window.print();
+      showFeedback('PDF generation encountered an error.', 'error');
     }
   };
 

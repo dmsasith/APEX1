@@ -13,6 +13,7 @@ import {
 import { Item } from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatNumber } from '../../utils/exportUtils';
+import { printHtmlElement } from '../../utils/printUtils';
 
 interface BarcodeLabelModalProps {
   isOpen: boolean;
@@ -93,12 +94,8 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
     }
   });
 
-  const handlePrintLabels = () => {
-    document.body.classList.add('has-print-modal');
-    window.print();
-    setTimeout(() => {
-      document.body.classList.remove('has-print-modal');
-    }, 500);
+  const handlePrintLabels = async () => {
+    await printHtmlElement('barcode-labels-printable-area', 'Barcode_Labels');
   };
 
   const handleCopyBarcode = (code: string) => {
@@ -195,7 +192,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
         </div>
 
         {/* Printable Barcode Grid Area */}
-        <div className="p-6 overflow-y-auto flex-1 bg-slate-100/60 printable-document">
+        <div id="barcode-labels-printable-area" className="p-6 overflow-y-auto flex-1 bg-slate-100/60 printable-document">
           <div
             className={`grid gap-3 ${
               labelSize === 'compact'

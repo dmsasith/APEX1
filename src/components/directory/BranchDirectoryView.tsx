@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
+import { printHtmlElement } from '../../utils/printUtils';
 import { Site, Team, User as AppUser, isUserAssignedToSite } from '../../types';
 
 interface BranchDirectoryViewProps {
@@ -188,14 +189,15 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
     exportToCsv(filename, rows);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    const filename = `Branch_Directory_Report_${selectedSiteId === 'all' ? 'All_Branches' : 'Branch'}`;
+    await printHtmlElement('branch-directory-printable-area', filename);
   };
 
   const selectedSite = activeSites.find((s) => s.id === selectedSiteId);
 
   return (
-    <div className="space-y-6">
+    <div id="branch-directory-printable-area" className="space-y-6">
       {/* Top Banner / Header (Screen View) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 no-print">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">

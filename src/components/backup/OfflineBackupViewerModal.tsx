@@ -26,6 +26,7 @@ import {
 import { StockBackup, Item, Site, Team, MainStockEntry, TeamIssue, TeamReturn, ProjectMaterialUsage, PurchaseOrder } from '../../types';
 import { exportBackupToExcel } from '../../utils/excelExportUtils';
 import { exportToCsv, formatDateTime, formatNumber } from '../../utils/exportUtils';
+import { printHtmlElement } from '../../utils/printUtils';
 import { STORAGE_KEY_PREFIX } from '../../context/StockContext';
 
 interface OfflineBackupViewerModalProps {
@@ -134,8 +135,8 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
     exportBackupToExcel(backup);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    await printHtmlElement('offline-backup-printable-area', `Backup_Report_${activeTab}`);
   };
 
   const snap = backup?.snapshot;
@@ -475,7 +476,7 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
               </div>
 
               {/* Table Data Content Viewport */}
-              <div className="flex-1 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
+              <div id="offline-backup-printable-area" className="flex-1 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
                 <div className="overflow-auto flex-1">
                   {/* 1. Items View */}
                   {activeTab === 'items' && (
