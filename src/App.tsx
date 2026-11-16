@@ -95,7 +95,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
     { id: 'dispatch', label: '3. Issue to Teams', icon: Send },
     { id: 'team-stock', label: 'Team In-Hand', icon: Users2 },
     { id: 'projects', label: '4. Project & New Section Registry', icon: FolderKanban },
-    { id: 'project-usage', label: '5. Material Usage', icon: Layers },
+    { id: 'project-usage', label: '5. Material Usage / Daily Progress Entry', icon: Layers },
     { id: 'returns', label: '6. Team Returns', icon: RotateCcw },
     { id: 'branch-returns', label: '7. Branch Return', icon: ArrowUpLeft },
     { id: 'machinery', label: 'Machinery & Tools', icon: Truck },

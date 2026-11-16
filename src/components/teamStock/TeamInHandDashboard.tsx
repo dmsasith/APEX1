@@ -86,6 +86,8 @@ export const TeamInHandDashboard: React.FC = () => {
             'Item Description': item.itemName,
             Unit: item.unit,
             'Total Assigned': item.totalIssued,
+            'Used in Projects': item.totalUsedInProjects || 0,
+            'Wastage in Projects': item.totalWastageInProjects || 0,
             'Total Returned': item.totalReturned,
             'Current Active In-Hand': item.currentInHand,
             'Last Issued Date': formatDate(item.lastIssuedDate),
@@ -349,6 +351,8 @@ export const TeamInHandDashboard: React.FC = () => {
                                       <th className="py-2 px-3">Item Name</th>
                                       <th className="py-2 px-3 text-center">Unit</th>
                                       <th className="py-2 px-3 text-right">Total Assigned</th>
+                                      <th className="py-2 px-3 text-right text-teal-700">Used in Projects</th>
+                                      <th className="py-2 px-3 text-right text-amber-700">Wastage</th>
                                       <th className="py-2 px-3 text-right">Total Returned</th>
                                       <th className="py-2 px-3 text-right">Current In-Hand</th>
                                       <th className="py-2 px-3 text-right">Last Dispatched</th>
@@ -361,6 +365,12 @@ export const TeamInHandDashboard: React.FC = () => {
                                         <td className="py-2 px-3 text-slate-800 font-medium">{item.itemName}</td>
                                         <td className="py-2 px-3 text-center text-slate-600">{item.unit}</td>
                                         <td className="py-2 px-3 text-right font-mono text-slate-600">{formatNumber(item.totalIssued)}</td>
+                                        <td className="py-2 px-3 text-right font-mono font-semibold text-teal-700">
+                                          {formatNumber(item.totalUsedInProjects || 0)}
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-mono font-semibold text-amber-700">
+                                          {formatNumber(item.totalWastageInProjects || 0)}
+                                        </td>
                                         <td className="py-2 px-3 text-right font-mono text-slate-600">{formatNumber(item.totalReturned)}</td>
                                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
                                           {formatNumber(item.currentInHand)}

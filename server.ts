@@ -55,10 +55,11 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
 2. **Main Central Stock ("Main Central Stock"), Supplier Orders ("Supplier Orders (PO)"), & Client Free Stock ("Client Free Stock (FOC)")**:
    - **Main Central Stock**: Add stock via **"+ Add Stock (GRN)"** (Purchase or Manual Entry), perform **Direct Transfer to Site**, or manage the **Damaged Stock Ledger & Restoration** (restore repaired items back to Main Stock).
    - **Supplier Orders (PO)**: Create Purchase Orders, receive Full or Partial batch GRNs against POs into Main Stock, close PO remainders, create **Supplier Returns (RTV)** for defective goods, dispatch with Gate Pass & vehicle details, print official **Debit Notes**, and record supplier settlements (Replacement, Credit Note, Refund).
-   - **Client Free Stock (FOC) — "Under Main Project" vs. "Individual Project"**:
+   - **Client Free Stock (FOC) — "Under Main Project" vs. "Individual Project", Locked Branch & Admin Correction**:
      1) Open **"Client Free Stock (FOC)"** and click **"+ Log Client Free Stock"**.
-     2) Choose Target Project Mode: **"🏢 Under Main Project"** (when a client supplies bulk free materials for a Major/Main Project covering multiple Sub-Projects) or **"📄 Individual Project"** (for a standalone single project).
-     3) When FOC stock is received **"Under Main Project"**, it creates a shared Main Project Pool. Whenever field usage is logged on any child **Sub-Project**, it automatically deducts from that Parent Main Project's FOC balance, while the **"Project Free Stock Balances"** tab shows both the Main Project net balance and the **"Sub-Projects Individual Usage Breakdown"**.
+     2) Choose Target Project Mode: **"🏢 Under Main Project"** or **"📄 Individual Project"**. Physical deliveries default to **"Main Central Warehouse (Central Yard)"**, while selecting a project automatically detects and **LOCKS** the **"Allocated Site Branch"** to that project's registered branch so stock cannot be mis-issued to another site.
+     3) **Admin FOC Voucher Correction**: If a shipment was logged under the wrong project, Admins can edit that FOC voucher directly inside **Client Free Stock (FOC)** and reassign it to the correct Target Project (automatically updating the locked branch and Audit Trail).
+     4) When FOC stock is received **"Under Main Project"**, Sub-Project usage automatically deducts from the Parent Main Project's pool while **"Project Free Stock Balances"** shows both the Main Project net balance and **"Sub-Projects Individual Usage Breakdown"**.
 
 3. **Stock Requisitions ("Stock Requisitions") & Site Branch Stock ("Site Branch Stock")**:
    - How a Branch gets items from Main Stock:
@@ -84,24 +85,28 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
      2) Enter the **Section Name**, **Short Code**, **Badge Theme Color**, and **Description**, then click **"Create Section"**.
      3) On the section card, click **"Configure Material Template"** (or **"Edit Material Template (BOM)"**), add the standard items and **Suggested Qty**, and click **"Save Material Template"**.
 
-6. **Material Usage & Reconciliation ("Material Usage")**:
-   - **Logging Material Usage on a Sub-Project or Individual Project (Tab 1)**:
-     1) Select the Project Section (Step 1) — its **Default Material Template (BOM)** loads automatically.
-     2) In Step 2 (**"Project / Sub-Project & Customer Identification"**), filter by **"↳ Sub-Projects (Under Main)"**, **"🏢 Major / Main Projects"**, or **"📄 Individual Projects"**, or click **"+ Register New Sub-Project / Site"** to create a new Sub-Project under a Main Project on the fly.
-     3) When material usage is logged on a **Sub-Project**, it **automatically deducts from the Parent Main Project's Client Free Stock (FOC) pool** while recording the consumption under that specific Sub-Project.
-   - **Total Main Project & Sub-Project Reconciliation (Tab 3 — "Reconciliation")**:
-     1) Select a **🏢 Major / Main Project** to reconcile the **Total Main Project** (Total FOC Received under Main Project vs. Combined Installed Qty across all Sub-Projects = Net Remaining Balance) AND view the **"Sub-Projects Individual Material Usage Breakdown"** cards for every child Sub-Project.
-     2) Select any **↳ Sub-Project** or **📄 Individual Project** to inspect its standalone consumption and team breakdown.
+6. **Material Usage / Daily Progress Entry ("Material Usage / Daily Progress Entry")**:
+   - **Section-Filtered Project Lists & User-Site Branch Lock**:
+     1) Picking a **Project Section** in Step 1 strictly filters Step 2 dropdowns (**Main Project** and **Sub-Project / Project**) to ONLY show projects registered under that section, and auto-loads the section's **Default Material Template (BOM)**.
+     2) If the selected project belongs to a different **Site Branch** than the logged-in user's assigned site, Step 4 (**"4. Materials Consumed"**) safely **locks** with a clear banner (*"Selected project is not under [User Name]'s site"*), preventing cross-branch usage errors.
+   - **Logging Installed Qty + "Wastage Qty" (Tab 1 & Voucher Edit)**:
+     1) Record both **Qty Used (Installed)** and **Wastage Qty** per material line (also editable inside Voucher Edit modal). Shows live **Total Deduct (Used + Wastage)** and validates \`Used + Wastage <= Team In-Hand\`.
+     2) Automatically updates **Team In-Hand Stock** (both **Used in Projects** & **Wastage** columns + CSV), **Client FOC & Project Reconciliation**, **Site Branch Stock**, and printable **PU-xxxx Usage Vouchers**.
+     3) Sub-Project usage automatically deducts from the Parent Main Project's Client Free Stock (FOC) pool.
+   - **Usage Vouchers History -> "Full Report for This Site (Project)" & Reconciliation**:
+     1) Open **Usage Vouchers History** and select any project to unlock the **"Full Report for This Site (Project)"** button.
+     2) Displays **Part 1 (Team-by-Team Breakdown & Individual Team Subtotals: Installed, Wastage, Total Consumed, Value)** and **Part 2 (Full Site Consolidated Grand Total across all teams)** with **Print / Save PDF** and **Export Excel / CSV**.
+     3) Use **Reconciliation (Tab 3)** for Total Main Project vs. Individual Sub-Project balance audits.
    - Supports **Cross-Project Override Requests** when using project-reserved items on an unrelated project (items reserved for a Parent Main Project are automatically permitted on all its child Sub-Projects).
 
 7. **Team Returns ("Team Returns") & Branch Returns ("Branch Returns")**:
    - **Team Returns**: Return unused or recovered items from a Field Team to their Site Branch Stock (**Good** condition restores usable branch stock; **Damaged** logs to Damaged Stock).
    - **Branch Returns**: Return surplus stock from a Site Branch Yard back to the Central Main Warehouse (HQ).
 
-8. **Document Templates ("Document Templates"), Audit Trail ("Audit Trail"), Recycle Bin ("Recycle Bin"), Backups & System Config**:
+8. **Document Templates ("Document Templates"), Audit Trail, Recycle Bin, Backups & Automatic Email Verification**:
    - **Document Templates**: Customize company letterhead, logo, digital signatures, and print formatting for all vouchers, or upload custom PDF/Image formats in Section Formats.
-   - **Audit Trail**: Filterable chronological history of all system actions with PDF/CSV export.
-   - **Recycle Bin**: Restore soft-deleted Items, Sites, Teams, Users, Projects, or Transactions, or **Delete Permanently** forever.
+   - **Audit Trail & Recycle Bin**: Filterable chronological history with PDF/CSV export; restore or permanently delete soft-deleted records.
+   - **Automatic Email Verification & Support**: Clicking **"Send Verification Email"** sends a Firebase link from **apexstox.com**; clicking the email link verifies the account automatically without extra buttons. Official domain: **apexstox.com** | Support email: **support@apexstox.com**.
    - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change theme/company settings, or use **Admin View-As Mode**.`;
 
 interface CacheEntry {
@@ -177,7 +182,12 @@ function detectSuggestedModule(text: string): string | undefined {
   }
   if (
     lower.includes('material usage') ||
+    lower.includes('daily progress') ||
     lower.includes('project usage') ||
+    lower.includes('wastage') ||
+    lower.includes('full report') ||
+    lower.includes('full site') ||
+    lower.includes('usage vouchers') ||
     lower.includes('reconciliation') ||
     lower.includes('reconcile') ||
     lower.includes('boq')

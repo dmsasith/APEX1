@@ -479,6 +479,7 @@ export interface Project {
 export interface ProjectUsageItemRow {
   itemId: string;
   quantity: number;
+  wastageQuantity?: number;
 }
 
 export interface ProjectMaterialUsage {
@@ -668,6 +669,7 @@ export interface TeamInHandBalanceItem {
   totalIssued: number;
   totalReturned: number;
   totalUsedInProjects: number;
+  totalWastageInProjects?: number;
   currentInHand: number;
   lastIssuedDate: string;
 }

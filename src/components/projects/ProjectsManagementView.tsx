@@ -839,7 +839,10 @@ export const ProjectsManagementView: React.FC = () => {
       const itemsMap = new Map<string, number>();
       spUsages.forEach((u) => {
         u.items.forEach((row) => {
-          itemsMap.set(row.itemId, (itemsMap.get(row.itemId) || 0) + Number(row.quantity));
+          itemsMap.set(
+            row.itemId,
+            (itemsMap.get(row.itemId) || 0) + Number(row.quantity || 0) + Number(row.wastageQuantity || 0)
+          );
         });
       });
       return {
@@ -864,7 +867,10 @@ export const ProjectsManagementView: React.FC = () => {
       existing.voucherCount++;
       pu.items.forEach((row) => {
         const curQty = existing.itemsMap.get(row.itemId) || 0;
-        existing.itemsMap.set(row.itemId, curQty + Number(row.quantity));
+        existing.itemsMap.set(
+          row.itemId,
+          curQty + Number(row.quantity || 0) + Number(row.wastageQuantity || 0)
+        );
       });
       map.set(tId, existing);
     });
@@ -2708,9 +2714,15 @@ export const ProjectsManagementView: React.FC = () => {
                             <div className="space-y-0.5">
                               {pu.items.map((row, i) => {
                                 const itm = items.find((it) => it.id === row.itemId);
+                                const wQty = Number(row.wastageQuantity || 0);
                                 return (
                                   <div key={i} className="text-[11px] text-slate-700">
                                     • {itm?.itemName || row.itemId}: <strong>{formatNumber(row.quantity)} {itm?.unit || ''}</strong>
+                                    {wQty > 0 && (
+                                      <span className="text-amber-700 font-semibold ml-1">
+                                        (+{formatNumber(wQty)} wastage = {formatNumber(Number(row.quantity || 0) + wQty)} total)
+                                      </span>
+                                    )}
                                   </div>
                                 );
                               })}

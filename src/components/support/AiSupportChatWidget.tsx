@@ -76,10 +76,18 @@ const QUICK_PROMPTS: QuickPrompt[] = [
   },
   {
     id: 'project-usage',
-    labelEn: '🏗️ How to record Project Usage?',
-    labelSi: '🏗️ Project Material Usage දාන්නේ කොහොමද?',
-    promptEn: 'How do I record Project Material Usage against a Sub-Project or Individual Project and team?',
-    promptSi: 'Sub-Project එකකට හෝ Individual Project එකකට වැය වුණු බඩු (Material Usage / BOQ) සිස්ටම් එකේ සටහන් කරන්නේ කොහොමද?',
+    labelEn: '🏗️ Material Usage / Daily Progress Entry?',
+    labelSi: '🏗️ Material Usage / Daily Progress දාන්නේ කොහොමද?',
+    promptEn: 'How do Section Filtering, Site Branch Lock, Qty Used + Wastage Qty entry, and Material Usage / Daily Progress Entry work?',
+    promptSi: 'Material Usage / Daily Progress Entry හි Section අනුව Projects Filter වීම, Site Lock, Qty Used සහ Wastage Qty ඇතුළත් කරන්නේ කොහොමද?',
+    targetTab: 'project-usage',
+  },
+  {
+    id: 'wastage-full-site-report',
+    labelEn: '📊 Wastage & Full Site (Project) Report?',
+    labelSi: '📊 Wastage සහ Full Site (Project) Report ගන්නේ කොහොමද?',
+    promptEn: 'How do I enter Wastage Qty and print or export the Full Report for This Site (Project) showing Team-by-Team Totals and the Full Grand Total?',
+    promptSi: 'Wastage Qty ඇතුළත් කරලා Usage Vouchers History වලින් Teams වෙන වෙනම සහ Full Grand Total පෙන්වන Full Report for This Site (Project) ගන්නේ කොහොමද?',
     targetTab: 'project-usage',
   },
   {
@@ -118,7 +126,7 @@ const MODULE_LABELS: Record<string, { en: string; si: string }> = {
   dispatch: { en: 'Open Issue to Teams', si: 'Issue to Teams වෙත යන්න' },
   'team-stock': { en: 'Open Team In-Hand Stock', si: 'Team In-Hand Stock වෙත යන්න' },
   projects: { en: 'Open Project & New Section Registry', si: 'Project & New Section Registry වෙත යන්න' },
-  'project-usage': { en: 'Open Material Usage', si: 'Material Usage වෙත යන්න' },
+  'project-usage': { en: 'Open Material Usage / Daily Progress Entry', si: 'Material Usage / Daily Progress Entry වෙත යන්න' },
   returns: { en: 'Open Team Returns', si: 'Team Returns වෙත යන්න' },
   'branch-returns': { en: 'Open Branch Returns', si: 'Branch Returns වෙත යන්න' },
   registrations: { en: 'Open Master Registrations', si: 'Master Registrations වෙත යන්න' },
@@ -135,8 +143,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Major/Main Projects & Sub-Projects, Client Free Stock (Under Main Project), Project Material Usage & Reconciliation, Main Stock (GRN), Branch Transfers, Team Issues, Returns**, and User Permissions.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Major / Main Projects සහ Sub-Projects, Client Free Stock (Under Main Project), Material Usage සහ Reconciliation, Main Stock (GRN), Branch Transfers, Team Issues, Returns** හෝ ඕනෑම ගැටලුවක් ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Material Usage / Daily Progress Entry (with Wastage Qty, Section Filtering & Site Branch Lock), Full Site (Project) Reports, Major/Sub-Projects, Client FOC (Locked Branch & Admin Correction), Main Stock (GRN), Branch Transfers, Team Issues, Returns**, and Email Verification (apexstox.com).\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Material Usage / Daily Progress Entry (Wastage Qty, Section Filter සහ Site Lock), Full Report for This Site (Project), Main/Sub-Projects, Client FOC (Locked Branch සහ Admin Correction), Main Stock (GRN), Branch Transfers, Team Issues, Returns** හෝ Email Verification (apexstox.com) ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 

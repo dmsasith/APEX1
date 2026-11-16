@@ -91,16 +91,16 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'In "Master Registrations -> Teams", enter the Team Leader name (Crew Size automatically starts at 1). Each time you add a Team Member with their NIC/ID number, Crew Size automatically increments (1 Leader + N Members). Duplicate team names are blocked across active and Recycle Bin teams - and if a deleted team name is entered, you can restore and update the existing team in 1 click so past Material Usage history stays 100% unified.',
       },
       {
-        stepTitle: '4. Create Staff Logins (Single Site, Multi-Site, or Central HQ)',
+        stepTitle: '4. Create Staff Logins (Single Site, Multi-Site, HQ) & Auto Email Verification',
         detail:
-          'Under "User Management", create accounts for HQ Storekeepers and Site Supervisors. You can assign a user to All Sites (Central HQ), a Single Site Branch, or Multiple Specific Site Branches, and view all branch staff and crew rosters in the "Branch Directory".',
+          'Under "User Management", create accounts for HQ Storekeepers and Site Supervisors. Assign each user to All Sites (Central HQ), a Single Site Branch, or Multiple Specific Site Branches. Account security features 1-click "Send Verification Email" via apexstox.com (support@apexstox.com) — clicking the verification link in your inbox automatically completes verification.',
       },
     ],
     keyOutputs: [
       'Sequential 0001-Based Codes, IDs & Document References',
       'Single-Shot Camera & USB Gun Barcode Scanner with "Scan Now" Button',
       'Auto-Calculated Crew Size (1 Leader + N Members) & Usage Protection',
-      'Single-Site & Multi-Site Branch Supervisor Locks',
+      'Single-Site & Multi-Site Branch Locks + Auto Email Verification (apexstox.com)',
     ],
   },
   {
@@ -129,15 +129,15 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'For defective or excess vendor deliveries, create an official Return to Vendor (RTV) / Debit Note with outward Gate Pass and credit claim tracking. For site-damaged items, inspect and restore repaired units back into Main Stock via the Damaged Stock ledger.',
       },
       {
-        stepTitle: '4. Record Client-Supplied Free Materials (FOC) — Central HQ Default Inbound & Auto Site Branch Allocation',
+        stepTitle: '4. Record Client Free Materials (FOC) — Locked Site Branch & Admin Voucher Correction',
         detail:
-          'Open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" or "Individual Project". Physical FOC materials always enter "Main Central Warehouse (Central Yard)" by default as the inbound storage location, while selecting the Target Project automatically detects and allocates the stock exclusively to that project\'s Assigned Site Branch so only that branch can request it.',
+          'Open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" or "Individual Project". Physical FOC materials default to "Main Central Warehouse (Central Yard)" as inbound storage, while selecting the Target Project automatically detects and LOCKS the "Allocated Site Branch" so stock cannot be accidentally issued to the wrong site. If a shipment was logged under the wrong project, Admins can edit and reassign the FOC voucher directly inside Client Free Stock with full audit logging.',
       },
     ],
     keyOutputs: [
       'Printable Purchase Orders (PO) & Multi-Item Batch GRN Vouchers',
       'Return to Vendor (RTV) Debit Notes & Outward Gate Passes',
-      'Client FOC Default Central Main Stock Inbound + Auto Site Branch Allocation',
+      'Client FOC Locked Site Branch Allocation & Admin Voucher Reassignment',
     ],
   },
   {
@@ -181,26 +181,26 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     id: 'ch-04',
     number: 'Chapter 04',
     category: 'projects',
-    categoryLabel: 'Projects, Sub-Projects & Reconciliation',
-    title: 'Project Registry with Mandatory Assigned Site Branch, Sub-Projects, Material Usage (PU) & Returns (RV / BRM)',
+    categoryLabel: 'Projects, Usage, Wastage & Full Site Reports',
+    title: 'Project Registry, Material Usage / Daily Progress Entry (with Wastage Qty), Branch Locks & Full Site Reports',
     summary:
-      'Register Major / Main Projects, Sub-Projects, and Individual Projects with a mandatory Assigned Site Branch so Client Free Stock is automatically routed to the right branch and deducted when Sub-Project usage is logged.',
+      'Register Major/Main, Sub, and Individual Projects with a mandatory Assigned Site Branch; record daily consumption and Wastage Qty with automatic section filtering & site branch locks; and generate consolidated Full Site (Project) Reports.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Register Projects with Mandatory "Assigned Site Branch *"',
+        stepTitle: '1. Register Projects with Mandatory "Assigned Site Branch *" & Section Filtering',
         detail:
-          'In "Project & New Section Registry", click "Register Project", choose (1) Major / Main Project, (2) Sub-Project, or (3) Individual Project, and select the mandatory "Assigned Site Branch *". Sub-Projects automatically inherit their Parent Main Project\'s Assigned Site Branch. This branch link ensures that when Client Free-Issue (FOC) stock is logged, it is allocated exclusively to that Site Branch without cross-branch mix-ups.',
+          'In "Project & New Section Registry", register Major / Main Projects, Sub-Projects, or Individual Projects under their Project Section and mandatory "Assigned Site Branch *". In "Material Usage / Daily Progress Entry", picking a Project Section in Step 1 automatically filters Step 2 project lists to ONLY projects registered under that section — and if a chosen project belongs to a different site branch than your account, Step 4 safely locks with a clear notice to prevent cross-site usage errors.',
       },
       {
-        stepTitle: '2. Sub-Project & Multi-Team Material Usage Logging (PU) with Auto Main Pool Deduction',
+        stepTitle: '2. Log Installed Qty + "Wastage Qty" & Auto Main Pool / In-Hand Deduction',
         detail:
-          'In "Material Usage" (Step 2), select an existing Sub-Project under a Major Project, pick an Individual Project, or register a new Sub-Project on the fly. Once your Site Branch has requested and received the Main Project\'s FOC stock from Central HQ, logging daily material usage under any Sub-Project automatically deducts from that Main Project\'s FOC pool.',
+          'Inside "Material Usage / Daily Progress Entry" (Step 4) and Voucher Edit modals, enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. The form calculates live Total Deduct (Used + Wastage) against Team In-Hand stock, deducts Sub-Project usage automatically from the Parent Main Project FOC pool, and updates Team In-Hand Wastage columns, Reconciliation, Site Stock, and PU vouchers.',
       },
       {
-        stepTitle: '3. Total Main Project Umbrella Reconciliation & Separate Sub-Project Breakdown',
+        stepTitle: '3. Usage Vouchers History — "Full Report for This Site (Project)" & Reconciliation',
         detail:
-          'Open the "Reconciliation" tab in Material Usage (or click the usage badge in Project Registry). Selecting a Major / Main Project reconciles the entire contract (Total FOC Stock Received under Main Project vs. Combined Installed Qty across all Sub-Projects = Net Remaining Balance) and displays a dedicated "Sub-Projects Individual Material Usage Breakdown".',
+          'Open the "Usage Vouchers History" tab in "Material Usage / Daily Progress Entry" and select a project to unlock the "Full Report for This Site (Project)" button. It produces a 2-part report showing: (Part 1) Separate Team-by-Team consumption & Wastage with individual Team Subtotals, and (Part 2) the Full Site Consolidated Grand Total across all teams — ready for Print/PDF or Excel CSV export. Use the "Reconciliation" tab for Main Project vs. Sub-Project FOC balances.',
       },
       {
         stepTitle: '4. Team Returns (RV) & Branch-to-HQ Returns (BRM)',
@@ -209,9 +209,10 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Mandatory Assigned Site Branch per Project (Main, Sub & Individual)',
-      'Auto-Deduction of Sub-Project Usage from Main Project FOC Pool',
-      'Umbrella Main Project & Individual Sub-Project Reconciliation + PU/RV/BRM Vouchers',
+      'Section-Filtered Project Lists & User-Site Branch Access Lock',
+      'Installed Qty + Wastage Qty Entry (Live Used + Wastage Validation)',
+      'Full Report for This Site (Project): Team Subtotals + Full Grand Total (PDF/CSV)',
+      'Main/Sub-Project Reconciliation & Printable PU / RV / BRM Vouchers',
     ],
   },
   {
@@ -319,16 +320,16 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Master Registrations -> Teams" තුළදී Team Leader ගේ නම දැමූ විට Crew Size එක ස්වයංක්‍රීයව 1 ලෙස ගණනය වේ. සාමාජිකයින් (Members) ජාතික හැඳුනුම්පත් අංකය (NIC/ID) සමඟ එකතු කරන විට Crew Size එක ඉබේම (1 Leader + සාමාජික ගණන ලෙස) වැඩි වේ. Material Usage දත්ත ආරක්ෂා කිරීම සඳහා එකම නමින් Teams දෙකක් සෑදීම වළක්වා ඇත.',
       },
       {
-        stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Staff Logins) සහ ශාඛා බලතල සැකසීම',
+        stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Staff Logins), ශාඛා බලතල සහ Auto Email Verification',
         detail:
-          '"User Management" යටතේ ප්‍රධාන ගබඩා භාරකරුවන් සහ ප්‍රාදේශීය වැඩබිම් පරීක්ෂකවරුන් (Site Supervisors) සඳහා ගිණුම් සාදන්න. එක් ශාඛාවකට පමණක් (Single Site), ශාඛා කිහිපයකට (Multi-Site), හෝ සියලුම ශාඛාවලට (Central HQ) අවසර ලබාදිය හැක.',
+          '"User Management" යටතේ ප්‍රධාන ගබඩා භාරකරුවන් සහ ප්‍රාදේශීය වැඩබිම් පරීක්ෂකවරුන් (Site Supervisors) සඳහා ගිණුම් සාදන්න (Single Site, Multi-Site හෝ Central HQ). ගිණුම Verify කිරීමේදී "Send Verification Email" ක්ලික් කර ඔබේ Email Inbox එකට ලැබෙන apexstox.com (support@apexstox.com) ලින්ක් එක ක්ලික් කළ සැණින් ගිණුම ස්වයංක්‍රීයව Verify වේ.',
       },
     ],
     keyOutputs: [
       '0001 සිට පිළිවෙළට යන Item Codes, Project IDs සහ Voucher References',
       'Detect වූ විට ඉබේම නතර වන Camera / USB Gun Scanner සහ "Scan Now" බටන් එක',
       'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් සාමාජික සංඛ්‍යාව (Auto Crew Size)',
-      'ශාඛා මට්ටමින් සීමා කළ හැකි පරිශීලක ගිණුම් (Branch Security Locks)',
+      'ශාඛා මට්ටමින් සීමා කළ හැකි ගිණුම් සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
     ],
   },
   {
@@ -357,15 +358,15 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'ප්‍රමිතියෙන් තොර හෝ වැඩිපුර ලැබුණු භාණ්ඩ ආපසු සැපයුම්කරු වෙත යැවීමේදී "Return to Vendor (RTV) / Debit Note" සහ Gate Pass පත්‍රිකා නිකුත් කරන්න. වැඩබිම්වලදී හානි වූ භාණ්ඩ අලුත්වැඩියා කර නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිත කරන්න.',
       },
       {
-        stepTitle: '4. Client Free Stock (FOC) ප්‍රධාන ගබඩාවට (Central Main Stock) භාරගෙන අදාළ Site Branch එකට ස්වයංක්‍රීයව වෙන් කිරීම',
+        stepTitle: '4. Client Free Stock (FOC) — Auto-Locked Site Branch සහ Admin මගින් වැරදි වවුචර් නිවැරදි කිරීම',
         detail:
-          '"Client Free Stock" හි "+ Log Client Free Stock" වෙත ගිය විට, භාණ්ඩ මුලින්ම ලැබෙන ගබඩාව (Receiving Storage Yard) ලෙස "Main Central Warehouse (Central Yard)" Default ලෙස පවතී. එහිදී "Under Main Project" හෝ "Individual Project" යටතේ අදාළ Project එක තේරූ සැණින්, එම Project එකට අදාළ Site Branch එක ස්වයංක්‍රීයව තේරී එම ශාඛාවට පමණක් එම FOC බඩු තොගය වෙන් (Allocate) වේ.',
+          '"Client Free Stock" හි "+ Log Client Free Stock" ෆෝම් එක දැන් ඉතා පිළිවෙළට සකසා ඇත. Receiving Storage Yard ලෙස "Main Central Warehouse" Default පවතින අතර, Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට ස්වයංක්‍රීයව Link වී Lock වේ (වෙනත් ශාඛාවකට වෙනස් කළ නොහැක). යම් හෙයකින් FOC තොගයක් වැරදි Project එකකට ඇතුළත් වී ඇත්නම්, Admin හට Client Free Stock තුළදීම එම වවුචරය Edit කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.',
       },
     ],
     keyOutputs: [
       'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Multi-Item GRN වවුචර්',
       'Return to Vendor (RTV) Debit Notes සහ Outward Gate Pass පත්‍රිකා',
-      'Client FOC ප්‍රධාන ගබඩාවට භාරගැනීම සහ Project එකේ Site Branch එකට ඉබේම වෙන් වීම',
+      'Client FOC Auto-Locked Site Branch සහ Admin මගින් FOC වවුචර් නිවැරදි කිරීම',
     ],
   },
   {
@@ -409,26 +410,26 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     id: 'ch-04',
     number: '04 වන පරිච්ඡේදය',
     category: 'projects',
-    categoryLabel: 'ප්‍රධාන ව්‍යාපෘති, අනු-ව්‍යාපෘති (Sub-Projects) සහ ගැලපුම්',
-    title: 'Project Registry හි අනිවාර්ය Site Branch තේරීම, Major/Main හා Sub-Projects, Material Usage (PU) සහ Returns (RV / BRM)',
+    categoryLabel: 'ව්‍යාපෘති, Daily Progress Entry, Wastage සහ Full Site Reports',
+    title: 'Project Registry, Material Usage / Daily Progress Entry (Wastage Qty සමඟ), Site Lock සහ Full Site වාර්තා',
     summary:
-      'Project Registry තුළ ව්‍යාපෘතියක් ලියාපදිංචි කිරීමේදී ඊට අදාළ Site Branch එක අනිවාර්යයෙන්ම සම්බන්ධ කිරීම, Main Project යටතේ ගෙන්වාගත් FOC බඩු Sub-Projects වලට Usage දැමීම සහ Reconciliation බලාගැනීම.',
+      'අනිවාර්ය Site Branch සමඟ ව්‍යාපෘති ලියාපදිංචිය, Section එකට අනුව Projects පෙරීම, අනවසර Site Lock ආරක්ෂාව, භාවිතය සමඟ Wastage Qty ඇතුළත් කිරීම සහ කණ්ඩායම් සියල්ලේම Full Site Report ලබාගැනීම.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Project Registry තුළ අනිවාර්ය "Assigned Site Branch *" සහිතව ව්‍යාපෘති ලියාපදිංචි කිරීම',
+        stepTitle: '1. Project Registry හි "Assigned Site Branch *", Section Filter සහ User Site Lock ආරක්ෂාව',
         detail:
-          '"Project & New Section Registry" හි "Register Project" ක්ලික් කර (1) Major / Main Project, (2) Sub-Project, හෝ (3) Individual Project තෝරා, එම ව්‍යාපෘතිය අයත් වන ශාඛාව "Assigned Site Branch *" Dropdown එකෙන් අනිවාර්යයෙන්ම තෝරන්න (Sub-Project එකක් සාදන විට Main Project එකේ Site Branch එක ඉබේම තේරේ). එවිට Client FOC බඩු ලොග් කරන විට සහ ශාඛාවෙන් බඩු ඉල්ලුම් කරන විට එම ශාඛාවට අදාළ ව්‍යාපෘති පමණක් නිවැරදිව වෙන් වී පෙන්වයි.',
+          '"Project & New Section Registry" හි Major / Main, Sub-Project, හෝ Individual Project ලියාපදිංචි කිරීමේදී Project Section සහ අනිවාර්ය "Assigned Site Branch *" තෝරන්න. "Material Usage / Daily Progress Entry" පිටුවේ 1 වන පියවරෙන් Section එක මාරු කළ විට 2 වන පියවරේ Dropdown වල පෙන්වන්නේ එම Section එකට අයත් Projects පමණි. තෝරාගත් Project එක ඔබේ ගිණුමට අයත් Site Branch එකක නොවේ නම් 4 වන පියවර Lock වී පැහැදිලි අනතුරු ඇඟවීමක් පෙන්වයි.',
       },
       {
-        stepTitle: '2. Sub-Project වලට Material Usage (PU) ඇතුළත් කිරීම සහ Main Project තොගයෙන් ස්වයංක්‍රීයව අඩු වීම',
+        stepTitle: '2. Material Usage / Daily Progress Entry හි "Wastage Qty" සටහන් කිරීම සහ ස්වයංක්‍රීය ගණනය',
         detail:
-          'Main Project එක යටතේ ශාඛාවට ගෙන්වාගත් බඩු භාවිත කරන විට, "Material Usage" පිටුවේ 2 වන පියවරේදී එම ප්‍රධාන ව්‍යාපෘතිය යටතේ ඇති අදාළ Sub-Project එක තෝරා (හෝ "+ Register New Sub-Project" මගින් අලුත් Sub-Project එකක් සාදා) වැය වූ බඩු ප්‍රමාණයන් ඇතුළත් කරන්න. එවිට එය අදාළ Main Project එකේ FOC තොගයෙන් ස්වයංක්‍රීයව අඩු වේ.',
+          '"Material Usage / Daily Progress Entry" හි 4 වන පියවරේදී (හා Edit Voucher තුළදී) භාවිතා කළ ප්‍රමාණය (Qty Used) මෙන්ම අපතේ ගිය ප්‍රමාණය ("Wastage Qty") ද ඇතුළත් කළ හැක. එවිට Used + Wastage මුළු එකතුව Team In-Hand තොගය සමඟ සජීවීව පරීක්ෂා වන අතර Team In-Hand "Wastage" තීරුව, Project Reconciliation, Site Branch Stock සහ PU වවුචර් ස්වයංක්‍රීයව යාවත්කාලීන වේ.',
       },
       {
-        stepTitle: '3. Total Main Project Reconciliation සහ Sub-Projects වල වෙන වෙනම විස්තර බලාගැනීම',
+        stepTitle: '3. Usage Vouchers History — "Full Report for This Site (Project)" සහ Reconciliation',
         detail:
-          '"Material Usage -> Reconciliation" (Tab 3) වෙත ගොස් Major / Main Project එක තේරූ විට, ප්‍රධාන ව්‍යාපෘතියට ලැබුණු මුළු Free Stock ප්‍රමාණය, සියලුම Sub-Projects හරහා වැය වූ මුළු එකතුව සහ ඉතිරි තොගය පෙන්වන අතර, ඊට පහළින් එක් එක් Sub-Project එකට වෙන වෙනම ගිය බඩු ප්‍රමාණයන් ("Sub-Projects Individual Breakdown") පැහැදිලිව බලාගත හැක.',
+          '"Material Usage / Daily Progress Entry -> Usage Vouchers History" ටැබ් එකෙහි ඕනෑම Project එකක් තේරූ විට "Full Report for This Site (Project)" බටන් එක ලැබේ. එම වාර්තාව කොටස් 2කින් යුක්තය: (Part 1) එම Project එකට වැඩ කළ සියලුම Teams වෙන වෙනම භාවිතා කළ හා Wastage කළ ප්‍රමාණ + එක් එක් Team එකේ මුළු එකතුව, සහ (Part 2) සියලුම Teams වල මුළු එකතුව (Grand Total) — Print/PDF හෝ Excel CSV ලෙස බාගත කළ හැක.',
       },
       {
         stepTitle: '4. කණ්ඩායම් ආපසු භාරදීම් (RV) සහ ශාඛාවෙන් ප්‍රධාන ගබඩාවට ආපසු යැවීම් (BRM)',
@@ -437,9 +438,10 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Project Registry හි අනිවාර්ය Assigned Site Branch සම්බන්ධතාවය',
-      'Sub-Project Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වීම',
-      'Total Main Project සහ Sub-Project වෙන වෙනම Reconciliation වාර්තා',
+      'Section එකට අනුව Projects පෙරීම (Filter) සහ User Site Branch Lock ආරක්ෂාව',
+      'Installed Qty සමඟ Wastage Qty (අපතේ යාම්) සටහන් කිරීම සහ Live In-Hand පරීක්ෂාව',
+      '"Full Report for This Site (Project)" — Team Subtotals + Full Grand Total (PDF/CSV)',
+      'Main/Sub-Project Reconciliation සහ මුද්‍රණය කළ හැකි PU / RV / BRM වවුචර්',
     ],
   },
   {
@@ -527,7 +529,7 @@ const FORMAT_GROUPS_MATRIX_EN: FormatSlotGuide[] = [
     affectsTo: [
       'RN - Stock Requisitions (Branch to Central HQ Request)',
       'IN - Issue to Teams (Daily Field Crew Dispatch & Gate Pass)',
-      'PU - Project & Site Material Usage Vouchers',
+      'PU - Material Usage / Daily Progress Entry Vouchers',
       'TSR - Team In-Hand Stock Balance Audit Report',
     ],
   },
@@ -569,7 +571,7 @@ const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
     affectsTo: [
       'RN - Stock Requisitions (ශාඛා මගින් ප්‍රධාන ගබඩාවෙන් බඩු ඉල්ලුම් කරන පත්‍රිකාව)',
       'IN - Issue to Teams (වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීමේ පත්‍රිකාව / Gate Pass)',
-      'PU - Material Usage (ව්‍යාපෘති සහ වැඩබිම් භාණ්ඩ භාවිත වවුචරය)',
+      'PU - Material Usage / Daily Progress Entry (ව්‍යාපෘති සහ වැඩබිම් භාණ්ඩ භාවිත හා Wastage වවුචරය)',
       'TSR - Team In-Hand Stock (කණ්ඩායම් සතු තොග පරීක්ෂණ වාර්තාව)',
     ],
   },
@@ -612,29 +614,29 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
       'Single-Shot Camera & USB Gun Barcode Scanner with Auto-Hide & "Scan Now" Button',
       'Supplier Purchase Orders (PO) & Multi-Item Atomic GRN Vouchers',
       'Return to Vendor (RTV) Official Debit Notes & Outward Gate Passes',
-      'Client Free Stock (FOC) Default Central Main Stock Inbound + Auto Site Branch Allocation',
+      'Client Free Stock (FOC) Auto-Locked Site Branch + Admin Voucher Correction / Reassignment',
       'Excel / CSV Bulk Import, Multi-Sheet Export & Low-Stock Alerts',
     ],
   },
   {
-    group: 'Field Operations, Teams & Projects',
+    group: 'Field Operations, Daily Progress & Full Site Reports',
     items: [
       '2-Tab Stock Requisitions (RN): Normal Stock vs. Branch-Exclusive Client FOC Request',
       'Auto Low-Stock Priority Top Sorting & Live "Site Avl:" + "Main:" Balances in Requisitions',
-      'Mandatory "Assigned Site Branch *" in Project Registry (Main, Sub-Project & Individual)',
-      'Auto-Calculated Field Crew Size (1 Team Leader + N Members) & Usage Protection',
-      'Field Crew Issuance (IN) with Serial / Drum / Batch Remarks & Live In-Hand Custody',
-      'Shared Main Project Client FOC Pool & Sub-Project Auto-Deduction',
-      'Total Main Project vs. Individual Sub-Project Reconciliation & Returns (PU/RV/BRM)',
+      'Section-Filtered Project Lists & User-Site Branch Lock in Material Usage / Daily Progress Entry',
+      'Installed Qty + Wastage Qty Tracking with Live (Used + Wastage) Team In-Hand Validation',
+      'Usage Vouchers History -> "Full Report for This Site (Project)" (Team Subtotals + Grand Total)',
+      'Auto-Calculated Field Crew Size (1 Leader + N Members) & Usage Protection',
+      'Shared Main Project Client FOC Pool, Sub-Project Auto-Deduction & Returns (PU/RV/BRM)',
     ],
   },
   {
-    group: 'Company Document Formats & Enterprise Control',
+    group: 'Company Document Formats, Verification & Enterprise Control',
     items: [
       'PDF & Image Company Format Upload (Auto-Extracts Header & Brand Color)',
       '4 Unified Format Slots with "This Format Affects To" Section Mapping',
       'Live A4 Format Studio (Header Banner, Watermark, or Smart Grid Modes)',
-      'Single-Site, Multi-Site & Central HQ Role Access Control',
+      'Single-Site, Multi-Site & Central HQ Role Access Control + Auto Email Verification (apexstox.com)',
       'Tamper-Proof Audit Trail, Safe Recycle Bin & 1-Click JSON Backup',
     ],
   },
@@ -649,29 +651,29 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
       'Detect වූ සැණින් නතර වී Camera ඉවත් වන Single-Shot Scanner සහ "Scan Now" බටන් එක',
       'නිල Purchase Orders (PO) සහ Multi-Item GRN ප්‍රධාන ගබඩාවට එකවර භාරගැනීම',
       'සැපයුම්කරු වෙත ආපසු යැවීමේ (RTV) Debit Notes සහ Outward Gate Pass',
-      'Client Free Stock (FOC) ප්‍රධාන ගබඩාවට (Central Main) ගෙන අදාළ Site Branch එකට ඉබේම වෙන් කිරීම',
+      'Client FOC Auto-Locked Site Branch සහ Admin හට වැරදි FOC වවුචර් නිවැරදි කිරීමේ පහසුකම',
       'Excel / CSV Bulk Import, Multi-Sheet Export සහ අවම තොග අනතුරු ඇඟවීම්',
     ],
   },
   {
-    group: 'වැඩබිම් මෙහෙයුම්, කණ්ඩායම් සහ ව්‍යාපෘති (Teams, Main/Sub-Projects)',
+    group: 'වැඩබිම් මෙහෙයුම්, Wastage සහ Full Site Reports (Daily Progress Entry)',
     items: [
       'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock සහ Branch-Exclusive Client FOC Request)',
       'ශාඛාවේ Low Stock භාණ්ඩ ලැයිස්තුවේ උඩින්ම පෙරී පෙන්වීම සහ "Site Avl:" / "Main:" තොග දර්ශකය',
-      'Project Registry හි අනිවාර්ය "Assigned Site Branch *" තේරීම (Main, Sub සහ Individual Projects)',
+      'Section එකට අනුව Projects Filter වීම සහ අනවසර Site Lock ආරක්ෂාව',
+      'Material Usage / Daily Progress Entry හි Installed Qty සමඟ Wastage Qty (අපතේ යාම්) සටහන් කිරීම',
+      'Usage History හි "Full Report for This Site (Project)" (Team Subtotals + Full Grand Total + PDF/CSV)',
       'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් ප්‍රමාණය (Auto Crew Size: 1 Leader + N Members)',
-      'Sub-Project වලට Usage දැමූ විට Main Project Free Stock එකෙන් ස්වයංක්‍රීයව අඩු වීම',
-      'Total Main Project Reconciliation සහ Sub-Projects වල වෙන වෙනම විස්තර බලාගැනීම',
-      'ව්‍යාපෘති භාණ්ඩ භාවිතය (PU) සහ ආපසු භාරදීමේ වවුචර් (RV / BRM)',
+      'Sub-Project Usage මගින් Main Project FOC අඩු වීම සහ ආපසු භාරදීමේ වවුචර් (PU / RV / BRM)',
     ],
   },
   {
-    group: 'ආයතනික Document Formats සහ ආරක්ෂිත පාලනය (Formats & Security)',
+    group: 'ආයතනික Document Formats, Email Verification සහ ආරක්ෂිත පාලනය',
     items: [
       'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කර සකසාගැනීමේ පහසුකම',
       '"This Format Affects To" මගින් එක් එක් Format එකට අදාළ Sections පෙන්වීම',
       'Live A4 Format Studio (Header Banner, Watermark සහ Smart Grid ක්‍රම 3)',
-      'Single-Site, Multi-Site සහ Central HQ පරිශීලක බලතල පාලනය',
+      'Single-Site, Multi-Site, Central HQ බලතල සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
       'Audit Trail විගණන වාර්තා, Recycle Bin සහ 1-Click JSON Offline Backup',
     ],
   },
@@ -798,7 +800,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       'Stage 02: PO, GRN & RTV - Issue Supplier Purchase Orders (PO), print batch GRN vouchers, log Client Free Stock (FOC) & RTV Debit Notes.',
       'Stage 03: Branch Transfer - Site branches submit Stock Requisitions (RN); Central HQ checks stock & dispatches to regional yards.',
       'Stage 04: Field Crew Issue - Issue materials & tools to Crew Leaders (IN / Gate Pass) with live in-hand custody tracking.',
-      'Stage 05: Usage & Returns - Log project material installation (PU - deducts Client Free Stock first) & return surplus (RV / BRM).',
+      'Stage 05: Daily Progress, Wastage & Full Reports - Log project Installed + Wastage Qty (PU) in Material Usage / Daily Progress Entry, print Full Site Reports (Team + Grand Totals), & return surplus (RV / BRM).',
       'Stage 06: Company Formats - Upload PDF or Image company forms into 4 Format Slots so all sections print in your official layout.',
     ];
 
@@ -1164,7 +1166,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       'පියවර 02 (PO, GRN & RTV): සැපයුම්කරු PO නිකුත් කිරීම, GRN මුද්‍රණය, Client Free Stock (FOC) සහ RTV Debit Notes සටහන් කිරීම.',
       'පියවර 03 (Branch Transfer): ශාඛා මගින් බඩු ඉල්ලුම්පත් (RN) යොමු කිරීම සහ ප්‍රධාන ගබඩාවෙන් අනුමත කර ශාඛා වෙත යැවීම.',
       'පියවර 04 (Field Crew Issue): වැඩ කණ්ඩායම් නායකයින් වෙත එදිනෙදා භාණ්ඩ හා ටූල්ස් නිකුත් කිරීම (IN / Gate Pass) සහ In-Hand තොග පරීක්ෂාව.',
-      'පියවර 05 (Usage & Returns): ව්‍යාපෘති සඳහා භාණ්ඩ භාවිතය (PU) සටහන් කිරීම සහ ඉතිරි භාණ්ඩ ආපසු භාරදීම (RV / BRM).',
+      'පියවර 05 (Daily Progress, Wastage & Returns): Material Usage / Daily Progress Entry හරහා භාවිතය සහ Wastage Qty සටහන් කිරීම, Full Site (Project) වාර්තා සහ ආපසු භාරදීම් (RV / BRM).',
       'පියවර 06 (Company Formats): ආයතනයේ PDF හෝ Image ආකෘති පත්‍ර Upload කර සියලුම වවුචර් එම Format එකෙන්ම මුද්‍රණය කරගැනීම.',
     ];
 
@@ -1634,8 +1636,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'පියවර 05',
-                        title: 'භාවිතය සහ Returns',
-                        desc: 'ව්‍යාපෘති භාවිතය (PU) සටහන් කිරීම සහ ඉතිරි භාණ්ඩ ආපසු භාරදීම (RV / BRM).',
+                        title: 'Daily Progress, Wastage සහ Reports',
+                        desc: 'භාවිතය හා Wastage Qty සටහන් කිරීම (PU), Full Site වාර්තා සහ ආපසු භාරදීම (RV / BRM).',
                         icon: RotateCcw,
                       },
                       {
@@ -1672,8 +1674,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'Stage 05',
-                        title: 'Usage & Returns',
-                        desc: 'Log project usage (PU - client stock first) & return surplus (RV / BRM).',
+                        title: 'Daily Progress, Wastage & Reports',
+                        desc: 'Log usage & Wastage Qty (PU), run Full Site Reports, and return surplus (RV / BRM).',
                         icon: RotateCcw,
                       },
                       {

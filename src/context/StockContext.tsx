@@ -370,7 +370,9 @@ interface StockContextType {
     dispatchedToSites: number;
     centralWarehouseAvailable: number;
     totalUsed: number;
+    totalWastage?: number;
     directUsed: number;
+    directWastage?: number;
     remainingBalance: number;
     uninstalledProjectBalance: number;
     rootProjectId: string;
@@ -386,7 +388,9 @@ interface StockContextType {
     dispatchedToSites: number;
     centralWarehouseAvailable: number;
     totalUsed: number;
+    totalWastage?: number;
     directUsed: number;
+    directWastage?: number;
     remainingBalance: number;
     uninstalledProjectBalance: number;
     rootProjectId: string;
@@ -399,6 +403,7 @@ interface StockContextType {
       siteIdentifier?: string;
       isMainDirect?: boolean;
       usedQty: number;
+      wastageQty?: number;
     }>;
   }>;
 
@@ -7057,12 +7062,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return next;
     });
 
-    const totalQty = newUsage.items.reduce((sum, i) => sum + i.quantity, 0);
+    const totalQty = newUsage.items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+    const totalWastageQty = newUsage.items.reduce((sum, i) => sum + Number(i.wastageQuantity || 0), 0);
     addAuditLog(
       'PROJECT_MATERIAL_USED',
       usageVoucherNumber,
       site?.name || 'Site',
-      `Logged usage of ${totalQty} unit(s) across ${newUsage.items.length} item(s) on Project "${projName}" by ${teamName} (Lead: ${leaderName})`
+      `Logged usage of ${totalQty} installed unit(s)${totalWastageQty > 0 ? ` + ${totalWastageQty} wastage unit(s)` : ''} across ${newUsage.items.length} item(s) on Project "${projName}" by ${teamName} (Lead: ${leaderName})`
     );
     return newUsage;
   };
@@ -7318,14 +7324,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .filter((u) => !u.isDeleted && (familyIds.has(u.projectId) || (u.parentProjectId && u.parentProjectId === rootProjectId)))
       .reduce((sum, usage) => {
         const row = usage.items.find((it) => it.itemId === itemId);
-        return sum + (row ? Number(row.quantity) || 0 : 0);
+        return sum + (row ? (Number(row.quantity) || 0) + (Number(row.wastageQuantity) || 0) : 0);
+      }, 0);
+
+    const totalWastage = projectUsages
+      .filter((u) => !u.isDeleted && (familyIds.has(u.projectId) || (u.parentProjectId && u.parentProjectId === rootProjectId)))
+      .reduce((sum, usage) => {
+        const row = usage.items.find((it) => it.itemId === itemId);
+        return sum + (row ? Number(row.wastageQuantity) || 0 : 0);
       }, 0);
 
     const directUsed = projectUsages
       .filter((u) => !u.isDeleted && u.projectId === projectId)
       .reduce((sum, usage) => {
         const row = usage.items.find((it) => it.itemId === itemId);
-        return sum + (row ? Number(row.quantity) || 0 : 0);
+        return sum + (row ? (Number(row.quantity) || 0) + (Number(row.wastageQuantity) || 0) : 0);
+      }, 0);
+
+    const directWastage = projectUsages
+      .filter((u) => !u.isDeleted && u.projectId === projectId)
+      .reduce((sum, usage) => {
+        const row = usage.items.find((it) => it.itemId === itemId);
+        return sum + (row ? Number(row.wastageQuantity) || 0 : 0);
       }, 0);
 
     const centralWarehouseAvailable = Math.max(0, totalReceived - Math.max(dispatchedToSites, totalUsed));
@@ -7337,7 +7357,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       dispatchedToSites,
       centralWarehouseAvailable,
       totalUsed,
+      totalWastage,
       directUsed,
+      directWastage,
       remainingBalance,
       uninstalledProjectBalance,
       rootProjectId,
@@ -7393,6 +7415,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         siteIdentifier?: string;
         isMainDirect?: boolean;
         usedQty: number;
+        wastageQty?: number;
       }> = [];
 
       // Direct usage on Main Project itself (if any)
@@ -7401,7 +7424,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           .filter((u) => !u.isDeleted && u.projectId === rootProjObj.id)
           .reduce((sum, u) => {
             const r = u.items.find((it) => it.itemId === info.itemId);
-            return sum + (r ? Number(r.quantity) || 0 : 0);
+            return sum + (r ? (Number(r.quantity) || 0) + (Number(r.wastageQuantity) || 0) : 0);
+          }, 0);
+        const mainDirectWastage = projectUsages
+          .filter((u) => !u.isDeleted && u.projectId === rootProjObj.id)
+          .reduce((sum, u) => {
+            const r = u.items.find((it) => it.itemId === info.itemId);
+            return sum + (r ? Number(r.wastageQuantity) || 0 : 0);
           }, 0);
         if (mainDirectUsed > 0) {
           subProjectBreakdown.push({
@@ -7411,6 +7440,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             siteIdentifier: rootProjObj.siteIdentifier,
             isMainDirect: true,
             usedQty: mainDirectUsed,
+            wastageQty: mainDirectWastage,
           });
         }
       }
@@ -7421,7 +7451,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           .filter((u) => !u.isDeleted && u.projectId === sp.id)
           .reduce((sum, u) => {
             const r = u.items.find((it) => it.itemId === info.itemId);
-            return sum + (r ? Number(r.quantity) || 0 : 0);
+            return sum + (r ? (Number(r.quantity) || 0) + (Number(r.wastageQuantity) || 0) : 0);
+          }, 0);
+        const spWastage = projectUsages
+          .filter((u) => !u.isDeleted && u.projectId === sp.id)
+          .reduce((sum, u) => {
+            const r = u.items.find((it) => it.itemId === info.itemId);
+            return sum + (r ? Number(r.wastageQuantity) || 0 : 0);
           }, 0);
         subProjectBreakdown.push({
           subProjectId: sp.id,
@@ -7430,6 +7466,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           siteIdentifier: sp.siteIdentifier,
           isMainDirect: false,
           usedQty: spUsed,
+          wastageQty: spWastage,
         });
       });
 
@@ -7442,7 +7479,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         dispatchedToSites: balance.dispatchedToSites,
         centralWarehouseAvailable: balance.centralWarehouseAvailable,
         totalUsed: balance.totalUsed,
+        totalWastage: balance.totalWastage,
         directUsed: balance.directUsed,
+        directWastage: balance.directWastage,
         remainingBalance: balance.remainingBalance,
         uninstalledProjectBalance: balance.uninstalledProjectBalance,
         rootProjectId: balance.rootProjectId,
@@ -8408,7 +8447,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .reduce((sum, pu) => {
         const row = pu.items.find((i) => i.itemId === itemId);
         if (!row) return sum;
-        return sum + Number(row.quantity || 0);
+        return sum + Number(row.quantity || 0) + Number(row.wastageQuantity || 0);
       }, 0);
 
     const issued = Math.max(teamIssuedAtSite, projectUsedAtSite);
@@ -8474,7 +8513,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const itemMap = new Map<
       string,
-      { totalIssued: number; totalReturned: number; totalUsed: number; lastDate: string }
+      { totalIssued: number; totalReturned: number; totalUsed: number; totalWastage: number; lastDate: string }
     >();
 
     issuesForTeam.forEach((issue) => {
@@ -8483,6 +8522,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           totalIssued: 0,
           totalReturned: 0,
           totalUsed: 0,
+          totalWastage: 0,
           lastDate: issue.issueDate,
         };
         existing.totalIssued += Number(itemRow.quantity);
@@ -8498,6 +8538,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         totalIssued: 0,
         totalReturned: 0,
         totalUsed: 0,
+        totalWastage: 0,
         lastDate: ret.returnDate,
       };
       existing.totalReturned += Number(ret.quantity);
@@ -8511,9 +8552,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           totalIssued: 0,
           totalReturned: 0,
           totalUsed: 0,
+          totalWastage: 0,
           lastDate: uDate,
         };
-        existing.totalUsed += Number(itemRow.quantity);
+        existing.totalUsed += Number(itemRow.quantity || 0);
+        existing.totalWastage += Number(itemRow.wastageQuantity || 0);
         if (new Date(uDate) > new Date(existing.lastDate)) {
           existing.lastDate = uDate;
         }
@@ -8526,9 +8569,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     itemMap.forEach((val, itemId) => {
       const totalUsed = val.totalUsed || 0;
-      const currentInHand = Math.max(0, val.totalIssued - val.totalReturned - totalUsed);
+      const totalWastage = val.totalWastage || 0;
+      const currentInHand = Math.max(0, val.totalIssued - val.totalReturned - totalUsed - totalWastage);
       const itemMaster = items.find((i) => i.id === itemId);
-      if (val.totalIssued > 0 || val.totalReturned > 0 || totalUsed > 0) {
+      if (val.totalIssued > 0 || val.totalReturned > 0 || totalUsed > 0 || totalWastage > 0) {
         balanceItems.push({
           itemId,
           itemCode: itemMaster?.itemCode || 'UNKNOWN',
@@ -8537,6 +8581,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           totalIssued: val.totalIssued,
           totalReturned: val.totalReturned,
           totalUsedInProjects: totalUsed,
+          totalWastageInProjects: totalWastage,
           currentInHand,
           lastIssuedDate: val.lastDate,
         });

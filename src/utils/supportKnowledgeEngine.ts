@@ -107,7 +107,7 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `2. Click **Configure Material Template** (or **Edit Material Template (BOM)**).\n` +
       `3. Select the standard items routinely used in this section, click **+ Add Item to Template** to add more rows, and enter the optional **Suggested Qty** for each item.\n` +
       `4. Click **Save Material Template**.\n` +
-      `5. **Automatic Pre-Fill:** Whenever a user selects a project belonging to this section in **Material Usage**, these template items and suggested quantities load automatically!${
+      `5. **Automatic Pre-Fill:** Whenever a user selects a project belonging to this section in **Material Usage / Daily Progress Entry**, these template items and suggested quantities load automatically!${
         ctx.activeProjectSectionsCount
           ? `\n\n📌 *Current Workspace Status:* **${ctx.activeProjectSectionsCount} project section(s)** configured${
               ctx.projectSectionNames && ctx.projectSectionNames.length > 0
@@ -126,7 +126,7 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `1. **"New Section Registry & Material Templates"** ටැබ් එකෙහි ඔබ සෑදූ Section Card එක මත ඇති **"Configure Material Template"** (හෝ **"Edit Material Template (BOM)"**) බටන් එක ක්ලික් කරන්න.\n` +
       `2. එම Section එකේ වැඩ වලට සාමාන්‍යයෙන් වැය වන Items ලැයිස්තුවෙන් තෝරන්න. තවත් Items එකතු කිරීමට **"+ Add Item to Template"** ක්ලික් කරන්න.\n` +
       `3. එක් එක් Item එකට අදාළ සාමාන්‍ය ප්‍රමාණය (**Suggested Qty**) ඇතුළත් කර **"Save Material Template"** ක්ලික් කරන්න.\n` +
-      `4. **ප්‍රයෝජනය:** ඉන්පසු **"Material Usage"** පිටුවේදී එම Section එකට අදාළ ඕනෑම Project එකක් තේරූ විට මෙම Template එකේ බඩු ලැයිස්තුව ස්වයංක්‍රීයව (Auto-fill) එතැනට ලැබේ!${
+      `4. **ප්‍රයෝජනය:** ඉන්පසු **"Material Usage / Daily Progress Entry"** පිටුවේදී එම Section එකට අදාළ ඕනෑම Project එකක් තේරූ විට මෙම Template එකේ බඩු ලැයිස්තුව ස්වයංක්‍රීයව (Auto-fill) එතැනට ලැබේ!${
         ctx.activeProjectSectionsCount
           ? `\n\n📌 *දැනට පද්ධතියේ Project Sections **${ctx.activeProjectSectionsCount}ක්** සකස් කර ඇත.*`
           : ''
@@ -171,11 +171,11 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `   • **📄 Individual Project (Standalone):** A single standalone project assigned to its Site Branch.\n\n` +
       `**Step 2 — Receive Client Free-Issue Stock (FOC) into Central Main Stock with Auto Branch Allocation:**\n` +
       `1. Open **Client Free Stock (FOC)** and click **+ Log Client Free Stock**.\n` +
-      `2. Select **🏢 Under Main Project** (or **📄 Individual Project**) and choose the project. **Receiving Storage Yard** defaults to **Main Central Warehouse (Central Yard)**, while the project's **Assigned Site Branch** is automatically detected and allocated exclusively to that branch.\n\n` +
-      `**Step 3 — Request FOC Stock from Site Branch & Enter Material Usage per Sub-Project:**\n` +
+      `2. Select **🏢 Under Main Project** (or **📄 Individual Project**) and choose the project. **Receiving Storage Yard** defaults to **Main Central Warehouse (Central Yard)**, while **Allocated Site Branch** automatically links and **locks** to that project's Assigned Site Branch. Admins can also edit and reassign mis-logged FOC vouchers inside Client Free Stock.\n\n` +
+      `**Step 3 — Request FOC Stock from Site Branch & Enter Material Usage / Daily Progress (with Wastage Qty):**\n` +
       `1. In **Stock Requisitions -> + New Stock Requirement Form**, switch to Tab 2 (**2. Client Free Stock for Assigned Project Request**). Only projects assigned to your **Requesting Site Branch** are displayed. Once approved and received, the stock moves from Central HQ FOC Pool to your Site Branch.\n` +
-      `2. Open **Material Usage** -> in Step 2, select the **Sub-Project** (or **Individual Project**). Logging usage on a Sub-Project **automatically deducts from the Parent Main Project's Free Stock balance**.\n` +
-      `3. Open the **Reconciliation** tab (Tab 3) to inspect both the **Total Main Project Reconciliation** and the **Sub-Projects Individual Breakdown**.${
+      `2. Open **Material Usage / Daily Progress Entry** -> in Step 2, select the **Sub-Project** (filtered by Step 1's Project Section). Logging **Qty Used** and **Wastage Qty** on a Sub-Project **automatically deducts from the Parent Main Project's Free Stock balance**.\n` +
+      `3. Open **Usage Vouchers History -> Full Report for This Site (Project)** for team-by-team & grand totals, or the **Reconciliation** tab (Tab 3) to inspect the **Total Main Project Reconciliation** and **Sub-Projects Individual Breakdown**.${
         ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
       }`,
     answerSi: (ctx) =>
@@ -183,13 +183,13 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `**1 වන පියවර — Project Registry තුළ අනිවාර්ය "Assigned Site Branch *" සමඟ ව්‍යාපෘති සෑදීම:**\n` +
       `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත ගොස් **"Register Project"** ක්ලික් කරන්න.\n` +
       `2. ව්‍යාපෘති වර්ගය (**🏢 Major / Main Project**, **↳ Sub-Project**, හෝ **📄 Individual Project**) තෝරා, එම ව්‍යාපෘතිය අයත් වන ශාඛාව **"Assigned Site Branch *"** Dropdown එකෙන් අනිවාර්යයෙන්ම තෝරන්න (Sub-Project එකකට Main Project එකේ Site Branch එක ඉබේම ලැබේ).\n\n` +
-      `**2 වන පියවර — Client Free Stock (FOC) ප්‍රධාන ගබඩාවට භාරගැනීම සහ Auto Branch Allocation:**\n` +
+      `**2 වන පියවර — Client Free Stock (FOC) ප්‍රධාන ගබඩාවට භාරගැනීම, Locked Site Branch සහ Admin නිවැරදි කිරීම්:**\n` +
       `1. **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
-      `2. එහිදී බඩු මුලින්ම ලැබෙන ස්ථානය ලෙස **"Main Central Warehouse (Central Yard)"** Default පවතින අතර, Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එකට පමණක් එම FOC තොගය ස්වයංක්‍රීයව වෙන් (Allocate) වේ.\n\n` +
-      `**3 වන පියවර — අදාළ Site Branch එකෙන් FOC බඩු Request කිරීම සහ Sub-Project Usage දැමීම:**\n` +
+      `2. එහිදී බඩු මුලින්ම ලැබෙන ස්ථානය ලෙස **"Main Central Warehouse (Central Yard)"** Default පවතින අතර, Project එක තේරූ සැණින් **"Allocated Site Branch"** එක එම Project එකේ Site Branch එකට ස්වයංක්‍රීයව Link වී Lock වේ (වෙනත් ශාඛාවකට වෙනස් කළ නොහැක). වැරදි Project එකකට ලොග් වූ FOC වවුචර Admin හට Edit කර නිවැරදි Project එකට මාරු කළ හැක.\n\n` +
+      `**3 වන පියවර — අදාළ Site Branch එකෙන් FOC බඩු Request කිරීම සහ Sub-Project Usage / Wastage දැමීම:**\n` +
       `1. **"Stock Requisitions -> + New Stock Requirement Form"** හි 2 වන ටැබ් එකෙන් (**"2. Client Free Stock for Assigned Project Request"**) තෝරාගත් Site Branch එකට අදාළ Projects පමණක් පෙන්වන අතර, එය Approve වූ පසු Central FOC Pool එකෙන් අඩු වී Site Branch එකට එකතු වේ.\n` +
-      `2. **"Material Usage"** පිටුවේදී අදාළ **Sub-Project** එක තෝරා බඩු Usage දැමූ සැණින් එය **ස්වයංක්‍රීයව Main Project එකේ Free Stock තොගයෙන් අඩු වේ**.\n` +
-      `3. **"Reconciliation"** (Tab 3) වෙත ගොස් සම්පූර්ණ ව්‍යාපෘතියේම ගැලපුම සහ එක් එක් Sub-Project එකේ වෙන වෙනම විස්තර බලාගත හැක.${
+      `2. **"Material Usage / Daily Progress Entry"** පිටුවේදී අදාළ **Sub-Project** එක තෝරා **Qty Used** සහ **Wastage Qty** දැමූ සැණින් එය **ස්වයංක්‍රීයව Main Project එකේ Free Stock තොගයෙන් අඩු වේ**.\n` +
+      `3. **"Usage Vouchers History -> Full Report for This Site (Project)"** හරහා Teams වෙන වෙනම හා සම්පූර්ණ එකතුවද, **"Reconciliation"** (Tab 3) මගින් Main/Sub-Project ගැලපුමද බලාගත හැක.${
         ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
   },
@@ -243,27 +243,101 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
   {
     id: 'project-usage',
     suggestedTab: 'project-usage',
-    keywords: ['usage', 'consume', 'consumption', 'boq', 'bill of quantities', 'project material', 'override', 'reserved project', 'waya'],
+    keywords: [
+      'usage',
+      'daily progress',
+      'consume',
+      'consumption',
+      'boq',
+      'bill of quantities',
+      'project material',
+      'override',
+      'reserved project',
+      'waya',
+      'section filter',
+      'site lock',
+      'branch lock',
+      'locked',
+    ],
     phrases: [
       'record project usage',
       'project material usage',
+      'material usage / daily progress entry',
+      'daily progress entry',
       'log material usage',
       'cross project override',
       'project ekata',
       'material usage danne',
+      'section eka maru karama',
+      'site ekakata newei',
     ],
     answerEn: () =>
-      `**How to Record Project Material Usage (Sub-Projects & Individual Projects) & Reconcile:**\n\n` +
-      `1. **Open Material Usage:** Click **Material Usage** in the left sidebar.\n` +
-      `2. **Select Sub-Project or Individual Project (Step 2):** Filter by **↳ Sub-Projects (Under Main)**, **🏢 Major / Main Projects**, or **📄 Individual Projects**, or click **+ Register New Sub-Project / Site** to create a Sub-Project under a Main Project on the fly. The section's **Default Material Template (BOM)** loads automatically!\n` +
-      `3. **Automatic Main Project Free Stock Deduction:** When logging usage on a Sub-Project, quantities automatically deduct from the Parent Main Project's shared **Client Free Stock (FOC)** pool while tracking that Sub-Project's usage separately.\n` +
-      `4. **Total & Sub-Project Reconciliation (Tab 3):** Open the **Reconciliation** tab to view the full **Major / Main Project Reconciliation** (with a card breakdown of every Sub-Project) or inspect any individual **Sub-Project**.`,
+      `**How to Record Material Usage / Daily Progress Entry (with Section Filter, Branch Lock, Wastage & Full Site Report):**\n\n` +
+      `1. **Open Material Usage / Daily Progress Entry:** Click **Material Usage / Daily Progress Entry** in the left sidebar.\n` +
+      `2. **Section-Filtered Project Lists (Step 1 -> Step 2):** Pick a **Project Section** in Step 1. Step 2 dropdowns (**Main Project** and **Registered Project / Sub-Project**) automatically filter to display **ONLY projects registered under that section**. Its **Default Material Template (BOM)** also loads automatically.\n` +
+      `3. **User-Site Branch Lock Protection (Step 4):** If you select a project belonging to a different **Site Branch** than your assigned user site, Step 4 safely **locks** with a clear notice (*"Selected project is not under [Your Name]'s site"*), preventing accidental cross-branch usage.\n` +
+      `4. **Enter Qty Used + Wastage Qty (Step 4):** Record both **Qty Used (Installed)** and **Wastage Qty** per material. The form shows live **Total Deduct (Used + Wastage)** and validates against **Team In-Hand** balances, automatically updating Team In-Hand Wastage columns, Reconciliation, Site Stock, and **PU** vouchers.\n` +
+      `5. **Usage Vouchers History -> "Full Report for This Site (Project)" & Reconciliation:** In **Usage Vouchers History**, select any project and click **Full Report for This Site (Project)** to inspect separate **Team-by-Team Totals** + **Full Site Grand Total** (Print/PDF & Excel CSV).`,
     answerSi: () =>
-      `**Project Material Usage (Sub-Projects සහ Individual Projects සඳහා වැය වූ බඩු) සටහන් කරන ආකාරය:**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"Material Usage"** වෙත යන්න.\n` +
-      `2. **Sub-Project හෝ Individual Project තෝරන්න (Step 2):** ප්‍රධාන ව්‍යාපෘතියක් යටතේ ඇති **Sub-Project** එකක් හෝ **Individual Project** එකක් තෝරන්න (නැතිනම් **"+ Register New Sub-Project / Site"** මගින් එතැනදීම නව Sub-Project එකක් සාදන්න). Section එකේ **Material Template (BOM)** බඩු ලැයිස්තුව ස්වයංක්‍රීයව ලැබේ.\n` +
-      `3. **Main Project Free Stock එකෙන් ස්වයංක්‍රීයව අඩු වීම:** Sub-Project එකකට බඩු Usage දැමූ විට එයට අදාළ ප්‍රධාන ව්‍යාපෘතියේ (Main Project) Client Free Stock තොගයෙන් ඉබේම අඩු වේ.\n` +
-      `4. **Reconciliation (Tab 3):** **"Reconciliation"** ටැබ් එක මගින් සම්පූර්ණ Main Project එකේ මුළු ගැලපුම මෙන්ම එක් එක් Sub-Project එකේ වෙන වෙනම බඩු භාවිතයද පරීක්ෂා කළ හැක.`,
+      `**Material Usage / Daily Progress Entry හරහා භාවිතය, Wastage සටහන් කිරීම සහ Full Site වාර්තා ගැනීම:**\n\n` +
+      `1. **විවෘත කිරීම:** වම් පස මෙනුවෙන් **"Material Usage / Daily Progress Entry"** වෙත යන්න.\n` +
+      `2. **Section එකට අනුව Projects පෙරීම (Step 1 -> Step 2):** 1 වන පියවරෙන් **Project Section** එක තෝරා හෝ මාරු කළ විට, 2 වන පියවරේ Dropdown ලැයිස්තුවේ පෙන්වන්නේ **එම Section එකට Register කර ඇති Projects පමණි**. Section එකේ **Material Template (BOM)** ලැයිස්තුවද ඉබේම Load වේ.\n` +
+      `3. **User Site Branch Lock ආරක්ෂාව (Step 4):** තෝරාගත් Project එක ඔබේ ගිණුමට අදාළ **Site Branch** එකට අයත් නොවේ නම් 4 වන පියවර ස්වයංක්‍රීයව **Lock** වී පැහැදිලි අනතුරු ඇඟවීමක් (*"Selected project is not under your site"*) පෙන්වයි.\n` +
+      `4. **Qty Used සමඟ Wastage Qty ඇතුළත් කිරීම:** 4 වන පියවරේදී භාවිතා කළ ප්‍රමාණය (**Qty Used**) මෙන්ම අපතේ ගිය ප්‍රමාණය (**Wastage Qty**) ද සටහන් කරන්න. **Used + Wastage** මුළු එකතුව Team In-Hand තොගයට ගැලපේදැයි සජීවීව පරීක්ෂා වී සියලුම වාර්තා යාවත්කාලීන වේ.\n` +
+      `5. **Full Report for This Site (Project):** **"Usage Vouchers History"** ටැබ් එකෙහි Project එකක් තෝරා **"Full Report for This Site (Project)"** ක්ලික් කිරීමෙන් Teams වෙන වෙනම භාවිතය, Team Totals සහ සම්පූර්ණ Grand Total Print/PDF හෝ Excel CSV ලෙස ලබාගත හැක.`,
+  },
+  {
+    id: 'wastage-and-full-site-report',
+    suggestedTab: 'project-usage',
+    keywords: [
+      'wastage',
+      'waste',
+      'full report',
+      'site report',
+      'grand total',
+      'team total',
+      'vouchers history',
+      'apate',
+      'wadipura',
+      'siyalu teams',
+    ],
+    phrases: [
+      'wastage qty',
+      'enter wastage',
+      'full report for this site',
+      'full site report',
+      'usage vouchers history',
+      'team by team',
+      'wastage danne',
+      'wastage enter karanne',
+      'full report balanne',
+      'teams wena wenama',
+    ],
+    answerEn: () =>
+      `**How Wastage Qty Tracking & "Full Report for This Site (Project)" Work:**\n\n` +
+      `**Part 1 — Recording Wastage Qty (Used + Wastage):**\n` +
+      `1. Open **Material Usage / Daily Progress Entry** -> Step 4 (**4. Materials Consumed**) or click **Edit** on any existing PU voucher.\n` +
+      `2. Alongside **Qty Used (Installed)**, enter the **Wastage Qty** for each material.\n` +
+      `3. The form calculates **Total Deduct = Used + Wastage** in real time, checks that total deduction does not exceed **Team In-Hand** stock, and automatically updates **Team In-Hand Stock** (**Used** & **Wastage** columns + CSV), **Reconciliation**, **Site Branch Stock**, and printable **PU Vouchers**.\n\n` +
+      `**Part 2 — Viewing "Full Report for This Site (Project)" (All Teams Consolidated):**\n` +
+      `1. Open **Material Usage / Daily Progress Entry -> Usage Vouchers History** tab.\n` +
+      `2. Filter/select a **Project / Site** from the project selector — a project summary bar appears with the **Full Report for This Site (Project)** button.\n` +
+      `3. The report shows:\n` +
+      `   • **Part 1 — Team-by-Team Breakdown & Subtotals:** Every team's voucher details, Installed Qty, Wastage Qty, Total Consumed, and **individual Team Subtotal**.\n` +
+      `   • **Part 2 — Full Site Consolidated Grand Total:** Combined totals across all teams working on that project.\n` +
+      `4. Click **Print / Save PDF** or **Export Excel / CSV** anytime.`,
+    answerSi: () =>
+      `**Wastage Qty (අපතේ යාම්) ඇතුළත් කිරීම සහ "Full Report for This Site (Project)" ලබාගන්නා ආකාරය:**\n\n` +
+      `**1 වන කොටස — Wastage Qty සටහන් කිරීම සහ ස්වයංක්‍රීය ගණනය:**\n` +
+      `1. **"Material Usage / Daily Progress Entry"** හි 4 වන පියවරේදී (හෝ පැරණි PU වවුචරයක් **Edit** කිරීමේදී) එක් එක් භාණ්ඩය සඳහා **Qty Used** මෙන්ම **Wastage Qty** ඇතුළත් කරන්න.\n` +
+      `2. පද්ධතිය මගින් **Used + Wastage = Total Deduct** ප්‍රමාණය Team In-Hand තොගය සමඟ සජීවීව පරීක්ෂා කරන අතර **Team In-Hand Stock** (Used සහ Wastage තීරු), **Reconciliation**, **Site Stock** සහ **PU වවුචර්** ස්වයංක්‍රීයව නිවැරදිව යාවත්කාලීන කරයි.\n\n` +
+      `**2 වන කොටස — සියලුම Teams සඳහා "Full Report for This Site (Project)" වාර්තාව බැලීම:**\n` +
+      `1. **"Material Usage / Daily Progress Entry -> Usage Vouchers History"** ටැබ් එකට යන්න.\n` +
+      `2. අදාළ **Project / Site** එක තෝරා **"Full Report for This Site (Project)"** බටන් එක ක්ලික් කරන්න.\n` +
+      `3. එහිදී වාර්තාව කොටස් 2කින් ලැබේ:\n` +
+      `   • **Part 1 (Team-by-Team Breakdown):** එක් එක් Team එක වෙන වෙනම භාවිත කළ සහ Wastage කළ බඩු ප්‍රමාණයන් + **එක් එක් Team එකට අදාළ Total එක (Team Subtotal)**.\n` +
+      `   • **Part 2 (Full Site Consolidated Grand Total):** එම Project එකට සියලුම Teams මගින් වැය කළ **සම්පූර්ණ මුළු එකතුව (Grand Total)**.\n` +
+      `4. ඉහළින් ඇති **Print / Save PDF** හෝ **Export Excel / CSV** මගින් වාර්තාව බාගත කළ හැක.`,
   },
   {
     id: 'site-transfer',
@@ -411,22 +485,44 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
   {
     id: 'client-foc',
     suggestedTab: 'client-free-stock',
-    keywords: ['client free', 'foc', 'free issue', 'customer supplied', 'principal', 'client stock', 'free stock'],
-    phrases: ['client free stock', 'free of charge', 'client material', 'under main project'],
+    keywords: [
+      'client free',
+      'foc',
+      'free issue',
+      'customer supplied',
+      'principal',
+      'client stock',
+      'free stock',
+      'allocated site branch',
+      'reassign',
+      'edit foc',
+      'waradila',
+    ],
+    phrases: [
+      'client free stock',
+      'free of charge',
+      'client material',
+      'under main project',
+      'wrong project foc',
+      'correct foc',
+      'foc waradila',
+    ],
     answerEn: () =>
-      `**How to Manage Client Free Stock (FOC) — Default Central Main Stock & Auto Branch Allocation:**\n\n` +
+      `**How to Manage Client Free Stock (FOC) — Locked Site Branch & Admin Voucher Correction:**\n\n` +
       `1. Open **Client Free Stock (FOC)** from the left sidebar and click **+ Log Client Free Stock**.\n` +
       `2. Choose **🏢 Under Main Project** or **📄 Individual Project** and select the project:\n` +
       `   • **Receiving Storage Yard (Inbound):** Defaults to **Main Central Warehouse (Central Yard)** because physical client materials enter Central Main Stock first.\n` +
-      `   • **Allocated Site Branch:** Automatically detects the selected project's **Assigned Site Branch** and allocates the stock exclusively to that branch.\n` +
-      `3. **Branch Requisition & Sub-Project Usage:** Only the allocated Site Branch sees that project in **Stock Requisitions -> 2. Client Free Stock for Assigned Project Request**. Once transferred to the branch, logging usage on any **Sub-Project** automatically deducts from the Main Project's FOC balance.`,
+      `   • **Allocated Site Branch (Auto-Locked):** Selecting the project automatically links and **locks** the **Allocated Site Branch** to that project's registered branch so FOC materials can never be accidentally issued to the wrong site branch.\n` +
+      `3. **Admin FOC Voucher Correction / Reassignment:** If a shipment was mistakenly logged under the wrong project, Admins can click **Edit** on that FOC voucher directly inside **Client Free Stock (FOC)** and select the correct Target Project (automatically updating the locked Site Branch & balances with Audit Trail history).\n` +
+      `4. **Branch Requisition & Usage:** Only the allocated Site Branch sees that project in **Stock Requisitions -> 2. Client Free Stock for Assigned Project Request**, and Sub-Project usage automatically deducts from the Parent Main Project's FOC pool.`,
     answerSi: () =>
-      `**Client Free Stock (FOC) — ප්‍රධාන ගබඩාවට (Central Main Stock) භාරගැනීම සහ Auto Site Branch Allocation:**\n\n` +
+      `**Client Free Stock (FOC) — Auto-Locked Site Branch සහ Admin මගින් වැරදි වවුචර් නිවැරදි කිරීම:**\n\n` +
       `1. වම් පස මෙනුවෙන් **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
       `2. **Target Project Mode** (**🏢 Under Main Project** හෝ **📄 Individual Project**) තෝරා අදාළ Project එක තෝරන්න:\n` +
       `   • **Receiving Storage Yard (Inbound):** බඩු මුලින්ම ලැබෙන්නේ ප්‍රධාන ගබඩාවට බැවින් **"Main Central Warehouse (Central Yard)"** Default ලෙස පවතී.\n` +
-      `   • **Allocated Site Branch:** Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එක ස්වයංක්‍රීයව තේරී එම ශාඛාවට පමණක් බඩු වෙන් වේ.\n` +
-      `3. **ශාඛාවට Request කිරීම සහ භාවිතය:** **"Stock Requisitions"** හි 2 වන ටැබ් එකෙන් එම අදාළ Site Branch එකට පමණක් එම Project FOC බඩු Request කර ගෙන්වාගත හැකි අතර, Sub-Projects වලට Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වේ.`,
+      `   • **Allocated Site Branch (Auto-Locked):** Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එක ස්වයංක්‍රීයව Link වී **Lock** වේ (වෙනස් කළ නොහැක). එමගින් වැරදි ශාඛාවකට FOC බඩු නිකුත් වීම සම්පූර්ණයෙන් වළක්වයි.\n` +
+      `3. **වැරදි FOC වවුචර Admin විසින් නිවැරදි කිරීම:** යම් හෙයකින් FOC තොගයක් වැරදි Project එකකට ලොග් වී ඇත්නම්, Admin හට **Client Free Stock** තුළදීම එම වවුචරය **Edit** කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.\n` +
+      `4. **ශාඛාවට Request කිරීම සහ භාවිතය:** අදාළ Site Branch එකට පමණක් Stock Requisitions 2 වන ටැබ් එකෙන් මෙම බඩු Request කළ හැකි අතර Sub-Projects වලට Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වේ.`,
   },
   {
     id: 'items-barcodes-machinery',
@@ -580,6 +676,38 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `• **Audit Trail:** පද්ධතියේ සිදු කළ සියලුම ගනුදෙනු පිළිබඳ වාර්තා ලබාගැනීමට.\n` +
       `• **System Backup & Config (ඉහළ Header තීරුව):** පද්ධතියේ සම්පූර්ණ Backup ලබාගැනීමට, Restore කිරීමට සහ ආයතනයේ Theme/Settings වෙනස් කිරීමට.`,
   },
+  {
+    id: 'email-verification-branding',
+    suggestedTab: 'dashboard',
+    keywords: [
+      'email',
+      'verify',
+      'verification',
+      'apexstox',
+      'support@apexstox.com',
+      'domain',
+      'inbox',
+      'link',
+    ],
+    phrases: [
+      'email verification',
+      'send verification email',
+      'verify email',
+      'verify account',
+      'email link',
+      'verify karanne',
+    ],
+    answerEn: () =>
+      `**Automatic Email Verification & Official Support Contact (apexstox.com):**\n\n` +
+      `1. **1-Click Send Verification Email:** In the email verification screen, click **Send Verification Email**.\n` +
+      `2. **Instant Verification on Link Click:** Open your inbox (check Spam/Promotions if needed) and click the verification link from **apexstox.com** — your account automatically completes verification as soon as the link is clicked without extra confirmation buttons.\n` +
+      `3. **Official Support Contact:** Need account or workspace help? Contact **support@apexstox.com** (Website: **apexstox.com**).`,
+    answerSi: () =>
+      `**ස්වයංක්‍රීය Email Verification සහ නිල සහාය සේවාව (apexstox.com):**\n\n` +
+      `1. **Send Verification Email:** Verification පණිවිඩයේ ඇති **"Send Verification Email"** බටන් එක ක්ලික් කරන්න.\n` +
+      `2. **ලින්ක් එක ක්ලික් කළ සැණින් Verify වීම:** ඔබේ Email Inbox එකට (නැතිනම් Spam folder එකට) **apexstox.com** වෙතින් ලැබෙන Email එකේ Verification Link එක ක්ලික් කළ සැණින් අමතර බටන් එබීමකින් තොරව ගිණුම ස්වයංක්‍රීයව Verify වේ.\n` +
+      `3. **නිල සම්බන්ධතා විස්තර:** ඕනෑම තාක්ෂණික සහායක් සඳහා **support@apexstox.com** හෝ **apexstox.com** වෙත පිවිසෙන්න.`,
+  },
 ];
 
 export function resolveSmartSystemSupportAnswer(
@@ -625,11 +753,11 @@ export function resolveSmartSystemSupportAnswer(
         `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ සියලුම කොටස්:\n` +
         `1. **Master Registrations:** Items, Branches (Sites), Field Teams (සහ Team Members), Suppliers, Clients සහ Users ලියාපදිංචි කිරීම.\n` +
         `2. **Main Central Stock & Supplier Orders (PO):** ප්‍රධාන ගබඩාවට GRN දැමීම, Purchase Orders, Supplier Returns (Debit Notes) සහ Damaged Stock කළමනාකරණය.\n` +
-        `3. **Client Free Stock (FOC):** සේවාදායකයින් නොමිලේ ලබාදෙන බඩු ව්‍යාපෘති අනුව කළමනාකරණය.\n` +
-        `4. **Stock Requisitions & Site Branch Stock:** ප්‍රධාන ගබඩාවෙන් Branch වලට බඩු ඉල්ලුම් කිරීම, Approve & Dispatch කිරීම සහ Branch තොග පාලනය.\n` +
-        `5. **Issue to Teams & Team In-Hand Stock:** Branch එකෙන් Team වලට බඩු නිකුත් කිරීම (Gate Pass) සහ Team අතේ ඇති බඩු පරීක්ෂාව.\n` +
-        `6. **Project & New Section Registry:** අලුත් Project Sections සෑදීම (**+ New Section Registry**), ඒවාට **Default Material Templates (BOM)** සකස් කිරීම සහ Projects ලියාපදිංචි කිරීම.\n` +
-        `7. **Material Usage:** Project එකකට වැය වූ බඩු (Template BOM හරහා) සටහන් කිරීම.\n` +
+        `3. **Client Free Stock (FOC):** සේවාදායකයින් නොමිලේ ලබාදෙන බඩු Auto-Locked Site Branch සමඟ කළමනාකරණය සහ Admin මගින් වැරදි වවුචර් නිවැරදි කිරීම.\n` +
+        `4. **Stock Requisitions & Site Branch Stock:** ප්‍රධාන ගබඩාවෙන් Branch වලට බඩු ඉල්ලුම් කිරීම (Normal vs Client FOC), Approve & Dispatch කිරීම සහ Branch තොග පාලනය.\n` +
+        `5. **Issue to Teams & Team In-Hand Stock:** Branch එකෙන් Team වලට බඩු නිකුත් කිරීම (Gate Pass) සහ Team අතේ ඇති බඩු (Used + Wastage) පරීක්ෂාව.\n` +
+        `6. **Project & New Section Registry:** අලුත් Project Sections සෑදීම (**+ New Section Registry**), **Material Templates (BOM)** සකස් කිරීම සහ Mandatory Site Branch සමඟ Projects ලියාපදිංචි කිරීම.\n` +
+        `7. **Material Usage / Daily Progress Entry:** Section-filtered Projects, User-Site Branch Lock, **Qty Used + Wastage Qty** ඇතුළත් කිරීම සහ **Full Report for This Site (Project)** (Team Subtotals + Grand Total) ලබාගැනීම.\n` +
         `8. **Team Returns & Branch Returns:** ඉතිරි හෝ හානි වූ බඩු නැවත ගබඩාවට භාරගැනීම.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
@@ -642,12 +770,12 @@ export function resolveSmartSystemSupportAnswer(
       `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules available in the system:\n` +
       `1. **Master Registrations:** Register Items (Materials & Machinery), Branches, Field Teams & Crew Members, Suppliers, Clients, and Users.\n` +
       `2. **Main Central Stock & Supplier Orders (PO):** Record GRNs, manage Purchase Orders, Supplier Returns (RTV), Debit Notes, and Damaged Stock restoration.\n` +
-      `3. **Client Free Stock (FOC):** Track client-supplied free-of-charge materials per project.\n` +
-      `4. **Stock Requisitions & Site Branch Stock:** Request stock from HQ, Approve & Dispatch, and Confirm Receipt at Branch Yards.\n` +
-      `5. **Issue to Teams & Team In-Hand Stock:** Issue materials to Field Teams with printable Gate Passes and monitor live team custody.\n` +
-      `6. **Project & New Section Registry:** Create custom Project Sections (**+ New Section Registry**), configure **Default Material Templates (BOM)**, and register/import projects.\n` +
-      `7. **Material Usage:** Record project material consumption with auto-loaded section BOM templates.\n` +
-      `8. **Team Returns, Branch Returns, Document Templates, Audit Trail & Recycle Bin.**\n\n` +
+      `3. **Client Free Stock (FOC):** Track client-supplied free materials with Auto-Locked Site Branch allocation & Admin FOC voucher reassignment.\n` +
+      `4. **Stock Requisitions & Site Branch Stock:** Request stock from HQ (Normal vs. Branch-Exclusive FOC), Approve & Dispatch, and Confirm Receipt.\n` +
+      `5. **Issue to Teams & Team In-Hand Stock:** Issue materials to Field Teams with Gate Passes and monitor live Installed & Wastage balances.\n` +
+      `6. **Project & New Section Registry:** Create Project Sections (**+ New Section Registry**), configure **Material Templates (BOM)**, and register Main, Sub & Individual Projects.\n` +
+      `7. **Material Usage / Daily Progress Entry:** Section-filtered project dropdowns, User-Site Branch Lock, **Qty Used + Wastage Qty** entry, and **Full Report for This Site (Project)** (Team Subtotals + Full Grand Total).\n` +
+      `8. **Team Returns, Branch Returns, Document Templates, Audit Trail, Recycle Bin & Auto Email Verification (apexstox.com).**\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

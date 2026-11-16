@@ -46,7 +46,7 @@ import {
   getUserAssignedSiteIds,
   userHasSiteAccess,
 } from '../../types';
-import { formatNumber, formatDateTime } from '../../utils/exportUtils';
+import { formatNumber, formatDateTime, exportToCsv } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
@@ -59,6 +59,7 @@ import {
 interface ItemEntryRow {
   itemId: string;
   quantity: number | '';
+  wastageQuantity?: number | '';
 }
 
 export const ProjectMaterialUsageView: React.FC = () => {
@@ -105,6 +106,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [projectFilter, setProjectFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [teamFilter, setTeamFilter] = useState('all');
+  const [fullSiteReportProjectId, setFullSiteReportProjectId] = useState<string | null>(null);
 
   // Confirmation modal
   const [confirmState, setConfirmState] = useState<{
@@ -339,7 +341,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
   // Multi-row items table
   const [itemRows, setItemRows] = useState<ItemEntryRow[]>([
-    { itemId: activeItems[0]?.id || '', quantity: '' },
+    { itemId: activeItems[0]?.id || '', quantity: '', wastageQuantity: '' },
   ]);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -364,12 +366,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
       const templateRows: ItemEntryRow[] = sec.templateItems.map((t) => ({
         itemId: t.itemId,
         quantity: typeof t.suggestedQty === 'number' ? t.suggestedQty : '',
+        wastageQuantity: '',
       }));
       setItemRows(templateRows);
       setSuccessToast(`Loaded BOM template for "${sec.name}" (${templateRows.length} items). Please verify quantities.`);
     } else {
       // STRICT ISOLATION: Reset items so previous section's template is never retained
-      setItemRows([{ itemId: activeItems[0]?.id || '', quantity: '' }]);
+      setItemRows([{ itemId: activeItems[0]?.id || '', quantity: '', wastageQuantity: '' }]);
       if (sec) {
         setSuccessToast(`Section "${sec.name}" selected. Showing projects registered under "${sec.name}".`);
       }
@@ -415,6 +418,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
         const initialRows: ItemEntryRow[] = firstSec.templateItems.map((t) => ({
           itemId: t.itemId,
           quantity: typeof t.suggestedQty === 'number' ? t.suggestedQty : '',
+          wastageQuantity: '',
         }));
         setItemRows(initialRows);
       }
@@ -458,7 +462,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
   // Row operations
   const handleAddItemRow = () => {
     const unselected = activeItems.find((itm) => !itemRows.some((r) => r.itemId === itm.id));
-    setItemRows([...itemRows, { itemId: unselected?.id || activeItems[0]?.id || '', quantity: '' }]);
+    setItemRows([...itemRows, { itemId: unselected?.id || activeItems[0]?.id || '', quantity: '', wastageQuantity: '' }]);
   };
 
   const handleBarcodeScannedUsageItem = (item: Item) => {
@@ -472,9 +476,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
         return next;
       }
       if (prev.length === 1 && (!prev[0].itemId || prev[0].quantity === '')) {
-        return [{ itemId: item.id, quantity: 1 }];
+        return [{ itemId: item.id, quantity: 1, wastageQuantity: '' }];
       }
-      return [...prev, { itemId: item.id, quantity: 1 }];
+      return [...prev, { itemId: item.id, quantity: 1, wastageQuantity: '' }];
     });
     if (item.isProjectReserved && item.reservedProjectId) {
       setProjectEntryMode('existing');
@@ -579,24 +583,35 @@ export const ProjectMaterialUsageView: React.FC = () => {
       }
       usedItemIds.add(row.itemId);
 
-      const qty = Number(row.quantity);
-      if (!qty || qty <= 0) {
+      const qty = Number(row.quantity) || 0;
+      const wastageQty = Number(row.wastageQuantity) || 0;
+      if (wastageQty < 0) {
+        const itemInfo = items.find((itm) => itm.id === row.itemId);
+        setErrorMsg(`Item "${itemInfo?.itemName || row.itemId}": Wastage quantity cannot be negative.`);
+        return;
+      }
+      if (qty <= 0 && wastageQty <= 0) {
         const itemInfo = items.find((itm) => itm.id === row.itemId);
         setErrorMsg(`Item "${itemInfo?.itemName || row.itemId}": Please enter a valid quantity greater than 0.`);
         return;
       }
 
+      const totalRowDeducted = qty + wastageQty;
       const inHandItem = teamInHand?.items.find((e) => e.itemId === row.itemId);
       const maxAllowed = inHandItem?.currentInHand || 0;
-      if (qty > maxAllowed) {
+      if (totalRowDeducted > maxAllowed) {
         const itemInfo = items.find((itm) => itm.id === row.itemId);
         setErrorMsg(
-          `Quantity for "${itemInfo?.itemName || row.itemId}" (${qty}) exceeds ${currentTeam?.teamName || 'team'}'s in-hand balance (${maxAllowed} ${itemInfo?.unit || 'units'}). Issue stock to team first.`
+          `Total consumed + wastage for "${itemInfo?.itemName || row.itemId}" (${qty} used + ${wastageQty} wastage = ${totalRowDeducted}) exceeds ${currentTeam?.teamName || 'team'}'s in-hand balance (${maxAllowed} ${itemInfo?.unit || 'units'}). Issue stock to team first.`
         );
         return;
       }
 
-      validRows.push({ itemId: row.itemId, quantity: qty });
+      validRows.push({
+        itemId: row.itemId,
+        quantity: qty,
+        ...(wastageQty > 0 ? { wastageQuantity: wastageQty } : {}),
+      });
     }
 
     if (validRows.length === 0) {
@@ -773,10 +788,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
           activeSec.templateItems.map((t) => ({
             itemId: t.itemId,
             quantity: typeof t.suggestedQty === 'number' ? t.suggestedQty : '',
+            wastageQuantity: '',
           }))
         );
       } else {
-        setItemRows([{ itemId: activeItems[0]?.id || '', quantity: '' }]);
+        setItemRows([{ itemId: activeItems[0]?.id || '', quantity: '', wastageQuantity: '' }]);
       }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to log project material usage.');
@@ -790,7 +806,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
     setEditSupervisor(usage.supervisorOrLeaderName || usage.supervisorOrLeader || '');
     setEditDate(usage.usageDate || (usage.date ? usage.date.split('T')[0] : ''));
     setEditWorkDetails(usage.workDetails || '');
-    setEditItemRows(usage.items.map((i) => ({ itemId: i.itemId, quantity: i.quantity })));
+    setEditItemRows(
+      usage.items.map((i) => ({
+        itemId: i.itemId,
+        quantity: i.quantity,
+        wastageQuantity: i.wastageQuantity ?? '',
+      }))
+    );
     setEditError('');
   };
 
@@ -803,12 +825,21 @@ export const ProjectMaterialUsageView: React.FC = () => {
     for (let i = 0; i < editItemRows.length; i++) {
       const r = editItemRows[i];
       if (!r.itemId) continue;
-      const q = Number(r.quantity);
-      if (!q || q <= 0) {
-        setEditError(`Row #${i + 1}: Please enter a valid quantity.`);
+      const q = Number(r.quantity) || 0;
+      const wq = Number(r.wastageQuantity) || 0;
+      if (wq < 0) {
+        setEditError(`Row #${i + 1}: Wastage quantity cannot be negative.`);
         return;
       }
-      validRows.push({ itemId: r.itemId, quantity: q });
+      if (q <= 0 && wq <= 0) {
+        setEditError(`Row #${i + 1}: Please enter a valid quantity greater than 0.`);
+        return;
+      }
+      validRows.push({
+        itemId: r.itemId,
+        quantity: q,
+        ...(wq > 0 ? { wastageQuantity: wq } : {}),
+      });
     }
 
     if (validRows.length === 0) {
@@ -891,12 +922,18 @@ export const ProjectMaterialUsageView: React.FC = () => {
     if (!reconcileProject || reconcileChildSubProjects.length === 0) return [];
     return reconcileChildSubProjects.map((sub) => {
       const subVouchers = projectUsages.filter((pu) => !pu.isDeleted && pu.projectId === sub.id);
-      const itemsMap = new Map<string, number>();
+      const itemsMap = new Map<string, { installed: number; wastage: number; total: number }>();
       const teamsSet = new Set<string>();
       subVouchers.forEach((v) => {
         if (v.teamName) teamsSet.add(v.teamName);
         v.items.forEach((r) => {
-          itemsMap.set(r.itemId, (itemsMap.get(r.itemId) || 0) + Number(r.quantity));
+          const cur = itemsMap.get(r.itemId) || { installed: 0, wastage: 0, total: 0 };
+          const inst = Number(r.quantity || 0);
+          const wast = Number(r.wastageQuantity || 0);
+          cur.installed += inst;
+          cur.wastage += wast;
+          cur.total += inst + wast;
+          itemsMap.set(r.itemId, cur);
         });
       });
       return {
@@ -910,24 +947,39 @@ export const ProjectMaterialUsageView: React.FC = () => {
   }, [reconcileProject, reconcileChildSubProjects, projectUsages]);
 
   const reconcileTeamBreakdown = React.useMemo(() => {
-    const map = new Map<string, { teamName: string; vouchersCount: number; itemsMap: Map<string, number> }>();
-    const totalProjectItemsMap = new Map<string, number>();
+    const map = new Map<
+      string,
+      {
+        teamName: string;
+        vouchersCount: number;
+        itemsMap: Map<string, { installed: number; wastage: number; total: number }>;
+      }
+    >();
+    const totalProjectItemsMap = new Map<string, { installed: number; wastage: number; total: number }>();
 
     reconcileUsages.forEach((pu) => {
       const tId = pu.teamId || 'unknown';
       const existing = map.get(tId) || {
         teamName: pu.teamName || 'Unknown Team',
         vouchersCount: 0,
-        itemsMap: new Map<string, number>(),
+        itemsMap: new Map<string, { installed: number; wastage: number; total: number }>(),
       };
       existing.vouchersCount++;
 
       pu.items.forEach((row) => {
-        const cur = existing.itemsMap.get(row.itemId) || 0;
-        existing.itemsMap.set(row.itemId, cur + Number(row.quantity));
+        const inst = Number(row.quantity || 0);
+        const wast = Number(row.wastageQuantity || 0);
+        const cur = existing.itemsMap.get(row.itemId) || { installed: 0, wastage: 0, total: 0 };
+        cur.installed += inst;
+        cur.wastage += wast;
+        cur.total += inst + wast;
+        existing.itemsMap.set(row.itemId, cur);
 
-        const grand = totalProjectItemsMap.get(row.itemId) || 0;
-        totalProjectItemsMap.set(row.itemId, grand + Number(row.quantity));
+        const grand = totalProjectItemsMap.get(row.itemId) || { installed: 0, wastage: 0, total: 0 };
+        grand.installed += inst;
+        grand.wastage += wast;
+        grand.total += inst + wast;
+        totalProjectItemsMap.set(row.itemId, grand);
       });
       map.set(tId, existing);
     });
@@ -937,6 +989,254 @@ export const ProjectMaterialUsageView: React.FC = () => {
       totalItems: Array.from(totalProjectItemsMap.entries()),
     };
   }, [reconcileUsages]);
+
+  // Full Report for This Site (Project) calculation (used in Usage Vouchers History tab modal)
+  const fullSiteReportData = React.useMemo(() => {
+    const targetProjId = fullSiteReportProjectId || (projectFilter !== 'all' ? projectFilter : '');
+    if (!targetProjId) return null;
+    const targetProj = projects.find((p) => p.id === targetProjId);
+    if (!targetProj) return null;
+
+    const childSubs = projects.filter((p) => !p.isDeleted && p.parentProjectId === targetProj.id);
+    const childSubIds = new Set(childSubs.map((s) => s.id));
+    const isMainUmbrella = targetProj.projectScope === 'main' || childSubs.length > 0;
+    const branchInfo = resolveProjectBranch(targetProj);
+
+    const matchingUsages = projectUsages
+      .filter((pu) => {
+        if (pu.isDeleted) return false;
+        return (
+          pu.projectId === targetProj.id ||
+          pu.parentProjectId === targetProj.id ||
+          childSubIds.has(pu.projectId)
+        );
+      })
+      .sort((a, b) => {
+        const da = a.usageDate || a.date || '';
+        const db = b.usageDate || b.date || '';
+        return db.localeCompare(da);
+      });
+
+    interface TeamItemAgg {
+      itemId: string;
+      itemCode: string;
+      itemName: string;
+      category: string;
+      unit: string;
+      unitCost: number;
+      installedQty: number;
+      wastageQty: number;
+      totalConsumedQty: number;
+      totalCost: number;
+    }
+
+    interface TeamVoucherLine {
+      voucherId: string;
+      voucherNumber: string;
+      date: string;
+      subProjectName: string;
+      supervisor: string;
+      workDetails: string;
+      itemId: string;
+      itemCode: string;
+      itemName: string;
+      unit: string;
+      unitCost: number;
+      installedQty: number;
+      wastageQty: number;
+      totalConsumedQty: number;
+      lineCost: number;
+    }
+
+    interface TeamReportGroup {
+      teamId: string;
+      teamName: string;
+      leaderName: string;
+      siteName: string;
+      vouchersCount: number;
+      voucherLines: TeamVoucherLine[];
+      materialsSummary: TeamItemAgg[];
+      teamTotalInstalled: number;
+      teamTotalWastage: number;
+      teamTotalConsumed: number;
+      teamTotalCost: number;
+    }
+
+    const teamsMap = new Map<
+      string,
+      {
+        teamId: string;
+        teamName: string;
+        leaderName: string;
+        siteName: string;
+        voucherIds: Set<string>;
+        voucherLines: TeamVoucherLine[];
+        materialsMap: Map<string, TeamItemAgg>;
+        teamTotalInstalled: number;
+        teamTotalWastage: number;
+        teamTotalConsumed: number;
+        teamTotalCost: number;
+      }
+    >();
+
+    const allMaterialsMap = new Map<
+      string,
+      TeamItemAgg & { teamsInvolved: Set<string> }
+    >();
+
+    let grandTotalInstalled = 0;
+    let grandTotalWastage = 0;
+    let grandTotalConsumed = 0;
+    let grandTotalCost = 0;
+
+    matchingUsages.forEach((pu) => {
+      const tId = pu.teamId || pu.teamName || 'unknown-team';
+      const tMaster = teams.find((t) => t.id === pu.teamId);
+      const tSite = sites.find((s) => s.id === (tMaster?.assignedSiteId || pu.siteId));
+      const tName = pu.teamName || tMaster?.teamName || 'Field Team';
+      const lName =
+        pu.supervisorOrLeaderName ||
+        pu.supervisorOrLeader ||
+        tMaster?.teamLeaderName ||
+        '—';
+
+      let teamEntry = teamsMap.get(tId);
+      if (!teamEntry) {
+        teamEntry = {
+          teamId: tId,
+          teamName: tName,
+          leaderName: lName,
+          siteName: tSite?.name || branchInfo.siteName || '—',
+          voucherIds: new Set<string>(),
+          voucherLines: [],
+          materialsMap: new Map<string, TeamItemAgg>(),
+          teamTotalInstalled: 0,
+          teamTotalWastage: 0,
+          teamTotalConsumed: 0,
+          teamTotalCost: 0,
+        };
+        teamsMap.set(tId, teamEntry);
+      }
+      teamEntry.voucherIds.add(pu.id);
+
+      pu.items.forEach((row) => {
+        const itm = items.find((i) => i.id === row.itemId);
+        const unitCost = Number(itm?.unitPrice || 0);
+        const installedQty = Number(row.quantity || 0);
+        const wastageQty = Number(row.wastageQuantity || 0);
+        const totalConsumedQty = installedQty + wastageQty;
+        const lineCost = totalConsumedQty * unitCost;
+
+        teamEntry!.voucherLines.push({
+          voucherId: pu.id,
+          voucherNumber: pu.usageVoucherNumber,
+          date: pu.usageDate || (pu.date ? pu.date.split('T')[0] : '—'),
+          subProjectName: pu.projectName || targetProj.projectName,
+          supervisor: lName,
+          workDetails: pu.workDetails || '—',
+          itemId: row.itemId,
+          itemCode: itm?.itemCode || 'ITEM',
+          itemName: itm?.itemName || 'Material Item',
+          unit: itm?.unit || 'Nos',
+          unitCost,
+          installedQty,
+          wastageQty,
+          totalConsumedQty,
+          lineCost,
+        });
+
+        const curMat = teamEntry!.materialsMap.get(row.itemId) || {
+          itemId: row.itemId,
+          itemCode: itm?.itemCode || 'ITEM',
+          itemName: itm?.itemName || 'Material Item',
+          category: itm?.category || 'General',
+          unit: itm?.unit || 'Nos',
+          unitCost,
+          installedQty: 0,
+          wastageQty: 0,
+          totalConsumedQty: 0,
+          totalCost: 0,
+        };
+        curMat.installedQty += installedQty;
+        curMat.wastageQty += wastageQty;
+        curMat.totalConsumedQty += totalConsumedQty;
+        curMat.totalCost += lineCost;
+        teamEntry!.materialsMap.set(row.itemId, curMat);
+
+        teamEntry!.teamTotalInstalled += installedQty;
+        teamEntry!.teamTotalWastage += wastageQty;
+        teamEntry!.teamTotalConsumed += totalConsumedQty;
+        teamEntry!.teamTotalCost += lineCost;
+
+        const grandMat = allMaterialsMap.get(row.itemId) || {
+          itemId: row.itemId,
+          itemCode: itm?.itemCode || 'ITEM',
+          itemName: itm?.itemName || 'Material Item',
+          category: itm?.category || 'General',
+          unit: itm?.unit || 'Nos',
+          unitCost,
+          installedQty: 0,
+          wastageQty: 0,
+          totalConsumedQty: 0,
+          totalCost: 0,
+          teamsInvolved: new Set<string>(),
+        };
+        grandMat.installedQty += installedQty;
+        grandMat.wastageQty += wastageQty;
+        grandMat.totalConsumedQty += totalConsumedQty;
+        grandMat.totalCost += lineCost;
+        grandMat.teamsInvolved.add(tName);
+        allMaterialsMap.set(row.itemId, grandMat);
+
+        grandTotalInstalled += installedQty;
+        grandTotalWastage += wastageQty;
+        grandTotalConsumed += totalConsumedQty;
+        grandTotalCost += lineCost;
+      });
+    });
+
+    const teamsBreakdown: TeamReportGroup[] = Array.from(teamsMap.values()).map((t) => ({
+      teamId: t.teamId,
+      teamName: t.teamName,
+      leaderName: t.leaderName,
+      siteName: t.siteName,
+      vouchersCount: t.voucherIds.size,
+      voucherLines: t.voucherLines,
+      materialsSummary: Array.from(t.materialsMap.values()),
+      teamTotalInstalled: t.teamTotalInstalled,
+      teamTotalWastage: t.teamTotalWastage,
+      teamTotalConsumed: t.teamTotalConsumed,
+      teamTotalCost: t.teamTotalCost,
+    }));
+
+    const consolidatedMaterials = Array.from(allMaterialsMap.values()).map((m) => ({
+      ...m,
+      teamsList: Array.from(m.teamsInvolved),
+    }));
+
+    return {
+      project: targetProj,
+      branchName: branchInfo.siteName || targetProj.district || 'General Site',
+      isMainUmbrella,
+      childSubsCount: childSubs.length,
+      vouchersCount: matchingUsages.length,
+      teamsBreakdown,
+      consolidatedMaterials,
+      grandTotalInstalled,
+      grandTotalWastage,
+      grandTotalConsumed,
+      grandTotalCost,
+    };
+  }, [
+    fullSiteReportProjectId,
+    projectFilter,
+    projects,
+    projectUsages,
+    teams,
+    sites,
+    items,
+    resolveProjectBranch,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -1969,12 +2269,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       const selectedItemCustody = teamInHand?.items.find((e) => e.itemId === row.itemId);
                       const itemObj = items.find((i) => i.id === row.itemId);
                       const inHandBalance = selectedItemCustody?.currentInHand || 0;
-                      const isOverLimit = typeof row.quantity === 'number' && row.quantity > inHandBalance;
+                      const usedQtyNum = Number(row.quantity) || 0;
+                      const wastageQtyNum = Number(row.wastageQuantity) || 0;
+                      const totalRowDeducted = usedQtyNum + wastageQtyNum;
+                      const isOverLimit = totalRowDeducted > inHandBalance && (row.quantity !== '' || (row.wastageQuantity !== '' && row.wastageQuantity !== undefined));
 
                       return (
                         <div
                           key={idx}
-                          className={`bg-white border rounded-xl p-3 flex flex-col sm:flex-row items-center gap-3 transition-colors shadow-2xs ${
+                          className={`bg-white border rounded-xl p-3 flex flex-col lg:flex-row items-center gap-3 transition-colors shadow-2xs ${
                             isOverLimit ? 'border-rose-300 bg-rose-50/40' : 'border-indigo-100/90 hover:border-indigo-300'
                           }`}
                         >
@@ -2015,45 +2318,85 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           </div>
 
                           {/* Available In-Hand Display */}
-                          <div className="w-full sm:w-32 text-center sm:text-left">
+                          <div className="w-full sm:w-28 text-center sm:text-left">
                             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                               Team In-Hand
                             </label>
                             <div
-                              className={`text-xs font-bold px-2.5 py-2 rounded-lg border text-center ${
+                              className={`text-xs font-bold px-2.5 py-2 rounded-lg border text-center font-mono ${
                                 inHandBalance > 0
                                   ? 'text-teal-800 bg-teal-50 border-teal-200'
                                   : 'text-slate-500 bg-slate-100 border-slate-200'
                               }`}
                             >
-                              {inHandBalance} {itemObj?.unit || 'units'}
+                              {formatNumber(inHandBalance)} {itemObj?.unit || 'units'}
                             </div>
                           </div>
 
-                          {/* Quantity input */}
-                          <div className="w-full sm:w-32">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                          {/* Quantity Used (Installed) input */}
+                          <div className="w-full sm:w-28">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-1">
                               Qty Used *
                             </label>
                             <input
                               type="number"
-                              min="0.001"
+                              min="0"
                               step="any"
                               disabled={isProjectSiteLocked}
                               value={row.quantity}
                               onChange={(e) =>
                                 handleRowChange(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))
                               }
-                              placeholder="Qty"
+                              placeholder="Used Qty"
                               className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-white focus:outline-none text-center font-mono ${
                                 isOverLimit ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900' : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
                               }`}
-                              required
                             />
                           </div>
 
+                          {/* Wastage Quantity input */}
+                          <div className="w-full sm:w-28">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">
+                              Wastage Qty
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              disabled={isProjectSiteLocked}
+                              value={row.wastageQuantity ?? ''}
+                              onChange={(e) =>
+                                handleRowChange(idx, 'wastageQuantity', e.target.value === '' ? '' : Number(e.target.value))
+                              }
+                              placeholder="0 (Opt)"
+                              className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-amber-50/40 focus:bg-white focus:outline-none text-center font-mono ${
+                                isOverLimit
+                                  ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900'
+                                  : 'border-amber-300 focus:ring-2 focus:ring-amber-500 text-amber-900'
+                              }`}
+                            />
+                          </div>
+
+                          {/* Total Deducted (Used + Wastage) */}
+                          <div className="w-full sm:w-28 text-center">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                              Total Deduct
+                            </label>
+                            <div
+                              className={`text-xs font-black px-2 py-2 rounded-lg border text-center font-mono ${
+                                isOverLimit
+                                  ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                  : totalRowDeducted > 0
+                                  ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                                  : 'bg-slate-50 text-slate-400 border-slate-200'
+                              }`}
+                            >
+                              {formatNumber(totalRowDeducted)} {itemObj?.unit || ''}
+                            </div>
+                          </div>
+
                           {/* Remove Row Button */}
-                          <div className="pt-2 sm:pt-5">
+                          <div className="pt-2 lg:pt-5">
                             <button
                               type="button"
                               onClick={() => handleRemoveItemRow(idx)}
@@ -2247,9 +2590,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
           <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-slate-500" />
-              <h3 className="text-sm font-bold text-slate-800">
-                Project Material Usage Log ({filteredUsages.length})
-              </h3>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">
+                  Project Material Usage Log ({filteredUsages.length})
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Select a specific project below to view its consolidated multi-team & wastage report via <strong>Full Report for This Site (Project)</strong>.
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -2271,15 +2619,35 @@ export const ProjectMaterialUsageView: React.FC = () => {
               <select
                 value={projectFilter}
                 onChange={(e) => setProjectFilter(e.target.value)}
-                className="text-xs font-semibold px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                className="text-xs font-bold px-2.5 py-1.5 border-2 border-teal-500/70 rounded-lg bg-teal-50/40 text-slate-900 focus:outline-none"
               >
-                <option value="all">All Projects</option>
+                <option value="all">All Projects (Select Project for Full Site Report)</option>
                 {activeProjects.map((p) => (
                   <option key={p.id} value={p.id}>
                     [{p.projectId}] {p.projectName}
                   </option>
                 ))}
               </select>
+
+              {/* Full Report for This Site (Project) Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const targetId =
+                    projectFilter !== 'all'
+                      ? projectFilter
+                      : filteredUsages[0]?.projectId || activeProjects[0]?.id || '';
+                  if (targetId) {
+                    setFullSiteReportProjectId(targetId);
+                  }
+                }}
+                disabled={activeProjects.length === 0}
+                className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-800 hover:to-emerald-800 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm cursor-pointer transition disabled:opacity-40"
+                title="Open Full Multi-Team Material Usage & Wastage Report for Selected Site (Project)"
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Full Report for This Site (Project)</span>
+              </button>
 
               {/* Filter by Team */}
               <select
@@ -2296,7 +2664,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
               </select>
 
               {/* Search */}
-              <div className="relative w-full sm:w-64 min-w-[180px]">
+              <div className="relative w-full sm:w-60 min-w-[170px]">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -2330,6 +2698,44 @@ export const ProjectMaterialUsageView: React.FC = () => {
             </div>
           </div>
 
+          {/* Highlighted Banner when a specific Project is selected in Usage Vouchers History */}
+          {projectFilter !== 'all' && (() => {
+            const selProj = projects.find((p) => p.id === projectFilter);
+            if (!selProj) return null;
+            const totalInst = filteredUsages.reduce(
+              (sum, u) => sum + u.items.reduce((s, r) => s + Number(r.quantity || 0), 0),
+              0
+            );
+            const totalWast = filteredUsages.reduce(
+              (sum, u) => sum + u.items.reduce((s, r) => s + Number(r.wastageQuantity || 0), 0),
+              0
+            );
+            const uniqueTeams = new Set(filteredUsages.map((u) => u.teamId || u.teamName)).size;
+            return (
+              <div className="px-4 py-3 bg-gradient-to-r from-teal-900 via-slate-900 to-emerald-950 text-white border-b border-teal-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="px-2 py-0.5 rounded bg-teal-500/20 border border-teal-400/30 text-teal-300 font-mono text-xs font-bold">
+                    {selProj.projectId}
+                  </span>
+                  <span className="font-extrabold text-sm text-white">
+                    {selProj.projectName}
+                  </span>
+                  <span className="text-xs text-teal-200 font-semibold">
+                    · {uniqueTeams} Team(s) · {filteredUsages.length} Voucher(s) · Installed: <strong>{formatNumber(totalInst)}</strong> · Wastage: <strong className="text-amber-300">{formatNumber(totalWast)}</strong> · Full Total: <strong className="text-emerald-300">{formatNumber(totalInst + totalWast)}</strong>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFullSiteReportProjectId(selProj.id)}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition shrink-0"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Full Report for This Site (Project) →</span>
+                </button>
+              </div>
+            );
+          })()}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-xs border-b border-slate-200">
@@ -2338,7 +2744,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   <th className="py-3 px-3.5">Date</th>
                   <th className="py-3 px-3.5">Project & Section</th>
                   <th className="py-3 px-3.5">Team & Supervisor</th>
-                  <th className="py-3 px-4 min-w-[300px]">Materials Consumed (Code & Description)</th>
+                  <th className="py-3 px-4 min-w-[320px]">Materials Consumed & Wastage</th>
                   <th className="py-3 px-3.5">Work Scope</th>
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
@@ -2352,7 +2758,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </tr>
                 ) : (
                   filteredUsages.map((usage) => {
-                    const totalItemsQty = usage.items.reduce((s, i) => s + i.quantity, 0);
+                    const totalInstalledQty = usage.items.reduce((s, i) => s + Number(i.quantity || 0), 0);
+                    const totalWastageQty = usage.items.reduce((s, i) => s + Number(i.wastageQuantity || 0), 0);
+                    const totalCombinedQty = totalInstalledQty + totalWastageQty;
 
                     return (
                       <tr key={usage.id} className="hover:bg-slate-50 transition-colors">
@@ -2378,6 +2786,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             <span className="font-mono text-slate-500">
                               ID: {projects.find((p) => p.id === usage.projectId)?.projectId || usage.projectId}
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => setFullSiteReportProjectId(usage.parentProjectId || usage.projectId)}
+                              className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline ml-1 cursor-pointer"
+                            >
+                              Full Site Report
+                            </button>
                           </div>
                         </td>
                         <td className="py-3 px-3.5">
@@ -2386,13 +2801,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             Lead: {usage.supervisorOrLeader || usage.supervisorOrLeaderName}
                           </div>
                         </td>
-                        <td className="py-3 px-4 min-w-[300px]">
-                          <div className="text-xs font-bold text-slate-500 mb-1">
-                            {totalItemsQty} total units ({usage.items.length} line item{usage.items.length === 1 ? '' : 's'})
+                        <td className="py-3 px-4 min-w-[320px]">
+                          <div className="text-xs font-bold text-slate-500 mb-1 flex flex-wrap items-center gap-1.5">
+                            <span>Installed: <strong>{formatNumber(totalInstalledQty)}</strong></span>
+                            {totalWastageQty > 0 && (
+                              <span className="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded">
+                                + Wastage: <strong>{formatNumber(totalWastageQty)}</strong>
+                              </span>
+                            )}
+                            <span className="text-slate-400">
+                              (Total Deducted: <strong>{formatNumber(totalCombinedQty)}</strong> across {usage.items.length} item{usage.items.length === 1 ? '' : 's'})
+                            </span>
                           </div>
                           <div className="space-y-1">
                             {usage.items.map((row) => {
                               const itm = items.find((i) => i.id === row.itemId);
+                              const wQty = Number(row.wastageQuantity || 0);
                               return (
                                 <div
                                   key={row.itemId}
@@ -2406,8 +2830,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                   </span>
                                   <span className="text-slate-300">·</span>
                                   <span className="font-mono font-extrabold text-teal-800 text-sm">
-                                    {formatNumber(row.quantity)} {itm?.unit}
+                                    Used: {formatNumber(row.quantity)} {itm?.unit}
                                   </span>
+                                  {wQty > 0 && (
+                                    <span className="font-mono font-bold text-amber-800 bg-amber-100/80 border border-amber-300 px-1.5 py-0.5 rounded text-[11px]">
+                                      + Wastage: {formatNumber(wQty)} {itm?.unit} (Total: {formatNumber(Number(row.quantity || 0) + wQty)})
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })}
@@ -2673,7 +3102,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                   </td>
                                 )}
                                 <td className="py-2.5 px-3 text-right font-mono text-amber-200 font-bold">
-                                  {formatNumber(foc.totalUsed)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                  <div>
+                                    {formatNumber(foc.totalUsed)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                  </div>
+                                  {(foc.totalWastage || 0) > 0 && (
+                                    <div className="text-[10px] text-amber-300/90">
+                                      (Incl. {formatNumber(foc.totalWastage || 0)} wastage)
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-300">
                                   {formatNumber(foc.remainingBalance)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
@@ -2681,7 +3117,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 <td className="py-2.5 px-3 text-center">
                                   {isDepleted ? (
                                     <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 rounded-md">
-                                      100% Installed
+                                      100% Consumed
                                     </span>
                                   ) : (
                                     <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-md">
@@ -2756,7 +3192,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               </div>
                             ) : (
                               <div className="space-y-1.5">
-                                {card.items.map(([itmId, qty]) => {
+                                {card.items.map(([itmId, stat]) => {
                                   const itm = items.find((i) => i.id === itmId);
                                   return (
                                     <div
@@ -2767,7 +3203,12 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                         [{itm?.itemCode}] {itm?.itemName || itmId}
                                       </span>
                                       <span className="font-mono font-black text-amber-800 shrink-0">
-                                        {formatNumber(qty)} {itm?.unit || 'units'}
+                                        {formatNumber(stat.total)} {itm?.unit || 'units'}
+                                        {stat.wastage > 0 && (
+                                          <span className="text-[10px] text-rose-700 ml-1">
+                                            (Used: {formatNumber(stat.installed)} + Wastage: {formatNumber(stat.wastage)})
+                                          </span>
+                                        )}
                                       </span>
                                     </div>
                                   );
@@ -2784,14 +3225,24 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
               {/* Grand Total Project Consumed Materials */}
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-2">
-                  <Package className="w-4 h-4 text-emerald-600" />
-                  <span>
-                    {isReconcileMainProject
-                      ? 'Total Main Project Materials Consumed (Combined Across All Sub-Projects & Teams)'
-                      : 'Total Project Materials Consumed (Across All Teams)'}
-                  </span>
-                </h4>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-emerald-600" />
+                    <span>
+                      {isReconcileMainProject
+                        ? 'Total Main Project Materials Consumed (Combined Across All Sub-Projects & Teams)'
+                        : 'Total Project Materials Consumed (Across All Teams)'}
+                    </span>
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setFullSiteReportProjectId(reconcileProject.id)}
+                    className="px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Open Full Report for This Site (Project)</span>
+                  </button>
+                </div>
 
                 {reconcileTeamBreakdown.totalItems.length === 0 ? (
                   <div className="p-6 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl text-xs">
@@ -2799,14 +3250,17 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {reconcileTeamBreakdown.totalItems.map(([itmId, qty]) => {
+                    {reconcileTeamBreakdown.totalItems.map(([itmId, stat]) => {
                       const itm = items.find((i) => i.id === itmId);
                       return (
                         <div key={itmId} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                           <div className="text-[11px] text-slate-500 font-mono">{itm?.itemCode || 'ITEM'}</div>
                           <div className="text-xs font-bold text-slate-900 truncate">{itm?.itemName}</div>
                           <div className="text-base font-black text-emerald-700 mt-1">
-                            {formatNumber(qty)} <span className="text-xs font-normal text-slate-500">{itm?.unit}</span>
+                            {formatNumber(stat.total)} <span className="text-xs font-normal text-slate-500">{itm?.unit}</span>
+                          </div>
+                          <div className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                            Used: {formatNumber(stat.installed)} {stat.wastage > 0 ? `| Wastage: ${formatNumber(stat.wastage)}` : ''}
                           </div>
                         </div>
                       );
@@ -2838,14 +3292,21 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       </div>
 
                       <div className="space-y-2">
-                        {Array.from(t.itemsMap.entries()).map(([itmId, qty]) => {
+                        {Array.from(t.itemsMap.entries()).map(([itmId, stat]) => {
                           const itm = items.find((i) => i.id === itmId);
                           return (
                             <div key={itmId} className="flex justify-between items-center text-xs py-1 border-b border-slate-50">
                               <span className="text-slate-700 font-medium">{itm?.itemName || itmId}</span>
-                              <span className="font-mono font-bold text-slate-900">
-                                {formatNumber(qty)} {itm?.unit || 'units'}
-                              </span>
+                              <div className="text-right font-mono">
+                                <span className="font-bold text-slate-900">
+                                  {formatNumber(stat.total)} {itm?.unit || 'units'}
+                                </span>
+                                {stat.wastage > 0 && (
+                                  <span className="block text-[10px] text-amber-700 font-semibold">
+                                    Used: {formatNumber(stat.installed)} | Wastage: {formatNumber(stat.wastage)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -2862,7 +3323,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
       {/* EDIT VOUCHER MODAL */}
       {editingVoucher && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
               <div>
                 <h3 className="font-bold text-base text-slate-900">
@@ -2945,26 +3406,46 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
               {/* Items in Voucher */}
               <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
-                <span className="text-xs font-bold text-slate-800 uppercase block mb-1">Items & Quantities</span>
+                <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-600 uppercase px-2">
+                  <div className="col-span-6">Material Item</div>
+                  <div className="col-span-3 text-center text-teal-700">Qty Used</div>
+                  <div className="col-span-3 text-center text-amber-700">Wastage Qty</div>
+                </div>
                 {editItemRows.map((r, i) => {
                   const itm = items.find((x) => x.id === r.itemId);
                   return (
-                    <div key={i} className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-lg">
-                      <div className="flex-1 text-xs font-semibold text-slate-800">
-                        {itm?.itemName || r.itemId} ({itm?.unit || 'units'})
+                    <div key={i} className="grid grid-cols-12 items-center gap-2 bg-white p-2 border border-slate-200 rounded-lg">
+                      <div className="col-span-6 text-xs font-semibold text-slate-800">
+                        [{itm?.itemCode}] {itm?.itemName || r.itemId} ({itm?.unit || 'units'})
                       </div>
-                      <div className="w-28">
+                      <div className="col-span-3">
                         <input
                           type="number"
                           step="any"
-                          min="0.001"
+                          min="0"
                           value={r.quantity}
                           onChange={(e) => {
                             const next = [...editItemRows];
-                            next[i].quantity = e.target.value ? Number(e.target.value) : '';
+                            next[i].quantity = e.target.value !== '' ? Number(e.target.value) : '';
                             setEditItemRows(next);
                           }}
+                          placeholder="Used"
                           className="w-full px-2 py-1 border border-slate-300 rounded text-xs font-mono text-center font-bold"
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={r.wastageQuantity ?? ''}
+                          onChange={(e) => {
+                            const next = [...editItemRows];
+                            next[i].wastageQuantity = e.target.value !== '' ? Number(e.target.value) : '';
+                            setEditItemRows(next);
+                          }}
+                          placeholder="0"
+                          className="w-full px-2 py-1 border border-amber-300 bg-amber-50/40 rounded text-xs font-mono text-center font-bold text-amber-900"
                         />
                       </div>
                     </div>
@@ -2992,6 +3473,498 @@ export const ProjectMaterialUsageView: React.FC = () => {
         </div>
       )}
 
+      {/* FULL REPORT FOR THIS SITE (PROJECT) MODAL */}
+      {fullSiteReportProjectId && fullSiteReportData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-6xl w-full max-h-[94vh] flex flex-col overflow-hidden">
+            {/* Modal Top Bar */}
+            <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-teal-800">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                    Full Report for This Site (Project)
+                  </span>
+                  <span className="font-mono text-xs text-teal-300 font-bold">
+                    [{fullSiteReportData.project.projectId}]
+                  </span>
+                  {fullSiteReportData.isMainUmbrella && (
+                    <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-400/30 text-purple-200 text-[10px] font-bold">
+                      Includes Main + {fullSiteReportData.childSubsCount} Sub-Project(s)
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-lg sm:text-xl font-black tracking-tight mt-1">
+                  {fullSiteReportData.project.projectName} — Multi-Team Usage &amp; Wastage Report
+                </h2>
+                <p className="text-xs text-teal-200/90 mt-0.5">
+                  Site Branch: <strong>{fullSiteReportData.branchName}</strong> · Section:{' '}
+                  <strong>{fullSiteReportData.project.projectTypeName || 'General'}</strong> · Customer/Principal:{' '}
+                  <strong>{fullSiteReportData.project.customerName || '—'}</strong>
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Switch Project inside Report */}
+                <select
+                  value={fullSiteReportData.project.id}
+                  onChange={(e) => setFullSiteReportProjectId(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-teal-600 text-white text-xs font-bold focus:outline-none max-w-[230px]"
+                >
+                  {activeProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      [{p.projectId}] {p.projectName}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Export CSV Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csvRows: Record<string, unknown>[] = [];
+                    fullSiteReportData.teamsBreakdown.forEach((teamGrp) => {
+                      teamGrp.voucherLines.forEach((line) => {
+                        csvRows.push({
+                          'Report Section': `TEAM DETAIL: ${teamGrp.teamName}`,
+                          'Project Code': fullSiteReportData.project.projectId,
+                          'Project Name': fullSiteReportData.project.projectName,
+                          'Site Branch': fullSiteReportData.branchName,
+                          'Team Name': teamGrp.teamName,
+                          'Team Leader / Supervisor': line.supervisor,
+                          'Voucher #': line.voucherNumber,
+                          'Date': line.date,
+                          'Scope / Sub-Project': line.subProjectName,
+                          'Item Code': line.itemCode,
+                          'Item Description': line.itemName,
+                          'Unit': line.unit,
+                          'Installed Qty': line.installedQty,
+                          'Wastage Qty': line.wastageQty,
+                          'Total Consumed (Installed + Wastage)': line.totalConsumedQty,
+                          'Unit Cost': line.unitCost,
+                          'Total Cost': line.lineCost,
+                        });
+                      });
+                      csvRows.push({
+                        'Report Section': `>>> TEAM SUBTOTAL: ${teamGrp.teamName} <<<`,
+                        'Project Code': fullSiteReportData.project.projectId,
+                        'Project Name': fullSiteReportData.project.projectName,
+                        'Site Branch': fullSiteReportData.branchName,
+                        'Team Name': teamGrp.teamName,
+                        'Team Leader / Supervisor': teamGrp.leaderName,
+                        'Voucher #': `${teamGrp.vouchersCount} Voucher(s)`,
+                        'Date': 'SUBTOTAL',
+                        'Scope / Sub-Project': 'ALL TEAM ITEMS',
+                        'Item Code': 'TEAM-TOTAL',
+                        'Item Description': `Subtotal for ${teamGrp.teamName}`,
+                        'Unit': 'All Units',
+                        'Installed Qty': teamGrp.teamTotalInstalled,
+                        'Wastage Qty': teamGrp.teamTotalWastage,
+                        'Total Consumed (Installed + Wastage)': teamGrp.teamTotalConsumed,
+                        'Unit Cost': '',
+                        'Total Cost': teamGrp.teamTotalCost,
+                      });
+                    });
+
+                    fullSiteReportData.consolidatedMaterials.forEach((mat) => {
+                      csvRows.push({
+                        'Report Section': 'ALL TEAMS MATERIAL SUMMARY',
+                        'Project Code': fullSiteReportData.project.projectId,
+                        'Project Name': fullSiteReportData.project.projectName,
+                        'Site Branch': fullSiteReportData.branchName,
+                        'Team Name': mat.teamsList.join(', '),
+                        'Team Leader / Supervisor': 'All Teams',
+                        'Voucher #': 'CONSOLIDATED',
+                        'Date': '—',
+                        'Scope / Sub-Project': 'Full Site / Project',
+                        'Item Code': mat.itemCode,
+                        'Item Description': mat.itemName,
+                        'Unit': mat.unit,
+                        'Installed Qty': mat.installedQty,
+                        'Wastage Qty': mat.wastageQty,
+                        'Total Consumed (Installed + Wastage)': mat.totalConsumedQty,
+                        'Unit Cost': mat.unitCost,
+                        'Total Cost': mat.totalCost,
+                      });
+                    });
+
+                    csvRows.push({
+                      'Report Section': '=== FULL SITE (PROJECT) GRAND TOTAL ===',
+                      'Project Code': fullSiteReportData.project.projectId,
+                      'Project Name': fullSiteReportData.project.projectName,
+                      'Site Branch': fullSiteReportData.branchName,
+                      'Team Name': `${fullSiteReportData.teamsBreakdown.length} Team(s)`,
+                      'Team Leader / Supervisor': 'GRAND TOTAL',
+                      'Voucher #': `${fullSiteReportData.vouchersCount} Voucher(s)`,
+                      'Date': new Date().toISOString().split('T')[0],
+                      'Scope / Sub-Project': 'FULL PROJECT TOTAL',
+                      'Item Code': 'GRAND-TOTAL',
+                      'Item Description': 'Full Project Combined Total (All Teams)',
+                      'Unit': 'All Units',
+                      'Installed Qty': fullSiteReportData.grandTotalInstalled,
+                      'Wastage Qty': fullSiteReportData.grandTotalWastage,
+                      'Total Consumed (Installed + Wastage)': fullSiteReportData.grandTotalConsumed,
+                      'Unit Cost': '',
+                      'Total Cost': fullSiteReportData.grandTotalCost,
+                    });
+
+                    exportToCsv(
+                      `Full_Site_Report_${fullSiteReportData.project.projectId}`,
+                      csvRows
+                    );
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Export Excel / CSV</span>
+                </button>
+
+                {/* Print Report Button */}
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-900 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5 text-teal-700" />
+                  <span>Print / Save PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFullSiteReportProjectId(null)}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white transition cursor-pointer"
+                  title="Close Report"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Report Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 bg-slate-50 flex-1">
+              {/* Top KPI Summary Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+                  <div className="text-[10px] font-bold uppercase text-slate-500">Teams Involved</div>
+                  <div className="text-xl font-black text-slate-900 font-mono mt-0.5">
+                    {fullSiteReportData.teamsBreakdown.length}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Separate Team Breakdowns</div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+                  <div className="text-[10px] font-bold uppercase text-slate-500">Total Vouchers</div>
+                  <div className="text-xl font-black text-teal-700 font-mono mt-0.5">
+                    {fullSiteReportData.vouchersCount}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Logged Usage Slips</div>
+                </div>
+
+                <div className="bg-white border border-teal-200 rounded-xl p-3.5 shadow-2xs">
+                  <div className="text-[10px] font-bold uppercase text-teal-700">Full Installed Qty</div>
+                  <div className="text-xl font-black text-teal-800 font-mono mt-0.5">
+                    {formatNumber(fullSiteReportData.grandTotalInstalled)}
+                  </div>
+                  <div className="text-[10px] text-teal-600">Net Used on Site</div>
+                </div>
+
+                <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 shadow-2xs">
+                  <div className="text-[10px] font-bold uppercase text-amber-800">Full Wastage Qty</div>
+                  <div className="text-xl font-black text-amber-700 font-mono mt-0.5">
+                    {formatNumber(fullSiteReportData.grandTotalWastage)}
+                  </div>
+                  <div className="text-[10px] text-amber-700">Recorded Material Wastage</div>
+                </div>
+
+                <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 shadow-2xs">
+                  <div className="text-[10px] font-bold uppercase text-indigo-800">Full Total Consumed</div>
+                  <div className="text-xl font-black text-indigo-900 font-mono mt-0.5">
+                    {formatNumber(fullSiteReportData.grandTotalConsumed)}
+                  </div>
+                  <div className="text-[10px] text-indigo-700">Installed + Wastage</div>
+                </div>
+
+                <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 shadow-2xs">
+                  <div className="text-[10px] font-bold uppercase text-emerald-800">Full Material Value</div>
+                  <div className="text-lg font-black text-emerald-900 font-mono mt-0.5">
+                    {config.currencySymbol || 'Rs.'} {formatNumber(fullSiteReportData.grandTotalCost)}
+                  </div>
+                  <div className="text-[10px] text-emerald-700">Combined Project Cost</div>
+                </div>
+              </div>
+
+              {fullSiteReportData.teamsBreakdown.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-500 text-sm">
+                  No material usage vouchers have been logged for this project yet.
+                </div>
+              ) : (
+                <>
+                  {/* SECTION 1: TEAM-BY-TEAM SEPARATE BREAKDOWN & TEAM TOTALS */}
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                          <Users2 className="w-4 h-4 text-teal-700" />
+                          <span>
+                            Part 1: Team-by-Team Material Usage &amp; Individual Team Totals ({fullSiteReportData.teamsBreakdown.length} Teams)
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Each team&apos;s material usage is shown separately below along with that specific team&apos;s subtotal (Installed, Wastage, and Total Consumed).
+                        </p>
+                      </div>
+                    </div>
+
+                    {fullSiteReportData.teamsBreakdown.map((teamGrp, tIdx) => (
+                      <div
+                        key={teamGrp.teamId}
+                        className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-xs"
+                      >
+                        {/* Team Card Header */}
+                        <div className="bg-slate-900 text-white px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-7 h-7 rounded-lg bg-teal-500/20 border border-teal-400/40 text-teal-300 flex items-center justify-center font-mono font-black text-xs">
+                              T{tIdx + 1}
+                            </span>
+                            <div>
+                              <div className="font-black text-sm text-white flex items-center gap-2">
+                                <span>{teamGrp.teamName}</span>
+                                <span className="text-[11px] font-normal text-slate-300">
+                                  (Leader: <strong>{teamGrp.leaderName}</strong> · Site: {teamGrp.siteName})
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-teal-300">
+                                {teamGrp.vouchersCount} Usage Voucher(s) · {teamGrp.materialsSummary.length} Distinct Material(s)
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Team Quick Subtotal Badges */}
+                          <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                            <span className="px-2.5 py-1 rounded-lg bg-teal-950 border border-teal-700 text-teal-200 font-bold">
+                              Team Installed: {formatNumber(teamGrp.teamTotalInstalled)}
+                            </span>
+                            <span className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-700 text-amber-300 font-bold">
+                              Team Wastage: {formatNumber(teamGrp.teamTotalWastage)}
+                            </span>
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-black">
+                              Team Total: {formatNumber(teamGrp.teamTotalConsumed)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                          {/* Team Itemized Summary Table (Team Total per Material) */}
+                          <div>
+                            <div className="text-xs font-extrabold uppercase tracking-wider text-teal-800 mb-2">
+                              {teamGrp.teamName} — Material Summary &amp; Team Subtotal
+                            </div>
+                            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                              <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
+                                  <tr>
+                                    <th className="py-2 px-3">#</th>
+                                    <th className="py-2 px-3">Item Code</th>
+                                    <th className="py-2 px-3">Material Description</th>
+                                    <th className="py-2 px-3 text-center">Unit</th>
+                                    <th className="py-2 px-3 text-right text-teal-800">Team Installed Qty</th>
+                                    <th className="py-2 px-3 text-right text-amber-800">Team Wastage Qty</th>
+                                    <th className="py-2 px-3 text-right text-indigo-900">Team Total Consumed</th>
+                                    <th className="py-2 px-3 text-right">Total Value</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {teamGrp.materialsSummary.map((m, mIdx) => (
+                                    <tr key={m.itemId} className="hover:bg-slate-50">
+                                      <td className="py-2 px-3 font-mono text-slate-400">{mIdx + 1}</td>
+                                      <td className="py-2 px-3 font-mono font-bold text-slate-900">{m.itemCode}</td>
+                                      <td className="py-2 px-3 font-semibold text-slate-800">{m.itemName}</td>
+                                      <td className="py-2 px-3 text-center font-mono text-slate-600">{m.unit}</td>
+                                      <td className="py-2 px-3 text-right font-mono font-bold text-teal-700">
+                                        {formatNumber(m.installedQty)}
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-mono font-bold text-amber-700">
+                                        {formatNumber(m.wastageQty)}
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-mono font-black text-indigo-900 bg-indigo-50/40">
+                                        {formatNumber(m.totalConsumedQty)}
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-mono font-semibold text-slate-700">
+                                        {config.currencySymbol || 'Rs.'} {formatNumber(m.totalCost)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot className="bg-slate-900 text-white font-bold border-t-2 border-slate-800">
+                                  <tr>
+                                    <td colSpan={4} className="py-2.5 px-3 text-right uppercase tracking-wider text-[11px] text-teal-300">
+                                      Subtotal for {teamGrp.teamName}:
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-teal-300">
+                                      {formatNumber(teamGrp.teamTotalInstalled)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-amber-300">
+                                      {formatNumber(teamGrp.teamTotalWastage)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-300 text-sm">
+                                      {formatNumber(teamGrp.teamTotalConsumed)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-white">
+                                      {config.currencySymbol || 'Rs.'} {formatNumber(teamGrp.teamTotalCost)}
+                                    </td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Voucher-by-Voucher Detailed Log for this Team */}
+                          <details className="group border border-slate-200 rounded-xl bg-slate-50/60">
+                            <summary className="px-3.5 py-2 text-xs font-bold text-slate-700 cursor-pointer flex items-center justify-between">
+                              <span>
+                                View Voucher-by-Voucher Log for {teamGrp.teamName} ({teamGrp.voucherLines.length} item entries)
+                              </span>
+                              <span className="text-[11px] text-teal-700 group-open:rotate-180 transition-transform">▼</span>
+                            </summary>
+                            <div className="p-3 pt-0 overflow-x-auto">
+                              <table className="w-full text-left text-[11px] bg-white border border-slate-200 rounded-lg">
+                                <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                                  <tr>
+                                    <th className="py-1.5 px-2.5">Date</th>
+                                    <th className="py-1.5 px-2.5">Voucher #</th>
+                                    <th className="py-1.5 px-2.5">Scope / Sub-Project</th>
+                                    <th className="py-1.5 px-2.5">Item</th>
+                                    <th className="py-1.5 px-2.5 text-right">Installed</th>
+                                    <th className="py-1.5 px-2.5 text-right">Wastage</th>
+                                    <th className="py-1.5 px-2.5 text-right">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {teamGrp.voucherLines.map((vl, vIdx) => (
+                                    <tr key={`${vl.voucherId}-${vl.itemId}-${vIdx}`}>
+                                      <td className="py-1.5 px-2.5 font-mono text-slate-600">{vl.date}</td>
+                                      <td className="py-1.5 px-2.5 font-mono font-bold text-teal-700">{vl.voucherNumber}</td>
+                                      <td className="py-1.5 px-2.5 text-slate-700">{vl.subProjectName}</td>
+                                      <td className="py-1.5 px-2.5 font-semibold text-slate-900">
+                                        [{vl.itemCode}] {vl.itemName} ({vl.unit})
+                                      </td>
+                                      <td className="py-1.5 px-2.5 text-right font-mono font-bold text-teal-700">
+                                        {formatNumber(vl.installedQty)}
+                                      </td>
+                                      <td className="py-1.5 px-2.5 text-right font-mono font-bold text-amber-700">
+                                        {formatNumber(vl.wastageQty)}
+                                      </td>
+                                      <td className="py-1.5 px-2.5 text-right font-mono font-black text-slate-900">
+                                        {formatNumber(vl.totalConsumedQty)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* SECTION 2: FULL SITE (PROJECT) CONSOLIDATED GRAND TOTAL TABLE */}
+                  <div className="bg-white border-2 border-emerald-600 rounded-2xl overflow-hidden shadow-md">
+                    <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-emerald-300 flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-emerald-400" />
+                          <span>
+                            Part 2: Full Site (Project) Consolidated Grand Total — All Teams Combined
+                          </span>
+                        </h3>
+                        <p className="text-xs text-teal-100 mt-0.5">
+                          Combined material consumption and wastage across all {fullSiteReportData.teamsBreakdown.length} team(s) for{' '}
+                          <strong>{fullSiteReportData.project.projectName}</strong>.
+                        </p>
+                      </div>
+                      <span className="px-3 py-1 rounded-lg bg-emerald-500 text-slate-950 font-mono font-black text-xs">
+                        Full Total Consumed: {formatNumber(fullSiteReportData.grandTotalConsumed)} Units
+                      </span>
+                    </div>
+
+                    <div className="p-4 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-800 font-extrabold uppercase border-b-2 border-slate-300">
+                          <tr>
+                            <th className="py-2.5 px-3">#</th>
+                            <th className="py-2.5 px-3">Item Code</th>
+                            <th className="py-2.5 px-3">Material Description</th>
+                            <th className="py-2.5 px-3">Teams Involved</th>
+                            <th className="py-2.5 px-3 text-center">Unit</th>
+                            <th className="py-2.5 px-3 text-right text-teal-800">Full Installed Qty</th>
+                            <th className="py-2.5 px-3 text-right text-amber-800">Full Wastage Qty</th>
+                            <th className="py-2.5 px-3 text-right text-indigo-950">Full Total Consumed</th>
+                            <th className="py-2.5 px-3 text-right">Full Total Value</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {fullSiteReportData.consolidatedMaterials.map((mat, idx) => (
+                            <tr key={mat.itemId} className="hover:bg-emerald-50/30">
+                              <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{mat.itemCode}</td>
+                              <td className="py-2.5 px-3 font-bold text-slate-900">{mat.itemName}</td>
+                              <td className="py-2.5 px-3">
+                                <div className="flex flex-wrap gap-1">
+                                  {mat.teamsList.map((tn) => (
+                                    <span
+                                      key={tn}
+                                      className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700"
+                                    >
+                                      {tn}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono text-slate-600">{mat.unit}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-teal-800">
+                                {formatNumber(mat.installedQty)}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-700">
+                                {formatNumber(mat.wastageQty)}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-black text-indigo-950 bg-indigo-50/60 text-sm">
+                                {formatNumber(mat.totalConsumedQty)}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                                {config.currencySymbol || 'Rs.'} {formatNumber(mat.totalCost)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-emerald-950 text-white font-black border-t-2 border-emerald-700 text-sm">
+                          <tr>
+                            <td colSpan={5} className="py-3 px-3 text-right uppercase tracking-wider text-xs text-emerald-300">
+                              FULL SITE (PROJECT) GRAND TOTAL (ALL TEAMS):
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-teal-300">
+                              {formatNumber(fullSiteReportData.grandTotalInstalled)}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-amber-300">
+                              {formatNumber(fullSiteReportData.grandTotalWastage)}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-emerald-300 text-base">
+                              {formatNumber(fullSiteReportData.grandTotalConsumed)}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-white">
+                              {config.currencySymbol || 'Rs.'} {formatNumber(fullSiteReportData.grandTotalCost)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Printable Voucher Modal */}
       {selectedUsageForPrint && (
         <PrintableDocumentModal
@@ -3006,12 +3979,18 @@ export const ProjectMaterialUsageView: React.FC = () => {
           notes={`Work Scope: ${selectedUsageForPrint.workDetails || 'General project construction / installation'}`}
           items={selectedUsageForPrint.items.map((row) => {
             const itm = items.find((i) => i.id === row.itemId);
+            const instQty = Number(row.quantity || 0);
+            const wastQty = Number(row.wastageQuantity || 0);
             return {
               itemCode: itm?.itemCode || 'CODE',
               itemName: itm?.itemName || 'Material Item',
               category: itm?.category || 'Telecom Equipment',
-              quantity: row.quantity,
+              quantity: instQty + wastQty,
               unit: itm?.unit || 'Nos',
+              remarks:
+                wastQty > 0
+                  ? `Installed: ${formatNumber(instQty)} | Wastage: ${formatNumber(wastQty)} (Total: ${formatNumber(instQty + wastQty)})`
+                  : `Installed: ${formatNumber(instQty)}`,
             };
           })}
         />

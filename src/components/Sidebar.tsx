@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
         },
         {
           id: 'project-usage',
-          label: 'Material Usage',
+          label: 'Material Usage / Daily Progress Entry',
           icon: Layers,
         },
         {
@@ -227,7 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
                             >
                               <Icon className="w-4 h-4 shrink-0" />
                             </div>
-                            <span className="truncate">{item.label}</span>
+                            <span className="leading-snug">{item.label}</span>
                           </div>
 
                           {item.badge && (
