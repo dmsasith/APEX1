@@ -134,11 +134,17 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
         detail:
           'Open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" or "Individual Project". Physical FOC materials default to "Main Central Warehouse (Central Yard)" as inbound storage, while selecting the Target Project automatically detects and LOCKS the "Allocated Site Branch" so stock cannot be accidentally issued to the wrong site. If a shipment was logged under the wrong project, Admins can edit and reassign the FOC voucher directly inside Client Free Stock with full audit logging.',
       },
+      {
+        stepTitle: '5. Central Stock Item Selection — Full End-to-End Lifecycle Summary & Printable A4 Report',
+        detail:
+          'In "Main Stock Control -> Central Stock Inventory", click any item row (or its "Summary" button) to expand a complete End-to-End Material Lifecycle & Custody Summary directly underneath that item. It breaks down: (1) Inbound Sources (how much arrived via Supplier POs/GRN, Manual/Spot Entries, Client FOC, and Site Good Returns), (2) Site Branch Distribution & each site\'s current Site Store In-Hand, (3) Field Teams Allocation, Used, Wasted & each team\'s current Team In-Hand, (4) Project Consumption & Wastage logs, and live Custody KPI cards (Central In-Hand, Sites In-Hand, Teams In-Hand, Used, and Wasted/Damaged) — complete with "Print A4 Summary" and "Download PDF" buttons.',
+      },
     ],
     keyOutputs: [
       'Printable Purchase Orders (PO) & Multi-Item Batch GRN Vouchers',
       'Return to Vendor (RTV) Debit Notes & Outward Gate Passes',
       'Client FOC Locked Site Branch Allocation & Admin Voucher Reassignment',
+      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (Printable A4 / PDF)',
     ],
   },
   {
@@ -146,9 +152,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     number: 'Chapter 03',
     category: 'operations',
     categoryLabel: 'Site Transfers & Field Dispatch',
-    title: '2-Tab Site Stock Requisitions (Normal Stock vs. Project Client FOC), HQ Dispatches & Crew Issuance (IN)',
+    title: '2-Tab Site Stock Requisitions, Site Branch Item Forward Summary, HQ Dispatches & Crew Issuance (IN)',
     summary:
-      'Submit Normal Stock or Branch-Exclusive Client Free Stock (FOC) requisitions with automatic Site Low-Stock priority sorting, and control every movement from Central HQ to Regional Site Yards and Field Teams.',
+      'Submit Normal Stock or Branch-Exclusive Client Free Stock (FOC) requisitions, inspect forward item traceability at any Site Branch, and control every movement from Central HQ to Regional Site Yards and Field Teams.',
     icon: Send,
     steps: [
       {
@@ -162,18 +168,19 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Central HQ reviews the requisition table (displaying full Item Code + Material Description, wrapped Date/Time, and project badges). When approved and confirmed as received at the Site Branch, Normal requests deduct from Central Main Stock and add to Site Branch Stock, while FOC requests deduct from the Central Main FOC Pool and transfer into the Site Branch Yard for Sub-Project or Individual Project usage.',
       },
       {
-        stepTitle: '3. Daily Issuance to Field Crews (IN / Gate Pass)',
+        stepTitle: '3. Site Branch Stock Item Selection — Forward Traceability Summary & Printable A4 Report',
         detail:
-          'In "Issue to Teams", HQ or Site Supervisors issue consumable materials and returnable tools to a specific Field Team Leader (including drum/batch/serial remarks) and print a signable Issue Note (IN) / Gate Pass.',
+          'In "Site Branch Stock (Site Inventories)", click any item row (or its "Forward Summary" button) to expand the Site Branch Forward Traceability Summary underneath that item. It shows everything that happened to that item at and forward from the selected Site Branch: transfers received from HQ/FOC, quantities issued to each Field Team at that site, quantities used and wasted on site projects, Site Yard In-Hand, and Site Teams In-Hand — with "Print A4 Summary" and "Download PDF" buttons.',
       },
       {
-        stepTitle: '4. Live Team In-Hand Custody & Deletion Guard',
+        stepTitle: '4. Daily Issuance to Field Crews (IN / Gate Pass) & Live Team In-Hand Custody',
         detail:
-          'Open "Team In-Hand Stock" anytime to audit the exact balance held by each Field Crew Leader and print Team Stock Audit Reports (TSR). Teams holding unreturned In-Hand Stock are automatically protected from accidental deletion.',
+          'In "Issue to Teams", HQ or Site Supervisors issue consumable materials and returnable tools to a specific Field Team Leader and print a signable Issue Note (IN) / Gate Pass. Open "Team In-Hand Stock" anytime to audit the exact balance held by each Field Crew Leader and print Team Stock Audit Reports (TSR).',
       },
     ],
     keyOutputs: [
       '2-Tab Stock Requisitions: Normal Stock vs. Branch-Exclusive Client FOC',
+      'Site Branch Stock Item Selection -> Forward Traceability Summary (Printable A4 / PDF)',
       'Auto Low-Stock Top Sorting & Live "Site Avl:" + "Main:" Balances in Dropdowns',
       'Printable Numbered Issue Notes (IN), Gate Passes & TSR Audit Reports',
     ],
@@ -275,19 +282,19 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'When opening any voucher for printing, click "Customize Voucher Header, Signers & Digital Signatures" at the top of the modal to override Document No, Date, Project Code, Prepared/Approved Signer Names, Designations, or Digital Signatures for that specific print.',
       },
       {
-        stepTitle: '3. Tamper-Proof Audit Trail & Safe Recycle Bin',
+        stepTitle: '3. Admin Password Verification for Any Deletion, Audit Trail & Safe Recycle Bin',
         detail:
-          'Every stock addition, dispatch, edit, or deletion is recorded with user identity and timestamp in "Audit Trail". Deleted records can be restored from the "Recycle Bin", while historical team usage links remain permanently protected.',
+          'To prevent accidental or unauthorized data removal, any delete, clear, or purge action across the entire system requires entering the Admin Password before confirmation. Every stock addition, dispatch, edit, or deletion is recorded in "Audit Trail", and deleted records can be restored from the "Recycle Bin".',
       },
       {
-        stepTitle: '4. 1-Click Full System JSON & Multi-Sheet Excel Backups',
+        stepTitle: '4. Country-Based Phone Digit Validation & 1-Click Full System Backups',
         detail:
-          'Export a complete offline snapshot of your entire workspace (JSON Backup with built-in Offline Backup Viewer) or download clean multi-sheet Excel reports at any time.',
+          'All phone number inputs automatically detect the logged-in workspace country (e.g., Sri Lanka 10 local digits / 9 subscriber digits) and enforce exact digit limits. Export a complete offline snapshot of your entire workspace (JSON Backup with built-in Offline Backup Viewer) or download multi-sheet Excel reports anytime.',
       },
     ],
     keyOutputs: [
       'Machinery & Returnable Tool Custody Ledger',
-      'Per-Voucher Live Signer & Digital Signature Selector',
+      'Admin Password Protection Required for All Deletions & Country Phone Digit Validation',
       'Tamper-Proof Audit Trail & Protected Recycle Bin',
       '1-Click Full JSON Backup, Offline Viewer & Excel Export',
     ],
@@ -364,11 +371,17 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
         detail:
           '"Client Free Stock" හි "+ Log Client Free Stock" ෆෝම් එක දැන් ඉතා පිළිවෙළට සකසා ඇත. Receiving Storage Yard ලෙස "Main Central Warehouse" Default පවතින අතර, Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට ස්වයංක්‍රීයව Link වී Lock වේ (වෙනත් ශාඛාවකට වෙනස් කළ නොහැක). යම් හෙයකින් FOC තොගයක් වැරදි Project එකකට ඇතුළත් වී ඇත්නම්, Admin හට Client Free Stock තුළදීම එම වවුචරය Edit කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.',
       },
+      {
+        stepTitle: '5. Central Stock හි Item එකක් Select කළ විට පෙන්වන සම්පූර්ණ Item Lifecycle Summary සහ Printable වාර්තාව',
+        detail:
+          '"Main Stock Control -> Central Stock Inventory" වගුවේ ඕනෑම භාණ්ඩ පේළියක් මත ක්ලික් කළ විට (හෝ "Summary" බටන් එක එබූ විට) එම පේළියට යටින් සම්පූර්ණ Item Lifecycle & Custody Summary එක විවෘත වේ. එම භාණ්ඩය කවර සැපයුම්කරුවන්ගෙන් PO / GRN හරහා හෝ Manual / FOC මගින් කොපමණ ආවාද, එක් එක් Site Branch එකට බෙදී ගිය ආකාරය, Site වලින් Field Teams වලට බෙදුණු ආකාරය, Teams මගින් Projects වලට Used සහ Wasted ගිය ප්‍රමාණයන්, මෙන්ම Central In-Hand, Site In-Hand සහ Team In-Hand තොග සියල්ල එකම තැනකින් බලා "Print A4 Summary" හෝ "Download PDF" මගින් මුද්‍රණය කරගත හැක.',
+      },
     ],
     keyOutputs: [
       'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Multi-Item GRN වවුචර්',
       'Return to Vendor (RTV) Debit Notes සහ Outward Gate Pass පත්‍රිකා',
       'Client FOC Auto-Locked Site Branch සහ Admin මගින් FOC වවුචර් නිවැරදි කිරීම',
+      'Central Stock Item Summary — PO/Manual ලැබීම්, Site/Team බෙදීම්, Used/Wasted සහ Printable A4/PDF',
     ],
   },
   {
@@ -376,9 +389,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     number: '03 වන පරිච්ඡේදය',
     category: 'operations',
     categoryLabel: 'ශාඛා හුවමාරු සහ කණ්ඩායම් නිකුත් කිරීම්',
-    title: 'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock හා Project Client FOC), Low Stock පෙරහන සහ වැඩ කණ්ඩායම් නිකුත් කිරීම් (IN)',
+    title: 'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත්, Site Branch Item Forward Summary සහ වැඩ කණ්ඩායම් නිකුත් කිරීම් (IN)',
     summary:
-      'සාමාන්‍ය තොග (Normal Stock) සහ අදාළ ශාඛාවේ ව්‍යාපෘතිවලට වෙන් කළ Client Free Stock (FOC) පැටලෙන්නේ නැතිව වෙන වෙනම ටැබ් දෙකකින් ඉල්ලුම් කිරීම, ශාඛාවේ අඩු තොග (Low Stock) ලැයිස්තුවේ උඩටම පෙන්වීම සහ ප්‍රධාන ගබඩාවෙන් අනුමත කළ විට ශාඛා තොගයට එකතු වීම.',
+      'සාමාන්‍ය තොග (Normal Stock) සහ Client Free Stock (FOC) වෙන වෙනම ටැබ් දෙකකින් ඉල්ලුම් කිරීම, ශාඛා ගබඩාවේ (Site Branch Stock) ඕනෑම භාණ්ඩයක් Select කළ විට ඉදිරියට සිදු වූ බෙදීම් හා භාවිතයන් පෙන්වන Printable Summary ලබාගැනීම.',
     icon: Send,
     steps: [
       {
@@ -392,18 +405,19 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'Stock Requisitions වගුවේ සෑම ඉල්ලුම්පතකම Item Code එක සමඟ භාණ්ඩයේ සම්පූර්ණ නම (Material Description) සහ Project විස්තර පැහැදිලිව පෙන්වයි. ප්‍රධාන ගබඩාවෙන් Approve කර ශාඛාවෙන් භාරගත් පසු, සාමාන්‍ය තොග Main Stock එකෙන්ද, FOC තොග ප්‍රධාන FOC Pool එකෙන්ද අඩු වී අදාළ Site Branch Stock එකට නිවැරදිව එකතු වේ.',
       },
       {
-        stepTitle: '3. එදිනෙදා වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (Issue to Teams - IN)',
+        stepTitle: '3. Site Branch Stock හි Item එකක් Select කළ විට පෙන්වන Forward Traceability Summary සහ Print පහසුකම',
         detail:
-          '"Issue to Teams" කොටසින් අදාළ වැඩ කණ්ඩායමේ නායකයා (Team Leader) වෙත අමුද්‍රව්‍ය සහ ටූල්ස් (Drum/Batch/Serial විස්තර සහිතව) නිකුත් කර, අත්සන් තැබිය හැකි නිල Issue Note (IN) / Gate Pass පත්‍රිකාව මුද්‍රණය කරගන්න.',
+          '"Site Branch Stock (Site Inventories)" තුළ ඕනෑම භාණ්ඩ පේළියක් මත ක්ලික් කළ විට (හෝ "Forward Summary" බටන් එක එබූ විට) එම ශාඛාවට HQ/FOC වලින් ලැබුණු ප්‍රමාණය, එම ශාඛාවෙන් එක් එක් Field Team වලට නිකුත් කළ ප්‍රමාණය, ශාඛාවේ Projects වල Used සහ Wasted වූ ප්‍රමාණයන්, මෙන්ම දැනට පවතින Site Store In-Hand සහ Site Teams In-Hand තොග සාරාංශය එතැනම යටින් දිස්වේ. එයද "Print A4 Summary" හෝ "Download PDF" මගින් මුද්‍රණය කළ හැක.',
       },
       {
-        stepTitle: '4. කණ්ඩායම් ළඟ දැනට පවතින තොග (Team In-Hand Stock) පරීක්ෂාව',
+        stepTitle: '4. එදිනෙදා වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Team In-Hand Stock පරීක්ෂාව',
         detail:
-          '"Team In-Hand Stock" වෙත ගොස් එක් එක් කණ්ඩායම ළඟ දැනට ඉතිරිව ඇති භාණ්ඩ හා යන්ත්‍රෝපකරණ ප්‍රමාණය බලාගත හැකි අතර TSR වාර්තාව මුද්‍රණය කළ හැක.',
+          '"Issue to Teams" කොටසින් අදාළ වැඩ කණ්ඩායමේ නායකයා (Team Leader) වෙත අමුද්‍රව්‍ය සහ ටූල්ස් නිකුත් කර Issue Note (IN) / Gate Pass මුද්‍රණය කරගන්න. "Team In-Hand Stock" වෙත ගොස් එක් එක් කණ්ඩායම ළඟ දැනට ඉතිරිව ඇති තොග බලා TSR වාර්තාව මුද්‍රණය කළ හැක.',
       },
     ],
     keyOutputs: [
       'Normal Stock සහ Branch-Exclusive Client FOC සඳහා වෙන් වූ Requisition ටැබ් 2',
+      'Site Branch Stock Item Selection -> Forward Traceability Summary (Printable A4 / PDF)',
       'ශාඛාවේ Low Stock භාණ්ඩ ලැයිස්තුවේ උඩින්ම පෙන්වීම සහ "Site Avl:" තොග දර්ශකය',
       'Material Description සහිත පැහැදිලි Requisition වගුව, IN සහ TSR වාර්තා',
     ],
@@ -505,19 +519,19 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'ඕනෑම වවුචරයක් Print කිරීමට විවෘත කළ විට උඩින් ඇති "Customize Voucher Header, Signers & Digital Signatures" ක්ලික් කිරීමෙන් එම වවුචරයට පමණක් අදාළව Document No, දිනය, Prepared/Approved නිලධාරීන්ගේ නම්, තනතුරු සහ Digital Signatures එතැනදීම තෝරා Print හෝ PDF කළ හැක.',
       },
       {
-        stepTitle: '3. වෙනස් කළ නොහැකි Audit Trail සහ ආරක්ෂිත Recycle Bin',
+        stepTitle: '3. ඕනෑම දත්තයක් Delete කිරීමේදී Admin Password ආරක්ෂාව, Audit Trail සහ Recycle Bin',
         detail:
-          'පද්ධතියේ සිදුවන සෑම තොග ඇතුළත් කිරීමක්, නිකුත් කිරීමක්, වෙනස් කිරීමක් හෝ මකා දැමීමක්ම සිදු කළ නිලධාරියා සහ වේලාව සමඟ "Audit Trail" හි සටහන් වේ. අත්වැරදීමකින් මැකුණු දත්ත "Recycle Bin" මගින් නැවත ලබාගත හැක.',
+          'අත්වැරදීමකින් හෝ අනවසරයෙන් දත්ත මැකී යාම වැළැක්වීම සඳහා පද්ධතියේ ඕනෑම දෙයක් Delete කිරීමේදී නිකන්ම Confirm වීම වෙනුවට Admin Password එක ඇතුළත් කිරීම අනිවාර්ය කර ඇත. සිදුවන සෑම ක්‍රියාවක්ම "Audit Trail" හි සටහන් වන අතර මැකුණු දත්ත "Recycle Bin" මගින් නැවත ලබාගත හැක.',
       },
       {
-        stepTitle: '4. එක ක්ලික් එකකින් සම්පූර්ණ JSON Backup සහ Excel වාර්තා ලබාගැනීම',
+        stepTitle: '4. රටට අදාළ දුරකථන අංක ගණන ස්වයංක්‍රීයව හඳුනාගැනීම සහ 1-Click JSON/Excel Backups',
         detail:
-          'ඕනෑම මොහොතක සම්පූර්ණ පද්ධතියේම දත්ත Offline JSON Backup ගොනුවක් ලෙස හෝ Multi-Sheet Excel වාර්තාවක් ලෙස බාගත කරගත හැක.',
+          'ලොග් වී සිටින ආයතනයේ රට අනුව (උදා: ශ්‍රී ලංකාව සඳහා ඉලක්කම් 10 / +94 සමඟ 9) දුරකථන අංක ඇතුළත් කරන සෑම තැනකම නිවැරදි අංක ගණන ස්වයංක්‍රීයව පරීක්ෂා කෙරේ. ඕනෑම මොහොතක සම්පූර්ණ පද්ධතියේම දත්ත Offline JSON Backup ගොනුවක් ලෙස හෝ Multi-Sheet Excel වාර්තාවක් ලෙස බාගත කරගත හැක.',
       },
     ],
     keyOutputs: [
       'යන්ත්‍රෝපකරණ සහ ටූල්ස් භාරකාරත්ව ලෙජරය (Machinery Custody)',
-      'Print Modal තුළදීම Signers සහ Digital Signatures තෝරාගැනීමේ පහසුකම',
+      'Delete කිරීමේදී Admin Password අනිවාර්ය කිරීම සහ රට අනුව Phone Number Validation',
       'සම්පූර්ණ Audit Trail වාර්තා සහ ආරක්ෂිත Recycle Bin',
       '1-Click JSON Backup, Offline Viewer සහ Excel Export පහසුකම',
     ],
@@ -574,7 +588,7 @@ const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
     affectsTo: [
       'RN - Stock Requisitions (ශාඛා මගින් ප්‍රධාන ගබඩාවෙන් බඩු ඉල්ලුම් කරන පත්‍රිකාව)',
       'IN - Issue to Teams (වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීමේ පත්‍රිකාව / Gate Pass)',
-      'PU - Material Usage / Daily Progress Entry (ව්‍යාපෘති භාණ්ඩ භාවිත හා Wastage වවුචරය)',
+      'PU - Material Usage / Daily Progress Entry (ව්‍යාපෘති භාවිත හා Wastage වවුචරය)',
       'TSR - Team In-Hand Stock (කණ්ඩායම් සතු තොග පරීක්ෂණ වාර්තාව)',
     ],
   },
@@ -610,8 +624,10 @@ const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
 
 const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
   {
-    group: 'Warehouse, Procurement & Inventory',
+    group: 'Warehouse, Procurement & End-to-End Item Traceability',
     items: [
+      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (PO/Manual/FOC Inbound, Site & Team Distribution, Used/Wasted, Central/Site/Team In-Hand + Printable A4/PDF)',
+      'Site Branch Stock Item Selection -> Forward Traceability Summary (HQ Transfers, Site Team Issues, Project Used/Wasted, Site & Team In-Hand + Printable A4/PDF)',
       'Sequential 0001-Based Codes, IDs & Voucher References (ITM-0001, PO-2026-0001, RN-2026-0001)',
       'Central HQ Warehouse + Unlimited Regional Site Yards',
       'Single-Shot Camera & USB Gun Barcode Scanner with Auto-Hide & "Scan Now" Button',
@@ -639,9 +655,9 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
       'Default ISO 9001:2015 Controlled Formats (FORMAT-01 to 04) with Auto-Synced Tenant Company Header',
       'Tab 2 Signer Governance: Prepared By, Approved By & Reviewed By Names, Designations & Departments',
       'Tab 3 Digital Signatures Library: Draw on Interactive Pad or Upload PNG/JPG Signature + Auto-Match',
-      'Optional PDF / Image Company Format Upload + Live A4 Format Studio & Per-Voucher Customization',
+      'Optional PDF / Image Company Format Upload (Max 1MB Limit) + Live A4 Format Studio',
       'Isolated Single-Click A4 Print Preview (Prints Only the Voucher/Report) + Genuine A4 PDF Download',
-      'Single-Site, Multi-Site & Central HQ Role Access Control + Auto Email Verification (apexstox.com)',
+      'Admin Password Verification Required for All Deletions & Country-Aware Phone Digit Validation',
       'Tamper-Proof Audit Trail, Safe Recycle Bin & 1-Click JSON Backup',
     ],
   },
@@ -649,8 +665,10 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
 
 const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
   {
-    group: 'ගබඩා කළමනාකරණය සහ ප්‍රසම්පාදනය (Warehouse & Procurement)',
+    group: 'ගබඩා කළමනාකරණය, ප්‍රසම්පාදනය සහ Item Lifecycle Summary',
     items: [
+      'Central Stock Item Summary: ඕනෑම Item එකක් Select කළ විට PO/Manual/FOC ලැබීම්, Site හා Team බෙදීම්, Used/Wasted සහ Central/Site/Team In-Hand පෙන්වන Printable A4/PDF සාරාංශය',
+      'Site Branch Stock Forward Summary: ශාඛා ගබඩාවේ Item එකක් Select කළ විට HQ ලැබීම්, ශාඛාවේ Teams වලට නිකුත් කිරීම්, Used/Wasted සහ In-Hand පෙන්වන Printable A4/PDF සාරාංශය',
       '0001 සිට පිළිවෙළට ජනනය වන Item Codes, Project IDs සහ Voucher References',
       'ප්‍රධාන ගබඩාව (Central HQ) සහ සීමාවකින් තොර ප්‍රාදේශීය ශාඛා ගබඩා (Site Yards)',
       'Detect වූ සැණින් නතර වී Camera ඉවත් වන Single-Shot Scanner සහ "Scan Now" බටන් එක',
@@ -678,9 +696,9 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
       'Default ISO 9001:2015 Controlled Formats (FORMAT-01 සිට 04) සහ ස්වයංක්‍රීය Tenant Company Header',
       'Tab 2 Signer Governance: Prepared By, Approved By සහ Reviewed By නිලධාරීන්ගේ නම්, තනතුරු සහ අංශ',
       'Tab 3 Digital Signatures: තිරය මත අත්සන ඇඳීම (Draw) හෝ Image Upload කිරීම සහ වවුචර් වලට Auto-Match වීම',
-      'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කිරීම සහ Live A4 Format Studio සැකසුම්',
+      'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කිරීම (උපරිම 1MB) සහ Live A4 Format Studio සැකසුම්',
       'සම්පූර්ණ වෙබ් පිටුව නොව අදාළ Voucher/Report එක පමණක් එකවර Print කරන Isolated A4 Print හා PDF',
-      'Single-Site, Multi-Site, Central HQ බලතල සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
+      'ඕනෑම දෙයක් Delete කිරීමේදී Admin Password අනිවාර්ය වීම සහ රට අනුව Phone Number අංක ගණන පරීක්ෂාව',
       'Audit Trail විගණන වාර්තා, Recycle Bin සහ 1-Click JSON Offline Backup',
     ],
   },
