@@ -32,6 +32,8 @@ import { useStock } from '../../context/StockContext';
 import { Project, ProjectScope, ProjectType, ProjectTypeTemplateItem } from '../../types';
 import { formatNumber } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
 export const ProjectsManagementView: React.FC = () => {
   const {
@@ -1998,16 +2000,19 @@ export const ProjectsManagementView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Customer / Contact Phone
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Customer / Contact Phone
+                    </label>
+                    <PhoneCountryBadge value={customerPhone} />
+                  </div>
                   <div className="relative">
                     <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="text"
+                      type="tel"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="e.g. 0771234567"
+                      onChange={(e) => setCustomerPhone(enforceCountryPhoneInput(e.target.value))}
+                      placeholder={detectActivePhoneCountry({ phoneValue: customerPhone }).localPlaceholder}
                       className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                     />
                   </div>

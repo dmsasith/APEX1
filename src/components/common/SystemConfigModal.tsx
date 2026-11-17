@@ -21,6 +21,12 @@ import { useStock } from '../../context/StockContext';
 import { APP_THEMES } from '../../utils/themeUtils';
 import { isSuperAdmin } from '../../types';
 import { playScanBeep } from '../../utils/barcodeUtils';
+import {
+  detectActivePhoneCountry,
+  enforceCountryPhoneInput,
+  analyzeCountryPhone,
+} from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from './PhoneCountryBadge';
 
 interface SystemConfigModalProps {
   isOpen: boolean;
@@ -28,7 +34,7 @@ interface SystemConfigModalProps {
 }
 
 export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, onClose }) => {
-  const { config, updateConfig, currentUser, activeItems, autoGenerateMissingBarcodes, firebaseConnected } = useStock();
+  const { config, updateConfig, currentUser, currentTenant, activeItems, autoGenerateMissingBarcodes, firebaseConnected } = useStock();
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   const [companyName, setCompanyName] = useState(config.companyName || '');
@@ -40,6 +46,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
   const [email, setEmail] = useState(config.email || '');
   const [themeId, setThemeId] = useState(config.themeId || config.logoColor || 'emerald');
   const [usdToLkrRate, setUsdToLkrRate] = useState<number>(config.usdToLkrRate || 332.64);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   // Barcode & Scanner Settings
   const [barcodeEnabled, setBarcodeEnabled] = useState<boolean>(config.barcodeEnabled !== false);
@@ -77,16 +84,34 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
 
       setSavedSuccess(false);
       setBarcodeSyncNotice(null);
+      setPhoneError(null);
     }
   }, [isOpen, config]);
 
   if (!isOpen) return null;
 
   const missingBarcodesCount = activeItems.filter((i) => !i.barcode || !i.barcode.trim()).length;
+  const activeCountryRule = detectActivePhoneCountry({
+    phoneValue: phone,
+    tenantCountry: currentTenant?.country,
+    currencySymbol,
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isCentralAdmin) return;
+    setPhoneError(null);
+
+    if (phone.trim()) {
+      const check = analyzeCountryPhone(phone, {
+        tenantCountry: currentTenant?.country,
+        currencySymbol,
+      });
+      if (!check.isValid) {
+        setPhoneError(check.error || 'Invalid phone number length for active country.');
+        return;
+      }
+    }
 
     updateConfig({
       companyName: companyName.trim(),
@@ -160,6 +185,12 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                 <span>System &amp; Barcode settings updated and synced to Firebase!</span>
               </div>
             )}
+            {phoneError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-700 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{phoneError}</span>
+              </div>
+            )}
 
             {/* Section 1: Organization & Identity */}
             <div className="space-y-4">
@@ -209,15 +240,25 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                    <Phone className="w-3 h-3 text-slate-400" /> Contact Phone
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-slate-400" /> Contact Phone
+                    </label>
+                    <PhoneCountryBadge value={phone} currencyOverride={currencySymbol} />
+                  </div>
                   <input
-                    type="text"
+                    type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) =>
+                      setPhone(
+                        enforceCountryPhoneInput(e.target.value, {
+                          tenantCountry: currentTenant?.country,
+                          currencySymbol,
+                        })
+                      )
+                    }
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium bg-white text-slate-900"
-                    placeholder="+94 11 2345678"
+                    placeholder={activeCountryRule.localPlaceholder}
                   />
                 </div>
 

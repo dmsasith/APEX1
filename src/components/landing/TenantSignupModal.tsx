@@ -12,10 +12,18 @@ import {
   X,
   ArrowRight,
   AlertCircle,
+  Globe,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { TenantRegistrationForm } from '../../types';
 import { TermsConditionsModal } from './TermsConditionsModal';
+import {
+  COUNTRY_PHONE_RULES,
+  detectActivePhoneCountry,
+  enforceCountryPhoneInput,
+  analyzeCountryPhone,
+} from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
 interface TenantSignupModalProps {
   isOpen: boolean;
@@ -30,6 +38,8 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
 }) => {
   const { registerTenant } = useStock();
 
+  const initialDetectedRule = detectActivePhoneCountry();
+
   const [formData, setFormData] = useState<TenantRegistrationForm>({
     companyName: '',
     slug: '',
@@ -37,8 +47,8 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
     adminEmail: '',
     adminPassword: '',
     contactPhone: '',
-    currencySymbol: 'Rs.',
-    country: 'Sri Lanka',
+    currencySymbol: initialDetectedRule.currencies[0] || 'Rs.',
+    country: initialDetectedRule.name || 'Sri Lanka',
     initialWarehouseName: 'Central Main Warehouse',
   });
 
@@ -49,6 +59,12 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   if (!isOpen) return null;
+
+  const activeCountryRule = detectActivePhoneCountry({
+    phoneValue: formData.contactPhone,
+    tenantCountry: formData.country,
+    currencySymbol: formData.currencySymbol,
+  });
 
   const handleCompanyNameChange = (name: string) => {
     const slug = name
@@ -83,6 +99,16 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
     if (!formData.adminPassword || formData.adminPassword.length < 6) {
       setErrorMsg('Password must be at least 6 characters.');
       return;
+    }
+    if ((formData.contactPhone || '').trim()) {
+      const phoneCheck = analyzeCountryPhone(formData.contactPhone || '', {
+        tenantCountry: formData.country,
+        currencySymbol: formData.currencySymbol,
+      });
+      if (!phoneCheck.isValid) {
+        setErrorMsg(phoneCheck.error || 'Please enter a valid phone number for your selected country.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -256,18 +282,30 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Contact Phone Number
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-bold text-slate-300">
+                      Contact Phone Number
+                    </label>
+                    <PhoneCountryBadge
+                      value={formData.contactPhone}
+                      countryOverride={formData.country}
+                      currencyOverride={formData.currencySymbol}
+                      dark
+                    />
+                  </div>
                   <div className="relative">
                     <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="tel"
-                      placeholder="+94 77 123 4567"
+                      placeholder={activeCountryRule.localPlaceholder}
                       value={formData.contactPhone}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, contactPhone: e.target.value }))
-                      }
+                      onChange={(e) => {
+                        const capped = enforceCountryPhoneInput(e.target.value, {
+                          tenantCountry: formData.country,
+                          currencySymbol: formData.currencySymbol,
+                        });
+                        setFormData((prev) => ({ ...prev, contactPhone: capped }));
+                      }}
                       className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -275,13 +313,45 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
               </div>
             </div>
 
-            {/* Warehouse & Currency Preferences */}
+            {/* Country, Warehouse & Currency Preferences */}
             <div className="border-t border-slate-800/80 pt-3">
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-2 block">
-                Warehouse & Currency
+                Country, Warehouse &amp; Currency
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Operating Country
+                  </label>
+                  <div className="relative">
+                    <Globe className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <select
+                      value={formData.country || 'Sri Lanka'}
+                      onChange={(e) => {
+                        const selectedCountry = e.target.value;
+                        const matchedRule = COUNTRY_PHONE_RULES.find((r) => r.name === selectedCountry);
+                        setFormData((prev) => ({
+                          ...prev,
+                          country: selectedCountry,
+                          currencySymbol: matchedRule?.currencies[0] || prev.currencySymbol,
+                          contactPhone: enforceCountryPhoneInput(prev.contactPhone || '', {
+                            tenantCountry: selectedCountry,
+                            currencySymbol: matchedRule?.currencies[0] || prev.currencySymbol,
+                          }),
+                        }));
+                      }}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      {COUNTRY_PHONE_RULES.map((rule) => (
+                        <option key={rule.code} value={rule.name}>
+                          {rule.flag} {rule.name} ({rule.dialCode})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
                     Default Currency Symbol
@@ -301,13 +371,18 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                       <option value="£">£ (GBP - British Pound)</option>
                       <option value="₹">₹ (INR - Indian Rupee)</option>
                       <option value="AED">AED (UAE Dirham)</option>
+                      <option value="A$">A$ (Australian Dollar)</option>
+                      <option value="S$">S$ (Singapore Dollar)</option>
+                      <option value="QAR">QAR (Qatari Riyal)</option>
+                      <option value="SAR">SAR (Saudi Riyal)</option>
+                      <option value="MVR">MVR (Maldivian Rufiyaa)</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Initial Central Main Yard Name
+                    Initial Central Main Yard
                   </label>
                   <div className="relative">
                     <Warehouse className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />

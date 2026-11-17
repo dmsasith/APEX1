@@ -56,6 +56,8 @@ import { SupplierReturnModal } from './SupplierReturnModal';
 import { DebitNoteModal } from './DebitNoteModal';
 import { SettleReturnModal } from './SettleReturnModal';
 import { SearchableItemSelect } from '../common/SearchableItemSelect';
+import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
 export const ProcurementView: React.FC = () => {
   const {
@@ -1728,12 +1730,15 @@ Email: ${tenantEmail}`;
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Phone / Mobile</label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-bold text-slate-700">Phone / Mobile</label>
+                    <PhoneCountryBadge value={supPhone} />
+                  </div>
                   <input
-                    type="text"
-                    placeholder="e.g. +94 11 254 9590 / +94 77 123 4567"
+                    type="tel"
+                    placeholder={detectActivePhoneCountry({ phoneValue: supPhone }).localPlaceholder}
                     value={supPhone}
-                    onChange={(e) => setSupPhone(e.target.value)}
+                    onChange={(e) => setSupPhone(enforceCountryPhoneInput(e.target.value))}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>

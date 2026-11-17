@@ -58,6 +58,8 @@ import {
 } from '../../utils/itemTypeUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
 import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
 
@@ -1889,14 +1891,17 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Branch Contact Number
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Branch Contact Number
+                    </label>
+                    <PhoneCountryBadge value={sitePhone} />
+                  </div>
                   <input
-                    type="text"
-                    placeholder="+94 77 123 4567"
+                    type="tel"
+                    placeholder={detectActivePhoneCountry({ phoneValue: sitePhone }).localPlaceholder}
                     value={sitePhone}
-                    onChange={(e) => setSitePhone(e.target.value)}
+                    onChange={(e) => setSitePhone(enforceCountryPhoneInput(e.target.value))}
                     className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-mono tabular-nums bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                   />
                 </div>
@@ -2761,11 +2766,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     </div>
                     <div className="sm:col-span-4">
                       <input
-                        type="text"
-                        placeholder="Phone (Optional)"
+                        type="tel"
+                        placeholder={`Phone (${detectActivePhoneCountry({ phoneValue: newMemberPhone }).dialCode})`}
                         value={newMemberPhone}
-                        onChange={(e) => setNewMemberPhone(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs dark:bg-slate-800 dark:text-white focus:outline-none focus:border-emerald-600"
+                        onChange={(e) => setNewMemberPhone(enforceCountryPhoneInput(e.target.value))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono dark:bg-slate-800 dark:text-white focus:outline-none focus:border-emerald-600"
                       />
                     </div>
                     <div className="sm:col-span-3">
@@ -2836,14 +2841,17 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Contact Phone
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Contact Phone
+                    </label>
+                    <PhoneCountryBadge value={contactPhone} />
+                  </div>
                   <input
-                    type="text"
-                    placeholder="+94 77 123 4567"
+                    type="tel"
+                    placeholder={detectActivePhoneCountry({ phoneValue: contactPhone }).localPlaceholder}
                     value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
+                    onChange={(e) => setContactPhone(enforceCountryPhoneInput(e.target.value))}
                     className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-mono tabular-nums bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
                   />
                 </div>
@@ -3515,12 +3523,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Contact Phone</label>
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Contact Phone</label>
+                      <PhoneCountryBadge value={clientPhoneInput} />
+                    </div>
                     <input
-                      type="text"
+                      type="tel"
                       value={clientPhoneInput}
-                      onChange={(e) => setClientPhoneInput(e.target.value)}
-                      placeholder="e.g. +94 11 234 5678"
+                      onChange={(e) => setClientPhoneInput(enforceCountryPhoneInput(e.target.value))}
+                      placeholder={detectActivePhoneCountry({ phoneValue: clientPhoneInput }).localPlaceholder}
                       className="w-full px-3 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/70 dark:bg-slate-800 dark:text-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                     />
                   </div>
@@ -3926,12 +3937,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Contact Phone</label>
+                    <PhoneCountryBadge value={editingSite.contactNumber || ''} />
+                  </div>
                   <input
-                    type="text"
+                    type="tel"
+                    placeholder={detectActivePhoneCountry({ phoneValue: editingSite.contactNumber }).localPlaceholder}
                     value={editingSite.contactNumber}
-                    onChange={(e) => setEditingSite({ ...editingSite, contactNumber: e.target.value })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    onChange={(e) =>
+                      setEditingSite({
+                        ...editingSite,
+                        contactNumber: enforceCountryPhoneInput(e.target.value),
+                      })
+                    }
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -4538,12 +4558,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Contact Phone</label>
+                    <PhoneCountryBadge value={editingTeam.contactPhone || ''} />
+                  </div>
                   <input
-                    type="text"
+                    type="tel"
+                    placeholder={detectActivePhoneCountry({ phoneValue: editingTeam.contactPhone }).localPlaceholder}
                     value={editingTeam.contactPhone}
-                    onChange={(e) => setEditingTeam({ ...editingTeam, contactPhone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    onChange={(e) =>
+                      setEditingTeam({
+                        ...editingTeam,
+                        contactPhone: enforceCountryPhoneInput(e.target.value),
+                      })
+                    }
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -4634,12 +4663,21 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact Phone</label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Contact Phone</label>
+                    <PhoneCountryBadge value={editingClient.phone || ''} />
+                  </div>
                   <input
-                    type="text"
+                    type="tel"
+                    placeholder={detectActivePhoneCountry({ phoneValue: editingClient.phone || '' }).localPlaceholder}
                     value={editingClient.phone || ''}
-                    onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                    onChange={(e) =>
+                      setEditingClient({
+                        ...editingClient,
+                        phone: enforceCountryPhoneInput(e.target.value),
+                      })
+                    }
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
               </div>

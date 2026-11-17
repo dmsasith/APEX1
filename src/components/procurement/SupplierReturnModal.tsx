@@ -24,6 +24,8 @@ import {
 import { useStock } from '../../context/StockContext';
 import { formatNumber } from '../../utils/exportUtils';
 import { SearchableItemSelect } from '../common/SearchableItemSelect';
+import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
 interface SupplierReturnModalProps {
   isOpen: boolean;
@@ -693,12 +695,15 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Driver Contact</label>
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">Driver Contact</label>
+                  <PhoneCountryBadge value={driverContact} />
+                </div>
                 <input
-                  type="text"
+                  type="tel"
                   value={driverContact}
-                  onChange={(e) => setDriverContact(e.target.value)}
-                  placeholder="+94 77 000 0000"
+                  onChange={(e) => setDriverContact(enforceCountryPhoneInput(e.target.value))}
+                  placeholder={detectActivePhoneCountry({ phoneValue: driverContact }).localPlaceholder}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>

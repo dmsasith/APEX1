@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Mail, Phone, Globe, DollarSign, X, Check, Edit3 } from 'lucide-react';
 import { Tenant } from '../../types';
+import {
+  COUNTRY_PHONE_RULES,
+  detectActivePhoneCountry,
+  enforceCountryPhoneInput,
+  analyzeCountryPhone,
+} from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
 interface TenantWorkspaceEditModalProps {
   tenant: Tenant | null;
@@ -40,6 +47,12 @@ export const TenantWorkspaceEditModal: React.FC<TenantWorkspaceEditModalProps> =
 
   if (!isOpen || !tenant) return null;
 
+  const activeCountryRule = detectActivePhoneCountry({
+    phoneValue: contactPhone,
+    tenantCountry: country,
+    currencySymbol,
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCompany = companyName.trim();
@@ -52,6 +65,16 @@ export const TenantWorkspaceEditModal: React.FC<TenantWorkspaceEditModalProps> =
     if (!cleanEmail || !cleanEmail.includes('@')) {
       setErrorMsg('Please enter a valid admin contact email address.');
       return;
+    }
+    if (contactPhone.trim()) {
+      const check = analyzeCountryPhone(contactPhone, {
+        tenantCountry: country,
+        currencySymbol,
+      });
+      if (!check.isValid) {
+        setErrorMsg(check.error || 'Please enter a valid phone number for the selected country.');
+        return;
+      }
     }
 
     const cleanSlug = (slug.trim() || cleanCompany.toLowerCase().replace(/[^a-z0-9]/g, '-')).replace(/-+/g, '-');
@@ -138,16 +161,30 @@ export const TenantWorkspaceEditModal: React.FC<TenantWorkspaceEditModalProps> =
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Contact Phone Number
-              </label>
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  Contact Phone Number
+                </label>
+                <PhoneCountryBadge
+                  value={contactPhone}
+                  countryOverride={country}
+                  currencyOverride={currencySymbol}
+                />
+              </div>
               <div className="relative">
                 <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
-                  type="text"
+                  type="tel"
                   value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
-                  placeholder="+94 77 123 4567"
+                  onChange={(e) =>
+                    setContactPhone(
+                      enforceCountryPhoneInput(e.target.value, {
+                        tenantCountry: country,
+                        currencySymbol,
+                      })
+                    )
+                  }
+                  placeholder={activeCountryRule.localPlaceholder}
                   className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-medium bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
@@ -177,13 +214,30 @@ export const TenantWorkspaceEditModal: React.FC<TenantWorkspaceEditModalProps> =
               </label>
               <div className="relative">
                 <Globe className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
+                <select
                   value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  placeholder="Sri Lanka"
+                  onChange={(e) => {
+                    const selected = e.target.value;
+                    const matched = COUNTRY_PHONE_RULES.find((r) => r.name === selected);
+                    setCountry(selected);
+                    if (matched) {
+                      setCurrencySymbol(matched.currencies[0] || currencySymbol);
+                    }
+                    setContactPhone((prev) =>
+                      enforceCountryPhoneInput(prev, {
+                        tenantCountry: selected,
+                        currencySymbol: matched?.currencies[0] || currencySymbol,
+                      })
+                    );
+                  }}
                   className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-medium bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
+                >
+                  {COUNTRY_PHONE_RULES.map((rule) => (
+                    <option key={rule.code} value={rule.name}>
+                      {rule.flag} {rule.name} ({rule.dialCode})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

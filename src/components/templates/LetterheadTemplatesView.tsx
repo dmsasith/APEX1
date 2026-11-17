@@ -37,6 +37,8 @@ import {
 import { ConfirmModal } from '../common/ConfirmModal';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
+import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 import {
   COMPANY_FORMAT_GROUPS,
   FormatGroupDefinition,
@@ -1726,13 +1728,17 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Telephone
-                      </label>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700">
+                          Telephone
+                        </label>
+                        <PhoneCountryBadge value={tel} />
+                      </div>
                       <input
-                        type="text"
+                        type="tel"
                         value={tel}
-                        onChange={(e) => setTel(e.target.value)}
+                        placeholder={detectActivePhoneCountry({ phoneValue: tel }).localPlaceholder}
+                        onChange={(e) => setTel(enforceCountryPhoneInput(e.target.value))}
                         className="w-full text-xs px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>

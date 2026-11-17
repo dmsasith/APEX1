@@ -40,6 +40,8 @@ import { ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } fr
 import { formatNumber, formatDate, formatDateTime, exportToCsv } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
+import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
 interface NewItemRow {
   itemId: string;
@@ -1722,12 +1724,15 @@ export const ClientFreeIssueView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Contact Phone</label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-bold text-slate-700">Contact Phone</label>
+                    <PhoneCountryBadge value={newClientPhone} />
+                  </div>
                   <input
-                    type="text"
+                    type="tel"
                     value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(e.target.value)}
-                    placeholder="e.g. +94 11 234 5678"
+                    onChange={(e) => setNewClientPhone(enforceCountryPhoneInput(e.target.value))}
+                    placeholder={detectActivePhoneCountry({ phoneValue: newClientPhone }).localPlaceholder}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -1912,12 +1917,21 @@ export const ClientFreeIssueView: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700">Contact Phone</label>
+                    <PhoneCountryBadge value={editingClient.phone || ''} />
+                  </div>
                   <input
-                    type="text"
+                    type="tel"
                     value={editingClient.phone || ''}
-                    onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs"
+                    placeholder={detectActivePhoneCountry({ phoneValue: editingClient.phone || '' }).localPlaceholder}
+                    onChange={(e) =>
+                      setEditingClient({
+                        ...editingClient,
+                        phone: enforceCountryPhoneInput(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono"
                   />
                 </div>
                 <div>
