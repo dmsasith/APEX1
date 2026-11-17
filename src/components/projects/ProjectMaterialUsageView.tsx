@@ -17,7 +17,7 @@ import {
   Search,
   Calendar,
   UserCheck,
-  Sparkles,
+  Compass,
   Edit2,
   ArrowRight,
   Filter,
@@ -1275,7 +1275,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
         <div className="flex items-center justify-between border-b border-teal-800/60 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center justify-center font-bold">
-              <Sparkles className="w-4 h-4" />
+              <Compass className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-white tracking-tight">
@@ -1468,7 +1468,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
               {targetSection && (
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-500/20 text-teal-200 border border-teal-500/40 shrink-0 self-start sm:self-auto flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-300" />
+                  <Layers className="w-3.5 h-3.5 text-teal-300" />
                   <span>Section: {targetSection.name}</span>
                 </span>
               )}
@@ -1490,7 +1490,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 </label>
                 {targetSection && (
                   <span className="text-[11px] font-bold text-emerald-800 bg-white border border-emerald-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                     <span>{(targetSection.templateItems || []).length} BOM Template item(s)</span>
                   </span>
                 )}

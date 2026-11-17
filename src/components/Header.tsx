@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   Layers,
   Trash2,
-  Sparkles,
+  Award,
+  Crown,
   Upload,
   Image as ImageIcon,
   Camera,
@@ -46,7 +47,7 @@ const PRESET_ICONS = [
   { id: 'boxes', name: 'Warehouse / Boxes', icon: Boxes },
   { id: 'factory', name: 'Factory / Yard', icon: Factory },
   { id: 'shield', name: 'Shield / Security', icon: ShieldCheck },
-  { id: 'sparkles', name: 'Modern / Tech', icon: Sparkles },
+  { id: 'sparkles', name: 'Executive / Award', icon: Award },
   { id: 'cpu', name: 'Industrial / IoT', icon: Cpu },
   { id: 'layers', name: 'Logistics Layers', icon: Layers },
 ];
@@ -235,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white/88 backdrop-blur-xl text-slate-900 border-b border-white/95 shadow-[0_8px_28px_-10px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,1)]">
+      <header className="sticky top-0 z-30 bg-slate-200/80 backdrop-blur-xl text-slate-900 border-b border-slate-300/85 shadow-[0_8px_28px_-10px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,0.75)]">
         {/* Main Top Liquid Glass Bar - Aligned to exact same 1600px grid as Workspace */}
         <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 min-h-[60px] flex items-center justify-between gap-4">
           {/* Zone 1: Company & System Identity (Left-aligned with Sidebar) */}
@@ -273,7 +274,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                       <button
                         type="button"
                         onClick={handleOpenLogoModal}
-                        className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                        className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/75 transition-colors cursor-pointer shrink-0"
                         aria-label="Edit"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -354,7 +355,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
                   }`}
                   title={`Subscription: ${planLabel} (${daysLeft} days remaining). Click to view details.`}
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <Crown className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                   <span>{planLabel} ({daysLeft}d left)</span>
                 </button>
               );
@@ -426,7 +427,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
         </div>
 
         {/* Row 2: Sub-Bar (Aligned to exact same 1600px grid as Row 1 & Workspace) */}
-        <div className="bg-slate-50/85 border-t border-slate-200/75">
+        <div className="bg-slate-300/45 border-t border-slate-300/80">
           <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-600">
             {/* Active User Controls (Left-aligned with Logo & Sidebar) */}
             <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
@@ -471,7 +472,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
               <button
                 type="button"
                 onClick={logout}
-                className="group h-8 flex items-center gap-1.5 px-3.5 rounded-xl bg-slate-100/90 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200/90 hover:border-rose-200 font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap"
+                className="group h-8 flex items-center gap-1.5 px-3.5 rounded-xl bg-white/95 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200/90 hover:border-rose-200 font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap"
                 title="Log Out"
               >
                 <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 shrink-0 transition-colors" />

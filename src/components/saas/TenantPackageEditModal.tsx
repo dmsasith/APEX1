@@ -4,7 +4,7 @@ import {
   Unlock,
   ShieldCheck,
   Zap,
-  Sparkles,
+  Crown,
   Clock,
   Calendar,
   AlertCircle,
@@ -279,7 +279,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
               <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between gap-2 animate-in fade-in">
                 <div>
                   <div className="font-bold text-amber-900 text-xs flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
                     <span>Upcoming Queued Package:</span>
                     <strong className="text-amber-950 font-black">
                       {sub.queuedSubscription.plan === 'pro_annual'
@@ -328,7 +328,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4 animate-in fade-in">
               <div className="flex items-center justify-between pb-1 border-b border-slate-200">
                 <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <Crown className="w-4 h-4 text-emerald-600" />
                   <span>Select Package / Instant Activation</span>
                 </span>
                 <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
@@ -356,7 +356,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                     onClick={() => handleQuickActivate('pro_annual', 'annual')}
                     className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Crown className="w-3.5 h-3.5" />
                     <span>Activate Pro Annual ($189.00/yr)</span>
                   </button>
 
@@ -406,7 +406,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                   </span>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-extrabold text-slate-900 text-xs">Pro Annual</span>
-                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <Crown className="w-4 h-4 text-amber-600" />
                   </div>
                   <div className="font-black text-amber-700 text-base">$189.00 <span className="text-[10px] font-normal text-slate-500">/year</span></div>
                   <div className="text-[10px] text-slate-500 mt-1">$15.75/mo equivalent.</div>

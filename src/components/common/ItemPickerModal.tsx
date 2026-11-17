@@ -12,7 +12,6 @@ import {
   Boxes,
   ArrowRight,
   RotateCcw,
-  Sparkles,
   SlidersHorizontal,
   ChevronRight,
   ShoppingCart,

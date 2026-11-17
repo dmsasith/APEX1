@@ -14,7 +14,6 @@ import {
   Edit2,
   Package,
   Layers,
-  Sparkles,
   Info,
   X,
   ArrowRight,

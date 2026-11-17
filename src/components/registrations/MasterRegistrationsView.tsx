@@ -22,7 +22,7 @@ import {
   Copy,
   IdCard,
   UserCheck,
-  Sparkles,
+  Database,
   Layers,
   ChevronRight,
   Warehouse,
@@ -1027,7 +1027,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold tracking-wider uppercase">
-              <Sparkles className="w-3 h-3 text-emerald-400" />
+              <Database className="w-3 h-3 text-emerald-400" />
               <span>System Master Registry</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">

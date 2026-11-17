@@ -8,7 +8,8 @@ import {
   Boxes,
   Factory,
   ShieldCheck,
-  Sparkles,
+  Award,
+  Crown,
   Cpu,
   Layers,
   ArrowRight,
@@ -25,7 +26,7 @@ const PRESET_ICONS = [
   { id: 'boxes', icon: Boxes },
   { id: 'factory', icon: Factory },
   { id: 'shield', icon: ShieldCheck },
-  { id: 'sparkles', icon: Sparkles },
+  { id: 'sparkles', icon: Award },
   { id: 'cpu', icon: Cpu },
   { id: 'layers', icon: Layers },
 ];
@@ -151,7 +152,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
               </div>
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-[11px] font-bold mb-2">
-                <Sparkles className="w-3 h-3 text-emerald-600" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Client Workspace Portal</span>
               </div>
 
@@ -361,7 +362,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                 onClick={() => setShowSignupModal(true)}
                 className="text-emerald-700 hover:text-emerald-900 font-extrabold flex items-center gap-1.5 transition cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <Crown className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Start 7-Day Free Trial</span>
               </button>
             </div>

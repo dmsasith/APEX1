@@ -21,7 +21,7 @@ import {
   LogOut,
   ShoppingCart,
   Truck,
-  Sparkles,
+  Compass,
   IdCard,
   Gift,
 } from 'lucide-react';
@@ -189,7 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-widest text-slate-700 px-3.5 py-2 bg-white/70 border border-white/95 rounded-2xl mb-4 flex items-center justify-between shadow-[0_4px_12px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)]">
             <span>Workspace Navigation</span>
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <Compass className="w-3.5 h-3.5 text-emerald-600" />
           </div>
 
           <nav className="space-y-4">

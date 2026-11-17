@@ -8,7 +8,6 @@ import {
   Check,
   Copy,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 import { Item } from '../../types';
 import { useStock } from '../../context/StockContext';

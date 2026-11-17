@@ -9,7 +9,6 @@ import {
   Building2,
   PenTool,
   RotateCcw,
-  Sparkles,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatDateTime, formatDate, formatNumber } from '../../utils/exportUtils';

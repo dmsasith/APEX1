@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Sparkles,
+  Crown,
   Check,
   ShieldCheck,
   Clock,
@@ -246,7 +246,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
               {sub.queuedSubscription && (
                 <div className="mt-3 p-3 bg-slate-800/90 border border-amber-500/40 rounded-xl flex items-center gap-2 text-xs text-amber-200 animate-in fade-in">
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <Crown className="w-4 h-4 text-amber-400 shrink-0" />
                   <div>
                     <strong className="text-amber-300 font-bold">Upcoming Package Queued:</strong>{' '}
                     <strong className="text-white">

@@ -21,7 +21,6 @@ import {
   Hash,
   Layers,
   Calendar,
-  Sparkles,
   Boxes,
   UserCheck,
 } from 'lucide-react';

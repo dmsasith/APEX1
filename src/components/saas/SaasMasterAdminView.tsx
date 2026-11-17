@@ -4,7 +4,8 @@ import {
   Users2,
   DollarSign,
   Calendar,
-  Sparkles,
+  Crown,
+  TrendingUp,
   Zap,
   CheckCircle2,
   Clock,
@@ -323,7 +324,7 @@ export const SaasMasterAdminView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
+                <Crown className="w-3 h-3" />
                 <span>Platform Owner Control Panel</span>
               </span>
             </div>
@@ -619,7 +620,7 @@ export const SaasMasterAdminView: React.FC = () => {
               <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
                 SaaS Revenue Metrics
               </span>
-              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
             </div>
 
             <div className="mt-4 space-y-3 text-xs">
@@ -782,7 +783,7 @@ export const SaasMasterAdminView: React.FC = () => {
                       <td className="p-3">
                         {tenant.subscription.plan === 'pro_annual' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
-                            <Sparkles className="w-3 h-3 text-amber-600" />
+                            <Crown className="w-3 h-3 text-amber-600" />
                             <span>Pro Annual ($189/yr)</span>
                           </span>
                         ) : tenant.subscription.status === 'active' ? (

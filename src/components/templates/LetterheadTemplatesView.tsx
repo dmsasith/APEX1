@@ -14,7 +14,6 @@ import {
   Building2,
   UserCheck,
   Award,
-  Sparkles,
   Info,
   Printer,
   Download,
@@ -689,7 +688,7 @@ export const LetterheadTemplatesView: React.FC = () => {
           <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-md border border-slate-700/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1.5">
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
+                <Award className="w-3.5 h-3.5" />
                 <span>ISO 9001:2015 Standard Active • Tenant Header Auto-Synced ({autoTenantCompanyName})</span>
               </div>
               <h2 className="text-base sm:text-lg font-extrabold text-white">

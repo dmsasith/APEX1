@@ -11,7 +11,6 @@ import {
   Building2,
   Trash2,
   Printer,
-  Sparkles,
   FileCheck,
   CheckCircle2,
   AlertTriangle,

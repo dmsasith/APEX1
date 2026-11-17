@@ -19,7 +19,6 @@ import {
   ShieldAlert,
   ArrowUpRight,
   Building2,
-  Sparkles,
   CheckCheck,
   TrendingUp,
   History,
@@ -489,7 +488,7 @@ export const MainStockView: React.FC = () => {
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('app-navigate', { detail: 'procurement' }));
               }}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs shrink-0 cursor-pointer active:scale-95"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md shrink-0 cursor-pointer active:scale-95"
               title="Create Material Requisition & Purchase Order to Suppliers"
             >
               <ShoppingCart className="w-4 h-4" />
@@ -505,7 +504,7 @@ export const MainStockView: React.FC = () => {
                 }
                 setShowLogModal(true);
               }}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs shrink-0 cursor-pointer"
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md shrink-0 cursor-pointer active:scale-95"
             >
               <PlusCircle className="w-4 h-4 text-emerald-400" />
               <span>Log Manual / Spot Inbound</span>
@@ -539,23 +538,23 @@ export const MainStockView: React.FC = () => {
         {/* Tier 1: Primary Mode Tabs + Search Input */}
         <div className="p-3.5 sm:px-5 sm:py-3.5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-50/60 border-b border-slate-200/80">
           {/* Segmented Mode Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl border border-slate-200/90">
+          <div className="flex flex-wrap items-center gap-2 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/90">
             <button
               type="button"
               onClick={() => setActiveTab('inventory')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
                 activeTab === 'inventory'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  ? 'bg-slate-900 text-white border-slate-950 shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-slate-50 hover:border-slate-400 hover:text-slate-950'
               }`}
             >
-              <Boxes className={`w-3.5 h-3.5 ${activeTab === 'inventory' ? 'text-emerald-400' : 'text-slate-500'}`} />
+              <Boxes className={`w-3.5 h-3.5 ${activeTab === 'inventory' ? 'text-emerald-400' : 'text-slate-600'}`} />
               <span>Central Stock Inventory</span>
               <span
                 className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
                   activeTab === 'inventory'
                     ? 'bg-slate-800 text-emerald-300'
-                    : 'bg-slate-200 text-slate-700'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200'
                 }`}
               >
                 {activeItems.length}
@@ -565,19 +564,19 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('returned-sites')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
                 activeTab === 'returned-sites'
-                  ? 'bg-teal-700 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-teal-50/70 hover:border-teal-300 hover:text-teal-900'
               }`}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className={`w-3.5 h-3.5 ${activeTab === 'returned-sites' ? 'text-teal-100' : 'text-teal-600'}`} />
               <span>Returned From Sites</span>
               <span
                 className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
                   activeTab === 'returned-sites'
                     ? 'bg-teal-900 text-teal-200'
-                    : 'bg-teal-100 text-teal-800'
+                    : 'bg-teal-50 text-teal-800 border border-teal-200'
                 }`}
               >
                 {goodReturns.length}
@@ -587,19 +586,19 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('damaged-returned')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
                 activeTab === 'damaged-returned'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-amber-50/70 hover:border-amber-300 hover:text-amber-900'
               }`}
             >
-              <ShieldAlert className="w-3.5 h-3.5" />
+              <ShieldAlert className={`w-3.5 h-3.5 ${activeTab === 'damaged-returned' ? 'text-amber-100' : 'text-amber-600'}`} />
               <span>Damaged / Scrap Yard</span>
               <span
                 className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
                   activeTab === 'damaged-returned'
                     ? 'bg-amber-800 text-amber-100'
-                    : 'bg-amber-100 text-amber-800'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
                 }`}
               >
                 {totalDamagedUnitsInYard}
@@ -609,19 +608,19 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
                 activeTab === 'history'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-blue-50/70 hover:border-blue-300 hover:text-blue-900'
               }`}
             >
-              <History className="w-3.5 h-3.5" />
+              <History className={`w-3.5 h-3.5 ${activeTab === 'history' ? 'text-blue-100' : 'text-blue-600'}`} />
               <span>Inbound Receipts History</span>
               <span
                 className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
                   activeTab === 'history'
                     ? 'bg-blue-800 text-blue-100'
-                    : 'bg-slate-200 text-slate-700'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200'
                 }`}
               >
                 {mainStockEntries.length}
@@ -657,17 +656,17 @@ export const MainStockView: React.FC = () => {
           <div className="px-3.5 py-3 sm:px-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs bg-white">
             {/* Classification Segmented Control */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Classification:
               </span>
-              <div className="inline-flex flex-wrap items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <div className="inline-flex flex-wrap items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
                 <button
                   type="button"
                   onClick={() => setItemTypeFilter('all')}
-                  className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer active:scale-[0.98] ${
                     itemTypeFilter === 'all'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-slate-900 text-white border-slate-950 shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-slate-50 hover:border-slate-400 hover:text-slate-950'
                   }`}
                 >
                   All Items ({activeItems.length})
@@ -675,16 +674,18 @@ export const MainStockView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setItemTypeFilter('Material')}
-                  className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
                     itemTypeFilter === 'Material'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-indigo-700'
+                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-800'
                   }`}
                 >
                   <span>Materials & Consumables</span>
                   <span
                     className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
-                      itemTypeFilter === 'Material' ? 'bg-indigo-800 text-white' : 'bg-slate-200 text-slate-700'
+                      itemTypeFilter === 'Material'
+                        ? 'bg-indigo-800 text-white'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
                     }`}
                   >
                     {materialsCount}
@@ -693,16 +694,18 @@ export const MainStockView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setItemTypeFilter('Machinery')}
-                  className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
                     itemTypeFilter === 'Machinery'
-                      ? 'bg-amber-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-amber-700'
+                      ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800'
                   }`}
                 >
                   <span>Machinery & Equipment</span>
                   <span
                     className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
-                      itemTypeFilter === 'Machinery' ? 'bg-amber-800 text-white' : 'bg-slate-200 text-slate-700'
+                      itemTypeFilter === 'Machinery'
+                        ? 'bg-amber-800 text-white'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
                     }`}
                   >
                     {machineryCount}
@@ -713,20 +716,20 @@ export const MainStockView: React.FC = () => {
 
             {/* Stock Level & Category Controls */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Stock Level:
               </span>
-              <div className="inline-flex flex-wrap items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <div className="inline-flex flex-wrap items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
                     setAvailabilityFilter('all');
                     setOnlyAvailable(false);
                   }}
-                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer active:scale-[0.98] ${
                     availabilityFilter === 'all' && !onlyAvailable
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-slate-900 text-white border-slate-950 shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-slate-50 hover:border-slate-400 hover:text-slate-950'
                   }`}
                 >
                   All
@@ -737,10 +740,10 @@ export const MainStockView: React.FC = () => {
                     setAvailabilityFilter('in-stock');
                     setOnlyAvailable(true);
                   }}
-                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-[0.98] ${
                     availabilityFilter === 'in-stock' || onlyAvailable
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'text-emerald-700 hover:bg-white/60'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                      : 'bg-white text-emerald-800 border-emerald-300 shadow-2xs hover:bg-emerald-50 hover:border-emerald-400'
                   }`}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -752,10 +755,10 @@ export const MainStockView: React.FC = () => {
                     setAvailabilityFilter('low-stock');
                     setOnlyAvailable(false);
                   }}
-                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-[0.98] ${
                     availabilityFilter === 'low-stock'
-                      ? 'bg-amber-500 text-white shadow-2xs'
-                      : 'text-amber-700 hover:bg-white/60'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                      : 'bg-white text-amber-800 border-amber-300 shadow-2xs hover:bg-amber-50 hover:border-amber-400'
                   }`}
                 >
                   <AlertTriangle className="w-3.5 h-3.5" />
@@ -767,22 +770,22 @@ export const MainStockView: React.FC = () => {
                     setAvailabilityFilter('out-of-stock');
                     setOnlyAvailable(false);
                   }}
-                  className={`px-2.5 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer active:scale-[0.98] ${
                     availabilityFilter === 'out-of-stock'
-                      ? 'bg-rose-600 text-white shadow-2xs'
-                      : 'text-rose-700 hover:bg-white/60'
+                      ? 'bg-rose-600 text-white border-rose-700 shadow-sm'
+                      : 'bg-white text-rose-700 border-rose-300 shadow-2xs hover:bg-rose-50 hover:border-rose-400'
                   }`}
                 >
                   Out of Stock ({outOfStockCount})
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
-                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5 bg-white border border-slate-300 hover:border-slate-400 rounded-xl px-3 py-2 shadow-2xs transition-colors">
+                <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="text-xs font-semibold text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                  className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
                 >
                   <option value="all">All Categories</option>
                   {categories.map((c) => (
@@ -801,7 +804,7 @@ export const MainStockView: React.FC = () => {
             <select
               value={returnedSiteFilter}
               onChange={(e) => setReturnedSiteFilter(e.target.value)}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 focus:outline-none"
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 bg-white shadow-2xs focus:outline-none cursor-pointer"
             >
               <option value="all">All Branch Sites</option>
               {sites
@@ -815,9 +818,9 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={exportGoodReturnsCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <Download className="w-3.5 h-3.5 text-slate-600" />
               <span>Export CSV</span>
             </button>
           </div>
@@ -828,7 +831,7 @@ export const MainStockView: React.FC = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 focus:outline-none"
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 bg-white shadow-2xs focus:outline-none cursor-pointer"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -840,9 +843,9 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={exportDamagedStockCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <Download className="w-3.5 h-3.5 text-slate-600" />
               <span>Export Report</span>
             </button>
           </div>
@@ -852,16 +855,16 @@ export const MainStockView: React.FC = () => {
           <div className="px-3.5 py-3 sm:px-5 flex items-center justify-end gap-2 text-xs bg-white">
             <button
               onClick={exportHistoryCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <Download className="w-3.5 h-3.5 text-slate-600" />
               <span>Export CSV</span>
             </button>
             {mainStockEntries.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearInboundHistory}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-700 rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
                 title="Clear all inbound receipt records"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-600" />
@@ -905,7 +908,7 @@ export const MainStockView: React.FC = () => {
                               setAvailabilityFilter('all');
                               setOnlyAvailable(false);
                             }}
-                            className="mt-1 text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
+                            className="mt-2 px-3.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
                           >
                             Reset filters to view all items ({activeItems.length})
                           </button>
@@ -973,7 +976,7 @@ export const MainStockView: React.FC = () => {
                               setUnitCost(item.unitPrice);
                               setShowLogModal(true);
                             }}
-                            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 hover:border-emerald-400 text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
                           >
                             + Inbound
                           </button>
@@ -1120,10 +1123,10 @@ export const MainStockView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedReturnForPrint(br)}
-                              className="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1 mx-auto transition-colors cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 shadow-2xs text-xs font-bold flex items-center gap-1.5 mx-auto transition-all cursor-pointer active:scale-95"
                               title="Print / View Return Voucher"
                             >
-                              <Printer className="w-3.5 h-3.5 text-slate-600" />
+                              <Printer className="w-3.5 h-3.5 text-slate-700" />
                               <span>Print Voucher</span>
                             </button>
                           </td>
@@ -1378,10 +1381,10 @@ export const MainStockView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedReturnForPrint(br)}
-                              className="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1 mx-auto transition-colors cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 shadow-2xs text-xs font-bold flex items-center gap-1.5 mx-auto transition-all cursor-pointer active:scale-95"
                               title="Print / View Return Voucher"
                             >
-                              <Printer className="w-3.5 h-3.5 text-slate-600" />
+                              <Printer className="w-3.5 h-3.5 text-slate-700" />
                               <span>Print Voucher</span>
                             </button>
                           </td>
@@ -1564,11 +1567,11 @@ export const MainStockView: React.FC = () => {
                           {entry.receivedBy}
                         </td>
                         <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
-                          <div className="inline-flex items-center gap-1">
+                          <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => setSelectedEntryForPrint(entry)}
-                              className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
                               title="Print Official GRN / Stock Receipt Voucher"
                             >
                               <Printer className="w-3.5 h-3.5" />
@@ -1578,7 +1581,7 @@ export const MainStockView: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteEntry(entry)}
-                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                className="p-1.5 rounded-lg bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 hover:border-rose-300 shadow-2xs transition-all cursor-pointer active:scale-95"
                                 title="Delete receipt record"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

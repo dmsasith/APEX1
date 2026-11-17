@@ -19,7 +19,6 @@ import {
   FileSpreadsheet,
   Eye,
   HardDrive,
-  Sparkles,
   Laptop,
   FolderDown,
   FolderCheck,

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   MessageSquareText,
   Send,
-  Sparkles,
   RotateCcw,
   ArrowRight,
   HelpCircle,
@@ -374,7 +373,7 @@ export const AiSupportChatWidget: React.FC<{ currentTab?: string }> = ({ current
           title="Open Chat System Support"
         >
           <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
-            <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" />
+            <MessageSquareText className="w-3.5 h-3.5 text-white" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-300 ring-2 ring-emerald-700" />
           </span>
           <div className="text-left">

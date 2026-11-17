@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
-  Sparkles,
+  Crown,
+  Award,
   Building2,
   ArrowRight,
   ShieldCheck,
@@ -139,14 +140,14 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
           <div className="relative bg-gradient-to-br from-white/90 via-white/80 to-sky-50/75 backdrop-blur-xl border border-white/95 hover:border-sky-300 rounded-[28px] p-6 sm:p-8 flex flex-col justify-between shadow-[0_24px_60px_-15px_rgba(14,165,233,0.14),0_10px_28px_-10px_rgba(15,23,42,0.07),inset_0_1px_1px_rgba(255,255,255,1)] transition-all group">
             {/* Top pill badge */}
             <div className="absolute -top-3.5 left-7 bg-white/95 border border-sky-200 text-sky-800 text-[10px] font-black uppercase tracking-wider px-3.5 py-1 rounded-full shadow-sm flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+              <Crown className="w-3.5 h-3.5 text-sky-600" />
               <span>Multi-Tenant Platform Control</span>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-[0_10px_22px_-6px_rgba(14,165,233,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] group-hover:scale-105 transition-transform">
-                  <Sparkles className="w-7 h-7" />
+                  <Crown className="w-7 h-7" />
                 </div>
                 <span className="text-[11px] font-extrabold text-sky-800 bg-sky-100/80 px-3 py-1 rounded-full border border-sky-200/90">
                   Super Admin
@@ -169,7 +170,7 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
                   <span>Client Registry &amp; Workspace Management</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-700 font-medium">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <Award className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <span>Monthly ($19.90) &amp; Annual ($189) Plans</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-500 font-medium">

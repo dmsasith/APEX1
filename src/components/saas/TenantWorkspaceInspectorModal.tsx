@@ -8,7 +8,8 @@ import {
   ShieldCheck,
   Calendar,
   Clock,
-  Sparkles,
+  Crown,
+  Award,
   Zap,
   Plus,
   Ban,
@@ -82,7 +83,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
                 {/* Plan Badge */}
                 {sub.plan === 'pro_annual' ? (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
+                    <Crown className="w-3 h-3" />
                     <span>Pro Annual ($189/yr)</span>
                   </span>
                 ) : sub.status === 'active' ? (
@@ -162,7 +163,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
               onClick={() => onActivateProAnnual(tenant)}
               className="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Crown className="w-3.5 h-3.5" />
               <span>Activate Annual ($189/yr)</span>
             </button>
 
@@ -273,7 +274,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
               <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="space-y-1">
                   <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <Award className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Commercial Pricing Options for this Client:</span>
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-relaxed">

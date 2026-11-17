@@ -16,7 +16,6 @@ import {
   RotateCcw,
   XCircle,
   Search,
-  Sparkles,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -2292,7 +2291,7 @@ export const StockRequestsView: React.FC = () => {
                         className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
                         title="Auto-cap all approved quantities to available stock"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                        <CheckCircle className="w-3.5 h-3.5 text-amber-200" />
                         <span>⚡ Send Available Only</span>
                       </button>
 

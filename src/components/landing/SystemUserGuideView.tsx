@@ -24,7 +24,7 @@ import {
   UserCheck,
   Lock,
   Upload,
-  Sparkles,
+  Award,
   Globe,
 } from 'lucide-react';
 import { printHtmlElement } from '../../utils/printUtils';
@@ -1870,7 +1870,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-[#dc9750]/30">
               <div>
                 <div className="flex items-center gap-2 text-xs font-extrabold text-[#9e5c19] mb-1.5">
-                  <Sparkles className="w-4 h-4 text-[#b56b21]" />
+                  <Award className="w-4 h-4 text-[#b56b21]" />
                   <span>
                     {guideLang === 'si'
                       ? 'ආයතනයේ Document Formats (PDF / Image) Upload කරන ආකාරය පිළිබඳ විශේෂ මාර්ගෝපදේශය'

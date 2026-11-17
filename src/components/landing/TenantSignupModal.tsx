@@ -8,7 +8,6 @@ import {
   Coins,
   Warehouse,
   CheckCircle2,
-  Sparkles,
   ShieldCheck,
   X,
   ArrowRight,
@@ -120,7 +119,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
 
           <div className="flex items-center gap-2 mb-2">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
+              <ShieldCheck className="w-3 h-3" />
               <span>7-Day Free Trial · $0 Today</span>
             </span>
             <span className="text-xs text-slate-400">Then $19.90/mo or $189/yr (Save 21%)</span>
