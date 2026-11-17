@@ -1175,7 +1175,7 @@ export const StockRequestsView: React.FC = () => {
                                   </span>
                                 ) : (
                                   <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                                    🧱 Material
+                                    📦 Material
                                   </span>
                                 )}
                                 <span className="font-bold text-slate-900 text-sm">
@@ -1806,7 +1806,7 @@ export const StockRequestsView: React.FC = () => {
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        <span className="text-sm">🧱 Materials</span>
+                        <span className="text-sm">📦 Materials</span>
                         <span
                           className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
                             reqModalTab === 'Material'
@@ -2034,7 +2034,7 @@ export const StockRequestsView: React.FC = () => {
                                       </span>
                                     ) : (
                                       <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs">
-                                        🧱 Material / Consumable
+                                        📦 Material / Consumable
                                       </span>
                                     )}
                                     {isSiteLow && (
@@ -2463,7 +2463,7 @@ export const StockRequestsView: React.FC = () => {
                                 </span>
                               ) : (
                                 <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  🧱 Material
+                                  📦 Material
                                 </span>
                               )}
                             </div>
@@ -2706,7 +2706,7 @@ export const StockRequestsView: React.FC = () => {
                               </span>
                             ) : (
                               <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                🧱 Material
+                                📦 Material
                               </span>
                             )}
                           </div>

@@ -245,8 +245,9 @@ export const LetterheadTemplatesView: React.FC = () => {
     if (!file) return;
     e.target.value = '';
 
-    if (file.size > 15 * 1024 * 1024) {
-      showFeedback('Please upload a PDF or Image file under 15MB.', 'error');
+    if (file.size > 1 * 1024 * 1024) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      showFeedback(`File size (${sizeMb} MB) exceeds the 1MB limit. Please upload a PDF or Image under 1MB.`, 'error');
       return;
     }
 
@@ -345,8 +346,10 @@ export const LetterheadTemplatesView: React.FC = () => {
   const handleLogoImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showFeedback('Logo image should be under 2MB.', 'error');
+    if (file.size > 1 * 1024 * 1024) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      showFeedback(`Logo image (${sizeMb} MB) exceeds the 1MB limit. Please upload an image under 1MB.`, 'error');
+      e.target.value = '';
       return;
     }
     const reader = new FileReader();
@@ -551,6 +554,12 @@ export const LetterheadTemplatesView: React.FC = () => {
   const handleFileUploadSig = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 1 * 1024 * 1024) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      showFeedback(`Signature image (${sizeMb} MB) exceeds the 1MB limit. Please upload an image under 1MB.`, 'error');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (evt) => {
       if (typeof evt.target?.result === 'string') {
@@ -863,7 +872,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                                           ? 'Full Uploaded Stationery Sheet'
                                           : 'Smart Reconstructed System Format'
                                       }`
-                                    : 'Supports .PDF, .PNG, .JPG, .WEBP — Auto-converts into system print layout'}
+                                    : 'Supports .PDF, .PNG, .JPG, .WEBP (Max 1MB) — Auto-converts into system print layout'}
                                 </div>
                                 {rawFmt.extractedSummary && (
                                   <div className="text-[10px] text-emerald-800 font-medium mt-1 line-clamp-1">
@@ -885,7 +894,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                               ) : (
                                 <>
                                   <Upload className="w-3.5 h-3.5" />
-                                  <span>{rawFmt.isCustomUploaded ? 'Replace PDF / Image' : 'Upload PDF / Image'}</span>
+                                  <span>{rawFmt.isCustomUploaded ? 'Replace PDF / Image (Max 1MB)' : 'Upload PDF / Image (Max 1MB)'}</span>
                                 </>
                               )}
                               <input
@@ -1845,7 +1854,7 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold cursor-pointer shadow-xs transition-colors">
                             <Upload className="w-3.5 h-3.5 text-slate-500" />
-                            <span>{logoImage ? 'Change Logo' : 'Upload Logo Image'}</span>
+                            <span>{logoImage ? 'Change Logo (Max 1MB)' : 'Upload Logo Image (Max 1MB)'}</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -2362,7 +2371,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                   <label className="border-2 border-dashed border-slate-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
                     <Upload className="w-6 h-6 text-slate-400 mb-2" />
                     <span className="text-xs font-semibold text-slate-700">
-                      Choose signature image file (PNG / JPEG)
+                      Choose signature image file (PNG / JPEG • Max 1MB)
                     </span>
                     <input
                       type="file"

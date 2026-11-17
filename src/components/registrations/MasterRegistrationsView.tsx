@@ -1140,7 +1140,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <span>🧱 Material / Consumable</span>
+                    <span>📦 Material / Consumable</span>
                   </button>
                   <button
                     type="button"

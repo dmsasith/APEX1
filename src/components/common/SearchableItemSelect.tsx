@@ -243,7 +243,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
               </span>
             ) : (
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
-                🧱 Material
+                📦 Material
               </span>
             )}
             <span
@@ -360,7 +360,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                   : 'text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <span>🧱 Materials ({materialsCount})</span>
+              <span>📦 Materials ({materialsCount})</span>
             </button>
             <button
               type="button"
@@ -525,7 +525,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                           </span>
                         ) : (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
-                            🧱 Material
+                            📦 Material
                           </span>
                         )}
                         {hasRequestingSite && stock.siteIsLowOrZero && (

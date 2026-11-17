@@ -492,7 +492,8 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
             >
-              <span>🧱 Materials & Consumables</span>
+              <Package className="w-3.5 h-3.5 shrink-0" />
+              <span>Materials & Consumables</span>
               <span
                 className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                   selectedItemType === 'Material' ? 'bg-emerald-800 text-white' : 'bg-emerald-100 text-emerald-800'
@@ -653,10 +654,10 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                             </span>
                           ) : (
                             <span
-                              className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0"
+                              className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 inline-flex items-center gap-0.5"
                               title="Consumable Raw Material"
                             >
-                              🧱 Material
+                              📦 Material
                             </span>
                           )}
                         </div>
@@ -966,7 +967,8 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <span>🧱 Material / Consumable</span>
+                    <Package className="w-3.5 h-3.5 shrink-0" />
+                    <span>Material / Consumable</span>
                   </button>
                   <button
                     type="button"
@@ -1240,7 +1242,8 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <span>🧱 Material / Consumable</span>
+                    <Package className="w-3.5 h-3.5 shrink-0" />
+                    <span>Material / Consumable</span>
                   </button>
                   <button
                     type="button"
