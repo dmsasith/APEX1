@@ -1827,6 +1827,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setter: React.Dispatch<React.SetStateAction<T[]>>
     ) => {
       return subscribeToFirebaseTenantData<T[]>(activeTenantId, key, (remoteList) => {
+        setFirebaseConnected(true);
         if (
           remoteList &&
           Array.isArray(remoteList) &&
@@ -3078,22 +3079,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let unsubDeletedTenants: (() => void) | undefined;
     let unsubRootFlushMeta: (() => void) | undefined;
 
-    try {
-      unsubRootFlushMeta = subscribeToFirebaseFlushMeta((remoteMeta) => {
-        if (remoteMeta && typeof remoteMeta.flushedAtMs === 'number') {
-          const isMaster =
-            currentTenantIdRef.current === DEFAULT_TENANT.id ||
-            currentTenantIdRef.current === 'tenant-apex-main';
-          if (isMaster) {
-            applyRemoteFlushBarrier(DEFAULT_TENANT.id, remoteMeta);
-          } else {
-            saveTenantFlushMetaLocal(DEFAULT_TENANT.id, remoteMeta);
-          }
-        }
-      });
+    const isMasterActive =
+      activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
 
+    try {
       unsubDeletedTenants = subscribeToFirebaseDeletedTenants(
         (remoteDeletedMap) => {
+          setFirebaseConnected(true);
           const deletedIds = mergeRemoteDeletedTenantIds(remoteDeletedMap);
           if (deletedIds.size > 0) {
             setTenants((prev) => {
@@ -3127,6 +3119,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       unsubTenants = subscribeToFirebaseTenants(
         (remoteTenants) => {
+          setFirebaseConnected(true);
           if (remoteTenants && remoteTenants.length > 0) {
             const deletedIds = getDeletedTenantIds();
             let hadDeletedInRemote = false;
@@ -3167,12 +3160,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (err) => console.warn('Firebase tenants sync notice:', err)
       );
 
-      unsubItems = subscribeToFirebaseItems(
-        (remoteItems) => {
-          setFirebaseConnected(true);
-          hasLoadedItemsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
+      // Strict Tenant Isolation: Only attach root-level Master Workspace listeners when the Master Tenant is active.
+      // Regular company tenants ONLY subscribe to their own isolated `tenantsData/${activeTenantId}/*` paths.
+      if (isMasterActive) {
+        unsubRootFlushMeta = subscribeToFirebaseFlushMeta((remoteMeta) => {
+          if (remoteMeta && typeof remoteMeta.flushedAtMs === 'number') {
+            const isMaster =
+              currentTenantIdRef.current === DEFAULT_TENANT.id ||
+              currentTenantIdRef.current === 'tenant-apex-main';
+            if (isMaster) {
+              applyRemoteFlushBarrier(DEFAULT_TENANT.id, remoteMeta);
+            } else {
+              saveTenantFlushMetaLocal(DEFAULT_TENANT.id, remoteMeta);
+            }
+          }
+        });
+
+        unsubItems = subscribeToFirebaseItems(
+          (remoteItems) => {
+            setFirebaseConnected(true);
+            hasLoadedItemsFromFirebase.current = true;
+            if (isFlushingRef.current) return;
+            const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
           if (!isMaster) return;
           if (remoteItems && remoteItems.length > 0) {
             const hasOldDemo = remoteItems.some(
@@ -3725,6 +3734,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           hasLoadedSupplierReturnsFromFirebase.current = true;
         }
       );
+      }
     } catch (err) {
       console.warn('Firebase Realtime Database subscription notice:', err);
     }
@@ -3753,7 +3763,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (unsubTenants) unsubTenants();
       if (unsubDeletedTenants) unsubDeletedTenants();
     };
-  }, []);
+  }, [activeTenantId]);
 
   // Write changes to Firebase when modified locally (saveToStorage writes to tenantsData/{tenantId}/{key} for EVERY tenant; root Firebase writes only run for Master tenant and skip during atomic flush)
   const isMasterWorkspaceActive = () =>

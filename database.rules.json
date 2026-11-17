@@ -1,0 +1,122 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "tenantsData": {
+      ".read": false,
+      ".write": false,
+      "$tenantId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "saasTenants": {
+      ".read": true,
+      ".write": true
+    },
+    "saasDeletedTenants": {
+      ".read": true,
+      ".write": true
+    },
+    "flushMeta": {
+      ".read": true,
+      ".write": true
+    },
+    "items": {
+      ".read": true,
+      ".write": true
+    },
+    "stockRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "mainStockEntries": {
+      ".read": true,
+      ".write": true
+    },
+    "sites": {
+      ".read": true,
+      ".write": true
+    },
+    "teams": {
+      ".read": true,
+      ".write": true
+    },
+    "users": {
+      ".read": true,
+      ".write": true
+    },
+    "teamIssues": {
+      ".read": true,
+      ".write": true
+    },
+    "teamReturns": {
+      ".read": true,
+      ".write": true
+    },
+    "projects": {
+      ".read": true,
+      ".write": true
+    },
+    "projectTypes": {
+      ".read": true,
+      ".write": true
+    },
+    "projectUsages": {
+      ".read": true,
+      ".write": true
+    },
+    "crossProjectRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "clientFreeIssues": {
+      ".read": true,
+      ".write": true
+    },
+    "branchReturns": {
+      ".read": true,
+      ".write": true
+    },
+    "damagedRestorations": {
+      ".read": true,
+      ".write": true
+    },
+    "backups": {
+      ".read": true,
+      ".write": true
+    },
+    "auditLogs": {
+      ".read": true,
+      ".write": true
+    },
+    "config": {
+      ".read": true,
+      ".write": true
+    },
+    "letterheadTemplates": {
+      ".read": true,
+      ".write": true
+    },
+    "digitalSignatures": {
+      ".read": true,
+      ".write": true
+    },
+    "suppliers": {
+      ".read": true,
+      ".write": true
+    },
+    "clients": {
+      ".read": true,
+      ".write": true
+    },
+    "purchaseOrders": {
+      ".read": true,
+      ".write": true
+    },
+    "supplierReturns": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
