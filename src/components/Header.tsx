@@ -62,7 +62,7 @@ const MONOGRAM_COLORS = [
   { id: 'slate', bgClass: 'bg-slate-700', borderClass: 'border-slate-500', label: 'Slate' },
 ];
 
-export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRecycleBin, onReturnToGateway }) => {
+export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests, onOpenRecycleBin, onReturnToGateway }) => {
   const {
     config,
     updateConfig,
@@ -561,18 +561,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenPendingRequests, onOpenRec
           </div>
         </div>
       )}
-      <SystemConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} />
-      <SystemBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
-      <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
-      <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
-      <EmailVerificationModal isOpen={showEmailVerifyModal} onClose={() => setShowEmailVerifyModal(false)} />
-      <BarcodeScannerModal
-        isOpen={showBarcodeLookupModal}
-        onClose={() => setShowBarcodeLookupModal(false)}
-        mode="lookup"
-        title="Live Inventory Barcode Lookup (USB & Mobile)"
-        subtitle="Scan any item via USB Barcode Gun or Mobile Phone Camera to inspect stock balances"
-      />
+      {showConfigModal && <SystemConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} />}
+      {showBackupModal && <SystemBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />}
+      {showSubscriptionModal && <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />}
+      {showProfileModal && <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />}
+      {showEmailVerifyModal && <EmailVerificationModal isOpen={showEmailVerifyModal} onClose={() => setShowEmailVerifyModal(false)} />}
+      {showBarcodeLookupModal && (
+        <BarcodeScannerModal
+          isOpen={showBarcodeLookupModal}
+          onClose={() => setShowBarcodeLookupModal(false)}
+          mode="lookup"
+          title="Live Inventory Barcode Lookup (USB & Mobile)"
+          subtitle="Scan any item via USB Barcode Gun or Mobile Phone Camera to inspect stock balances"
+        />
+      )}
     </>
   );
-};
+});

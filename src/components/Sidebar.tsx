@@ -34,7 +34,7 @@ interface SidebarProps {
   onSelectTab: (tab: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
+export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelectTab }) => {
   const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout, config, currentTenant } = useStock();
   const currentTheme = getThemeConfig(config?.themeId || config?.logoColor || 'emerald');
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
@@ -211,15 +211,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
                         <button
                           key={item.id}
                           onClick={() => onSelectTab(item.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-between cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                          className={`w-full text-left px-3 py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-between cursor-pointer transition-colors duration-75 ${
                             isActive
-                              ? `${currentTheme.navActiveBg} scale-[1.01]`
-                              : 'text-slate-700 hover:bg-white/80 hover:text-slate-950 hover:translate-x-1 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.95)] border border-transparent hover:border-white/90'
+                              ? `${currentTheme.navActiveBg}`
+                              : 'text-slate-700 hover:bg-white/85 hover:text-slate-950 border border-transparent hover:border-white/90'
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                                 isActive
                                   ? 'bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]'
                                   : 'bg-white/75 text-slate-600 border border-white/90 shadow-2xs'
@@ -274,4 +274,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       </div>
     </aside>
   );
-};
+});

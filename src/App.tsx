@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   Boxes,
@@ -118,10 +118,22 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
     { id: 'project-usage', label: 'Usage', icon: Layers },
   ];
 
+  const handleSelectTab = useCallback((tab: string) => {
+    setCurrentTab(tab);
+  }, []);
+
+  const handleOpenPendingRequests = useCallback(() => {
+    setCurrentTab('requests');
+  }, []);
+
+  const handleOpenRecycleBin = useCallback(() => {
+    setCurrentTab('recycle-bin');
+  }, []);
+
   const renderActiveView = () => {
     switch (currentTab) {
       case 'dashboard':
-        return <DashboardView onNavigate={(tab) => setCurrentTab(tab)} />;
+        return <DashboardView onNavigate={handleSelectTab} />;
       case 'items':
       case 'items-management':
         return <ItemsManagementView initialType="all" />;
@@ -166,7 +178,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         return <SiteInventoriesView />;
       case 'branch-directory':
       case 'branch-staff-teams':
-        return <BranchDirectoryView onNavigate={(tab) => setCurrentTab(tab)} />;
+        return <BranchDirectoryView onNavigate={handleSelectTab} />;
       case 'audit':
         return <AuditTrailReportsView />;
       case 'templates':
@@ -178,12 +190,12 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
       case 'saas-master':
         return <SaasMasterAdminView />;
       default:
-        return <DashboardView onNavigate={(tab) => setCurrentTab(tab)} />;
+        return <DashboardView onNavigate={handleSelectTab} />;
     }
   };
 
   return (
-    <div className={`min-h-screen liquid-glass-shell liquid-glass-canvas ${theme.pageBg} flex flex-col font-sans transition-colors duration-200`}>
+    <div className={`min-h-screen liquid-glass-shell liquid-glass-canvas ${theme.pageBg} flex flex-col font-sans`}>
       {/* Admin View-As Preview Banner */}
       <AdminPreviewBanner />
 
@@ -195,8 +207,8 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
 
       {/* Top Layout Header with Dynamic Company & System Name */}
       <Header
-        onOpenPendingRequests={() => setCurrentTab('requests')}
-        onOpenRecycleBin={() => setCurrentTab('recycle-bin')}
+        onOpenPendingRequests={handleOpenPendingRequests}
+        onOpenRecycleBin={handleOpenRecycleBin}
         onReturnToGateway={onReturnToGateway}
       />
 

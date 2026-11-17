@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import {
   SystemConfig,
   Site,
@@ -7391,7 +7391,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     saveTenantData(currentTenantIdRef.current, 'clientFreeIssues', []);
   };
 
-  const getClientFreeStockBalance = (projectId: string, itemId: string) => {
+  const clientFreeStockCache = useMemo(
+    () => new Map<string, ReturnType<typeof computeClientFreeStockBalance>>(),
+    [projects, clientFreeIssues, mainStockEntries, stockRequests, projectUsages]
+  );
+
+  const computeClientFreeStockBalance = (projectId: string, itemId: string) => {
     const targetProj = projects.find((p) => p.id === projectId);
     const parentProj =
       targetProj?.parentProjectId
@@ -7536,6 +7541,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       isSubProjectPool,
     };
   };
+
+  const getClientFreeStockBalance = useCallback(
+    (projectId: string, itemId: string) => {
+      const key = `${projectId}::${itemId}`;
+      const cached = clientFreeStockCache.get(key);
+      if (cached) return cached;
+      const computed = computeClientFreeStockBalance(projectId, itemId);
+      clientFreeStockCache.set(key, computed);
+      return computed;
+    },
+    [clientFreeStockCache]
+  );
 
   const getProjectFreeStockList = (projectId: string) => {
     const targetProj = projects.find((p) => p.id === projectId);
@@ -8386,13 +8403,56 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Dynamic Inventory Balance Calculations
-  const getMainWarehouseStock = (itemId: string) => {
+  // Dynamic Inventory Balance Calculations (O(1) Memoized Map Cache for Instant Tab Navigation)
+  const mainWarehouseStockCache = useMemo(
+    () => new Map<string, ReturnType<typeof computeMainWarehouseStock>>(),
+    [
+      items,
+      sites,
+      mainStockEntries,
+      purchaseOrders,
+      clientFreeIssues,
+      branchReturns,
+      teamReturns,
+      damagedRestorations,
+      stockRequests,
+      teamIssues,
+      supplierReturns,
+      config.defaultLowStockThreshold,
+    ]
+  );
+
+  const siteItemStockCache = useMemo(
+    () => new Map<string, ReturnType<typeof computeSiteItemStock>>(),
+    [
+      mainWarehouseStockCache,
+      sites,
+      items,
+      stockRequests,
+      clientFreeIssues,
+      teamReturns,
+      teamIssues,
+      projectUsages,
+      branchReturns,
+      supplierReturns,
+      config.defaultLowStockThreshold,
+    ]
+  );
+
+  const teamInHandStockCache = useMemo(
+    () => new Map<string, TeamInHandSummary>(),
+    [teams, sites, teamIssues, teamReturns, projectUsages, items]
+  );
+
+  const mainWarehouseSiteIdsSet = useMemo(
+    () => new Set(sites.filter((s) => s.isMainWarehouse).map((s) => s.id)),
+    [sites]
+  );
+
+  const computeMainWarehouseStock = (itemId: string) => {
     const item = items.find((i) => i.id === itemId);
     const threshold = item?.lowStockThreshold ?? config.defaultLowStockThreshold;
-    const mainWarehouseSiteIds = new Set(
-      sites.filter((s) => s.isMainWarehouse).map((s) => s.id)
-    );
+    const mainWarehouseSiteIds = mainWarehouseSiteIdsSet;
 
     const loggedCompanyReceived = mainStockEntries
       .filter((entry) => entry.itemId === itemId)
@@ -8527,7 +8587,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   };
 
-  const getSiteItemStock = (siteId: string, itemId: string) => {
+  const getMainWarehouseStock = useCallback(
+    (itemId: string) => {
+      const cached = mainWarehouseStockCache.get(itemId);
+      if (cached) return cached;
+      const computed = computeMainWarehouseStock(itemId);
+      mainWarehouseStockCache.set(itemId, computed);
+      return computed;
+    },
+    [mainWarehouseStockCache]
+  );
+
+  const computeSiteItemStock = (siteId: string, itemId: string) => {
     const targetSite = sites.find((s) => s.id === siteId);
     if (targetSite?.isMainWarehouse) {
       const mainStk = getMainWarehouseStock(itemId);
@@ -8656,7 +8727,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   };
 
-  const getTeamInHandStock = (teamId: string): TeamInHandSummary => {
+  const getSiteItemStock = useCallback(
+    (siteId: string, itemId: string) => {
+      const key = `${siteId}::${itemId}`;
+      const cached = siteItemStockCache.get(key);
+      if (cached) return cached;
+      const computed = computeSiteItemStock(siteId, itemId);
+      siteItemStockCache.set(key, computed);
+      return computed;
+    },
+    [siteItemStockCache]
+  );
+
+  const computeTeamInHandStock = (teamId: string): TeamInHandSummary => {
     const team = teams.find((t) => t.id === teamId) || {
       id: teamId,
       teamName: 'Unknown Team',
@@ -8769,9 +8852,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   };
 
+  const getTeamInHandStock = useCallback(
+    (teamId: string): TeamInHandSummary => {
+      const cached = teamInHandStockCache.get(teamId);
+      if (cached) return cached;
+      const computed = computeTeamInHandStock(teamId);
+      teamInHandStockCache.set(teamId, computed);
+      return computed;
+    },
+    [teamInHandStockCache]
+  );
+
   const allTeamsInHandStock = useMemo(() => {
     return activeTeams.map((t) => getTeamInHandStock(t.id));
-  }, [activeTeams, teamIssues, teamReturns, projectUsages, items, sites]);
+  }, [activeTeams, getTeamInHandStock]);
 
   const totalLowStockAlertsCount = useMemo(() => {
     let count = 0;
