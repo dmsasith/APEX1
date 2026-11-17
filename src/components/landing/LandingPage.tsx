@@ -28,6 +28,7 @@ import {
   Droplets,
   Warehouse,
   BookOpen,
+  Play,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 import { SystemUserGuideView } from './SystemUserGuideView';
@@ -42,6 +43,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const [activeLandingTab, setActiveLandingTab] = useState<'overview' | 'guide'>('overview');
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [selectedIndustryIdx, setSelectedIndustryIdx] = useState<number>(0);
+  const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState<boolean>(false);
 
   const handleOpenGuideTab = () => {
     setActiveLandingTab('guide');
@@ -217,6 +219,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             >
               <BookOpen className="w-3.5 h-3.5 text-[#dc9750]" />
               <span>User Guide & Features</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSwitchToOverviewSection('intro-video')}
+              className="flex items-center gap-1.5 hover:text-[#dc9750] transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
+            >
+              <Play className="w-3.5 h-3.5 text-[#dc9750] fill-[#dc9750]" />
+              <span>Intro Video</span>
             </button>
 
             <button
@@ -411,8 +422,83 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <span>100% Isolated Tenant Cloud</span>
                 </div>
 
+                {/* Official Landscape Introduction Video Showcase (Click-to-Play, No Auto-Play on Load) */}
+                <div
+                  id="intro-video"
+                  className="relative z-10 mt-8 sm:mt-10 rounded-2xl sm:rounded-[26px] bg-gradient-to-b from-[#dc9750]/30 via-[#dc9750]/15 to-[#dc9750]/25 p-2 sm:p-3.5 border border-[#dc9750]/50 shadow-[0_24px_56px_-12px_rgba(8,11,22,0.78)] max-w-4xl mx-auto scroll-mt-24"
+                >
+                  <div className="bg-[#141a2e] rounded-xl sm:rounded-[20px] border border-[#dc9750]/30 overflow-hidden">
+                    {/* Video Frame Top Header Bar */}
+                    <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-[#192038] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-[#dc9750] text-[#1e2640]">
+                          <Play className="w-3.5 h-3.5 fill-[#1e2640]" />
+                        </span>
+                        <div>
+                          <span className="text-xs sm:text-sm font-extrabold text-white tracking-tight">
+                            Official System Introduction Video
+                          </span>
+                          <span className="hidden sm:inline text-xs text-slate-300 ml-2">
+                            · Complete Walkthrough of Apex Stock &amp; Site Operations
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-[#dc9750]/20 text-[#e8ac6e] border border-[#dc9750]/35">
+                        16:9 HD Landscape
+                      </span>
+                    </div>
+
+                    {/* 16:9 Landscape Video Container */}
+                    <div className="relative aspect-video w-full bg-[#0d1222] overflow-hidden">
+                      {!isIntroVideoPlaying ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsIntroVideoPlaying(true)}
+                          className="group relative w-full h-full block cursor-pointer text-left focus:outline-none"
+                          aria-label="Play Apex Stock Introduction Video"
+                        >
+                          {/* YouTube High-Res Landscape Thumbnail */}
+                          <img
+                            src="https://i.ytimg.com/vi/XlwzxdTIwjQ/maxresdefault.jpg"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (!target.src.includes('hqdefault.jpg')) {
+                                target.src = 'https://i.ytimg.com/vi/XlwzxdTIwjQ/hqdefault.jpg';
+                              }
+                            }}
+                            alt="Apex Stock Official System Introduction Video"
+                            className="w-full h-full object-cover opacity-85 group-hover:scale-[1.02] group-hover:opacity-95 transition-all duration-300"
+                          />
+
+                          {/* Subtle Dark Vignette Overlay for Contrast */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0f1526]/85 via-[#1e2640]/35 to-[#0f1526]/40 transition-opacity group-hover:opacity-75" />
+
+                          {/* Center Play Button Action */}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#dc9750] group-hover:bg-[#e8a864] text-[#1e2640] flex items-center justify-center shadow-[0_0_40px_rgba(220,151,80,0.65)] ring-4 ring-white/25 group-hover:scale-110 transition-all duration-200">
+                              <Play className="w-7 h-7 sm:w-9 sm:h-9 fill-[#1e2640] text-[#1e2640] ml-1" />
+                            </div>
+                            <span className="mt-3 sm:mt-4 px-4 py-1.5 rounded-full bg-[#161d33]/90 border border-[#dc9750]/50 text-white text-xs sm:text-sm font-extrabold tracking-wide shadow-lg">
+                              Click to Play Introduction Video
+                            </span>
+                          </div>
+                        </button>
+                      ) : (
+                        <iframe
+                          className="w-full h-full border-0"
+                          src="https://www.youtube.com/embed/XlwzxdTIwjQ?autoplay=1&rel=0&modestbranding=1&playsinline=1"
+                          title="Apex Stock Official Introduction Video"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                          allowFullScreen
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Executive Site Operations Preview Console */}
-                <div className="relative z-10 mt-8 sm:mt-10 rounded-2xl sm:rounded-[24px] bg-[#dc9750]/20 p-2 sm:p-3 border border-[#dc9750]/40 shadow-[0_22px_50px_-12px_rgba(8,11,22,0.7)] max-w-5xl mx-auto">
+                <div className="relative z-10 mt-6 sm:mt-8 rounded-2xl sm:rounded-[24px] bg-[#dc9750]/20 p-2 sm:p-3 border border-[#dc9750]/40 shadow-[0_22px_50px_-12px_rgba(8,11,22,0.7)] max-w-5xl mx-auto">
                   <div className="bg-gradient-to-br from-[#161d33] via-[#1a223b] to-[#13192c] rounded-xl sm:rounded-[18px] border border-[#dc9750]/25 p-3.5 sm:p-6 text-left relative overflow-hidden">
                     <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#dc9750]/12 blur-3xl pointer-events-none" />
                     {/* Top window bar */}
