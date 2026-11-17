@@ -125,20 +125,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-5">
       {/* Top Executive Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-white/95 via-white/90 to-emerald-50/85 rounded-[26px] border border-white/95 p-5 sm:p-6 shadow-[0_14px_38px_-12px_rgba(15,23,42,0.08),inset_0_1.5px_0_rgba(255,255,255,1)] text-slate-900">
-        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 uppercase tracking-[0.14em]">
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5">
+          <div className="min-w-0 space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
               <span>Enterprise Operations Overview</span>
-              <span className="text-slate-300" aria-hidden="true">•</span>
-              <span className="text-slate-500 font-semibold">
+              <span className="text-emerald-400/50" aria-hidden="true">•</span>
+              <span className="text-emerald-200 font-semibold">
                 {activeTeams.length} Active Crew{activeTeams.length !== 1 ? 's' : ''} ({formatNumber(totalInHandUnitsHeldByTeams)} Units In-Hand)
               </span>
             </div>
-            <h1 className="text-2xl sm:text-[26px] font-extrabold text-slate-900 tracking-tight mt-1.5 leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
               Operations &amp; Inventory Hub
             </h1>
-            <p className="text-xs sm:text-[13.5px] text-slate-600 mt-1 max-w-2xl font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
               Real-time control covering Central Main Stock, branch requisitions, daily field team issuance, and in-hand balances.
             </p>
           </div>
@@ -148,7 +151,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('items')}
-              className="h-10 px-4 bg-white hover:bg-emerald-50/90 text-slate-800 hover:text-emerald-900 border border-slate-200/90 hover:border-emerald-300 rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-2xs cursor-pointer"
+              className="h-10 px-4 bg-white hover:bg-emerald-50 text-slate-900 border border-white/80 rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer"
               title="Import assembly units from Excel or manage catalog"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -157,7 +160,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('main-stock')}
-              className="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white border border-slate-800 rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+              className="h-10 px-4 bg-slate-800/85 hover:bg-slate-700/90 text-white border border-slate-600/80 rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
               <PlusCircle className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Receive Stock (Main)</span>
@@ -165,7 +168,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('requests')}
-              className="h-10 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+              className="h-10 px-4 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-md shadow-emerald-600/25 cursor-pointer"
             >
               <ArrowRightLeft className="w-4 h-4 shrink-0" />
               <span>Stock Requisition</span>
@@ -173,7 +176,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('dispatch')}
-              className="h-10 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+              className="h-10 px-4 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/50 rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-2 transition-all shadow-md shadow-blue-600/25 cursor-pointer"
             >
               <Send className="w-4 h-4 shrink-0" />
               <span>Issue to Team</span>

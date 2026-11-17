@@ -279,17 +279,20 @@ export const IssueToTeamsView: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Field Operations</span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">Daily Dispatch Workflow</span>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 space-y-1.5 max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+            <span>Field Operations</span>
+            <span aria-hidden="true" className="text-emerald-400/50">·</span>
+            <span className="text-emerald-200">Daily Dispatch Workflow</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Issue to Teams (Daily Dispatch)
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
             Select a field team, search site inventory, click the <strong>"+" (Plus)</strong> button to add items, specify quantities, and dispatch stock with an official <strong>Issue Note</strong>. Stock is automatically deducted from Site Branch inventory in real-time.
           </p>
         </div>

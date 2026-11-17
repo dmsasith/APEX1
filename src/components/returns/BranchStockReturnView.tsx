@@ -209,30 +209,32 @@ export const BranchStockReturnView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shadow-xs">
-              <Boxes className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                Branch Stock Return (To Main Yard)
-              </h1>
-              <p className="text-xs text-slate-500">
-                Return surplus, completed project balance, or scrap materials from Site Branches directly back to Central Main Warehouse
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-          <Building className="w-4 h-4 text-indigo-600" />
-          <span>
-            Operating Site: <strong>{isCentralAdmin ? 'All Branches (Central Admin)' : currentBranchObj?.name}</strong>
-          </span>
-          <span className="text-slate-300">|</span>
-          <span>Returns Logged: <strong>{branchReturns.length}</strong></span>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <Boxes className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Site-to-Central Return Logistics</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Branch Stock Return (To Main Yard)
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Return surplus, completed project balance, or scrap materials from Site Branches directly back to Central Main Warehouse
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 text-xs font-medium text-slate-200 bg-slate-950/60 backdrop-blur-md border border-slate-800 rounded-xl px-4 py-2.5 shrink-0">
+            <Building className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              Operating Site: <strong className="text-white">{isCentralAdmin ? 'All Branches (Central Admin)' : currentBranchObj?.name}</strong>
+            </span>
+            <span className="text-slate-600">|</span>
+            <span>Returns Logged: <strong className="text-emerald-300">{branchReturns.length}</strong></span>
+          </div>
         </div>
       </div>
 

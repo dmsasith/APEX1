@@ -892,91 +892,96 @@ export const ProjectsManagementView: React.FC = () => {
       )}
 
       {/* Header Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Infrastructure Projects</span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">Main Projects, Sub-Projects & Standalone Registry</span>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 -mb-10 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <span>Infrastructure Projects</span>
+              <span aria-hidden="true" className="text-emerald-400/50">·</span>
+              <span className="text-emerald-200">Main Projects, Sub-Projects & Standalone Registry</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Project Registry & New Section Registry
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Manage <strong>Major / Main Projects</strong> (with shared Client Free Stock pools), linked <strong>Sub-Projects</strong> (for granular field usage tracking), and <strong>Individual Projects</strong> alongside custom BOM templates.
+            </p>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
-            Project Registry & New Section Registry
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl">
-            Manage <strong>Major / Main Projects</strong> (with shared Client Free Stock pools), linked <strong>Sub-Projects</strong> (for granular field usage tracking), and <strong>Individual Projects</strong> alongside custom BOM templates.
-          </p>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={handleDownloadSampleCsv}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-300 shadow-2xs whitespace-nowrap"
-            title="Download CSV Template with sample format"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-600" />
-            <span>Sample CSV</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleDownloadSampleCsv}
+              className="px-3 py-2.5 bg-slate-800/85 hover:bg-slate-700/90 text-slate-100 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-600/80 shadow-sm whitespace-nowrap cursor-pointer"
+              title="Download CSV Template with sample format"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Sample CSV</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-300 shadow-2xs cursor-pointer whitespace-nowrap"
-            title="Import projects from CSV file"
-          >
-            <Upload className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Import CSV</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-2.5 bg-white hover:bg-emerald-50 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border border-white/90 shadow-sm cursor-pointer whitespace-nowrap"
+              title="Import projects from CSV file"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Import CSV</span>
+            </button>
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".csv,text/csv"
-            onChange={handleCsvFileUpload}
-            className="hidden"
-          />
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".csv,text/csv"
+              onChange={handleCsvFileUpload}
+              className="hidden"
+            />
 
-          <button
-            type="button"
-            onClick={handleExportProjectsCsv}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-300 shadow-2xs whitespace-nowrap"
-            title="Export project catalog to CSV"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-slate-600" />
-            <span>Export CSV</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleExportProjectsCsv}
+              className="px-3 py-2.5 bg-slate-800/85 hover:bg-slate-700/90 text-slate-100 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-600/80 shadow-sm whitespace-nowrap cursor-pointer"
+              title="Export project catalog to CSV"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Export CSV</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('sections');
-              handleOpenAddSectionModal();
-            }}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
-          >
-            <Layers className="w-4 h-4 text-emerald-400" />
-            <span>+ New Section Registry</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('sections');
+                handleOpenAddSectionModal();
+              }}
+              className="px-3.5 py-2.5 bg-slate-950/80 hover:bg-slate-800 text-white border border-slate-600 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+            >
+              <Layers className="w-4 h-4 text-emerald-400" />
+              <span>+ New Section Registry</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleOpenAddModal(undefined, 'main')}
-            className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
-            title="Register a Major Umbrella Project that holds multiple Sub-Projects and receives bulk Client Free Stock"
-          >
-            <FolderTree className="w-4 h-4 text-indigo-200" />
-            <span>+ Main Project</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleOpenAddModal(undefined, 'main')}
+              className="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-indigo-600/25 cursor-pointer whitespace-nowrap"
+              title="Register a Major Umbrella Project that holds multiple Sub-Projects and receives bulk Client Free Stock"
+            >
+              <FolderTree className="w-4 h-4 text-indigo-100" />
+              <span>+ Main Project</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleOpenAddModal(undefined, 'individual')}
-            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4 text-emerald-200" />
-            <span>Register Project</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleOpenAddModal(undefined, 'individual')}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-emerald-600/25 cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4 text-white" />
+              <span>Register Project</span>
+            </button>
+          </div>
         </div>
       </div>
 

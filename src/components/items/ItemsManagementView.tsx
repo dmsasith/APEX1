@@ -301,29 +301,31 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
       )}
 
       {/* Top Banner & Action Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                Master Catalog
-              </span>
-              <span className="text-xs text-slate-500">· Excel Import & Central Registry</span>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <span>Master Catalog</span>
+              <span aria-hidden="true" className="text-emerald-400/50">·</span>
+              <span className="text-emerald-200">Excel Import & Central Registry</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Items Management
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               Import, dynamic-sync, download templates, and manage inventory assembly units.
               All items synchronize across Main Stock and all Site Branch allocations.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto lg:justify-end">
             {/* Download Template Button */}
             <button
               onClick={downloadSampleExcelTemplate}
-              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors shadow-2xs"
+              className="px-3.5 py-2.5 bg-white hover:bg-emerald-50 text-emerald-900 border border-white/90 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
               title="Download formatted .xlsx sample template matching assembly unit specifications"
             >
               <Download className="w-4 h-4 text-emerald-600" />
@@ -333,10 +335,10 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
             {/* Export to Excel */}
             <button
               onClick={() => exportItemsToExcel(activeItems)}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-2.5 bg-slate-800/85 hover:bg-slate-700/90 text-white border border-slate-600/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
               title="Export all current active catalog items to Excel"
             >
-              <FileSpreadsheet className="w-4 h-4 text-slate-600" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
               <span>Export Catalog ({activeItems.length})</span>
             </button>
 
@@ -344,10 +346,10 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
             <button
               type="button"
               onClick={() => setLabelPrintItems(filteredItems.length > 0 ? filteredItems : activeItems)}
-              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
               title="Print Code-128 / Code-39 Barcode Sticker Sheet for items"
             >
-              <Printer className="w-4 h-4 text-indigo-600" />
+              <Printer className="w-4 h-4 text-indigo-100" />
               <span>Print Barcode Labels ({filteredItems.length})</span>
             </button>
 
@@ -360,20 +362,23 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                   setNewItemCode(generateNextSequentialItemCode(items, defaultType));
                   setShowCreateModal(true);
                 }}
-                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-emerald-600/25 cursor-pointer"
               >
-                <PlusCircle className="w-4 h-4 text-emerald-400" />
+                <PlusCircle className="w-4 h-4 text-white" />
                 <span>+ Add Item</span>
               </button>
             ) : (
-              <div className="px-3 py-2 bg-slate-100 border border-slate-200 text-slate-500 rounded-lg text-xs font-medium flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <div className="px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 text-slate-200 rounded-xl text-xs font-medium flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Catalog Read-Only</span>
               </div>
             )}
           </div>
         </div>
+      </div>
 
+      {/* Excel Uploader Zone Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
         {/* Drag and Drop Excel Uploader Zone (Central Admin Only) */}
         {isCentralAdmin ? (
           <div

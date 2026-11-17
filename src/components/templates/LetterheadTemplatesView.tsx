@@ -604,57 +604,60 @@ export const LetterheadTemplatesView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">
-            <Award className="w-4 h-4 text-emerald-600" />
-            <span>ISO 9001:2015 Controlled Document Formats • Auto Tenant Header</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900">
-            ISO Standard Document Formats & PDF / Image Uploader
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
-            All 4 document format groups default to the clean <strong>ISO 9001:2015 Controlled Document Format</strong> with your logged-in Tenant Company Name (<strong>{autoTenantCompanyName}</strong>) and contact details auto-populated into the header. You can also upload a custom PDF or Image format to any group.
-          </p>
-        </div>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-10 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        {/* 3-Tab Switcher */}
-        <div className="flex items-center flex-wrap gap-2 shrink-0">
-          <div className="inline-flex flex-wrap rounded-xl border border-slate-200 bg-slate-100 p-1 gap-1">
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <Award className="w-3.5 h-3.5 text-emerald-400" />
+              <span>ISO 9001:2015 Controlled Document Formats • Auto Tenant Header</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              ISO Standard Document Formats & PDF / Image Uploader
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              All 4 document format groups default to the clean <strong className="text-white">ISO 9001:2015 Controlled Document Format</strong> with your logged-in Tenant Company Name (<strong className="text-emerald-300">{autoTenantCompanyName}</strong>) and contact details auto-populated into the header. You can also upload a custom PDF or Image format to any group.
+            </p>
+          </div>
+
+          {/* 3-Tab Switcher */}
+          <div className="bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800 backdrop-blur-md shrink-0 flex flex-wrap gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('section-formats')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'section-formats'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
+                  ? 'bg-white text-slate-950 shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
               }`}
             >
-              <FileUp className="w-3.5 h-3.5" />
+              <FileUp className={`w-3.5 h-3.5 ${activeTab === 'section-formats' ? 'text-emerald-600' : 'text-emerald-400'}`} />
               <span>1. Section Formats (ISO Standard & Upload PDF/Image)</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('templates')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'templates'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
+                  ? 'bg-white text-slate-950 shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
               }`}
             >
-              <Building2 className="w-3.5 h-3.5" />
+              <Building2 className={`w-3.5 h-3.5 ${activeTab === 'templates' ? 'text-emerald-600' : 'text-emerald-400'}`} />
               <span>2. Auto Tenant Header & Signers</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('signatures')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'signatures'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
+                  ? 'bg-white text-slate-950 shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
               }`}
             >
-              <PenTool className="w-3.5 h-3.5" />
+              <PenTool className={`w-3.5 h-3.5 ${activeTab === 'signatures' ? 'text-emerald-600' : 'text-emerald-400'}`} />
               <span>3. Digital Signatures ({digitalSignatures.length})</span>
             </button>
           </div>

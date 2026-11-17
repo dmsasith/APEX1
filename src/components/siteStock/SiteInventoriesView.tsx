@@ -294,39 +294,44 @@ export const SiteInventoriesView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Branch Custody & Audit</span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">Site Yard Balances & Usage Vouchers</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
-            Site Branch Stock & Material Usage History
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
-            Live inventory ledger per site branch: view active yard balances and track site-specific material consumption vouchers logged by field teams.
-          </p>
-        </div>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-2">
-          {activeSection === 'inventory' ? (
-            <button
-              onClick={exportSiteInventoryCsv}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs shrink-0 cursor-pointer"
-            >
-              <Download className="w-4 h-4 text-slate-600" />
-              <span>Export Site Inventory (CSV)</span>
-            </button>
-          ) : (
-            <button
-              onClick={exportSiteUsageHistoryCsv}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs shrink-0 cursor-pointer"
-            >
-              <Download className="w-4 h-4 text-slate-600" />
-              <span>Export Site Usage Vouchers (CSV)</span>
-            </button>
-          )}
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <span>Branch Custody & Audit</span>
+              <span aria-hidden="true" className="text-emerald-400/50">·</span>
+              <span className="text-emerald-200">Site Yard Balances & Usage Vouchers</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Site Branch Stock & Material Usage History
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Live inventory ledger per site branch: view active yard balances and track site-specific material consumption vouchers logged by field teams.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {activeSection === 'inventory' ? (
+              <button
+                onClick={exportSiteInventoryCsv}
+                className="px-4 py-2.5 bg-white hover:bg-emerald-50 text-slate-900 border border-white/90 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm shrink-0 cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>Export Site Inventory (CSV)</span>
+              </button>
+            ) : (
+              <button
+                onClick={exportSiteUsageHistoryCsv}
+                className="px-4 py-2.5 bg-white hover:bg-emerald-50 text-slate-900 border border-white/90 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm shrink-0 cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>Export Site Usage Vouchers (CSV)</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

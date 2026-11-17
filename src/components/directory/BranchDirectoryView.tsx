@@ -199,21 +199,22 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
   return (
     <div id="branch-directory-printable-area" className="space-y-6">
       {/* Top Banner / Header (Screen View) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 no-print">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-0.5 rounded-md">
-                Organization Hierarchy & Workforce
-              </span>
-              <span className="text-slate-300">·</span>
-              <span className="text-xs text-slate-500 font-medium">Branch Supervisors, Teams & Member NICs</span>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl border border-slate-800 shadow-sm p-6 sm:p-7 overflow-hidden no-print">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 -mb-10 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <span>Organization Hierarchy & Workforce</span>
+              <span aria-hidden="true" className="text-emerald-400/50">·</span>
+              <span className="text-emerald-200 font-semibold">Branch Supervisors, Teams & Member NICs</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1.5 flex items-center gap-2.5">
-              <Building2 className="w-6 h-6 text-emerald-600" />
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+              <Building2 className="w-6 h-6 text-emerald-400 shrink-0" />
               <span>Branch Staff & Field Teams Directory</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               Inspect registered company branches, assigned branch managers and supervisors, field teams, and complete team members with verified ID/NIC numbers. Select any branch below to view its full personnel and print official reports.
             </p>
           </div>
@@ -223,7 +224,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
             <button
               type="button"
               onClick={handleExportCsv}
-              className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-white hover:bg-emerald-50 text-slate-900 border border-white/90 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Export Members (Excel)</span>
@@ -231,48 +232,48 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
             <button
               type="button"
               onClick={handlePrint}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/25 cursor-pointer"
             >
-              <Printer className="w-4 h-4 text-emerald-400" />
+              <Printer className="w-4 h-4 text-white" />
               <span>Print Directory Report</span>
             </button>
           </div>
         </div>
 
         {/* Global KPI Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-5 pt-5 border-t border-slate-100">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-700 flex items-center justify-center shrink-0">
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-6 pt-5 border-t border-slate-800/80">
+          <div className="p-3.5 rounded-xl bg-slate-950/60 backdrop-blur-md border border-slate-800 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-slate-500 font-medium">Registered Branches & Yards</div>
-              <div className="text-xl font-black text-slate-900 font-mono tabular-nums">
-                {formatNumber(totalBranchesCount)} <span className="text-xs font-normal text-slate-500">Locations</span>
+              <div className="text-xs text-slate-400 font-medium">Registered Branches & Yards</div>
+              <div className="text-xl font-black text-white font-mono tabular-nums">
+                {formatNumber(totalBranchesCount)} <span className="text-xs font-normal text-slate-400">Locations</span>
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-700 flex items-center justify-center shrink-0">
+          <div className="p-3.5 rounded-xl bg-slate-950/60 backdrop-blur-md border border-slate-800 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
               <Users2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-slate-500 font-medium">Active Field Work Teams</div>
-              <div className="text-xl font-black text-blue-700 font-mono tabular-nums">
-                {formatNumber(totalTeamsCount)} <span className="text-xs font-normal text-slate-500">Teams</span>
+              <div className="text-xs text-slate-400 font-medium">Active Field Work Teams</div>
+              <div className="text-xl font-black text-sky-300 font-mono tabular-nums">
+                {formatNumber(totalTeamsCount)} <span className="text-xs font-normal text-slate-400">Teams</span>
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
+          <div className="p-3.5 rounded-xl bg-slate-950/60 backdrop-blur-md border border-slate-800 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
               <IdCard className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-slate-500 font-medium">Total Field Workforce</div>
-              <div className="text-xl font-black text-amber-700 font-mono tabular-nums">
-                {formatNumber(totalWorkforceCount)} <span className="text-xs font-normal text-slate-500">Personnel</span>
+              <div className="text-xs text-slate-400 font-medium">Total Field Workforce</div>
+              <div className="text-xl font-black text-amber-300 font-mono tabular-nums">
+                {formatNumber(totalWorkforceCount)} <span className="text-xs font-normal text-slate-400">Personnel</span>
               </div>
             </div>
           </div>

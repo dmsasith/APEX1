@@ -467,55 +467,60 @@ export const MainStockView: React.FC = () => {
       )}
 
       {/* Header bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Central Depot</span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">Main Stock Control</span>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <span>Central Depot</span>
+              <span aria-hidden="true" className="text-emerald-400/50">·</span>
+              <span className="text-emerald-200">Main Stock Control</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Main Warehouse Inventory & Inbound Logs
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Central stock inventory, branch site returns, quarantined damaged stock, and complete inbound receipt logs.
+            </p>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
-            Main Warehouse Inventory & Inbound Logs
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Central stock inventory, branch site returns, quarantined damaged stock, and complete inbound receipt logs.
-          </p>
+
+          {isCentralAdmin ? (
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('app-navigate', { detail: 'procurement' }));
+                }}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/25 shrink-0 cursor-pointer active:scale-95"
+                title="Create Material Requisition & Purchase Order to Suppliers"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>Material Requisition (Supplier PO)</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const firstItem = items[0];
+                  if (firstItem) {
+                    setSelectedItemId(firstItem.id);
+                    setUnitCost(firstItem.unitPrice);
+                  }
+                  setShowLogModal(true);
+                }}
+                className="px-4 py-2.5 bg-slate-800/85 hover:bg-slate-700/90 text-white border border-slate-600/80 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer active:scale-95"
+              >
+                <PlusCircle className="w-4 h-4 text-emerald-400" />
+                <span>Log Manual / Spot Inbound</span>
+              </button>
+            </div>
+          ) : (
+            <div className="px-3.5 py-2 bg-slate-950/60 border border-slate-700/80 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 shrink-0">
+              <Lock className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Central Stock (Read-Only for Sites)</span>
+            </div>
+          )}
         </div>
-
-        {isCentralAdmin ? (
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('app-navigate', { detail: 'procurement' }));
-              }}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md shrink-0 cursor-pointer active:scale-95"
-              title="Create Material Requisition & Purchase Order to Suppliers"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Material Requisition (Supplier PO)</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const firstItem = items[0];
-                if (firstItem) {
-                  setSelectedItemId(firstItem.id);
-                  setUnitCost(firstItem.unitPrice);
-                }
-                setShowLogModal(true);
-              }}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md shrink-0 cursor-pointer active:scale-95"
-            >
-              <PlusCircle className="w-4 h-4 text-emerald-400" />
-              <span>Log Manual / Spot Inbound</span>
-            </button>
-          </div>
-        ) : (
-          <div className="px-3.5 py-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2 shrink-0">
-            <Lock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Central Stock (Read-Only for Sites)</span>
-          </div>
-        )}
       </div>
 
       {/* Notice for Site Branch Users */}

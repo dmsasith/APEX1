@@ -108,37 +108,42 @@ export const TeamInHandDashboard: React.FC = () => {
   return (
     <div id="team-in-hand-printable-area" className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Field Logistics Audit</span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">Live Team Custody</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
-            Team In-Hand Stock Dashboard
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
-            Live balance held across all field crews. Audits total stock assigned, items used/returned, and active balances with instant print and Excel/CSV export.
-          </p>
-        </div>
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        {/* Global Export & Print Buttons */}
-        <div className="no-print flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleExportCsv}
-            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Export to Excel / CSV</span>
-          </button>
-          <button
-            onClick={handlePrintAll}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
-          >
-            <Printer className="w-4 h-4 text-emerald-400" />
-            <span>Print Report</span>
-          </button>
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <span>Field Logistics Audit</span>
+              <span aria-hidden="true" className="text-emerald-400/50">·</span>
+              <span className="text-emerald-200">Live Team Custody</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Team In-Hand Stock Dashboard
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Live balance held across all field crews. Audits total stock assigned, items used/returned, and active balances with instant print and Excel/CSV export.
+            </p>
+          </div>
+
+          {/* Global Export & Print Buttons */}
+          <div className="no-print flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={handleExportCsv}
+              className="px-4 py-2.5 bg-white hover:bg-emerald-50 text-slate-900 border border-white/90 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Export to Excel / CSV</span>
+            </button>
+            <button
+              onClick={handlePrintAll}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-emerald-600/25 cursor-pointer"
+            >
+              <Printer className="w-4 h-4 text-white" />
+              <span>Print Report</span>
+            </button>
+          </div>
         </div>
       </div>
 

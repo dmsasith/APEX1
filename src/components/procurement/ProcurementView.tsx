@@ -834,19 +834,22 @@ Email: ${tenantEmail}`;
       )}
 
       {/* Executive Header Surface */}
-      <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.06)]">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 -mb-10 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-1.5 max-w-2xl">
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
-              <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
+              <ShoppingCart className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Main Stock Procurement & Requisitions</span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
-              <span className="text-slate-500 font-medium">Central Admin Operations</span>
+              <span aria-hidden="true" className="text-emerald-400/50">·</span>
+              <span className="text-emerald-200 font-semibold">Central Admin Operations</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Material Requisitions & Supplier Orders
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               Manage approved vendors, issue international-standard Purchase Orders (PO), receive full or partial GRN batches into Central Main Stock, and process Supplier Returns (RTV) & Debit Notes.
             </p>
           </div>
@@ -856,25 +859,25 @@ Email: ${tenantEmail}`;
             <button
               type="button"
               onClick={openAddSupplier}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200/80 text-slate-800 border border-slate-200/90 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800/85 hover:bg-slate-700/90 text-white border border-slate-600/80 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
             >
-              <Building2 className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <Building2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>+ Register Supplier</span>
             </button>
 
             <button
               type="button"
               onClick={handleOpenCreateReturn}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100/80 text-amber-900 border border-amber-200/90 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <RotateCcw className="w-3.5 h-3.5 text-amber-300 shrink-0" />
               <span>+ Return to Supplier</span>
             </button>
 
             <button
               type="button"
               onClick={openCreateOrder}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0 ${theme.primaryBtn}`}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-600/25 active:scale-95 whitespace-nowrap shrink-0"
             >
               <Plus className="w-4 h-4 shrink-0" />
               <span>New Purchase Order (PO)</span>
@@ -883,24 +886,24 @@ Email: ${tenantEmail}`;
         </div>
 
         {/* 4-Column Executive Procurement KPI Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-5 border-t border-slate-100">
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-5 border-t border-slate-800/80">
           <div
             onClick={() => {
               setActiveTab('orders');
               setStatusFilter('all');
             }}
-            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+            className="p-4 rounded-2xl bg-slate-950/60 hover:bg-slate-900/80 backdrop-blur-md border border-slate-800 transition-colors cursor-pointer flex items-center justify-between gap-3"
           >
             <div>
-              <div className="text-xs font-medium text-slate-500">Purchase Orders Issued</div>
-              <div className="text-xl font-extrabold text-slate-900 font-mono tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-400">Purchase Orders Issued</div>
+              <div className="text-xl font-extrabold text-white font-mono tabular-nums mt-0.5">
                 {formatNumber(activePurchaseOrders.length)}
               </div>
-              <div className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
-                Value: <strong className="text-slate-700">{config.currencySymbol} {formatNumber(totalPoValue)}</strong>
+              <div className="text-[11px] text-slate-400 font-mono tabular-nums mt-0.5">
+                Value: <strong className="text-slate-200">{config.currencySymbol} {formatNumber(totalPoValue)}</strong>
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-900/5 text-slate-700 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-800/90 text-slate-200 flex items-center justify-center shrink-0">
               <FileText className="w-5 h-5" />
             </div>
           </div>
@@ -910,18 +913,18 @@ Email: ${tenantEmail}`;
               setActiveTab('orders');
               setStatusFilter('Order Sent');
             }}
-            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+            className="p-4 rounded-2xl bg-slate-950/60 hover:bg-slate-900/80 backdrop-blur-md border border-slate-800 transition-colors cursor-pointer flex items-center justify-between gap-3"
           >
             <div>
-              <div className="text-xs font-medium text-slate-500">Pending / Partial Delivery</div>
-              <div className="text-xl font-extrabold text-amber-700 font-mono tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-400">Pending / Partial Delivery</div>
+              <div className="text-xl font-extrabold text-amber-400 font-mono tabular-nums mt-0.5">
                 {formatNumber(pendingPoCount)}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-400 mt-0.5">
                 Awaiting warehouse GRN receipt
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5" />
             </div>
           </div>
@@ -931,37 +934,37 @@ Email: ${tenantEmail}`;
               setActiveTab('orders');
               setStatusFilter('Received into Main Stock');
             }}
-            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+            className="p-4 rounded-2xl bg-slate-950/60 hover:bg-slate-900/80 backdrop-blur-md border border-slate-800 transition-colors cursor-pointer flex items-center justify-between gap-3"
           >
             <div>
-              <div className="text-xs font-medium text-slate-500">Received into Main Stock</div>
-              <div className="text-xl font-extrabold text-emerald-700 font-mono tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-400">Received into Main Stock</div>
+              <div className="text-xl font-extrabold text-emerald-400 font-mono tabular-nums mt-0.5">
                 {formatNumber(completedPoCount)}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-400 mt-0.5">
                 Credited to central inventory
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
               <Boxes className="w-5 h-5" />
             </div>
           </div>
 
           <div
             onClick={() => setActiveTab('suppliers')}
-            className="p-4 rounded-2xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 transition-colors cursor-pointer flex items-center justify-between gap-3"
+            className="p-4 rounded-2xl bg-slate-950/60 hover:bg-slate-900/80 backdrop-blur-md border border-slate-800 transition-colors cursor-pointer flex items-center justify-between gap-3"
           >
             <div>
-              <div className="text-xs font-medium text-slate-500">Approved Suppliers & RTVs</div>
-              <div className="text-xl font-extrabold text-slate-900 font-mono tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-400">Approved Suppliers & RTVs</div>
+              <div className="text-xl font-extrabold text-white font-mono tabular-nums mt-0.5">
                 {formatNumber(activeSuppliers.length)}{' '}
-                <span className="text-xs font-medium text-slate-500">vendors</span>
+                <span className="text-xs font-medium text-slate-400">vendors</span>
               </div>
-              <div className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
-                RTV Claims: <strong className="text-amber-700">{activeSupplierReturns.length}</strong> ({config.currencySymbol} {formatNumber(totalRtvValue)})
+              <div className="text-[11px] text-slate-400 font-mono tabular-nums mt-0.5">
+                RTV Claims: <strong className="text-amber-300">{activeSupplierReturns.length}</strong> ({config.currencySymbol} {formatNumber(totalRtvValue)})
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-700 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5" />
             </div>
           </div>
