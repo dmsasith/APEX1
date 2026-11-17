@@ -146,11 +146,13 @@ export const ProcurementView: React.FC = () => {
     isOpen: boolean;
     title: string;
     message: string;
+    isDestructive?: boolean;
     onConfirm: () => void;
   }>({
     isOpen: false,
     title: '',
     message: '',
+    isDestructive: true,
     onConfirm: () => {},
   });
 
@@ -600,6 +602,7 @@ export const ProcurementView: React.FC = () => {
       isOpen: true,
       title: `Short-Close PO #${order.poNumber}?`,
       message: `The supplier delivered fewer items than originally ordered. If the supplier cannot deliver the remaining pending items, closing this PO will finalize the order as completed (short-delivered). All stock already credited to Central Main Warehouse will remain safely intact.`,
+      isDestructive: false,
       onConfirm: () => {
         const res = closePurchaseOrderRemainder(
           order.id,
@@ -780,6 +783,7 @@ Email: ${tenantEmail}`;
       isOpen: true,
       title: `Dispatch Return #${ret.rtvNumber} to Supplier?`,
       message: `Are you sure you want to dispatch ${ret.rtvNumber} to "${ret.supplierName}"? This will officially deduct ${ret.items.reduce((s, i) => s + i.quantity, 0)} units from ${ret.locationType === 'Main Stock' ? 'Main Central Stock' : 'Site Stock'} inventory.`,
+      isDestructive: false,
       onConfirm: () => {
         const res = dispatchSupplierReturn(ret.id, {
           dispatchedBy: currentUser?.fullName || 'Central Storekeeper',
@@ -3194,6 +3198,7 @@ Email: ${tenantEmail}`;
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
         message={confirmModal.message}
+        isDestructive={confirmModal.isDestructive ?? true}
         onConfirm={confirmModal.onConfirm}
         onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />

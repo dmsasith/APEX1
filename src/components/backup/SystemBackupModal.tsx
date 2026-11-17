@@ -26,6 +26,7 @@ import {
 import { useStock } from '../../context/StockContext';
 import { StockBackup, isSuperAdmin } from '../../types';
 import { OfflineBackupViewerModal } from './OfflineBackupViewerModal';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface SystemBackupModalProps {
   isOpen: boolean;
@@ -78,8 +79,9 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
   const [manualName, setManualName] = useState('');
   const [manualNote, setManualNote] = useState('');
 
-  // Selected backup for preview/restore
+  // Selected backup for preview/restore/delete
   const [restoreConfirmBackup, setRestoreConfirmBackup] = useState<StockBackup | null>(null);
+  const [deleteConfirmBackup, setDeleteConfirmBackup] = useState<StockBackup | null>(null);
   const [restoreSuccessMsg, setRestoreSuccessMsg] = useState<string | null>(null);
 
   // Auto-download to PC Hard Drive toggle state
@@ -737,7 +739,7 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                           </button>
                           <button
                             type="button"
-                            onClick={() => deleteBackup(b.id)}
+                            onClick={() => setDeleteConfirmBackup(b)}
                             title="Delete this backup archive"
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                           >
@@ -896,6 +898,22 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
           setViewerBackupData(null);
         }}
         initialBackupData={viewerBackupData}
+      />
+
+      {/* Delete Backup Confirmation Modal (Requires Admin Password) */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmBackup}
+        title={`Delete Backup #${deleteConfirmBackup?.backupNumber || ''}?`}
+        message={`Are you sure you want to permanently delete backup snapshot "${deleteConfirmBackup?.name || ''}"? This action cannot be undone.`}
+        confirmLabel="Delete Backup"
+        isDestructive={true}
+        onConfirm={() => {
+          if (deleteConfirmBackup) {
+            deleteBackup(deleteConfirmBackup.id);
+            setDeleteConfirmBackup(null);
+          }
+        }}
+        onClose={() => setDeleteConfirmBackup(null)}
       />
     </div>
   );

@@ -370,42 +370,15 @@ export const RecycleBinView: React.FC = () => {
       </div>
 
       {/* Confirmation Modal for Emptying Entire Recycle Bin */}
-      {showEmptyConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
-            <div className="flex items-center gap-3 text-rose-600 mb-3">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-900">Empty Recycle Bin?</h3>
-                <p className="text-xs text-slate-500">Irreversible Permanent Purge</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed mb-4">
-              Are you sure you want to permanently delete all <strong>{recycleBinCount}</strong> record(s) in the Recycle Bin? Once emptied, these items cannot be restored.
-            </p>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setShowEmptyConfirmModal(false)}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmEmptyTrash}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-xs"
-              >
-                Permanently Empty All
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showEmptyConfirmModal}
+        title="Empty Recycle Bin?"
+        message={`Are you sure you want to permanently delete all ${recycleBinCount} record(s) in the Recycle Bin? Once emptied, these items cannot be restored.`}
+        confirmLabel="Permanently Empty All"
+        isDestructive={true}
+        onConfirm={handleConfirmEmptyTrash}
+        onClose={() => setShowEmptyConfirmModal(false)}
+      />
 
       {/* Confirmation Modal for Permanent Purging */}
       <ConfirmModal
