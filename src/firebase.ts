@@ -1292,12 +1292,16 @@ export async function fetchTenantDataFromFirebase<T>(
 
 /**
  * Realtime sync listeners for Global SaaS Platform Subscription Pricing
+ * Stored under tenantsData/tenant-apex-main/platformPricing so it complies with the
+ * tenantsData/$tenantId Firebase RTDB security rule without requiring root rule edits.
  */
+const PLATFORM_PRICING_RTDB_PATH = 'tenantsData/tenant-apex-main/platformPricing';
+
 export function subscribeToFirebasePlatformPricing(
   onData: (pricing: PlatformPricingConfig) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const pricingRef = ref(rtdb, 'saasPlatformPricing');
+  const pricingRef = ref(rtdb, PLATFORM_PRICING_RTDB_PATH);
   const unsubscribe = onValue(
     pricingRef,
     (snapshot: DataSnapshot) => {
@@ -1307,7 +1311,7 @@ export function subscribeToFirebasePlatformPricing(
       }
     },
     (error) => {
-      console.warn('Firebase saasPlatformPricing subscription error:', error);
+      console.warn('Firebase platformPricing subscription notice:', error);
       if (onError) onError(error);
     }
   );
@@ -1317,35 +1321,24 @@ export function subscribeToFirebasePlatformPricing(
 export async function writePlatformPricingToFirebase(pricing: PlatformPricingConfig): Promise<void> {
   try {
     const cleanPricing = sanitizeData(pricing);
-    const updates: Record<string, unknown> = {
-      saasPlatformPricing: cleanPricing,
-      'tenantsData/tenant-apex-main/platformPricing': cleanPricing,
-    };
-    await update(ref(rtdb), updates);
+    await set(ref(rtdb, PLATFORM_PRICING_RTDB_PATH), cleanPricing);
   } catch (err) {
-    console.error('Failed to write saasPlatformPricing to Firebase:', err);
+    console.warn('Could not sync platformPricing to Firebase:', err);
   }
 }
 
 export async function fetchPlatformPricingFromFirebase(): Promise<PlatformPricingConfig | null> {
   try {
-    const snap = await get(ref(rtdb, 'saasPlatformPricing'));
+    const snap = await get(ref(rtdb, PLATFORM_PRICING_RTDB_PATH));
     if (snap.exists()) {
       const val = snap.val();
       if (val && typeof val === 'object' && typeof val.monthlyPrice === 'number') {
         return val as PlatformPricingConfig;
       }
     }
-    const fallbackSnap = await get(ref(rtdb, 'tenantsData/tenant-apex-main/platformPricing'));
-    if (fallbackSnap.exists()) {
-      const val = fallbackSnap.val();
-      if (val && typeof val === 'object' && typeof val.monthlyPrice === 'number') {
-        return val as PlatformPricingConfig;
-      }
-    }
     return null;
   } catch (err) {
-    console.warn('Failed to fetch saasPlatformPricing from Firebase:', err);
+    console.warn('Could not fetch platformPricing from Firebase:', err);
     return null;
   }
 }
