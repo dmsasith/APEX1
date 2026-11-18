@@ -189,38 +189,38 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     id: 'ch-04',
     number: 'Chapter 04',
     category: 'projects',
-    categoryLabel: 'Projects, Usage, Wastage & Full Site Reports',
-    title: 'Project Registry, Material Usage / Daily Progress Entry (with Wastage Qty), Branch Locks & Full Site Reports',
+    categoryLabel: 'Projects, Telecom NC, Usage, Wastage & Full Site Reports',
+    title: 'Project Registry, Telecom New Connection (NC 6-Field & 3-Step Locked Team Workflow), Wastage Qty & Full Site Reports',
     summary:
-      'Register Major/Main, Sub, and Individual Projects with a mandatory Assigned Site Branch; record daily consumption and Wastage Qty with automatic section filtering & site branch locks; and generate consolidated Full Site (Project) Reports.',
+      'Register Major/Main, Sub, and Individual Projects or Telecom New Connection (NC) 6-Field subscriber lines; record daily consumption with a 3-step Team-Locked NC workflow or standard 4-step project workflow; and generate consolidated Full Site Reports.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Register Projects with Mandatory "Assigned Site Branch *" & Section Filtering',
+        stepTitle: '1. Register Projects ("Assigned Site Branch *") & Create / Restore Section Formats (Standard vs. NC)',
         detail:
-          'In "Project & New Section Registry", register Major / Main Projects, Sub-Projects, or Individual Projects under their Project Section and mandatory "Assigned Site Branch *". In "Material Usage / Daily Progress Entry", picking a Project Section in Step 1 automatically filters Step 2 project lists to ONLY projects registered under that section — and if a chosen project belongs to a different site branch than your account, Step 4 safely locks with a clear notice to prevent cross-site usage errors.',
+          'In "Project & New Section Registry", register Major / Main Projects, Sub-Projects, or Individual Projects under their Project Section and mandatory "Assigned Site Branch *". When creating a new section in "New Section Registry & Material Templates -> + Create New Section", choose either "Standard Project Format" (Main / Sub / Individual) or "Telecom New Connection (NC)" format. If the New Connection section is ever deleted, click "+ Restore Telecom New Connection (NC)" to recreate it with all NC options in 1 click.',
       },
       {
-        stepTitle: '2. Log Installed Qty + "Wastage Qty" & Auto Main Pool / In-Hand Deduction',
+        stepTitle: '2. Telecom New Connection (NC) — 6-Field Subscriber Registration & 3-Step Locked Team Daily Progress',
         detail:
-          'Inside "Material Usage / Daily Progress Entry" (Step 4) and Voucher Edit modals, enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. The form calculates live Total Deduct (Used + Wastage) against Team In-Hand stock, deducts Sub-Project usage automatically from the Parent Main Project FOC pool, and updates Team In-Hand Wastage columns, Reconciliation, Site Stock, and PU vouchers.',
+          'When "Telecom New Connection" is selected: (a) In Project Registration, standard Main/Sub project fields are replaced by 6 ordered Subscriber Fields at the top: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, and 6. Exchange Area. (b) In "Material Usage / Daily Progress Entry", it switches to a simple 1-2-3 layout: Step 1 (Top) selects Field Team & Exchange Area and LOCKS them until the page is refreshed ("Confirm & Lock Team / Area") so the team\'s entire day of NC lines can be entered back-to-back without re-selecting the team; Step 2 lets you search/select an NC line by Customer Name or NC Number OR click "+ Register New Connection" right there to register all 6 fields on the spot; Step 3 records Material Usage and keeps Step 1 locked after submission.',
       },
       {
-        stepTitle: '3. Usage Vouchers History — "Full Report for This Site (Project)" & Reconciliation',
+        stepTitle: '3. Log Installed Qty + "Wastage Qty", Section Filtering & Auto Main Pool / In-Hand Deduction',
         detail:
-          'Open the "Usage Vouchers History" tab in "Material Usage / Daily Progress Entry" and select a project to unlock the "Full Report for This Site (Project)" button. It produces a 2-part report showing: (Part 1) Separate Team-by-Team consumption & Wastage with individual Team Subtotals, and (Part 2) the Full Site Consolidated Grand Total across all teams — ready for Print/PDF or Excel CSV export. Use the "Reconciliation" tab for Main Project vs. Sub-Project FOC balances.',
+          'In "Material Usage / Daily Progress Entry" and Voucher Edit modals, enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Picking a section in Step 1 filters project lists to ONLY that section, and if a project belongs to a different site branch than your account, usage safely locks. Total Deduct (Used + Wastage) is validated live against Team In-Hand stock and auto-deducts from Parent Main Project FOC pools.',
       },
       {
-        stepTitle: '4. Team Returns (RV) & Branch-to-HQ Returns (BRM)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)", Reconciliation & Returns (RV / BRM)',
         detail:
-          'Unused surplus materials, empty drums, or returnable machinery are returned from Field Crews to the Site Branch ("Team Returns" - RV) or from a Site Branch back to Central HQ ("Branch Returns" - BRM) with printable return vouchers.',
+          'Open "Usage Vouchers History" and select a project to unlock "Full Report for This Site (Project)" showing: (Part 1) Separate Team-by-Team consumption & Wastage with Team Subtotals, and (Part 2) Full Site Consolidated Grand Total (Print/PDF or Excel CSV). Unused surplus or tools are returned via "Team Returns" (RV) or "Branch Returns" (BRM).',
       },
     ],
     keyOutputs: [
-      'Section-Filtered Project Lists & User-Site Branch Access Lock',
-      'Installed Qty + Wastage Qty Entry (Live Used + Wastage Validation)',
+      'Telecom New Connection (NC): 6-Field Registration & 3-Step Daily Progress (Team & Area Locked Until Refresh)',
+      'Section Creation Format Selector (Standard vs. NC Format) + 1-Click NC Section Restore',
+      'Installed Qty + Wastage Qty Entry, Section Filter & User-Site Branch Access Lock',
       'Full Report for This Site (Project): Team Subtotals + Full Grand Total (PDF/CSV)',
-      'Main/Sub-Project Reconciliation & Printable PU / RV / BRM Vouchers',
     ],
   },
   {
@@ -426,38 +426,38 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     id: 'ch-04',
     number: '04 වන පරිච්ඡේදය',
     category: 'projects',
-    categoryLabel: 'ව්‍යාපෘති, Daily Progress Entry, Wastage සහ Full Site Reports',
-    title: 'Project Registry, Material Usage / Daily Progress Entry (Wastage Qty සමඟ), Site Lock සහ Full Site වාර්තා',
+    categoryLabel: 'ව්‍යාපෘති, Telecom NC, Daily Progress Entry, Wastage සහ Full Site Reports',
+    title: 'Project Registry, Telecom New Connection (NC කරුණු 6 සහ පියවර 1-2-3 Team Lock), Wastage සහ Full Site වාර්තා',
     summary:
-      'අනිවාර්ය Site Branch සමඟ ව්‍යාපෘති ලියාපදිංචිය, Section එකට අනුව Projects පෙරීම, අනවසර Site Lock ආරක්ෂාව, භාවිතය සමඟ Wastage Qty ඇතුළත් කිරීම සහ කණ්ඩායම් සියල්ලේම Full Site Report ලබාගැනීම.',
+      'අනිවාර්ය Site Branch සමඟ ව්‍යාපෘති ලියාපදිංචිය, Telecom New Connection (NC) සඳහා කරුණු 6ක ලියාපදිංචිය හා Team/Area Lock සහිත සරල 1-2-3 Daily Progress ක්‍රමවේදය, Wastage Qty සහ Full Site Report ලබාගැනීම.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Project Registry හි "Assigned Site Branch *", Section Filter සහ User Site Lock ආරක්ෂාව',
+        stepTitle: '1. Project Registry ("Assigned Site Branch *") සහ New Section Format තේරීම / නැවත ගැනීම (Restore NC)',
         detail:
-          '"Project & New Section Registry" හි Major / Main, Sub-Project, හෝ Individual Project ලියාපදිංචි කිරීමේදී Project Section සහ අනිවාර්ය "Assigned Site Branch *" තෝරන්න. "Material Usage / Daily Progress Entry" පිටුවේ 1 වන පියවරෙන් Section එක මාරු කළ විට 2 වන පියවරේ Dropdown වල පෙන්වන්නේ එම Section එකට අයත් Projects පමණි. තෝරාගත් Project එක ඔබේ ගිණුමට අයත් Site Branch එකක නොවේ නම් 4 වන පියවර Lock වී පැහැදිලි අනතුරු ඇඟවීමක් පෙන්වයි.',
+          '"Project & New Section Registry" හි Major / Main, Sub-Project, හෝ Individual Project ලියාපදිංචි කිරීමේදී Project Section සහ අනිවාර්ය "Assigned Site Branch *" තෝරන්න. "New Section Registry & Material Templates -> + Create New Section" තුළදී Section එක සාමාන්‍ය "Standard Project Format" ද නැතිනම් "Telecom New Connection (NC)" Format එකද යන්න තෝරාගත හැක. යම් හෙයකින් New Connection section එක මැකුණොත් උඩින්ම ඇති "+ Restore Telecom New Connection (NC)" බටන් එකෙන් ඒ සියලුම NC Options සහිතව නැවත ලබාගත හැක.',
       },
       {
-        stepTitle: '2. Material Usage / Daily Progress Entry හි "Wastage Qty" සටහන් කිරීම සහ ස්වයංක්‍රීය ගණනය',
+        stepTitle: '2. Telecom New Connection (NC) — කරුණු 6ක Register කිරීම සහ පියවර 1, 2, 3 Daily Progress (Team & Area Lock සමඟ)',
         detail:
-          '"Material Usage / Daily Progress Entry" හි 4 වන පියවරේදී (හා Edit Voucher තුළදී) භාවිතා කළ ප්‍රමාණය (Qty Used) මෙන්ම අපතේ ගිය ප්‍රමාණය ("Wastage Qty") ද ඇතුළත් කළ හැක. එවිට Used + Wastage මුළු එකතුව Team In-Hand තොගය සමඟ සජීවීව පරීක්ෂා වන අතර Team In-Hand "Wastage" තීරුව, Project Reconciliation, Site Branch Stock සහ PU වවුචර් ස්වයංක්‍රීයව යාවත්කාලීන වේ.',
+          '"Telecom New Connection" තෝරාගත් විට: (අ) Project Register කරන තැන සාමාන්‍ය project fields වෙනුවට පිළිවෙළට උඩින්ම කරුණු 6ක් පෙන්වයි: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area. (ආ) Daily Progress ("Material Usage / Daily Progress Entry") පිටුවේදී සංකීර්ණ Main/Sub Project කොටස් ඉවත් වී සරල 1, 2, 3 පියවර පෙන්වයි: පියවර 1 (උඩින්ම): Team & Area Selection — එක වරක් Team එක සහ Area එක තෝරා Confirm කළ පසු (හෝ පළමු NC line එක submit කළ පසු) Page එක Refresh කරන තුරු එම විස්තර වෙනස් නොවී Lock වී පවතී (එම Team එක දවස තුළ කළ සියලුම NC lines එක දිගට ඇතුළත් කිරීමට නැවත නැවත Team තෝරන්න අවශ්‍ය නොවේ). පියවර 2: Select NC Line (Customer Name හෝ NC Number එකෙන් Search කර තේරීමට) හෝ එතැනම ඇති "+ Register New Connection" Tab එකෙන් අලුත් NC line එකක කරුණු 6 ඇතුළත් කර එවෙලේම Register කරගැනීමට. පියවර 3: Material Usage ඇතුළත් කර Submit කිරීම (Submit කළ පසුත් පියවර 1 Lock වී පවතින අතර කෙලින්ම ඊළඟ NC line එක තෝරා දිගටම Usage දැමිය හැක).',
       },
       {
-        stepTitle: '3. Usage Vouchers History — "Full Report for This Site (Project)" සහ Reconciliation',
+        stepTitle: '3. Material Usage / Daily Progress Entry හි "Wastage Qty", Section Filter සහ User Site Lock',
         detail:
-          '"Material Usage / Daily Progress Entry -> Usage Vouchers History" ටැබ් එකෙහි ඕනෑම Project එකක් තේරූ විට "Full Report for This Site (Project)" බටන් එක ලැබේ. එම වාර්තාව කොටස් 2කින් යුක්තය: (Part 1) එම Project එකට වැඩ කළ සියලුම Teams වෙන වෙනම භාවිතා කළ හා Wastage කළ ප්‍රමාණ + එක් එක් Team එකේ මුළු එකතුව, සහ (Part 2) සියලුම Teams වල මුළු එකතුව (Grand Total) — Print Report හෝ Save PDF / Excel CSV ලෙස බාගත කළ හැක.',
+          'Material Usage / Daily Progress Entry හි (හා Edit Voucher තුළදී) භාවිතා කළ ප්‍රමාණය (Qty Used) මෙන්ම අපතේ ගිය ප්‍රමාණය ("Wastage Qty") ද ඇතුළත් කළ හැක. Section එක මාරු කළ විට එම Section එකේ Projects පමණක් පෙන්වන අතර, තෝරාගත් Project එක ඔබේ ගිණුමේ Site Branch එකට අයත් නොවේ නම් Usage කොටස ආරක්ෂිතව Lock වේ.',
       },
       {
-        stepTitle: '4. කණ්ඩායම් ආපසු භාරදීම් (RV) සහ ශාඛාවෙන් ප්‍රධාන ගබඩාවට ආපසු යැවීම් (BRM)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)" සහ Returns (RV / BRM)',
         detail:
-          'වැඩ අවසන් වූ පසු ඉතිරි වන අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ කණ්ඩායමෙන් ශාඛා ගබඩාවට ("Team Returns" - RV) හෝ ශාඛා ගබඩාවෙන් ප්‍රධාන ගබඩාවට ("Branch Returns" - BRM) නිල Return Voucher සමඟ ආපසු භාරදිය හැක.',
+          '"Usage Vouchers History" ටැබ් එකෙහි Project එකක් තේරූ විට "Full Report for This Site (Project)" බටන් එක ලැබේ: (Part 1) එක් එක් Team එක වෙන වෙනම භාවිතා කළ හා Wastage කළ ප්‍රමාණ + Team Subtotals, සහ (Part 2) සියලුම Teams වල මුළු එකතුව (Grand Total) — Print/PDF හෝ Excel CSV ලෙස ගත හැක. ඉතිරි අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ "Team Returns" (RV) හෝ "Branch Returns" (BRM) මගින් ආපසු භාරදිය හැක.',
       },
     ],
     keyOutputs: [
-      'Section එකට අනුව Projects පෙරීම (Filter) සහ User Site Branch Lock ආරක්ෂාව',
-      'Installed Qty සමඟ Wastage Qty (අපතේ යාම්) සටහන් කිරීම සහ Live In-Hand පරීක්ෂාව',
+      'Telecom New Connection (NC): කරුණු 6ක Register ආකෘතිය සහ 1-2-3 Daily Progress (Team & Area Lock)',
+      'New Section සෑදීමේදී NC Format තේරීමේ පහසුකම සහ "+ Restore Telecom New Connection (NC)" බටන් එක',
+      'Installed Qty සමඟ Wastage Qty සටහන් කිරීම, Section Filter සහ User Site Branch Lock',
       '"Full Report for This Site (Project)" — Team Subtotals + Full Grand Total (PDF/CSV)',
-      'Main/Sub-Project Reconciliation සහ මුද්‍රණය කළ හැකි PU / RV / BRM වවුචර්',
     ],
   },
   {
@@ -638,8 +638,11 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'Field Operations, Daily Progress & Full Site Reports',
+    group: 'Field Operations, Telecom NC Workflow, Daily Progress & Full Site Reports',
     items: [
+      'Telecom New Connection (NC) 6-Field Registration: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area',
+      'Telecom New Connection (NC) 3-Step Daily Progress: Step 1 Team & Area (Locked Until Refresh) -> Step 2 Search NC Line or "+ Register New Connection" -> Step 3 Material Usage',
+      'New Section Registry Format Selector (Standard vs. NC Format) & 1-Click "+ Restore Telecom New Connection (NC)" Button',
       '2-Tab Stock Requisitions (RN): Normal Stock vs. Branch-Exclusive Client FOC Request',
       'Auto Low-Stock Priority Top Sorting & Live "Site Avl:" + "Main:" Balances in Requisitions',
       'Section-Filtered Project Lists & User-Site Branch Lock in Material Usage / Daily Progress Entry',
@@ -679,8 +682,11 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'වැඩබිම් මෙහෙයුම්, Wastage සහ Full Site Reports (Daily Progress Entry)',
+    group: 'වැඩබිම් මෙහෙයුම්, Telecom NC, Wastage සහ Full Site Reports (Daily Progress Entry)',
     items: [
+      'Telecom New Connection (NC) කරුණු 6ක ලියාපදිංචිය: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area',
+      'Telecom New Connection (NC) 1-2-3 Daily Progress: පියවර 1 Team & Area (Refresh කරන තුරු Lock වේ) -> පියවර 2 Select NC Line හෝ "+ Register New Connection" -> පියවර 3 Material Usage',
+      'New Section සෑදීමේදී NC Format තේරීමේ පහසුකම සහ මැකුණොත් "+ Restore Telecom New Connection (NC)" බටන් එක',
       'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock සහ Branch-Exclusive Client FOC Request)',
       'ශාඛාවේ Low Stock භාණ්ඩ ලැයිස්තුවේ උඩින්ම පෙරී පෙන්වීම සහ "Site Avl:" / "Main:" තොග දර්ශකය',
       'Section එකට අනුව Projects Filter වීම සහ අනවසර Site Lock ආරක්ෂාව',

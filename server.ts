@@ -53,7 +53,7 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
    - **User Management ("User Management")**: Create logins with Username, Password, Full Name, Role ("Super Admin Central", "All Site Branch Admin", "Branch Admin", "Branch System User"), and single or multi-branch assignment.
 
 2. **Main Central Stock ("Main Central Stock"), Supplier Orders ("Supplier Orders (PO)"), & Client Free Stock ("Client Free Stock (FOC)")**:
-   - **Main Central Stock**: Add stock via **"+ Add Stock (GRN)"** (Purchase or Manual Entry), perform **Direct Transfer to Site**, or manage the **Damaged Stock Ledger & Restoration** (restore repaired items back to Main Stock).
+   - **Main Central Stock & Item Lifecycle Summary**: Add stock via **"+ Add Stock (GRN)"** (Purchase or Manual Entry), perform **Direct Transfer to Site**, or manage the **Damaged Stock Ledger & Restoration**. Clicking any item row (or **"Summary"**) in **Main Central Stock** opens a complete **End-to-End Material Lifecycle & Custody Summary** right below the item (showing PO/GRN/Manual/FOC inbound sources, Site Branch distribution & Site In-Hand, Field Team distribution & Team In-Hand, Project Used/Wastage, Central Stock In-Hand, and **"Print A4 Summary"** / **"Download PDF"**).
    - **Supplier Orders (PO)**: Create Purchase Orders, receive Full or Partial batch GRNs against POs into Main Stock, close PO remainders, create **Supplier Returns (RTV)** for defective goods, dispatch with Gate Pass & vehicle details, print official **Debit Notes**, and record supplier settlements (Replacement, Credit Note, Refund).
    - **Client Free Stock (FOC) — "Under Main Project" vs. "Individual Project", Locked Branch & Admin Correction**:
      1) Open **"Client Free Stock (FOC)"** and click **"+ Log Client Free Stock"**.
@@ -62,54 +62,51 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
      4) When FOC stock is received **"Under Main Project"**, Sub-Project usage automatically deducts from the Parent Main Project's pool while **"Project Free Stock Balances"** shows both the Main Project net balance and **"Sub-Projects Individual Usage Breakdown"**.
 
 3. **Stock Requisitions ("Stock Requisitions") & Site Branch Stock ("Site Branch Stock")**:
-   - How a Branch gets items from Main Stock:
-     1) Open **"Stock Requisitions"** -> click **"+ New Stock Requirement Form"** -> select destination Branch and required items.
-     2) HQ Super Admin / Storekeeper clicks **"Approve & Dispatch"** (supports full or partial dispatch quantities).
+   - **How a Branch gets items from Main Stock**:
+     1) Open **"Stock Requisitions"** -> click **"+ New Stock Requirement Form"** -> select Requesting Site Branch and switch between **Tab 1 ("1. Normal Stock Request")** or **Tab 2 ("2. Client Free Stock for Assigned Project Request")**.
+     2) HQ Super Admin / Storekeeper clicks **"Approve & Dispatch"**.
      3) Branch Admin / Supervisor clicks **"Confirm Receipt (GRN)"** to add the items into their **"Site Branch Stock"**.
+   - **Site Branch Stock Item Forward Traceability Summary**: Clicking any item row (or **"Forward Summary"**) in **Site Branch Stock** expands a **Forward Traceability Summary** underneath that item showing HQ/FOC transfers received at that branch, quantities issued to each Field Team at that branch, Project Used/Wasted, Site Store In-Hand, and Site Teams In-Hand — with **"Print A4 Summary"** and **"Download PDF"**.
 
 4. **Issue to Field Teams ("Issue to Teams"), Team In-Hand ("Team In-Hand Stock"), & Branch Directory ("Branch Staff & Teams")**:
    - **Issue to Teams**: Select Branch Yard and Field Team -> pick items from available Site Branch Stock -> click **"Issue Material to Team"** and print the **Gate Pass / Issue Voucher**.
-   - **Team In-Hand Stock**: Live dashboard showing materials currently in each team's custody (Issued minus Used in Projects minus Returned to Branch).
+   - **Team In-Hand Stock**: Live dashboard showing materials currently in each team's custody (Issued minus Used/Wasted in Projects minus Returned to Branch).
    - **Branch Staff & Teams**: Organizational directory showing every branch, supervisor, system staff, field teams, and verified team members with NIC numbers. Supports **Export Members (Excel)** and **Print Directory Report**.
 
-5. **Project & New Section Registry ("Project & New Section Registry") — Major / Main Projects, Sub-Projects, Individual Projects & Section Templates (BOM)**:
-   - **How to Register Major / Main Projects, Sub-Projects & Individual Projects**:
+5. **Project & New Section Registry ("Project & New Section Registry") — Major/Main, Sub, Individual Projects, Telecom New Connection (NC) 6-Field Format & Section Templates (BOM)**:
+   - **How to Register Standard Projects vs. Telecom New Connection (NC)**:
      1) Open **"Project & New Section Registry"** and click **"Register Project"**.
-     2) Select one of the 3 **Project Structure Types**:
-        • **🏢 Major / Main Project (Umbrella)**: Used when a client issues bulk Free Stock for an entire area or contract containing multiple Sub-Projects. You can also add initial Sub-Projects directly inside the same modal, or click **"+ Sub-Project"** on any Main Project row in the table at any time.
-        • **↳ Sub-Project (Under Main Project)**: Links a Sub-Project under a Parent Major / Main Project so its material usage automatically draws from the Main Project's Free Stock pool.
-        • **📄 Individual Project (Standalone)**: A standalone single project with its own independent stock & usage ledger.
-     3) Use the top filter cards (**Major / Main Projects**, **Sub-Projects**, **Individual Projects**) or the Main Project dropdown filter to view any project family, and click the **"usage entry(s)"** badge to view the shared Main Pool and Sub-Project breakdown.
-   - **How to Create a New Project Section ("New Section Registry") & Configure Default Material Templates (BOM)**:
-     1) Click **"+ New Section Registry"** at the top right (or open the **"New Section Registry & Material Templates"** tab and click **"+ Create New Section"**).
-     2) Enter the **Section Name**, **Short Code**, **Badge Theme Color**, and **Description**, then click **"Create Section"**.
-     3) On the section card, click **"Configure Material Template"** (or **"Edit Material Template (BOM)"**), add the standard items and **Suggested Qty**, and click **"Save Material Template"**.
+     2) If **"Telecom New Connection"** is selected as the Section, standard project fields are replaced by **6 Subscriber Fields in order at the top**: **1. Customer FTTH / NC Number**, **2. ONT Serial No**, **3. Customer Name**, **4. Customer Address**, **5. Customer Mobile No**, and **6. Exchange Area**.
+     3) For all other sections, select one of the 3 **Project Structure Types** (**🏢 Major / Main Project**, **↳ Sub-Project**, or **📄 Individual Project**) and choose the mandatory **Assigned Site Branch ***.
+   - **How to Create or Restore a Project Section ("New Section Registry") & Configure Default Material Templates (BOM)**:
+     1) Open the **"New Section Registry & Material Templates"** tab and click **"+ Create New Section"**.
+     2) Under **"1. Select Section Data Entry & Daily Progress Format"**, choose either **Standard Project Format** (Main/Sub/Individual) or **Telecom New Connection (NC)** format (which activates the 6 Customer FTTH/NC fields and 3-Step Team-Locked Daily Progress). If the New Connection section was deleted, you can also click **"+ Restore Telecom New Connection (NC)"** at the top of the tab to recreate it in 1 click.
+     3) On any section card, click **"Configure Material Template"** to add standard BOM items and **Suggested Qty**.
 
 6. **Material Usage / Daily Progress Entry ("Material Usage / Daily Progress Entry")**:
-   - **Section-Filtered Project Lists & User-Site Branch Lock**:
-     1) Picking a **Project Section** in Step 1 strictly filters Step 2 dropdowns (**Main Project** and **Sub-Project / Project**) to ONLY show projects registered under that section, and auto-loads the section's **Default Material Template (BOM)**.
-     2) If the selected project belongs to a different **Site Branch** than the logged-in user's assigned site, Step 4 (**"4. Materials Consumed"**) safely **locks** with a clear banner (*"Selected project is not under [User Name]'s site"*), preventing cross-branch usage errors.
-   - **Logging Installed Qty + "Wastage Qty" (Tab 1 & Voucher Edit)**:
-     1) Record both **Qty Used (Installed)** and **Wastage Qty** per material line (also editable inside Voucher Edit modal). Shows live **Total Deduct (Used + Wastage)** and validates \`Used + Wastage <= Team In-Hand\`.
-     2) Automatically updates **Team In-Hand Stock** (both **Used in Projects** & **Wastage** columns + CSV), **Client FOC & Project Reconciliation**, **Site Branch Stock**, and printable **PU-xxxx Usage Vouchers**.
-     3) Sub-Project usage automatically deducts from the Parent Main Project's Client Free Stock (FOC) pool.
-   - **Usage Vouchers History -> "Full Report for This Site (Project)" & Reconciliation**:
-     1) Open **Usage Vouchers History** and select any project to unlock the **"Full Report for This Site (Project)"** button.
-     2) Displays **Part 1 (Team-by-Team Breakdown & Individual Team Subtotals: Installed, Wastage, Total Consumed, Value)** and **Part 2 (Full Site Consolidated Grand Total across all teams)** with **Print / Save PDF** and **Export Excel / CSV**.
-     3) Use **Reconciliation (Tab 3)** for Total Main Project vs. Individual Sub-Project balance audits.
-   - Supports **Cross-Project Override Requests** when using project-reserved items on an unrelated project (items reserved for a Parent Main Project are automatically permitted on all its child Sub-Projects).
+   - **Telecom New Connection (NC) — Simple 1, 2, 3 Step Workflow with Team & Area Lock**:
+     When **"Telecom New Connection"** is selected as the Section, complex Main/Sub-Project steps are hidden and replaced by **Steps 1, 2, 3**:
+     1) **Step 1 — Team & Area Selection (Top-Most & Locked Until Refresh)**: Select Site Branch, Field Team, and Exchange/Working Area at the top and click **"Confirm & Lock Team / Area"** (or submit the first line). Step 1 **locks until the page is refreshed**, allowing the user to enter all NC lines completed by that team during the day continuously without re-selecting the team/area every time.
+     2) **Step 2 — Select NC Line or "+ Register New Connection"**: Search registered NC lines by **Customer Name** or **NC Number**, OR switch to the **"+ Register New Connection"** tab right inside Step 2 to enter the 6 Subscriber Fields (*NC Number, ONT Serial No, Customer Name, Customer Address, Customer Mobile No, Exchange Area*) and register/select on the spot.
+     3) **Step 3 — Material Usage**: Enter consumed materials (**Qty Used** + **Wastage Qty**) and submit. Step 1 remains locked after submission so you can immediately pick the next NC line in Step 2.
+   - **Standard Project Sections — Section Filtering, Branch Lock, Wastage Qty & Full Site Report**:
+     1) Picking a **Project Section** in Step 1 strictly filters Step 2 dropdowns to ONLY show projects registered under that section, and auto-loads the section's **Default Material Template (BOM)**.
+     2) If the selected project belongs to a different **Site Branch** than the logged-in user's assigned site, Step 4 safely **locks**.
+     3) Record both **Qty Used (Installed)** and **Wastage Qty** per material line (validates \`Used + Wastage <= Team In-Hand\` and auto-deducts Sub-Project usage from the Parent Main Project's FOC pool).
+     4) In **Usage Vouchers History**, select any project and click **"Full Report for This Site (Project)"** to view/print/export **Part 1 (Team-by-Team Breakdown & Subtotals)** and **Part 2 (Full Site Consolidated Grand Total)**.
 
 7. **Team Returns ("Team Returns") & Branch Returns ("Branch Returns")**:
    - **Team Returns**: Return unused or recovered items from a Field Team to their Site Branch Stock (**Good** condition restores usable branch stock; **Damaged** logs to Damaged Stock).
    - **Branch Returns**: Return surplus stock from a Site Branch Yard back to the Central Main Warehouse (HQ).
 
-8. **Document Templates ("Document Templates") — ISO 9001:2015 Format Settings, Auto Tenant Header, Signers & Digital Signatures**:
-   - Open **"Document Templates"** from the sidebar (organized into 3 tabs):
-     • **Tab 1 ("1. Section Formats (ISO Standard & Upload PDF/Image)")**: All 4 format groups (**FORMAT-01** to **FORMAT-04**) default to the **ISO 9001:2015 Controlled Document Format** with the logged-in **Tenant Company Name**, phone, email, and address auto-populated into the header. Users can also upload their own **PDF (.pdf)** or **Image (.png/.jpg)** format into any card, enable **"Use FORMAT-01 across all GRN, FOC & Stock Return sections too"** to unify Format-01 & 02 in 1 click, or click **"Customize Format Settings & Preview"** to adjust Render Mode, Header Crop %, Table Column Labels, and Sign-Off Titles in the Live A4 Studio.
-     • **Tab 2 ("2. Auto Tenant Header & Signers")**: Review/edit Tenant Company Identity, choose **Logo Monogram Text** or **Logo Image (Upload)** (or click **"Sync from Tenant Account"**), and configure the **ISO Signer Names, Designations & Department Matrix** (**Prepared & Checked By**, **Authorized & Approved By**, and **Reviewed By + ISO Issue/Revision Numbers**), then click **"Save ISO Header & Signers"**.
-     • **Tab 3 ("3. Digital Signatures")**: Click **"+ Add Digital Signature"**, enter **Signer Full Name**, **Designation / Role**, and **Department**, then either **Draw Signature** on the interactive signature pad or **Upload Signature Image (PNG/JPG)** and save. Saved signatures auto-match signers by name on vouchers, or can be manually selected inside any voucher's **"Customize Voucher Header, Signers & Digital Signatures"** panel before clicking **Print** (which opens an isolated single-click A4 print preview of ONLY that voucher/report) or **Convert to PDF**.
+8. **Document Templates ("Document Templates"), Admin Password Delete Protection & Enterprise Controls**:
+   - **Document Templates (3 Tabs)**:
+     • **Tab 1 ("1. Section Formats")**: ISO 9001:2015 Controlled Formats (**FORMAT-01** to **FORMAT-04**) with auto-populated Tenant Company Header, optional **PDF/Image Format Upload (limited to max 1MB file size)**, 1-click Format-01/02 unification, and Live A4 Studio settings.
+     • **Tab 2 ("2. Auto Tenant Header & Signers")**: Company Logo & **ISO Signer Names, Designations & Department Matrix** (**Prepared & Checked By**, **Authorized & Approved By**, **Reviewed By**).
+     • **Tab 3 ("3. Digital Signatures")**: Draw on the interactive signature pad or upload a PNG/JPG signature image; auto-matches signers on vouchers and supports isolated single-click A4 printing.
+   - **Mandatory Admin Password Verification for Any Deletion**: Deleting any record or transaction across the entire system requires entering the **Admin Password** in the confirmation modal (never deletes on a simple click).
    - **Audit Trail & Recycle Bin**: Filterable chronological history with isolated A4 Print & CSV export; restore or permanently delete soft-deleted records.
-   - **Automatic Email Verification & Support**: Clicking **"Send Verification Email"** sends a Firebase link from **apexstox.com**; clicking the email link verifies the account automatically without extra buttons. Official domain: **apexstox.com** | Support email: **support@apexstox.com**.
+   - **Automatic Email Verification & Support**: Clicking **"Send Verification Email"** sends a Firebase link from **apexstox.com**; clicking the email link verifies the account automatically. Official domain: **apexstox.com** | Support email: **support@apexstox.com**.
    - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change theme/company settings, or use **Admin View-As Mode**.`;
 
 interface CacheEntry {

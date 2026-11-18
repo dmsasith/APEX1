@@ -65,6 +65,120 @@ export function detectSinhalaOrSinglishInput(text: string): boolean {
 
 const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
   {
+    id: 'telecom-new-connection-nc-workflow',
+    suggestedTab: 'project-usage',
+    keywords: [
+      'new connection',
+      'telecom new connection',
+      'nc',
+      'ftth',
+      'ont',
+      'ont serial',
+      'exchange area',
+      'nc number',
+      'nc line',
+      'lock team',
+      'team lock',
+      'restore telecom',
+    ],
+    phrases: [
+      'telecom new connection',
+      'new connection',
+      'nc line',
+      'nc number',
+      'ont serial',
+      'register new connection',
+      'select nc line',
+      'confirm & lock team',
+      'restore telecom new connection',
+      'new connection section',
+      'nc section',
+    ],
+    answerEn: () =>
+      `**How the "Telecom New Connection (NC)" Section Works (Registration, 3-Step Daily Progress & Section Restore):**\n\n` +
+      `**1. Registering a New Connection (6 Ordered Subscriber Fields):**\n` +
+      `When you select **Telecom New Connection** in **Project & New Section Registry -> Register Project** (or inside Daily Progress), the standard Main/Sub project fields are replaced by **6 Subscriber Fields in order at the top**:\n` +
+      `   1. **Customer FTTH / NC Number**\n` +
+      `   2. **ONT Serial No**\n` +
+      `   3. **Customer Name**\n` +
+      `   4. **Customer Address**\n` +
+      `   5. **Customer Mobile No**\n` +
+      `   6. **Exchange Area**\n\n` +
+      `**2. Daily Progress Entry ("Material Usage / Daily Progress Entry") — Simple 1, 2, 3 Steps:**\n` +
+      `When you pick **Telecom New Connection** as the Section, complex Main/Sub-Project steps are hidden and replaced by **Steps 1, 2, 3**:\n` +
+      `• **Step 1 — Team & Area Selection (Top-Most & Locked Until Refresh):** Select the **Site Branch**, **Field Team**, and **Exchange / Working Area** at the very top and click **Confirm & Lock Team / Area** (or submit the first line). Step 1 **locks until you refresh the page**, so you can enter all NC lines completed by that team during the day without re-selecting the team every time.\n` +
+      `• **Step 2 — Select NC Line or "+ Register New Connection":** Search registered NC lines by **Customer Name** or **NC Number**, OR click the **+ Register New Connection** tab right inside Step 2 to enter the 6 Subscriber Fields and register/select a new line on the spot.\n` +
+      `• **Step 3 — Enter Material Usage:** Enter consumed materials (**Qty Used** + **Wastage Qty**) and submit. After submission, **Step 1 remains locked** so you can immediately pick the next NC line in Step 2.\n\n` +
+      `**3. How to Create or Restore a New Connection Section:**\n` +
+      `In **Project & New Section Registry -> New Section Registry & Material Templates**, click **+ Create New Section** and select **Telecom New Connection (NC)** as the format (or click **+ Restore Telecom New Connection (NC)** if it was deleted) to include all NC options automatically.`,
+    answerSi: () =>
+      `**"Telecom New Connection (NC)" Section එක ක්‍රියාත්මක වන ආකාරය (ලියාපදිංචිය, පියවර 1-2-3 Daily Progress සහ නැවත සකස් කිරීම):**\n\n` +
+      `**1. අලුත් New Connection එකක් Register කරන තැන (කරුණු 6 පිළිවෙළට):**\n` +
+      `**Telecom New Connection** යටතේ අලුත් connection එකක් register කරද්දී සාමාන්‍ය project fields වෙනුවට පහත **කරුණු 6 පිළිවෙළට උඩින්ම** පෙන්වයි:\n` +
+      `   1. **Customer FTTH / NC Number**\n` +
+      `   2. **ONT Serial No**\n` +
+      `   3. **Customer Name**\n` +
+      `   4. **Customer Address**\n` +
+      `   5. **Customer Mobile No**\n` +
+      `   6. **Exchange Area**\n\n` +
+      `**2. Daily Progress Enter කරන පිටුව (Telecom New Connection තේරූ විට — පියවර 1, 2, 3):**\n` +
+      `Daily Progress පිටුවේ Section එක ලෙස **"Telecom New Connection"** තෝරාගත් විට සංකීර්ණ Main/Sub Project කොටස් වෙනුවට ඉතා සරලව **1, 2, 3** පිළිවෙළට පෙන්වයි:\n` +
+      `• **පියවර 1 — Team & Area Selection (උඩින්ම සහ Refresh කරනකම් Lock වේ):** උඩින්ම Field Team විස්තර සහ Exchange/Working Area එක තෝරා **"Confirm & Lock Team / Area"** ඔබන්න (හෝ පළමු line එක submit කරන්න). එවිට **Page එක Refresh කරනකම් ඒ විස්තර Lock වී පවතී**. එම නිසා ඒ Team එක දවස ඇතුළත කරපු NC lines ඔක්කොම එක දිගට add කරලා usage දාද්දී ආයේ ආයේ Team තෝරන්න ඕනේ වෙන්නේ නැහැ.\n` +
+      `• **පියවර 2 — Select NC Line හෝ "+ Register New Connection":** දැනට register කර ඇති lines **Customer Name** එකෙන් හෝ **NC Number** එකෙන් Search කර තෝරාගන්න. නැතිනම් එතනම ඇති **"+ Register New Connection"** Tab එක ක්ලික් කර ඉහත Customer විස්තර 6 එතනම ඇතුළත් කර එවෙලේම register කරගන්න.\n` +
+      `• **පියවර 3 — Material Usage Enter කිරීම:** තෝරාගත් NC line එකට වැය වුණු Materials ටික enter කර Submit කරන්න. Submit කළාට පස්සෙත් **පියවර 1 (Team & Area) වෙනස් නොවී එහෙමම තියෙනවා**, කෙලින්ම ඊළඟ NC line එක තෝරලා (පියවර 2) usage දාන්න පුළුවන්.\n\n` +
+      `**3. New Connection Section එක මැකුණොත් නැවත ගන්නා ආකාරය:**\n` +
+      `**Project & New Section Registry -> New Section Registry** වෙත ගොස් **"+ Create New Section"** ක්ලික් කර Format එක ලෙස **"Telecom New Connection (NC)"** තෝරන්න (නැතිනම් උඩින්ම මතු වන **"+ Restore Telecom New Connection (NC)"** බටන් එක ඔබන්න).`,
+  },
+  {
+    id: 'item-lifecycle-traceability-summary',
+    suggestedTab: 'main-stock',
+    keywords: [
+      'item summary',
+      'lifecycle',
+      'traceability',
+      'forward summary',
+      'central stock summary',
+      'in hand summary',
+      'bedila giye',
+      'kocharak',
+    ],
+    phrases: [
+      'item lifecycle',
+      'traceability summary',
+      'forward summary',
+      'select item summary',
+      'item ekak select',
+      'central stock eke item',
+      'site branch stock eken item',
+    ],
+    answerEn: () =>
+      `**How to View & Print Item Lifecycle & Forward Traceability Summaries (Central Stock & Site Branch Stock):**\n\n` +
+      `**1. Central Stock Item Selection — Full End-to-End Lifecycle Summary:**\n` +
+      `• Open **Main Central Stock** and click on any item row (or click its **Summary** button).\n` +
+      `• Directly underneath that item, an interactive **End-to-End Material Lifecycle & Custody Summary** expands showing:\n` +
+      `  - **Inbound Sources:** How much arrived from each Supplier via **PO / GRN**, **Manual / Spot Entries**, **Client Free Stock (FOC)**, and **Site Good Returns**.\n` +
+      `  - **Site Branch Distribution:** How much was dispatched to each Site Branch, returned, used/wasted, and each site's current **Site Store In-Hand**.\n` +
+      `  - **Field Team Allocation:** How much each Site Branch issued to each Field Team, returned, used, wasted, and each team's current **Team In-Hand**.\n` +
+      `  - **Project Consumption & Wastage:** Every project/NC line where the item was consumed.\n` +
+      `  - **Live Custody KPI Strip:** Central Stock In-Hand, All Sites In-Hand, All Teams In-Hand, Total Used, and Total Wasted/Damaged.\n` +
+      `• Click **Print A4 Summary** or **Download PDF** to print an official report.\n\n` +
+      `**2. Site Branch Stock Item Selection — Forward Traceability Summary:**\n` +
+      `• Open **Site Branch Stock (Site Inventories)**, pick a Site Branch, and click any item row (or **Forward Summary**).\n` +
+      `• It displays everything that happened to that item forward from that branch: HQ/FOC transfers received, quantities issued to each Field Team at that site, Project Used & Wastage, **Site Store In-Hand**, and **Site Teams In-Hand** — with **Print A4 Summary** and **Download PDF**.`,
+    answerSi: () =>
+      `**Central Stock සහ Site Branch Stock හි ඕනෑම Item එකක් Select කළ විට පෙන්වන සම්පූර්ණ Summary (Printable A4/PDF):**\n\n` +
+      `**1. Central Stock හි Item එකක් Select කළ විට (Full End-to-End Lifecycle Summary):**\n` +
+      `• **"Main Central Stock"** වගුවේ ඕනෑම Item පේළියක් මත ක්ලික් කරන්න (හෝ **"Summary"** බටන් එක ඔබන්න).\n` +
+      `• එතැනට යටින් එම භාණ්ඩයේ සම්පූර්ණ විස්තරය විවෘත වේ:\n` +
+      `  - **භාණ්ඩ ලැබුණු ආකාරය (Inbound):** කවර සැපයුම්කරුවන්ගෙන් PO / GRN මගින් හෝ Manual / Client FOC මගින් කොපමණ බඩු ආවාද යන්න.\n` +
+      `  - **Site වලට බෙදී ගිය ආකාරය:** එක් එක් Site Branch එකට කොපමණ බෙදී ගියාද සහ දැනට **Site In-Hand** කොපමණ තිබේද යන්න.\n` +
+      `  - **Site වලින් Team වලට බෙදුණු ආකාරය:** එක් එක් Field Team එකට නිකුත් කළ ප්‍රමාණය, Used/Wasted සහ දැනට **Team In-Hand** ප්‍රමාණය.\n` +
+      `  - **මුළු තොග සාරාංශය:** **Central Stock In-Hand**, **Site In-Hand**, **Team In-Hand**, **Total Used** සහ **Total Wasted/Damaged**.\n` +
+      `• **"Print A4 Summary"** හෝ **"Download PDF"** මගින් මෙම සම්පූර්ණ වාර්තාව මුද්‍රණය කරගත හැක.\n\n` +
+      `**2. Site Branch Stock හි Item එකක් Select කළ විට (Forward Traceability Summary):**\n` +
+      `• **"Site Branch Stock"** වෙත ගොස් ඕනෑම Item එකක් මත ක්ලික් කළ විට (හෝ **"Forward Summary"** එබූ විට) එම Site එකට ලැබුණු බඩු එතැන් සිට ඉදිරියට Teams වලට බෙදුණු ආකාරය, Projects වල Used/Waste ගිය ආකාරය සහ Site/Team In-Hand තොග පෙන්වන අතර එයද Print හා PDF කළ හැක.`,
+  },
+  {
     id: 'project-sections-and-templates',
     suggestedTab: 'projects',
     keywords: [
@@ -96,18 +210,19 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'aluth project section',
     ],
     answerEn: (ctx) =>
-      `**How to Create New Project Sections & Configure Default Material Templates (BOM):**\n\n` +
-      `**Part 1 — Create a New Project Section:**\n` +
+      `**How to Create New Project Sections (Standard or Telecom NC Format) & Configure Default Material Templates (BOM):**\n\n` +
+      `**Part 1 — Create or Restore a Project Section:**\n` +
       `1. Open **Project & New Section Registry** from the left sidebar.\n` +
-      `2. Click the **+ New Section Registry** button at the top right (or click the **New Section Registry & Material Templates** tab and click **+ Create New Section**).\n` +
-      `3. Enter the **Section Name** (e.g., *Telecom New Connection*, *Telecom Cable Development*), **Short Code** (e.g., *TNC*), **Badge Theme Color**, and **Description**.\n` +
-      `4. Click **Create Section**.\n\n` +
+      `2. Click **+ New Section Registry** at the top right (or open the **New Section Registry & Material Templates** tab and click **+ Create New Section**).\n` +
+      `3. Under **1. Select Section Data Entry & Daily Progress Format**, choose either:\n` +
+      `   • **Standard Project Format:** For Main Project, Sub-Project & Individual Project hierarchy (e.g., Cable Development, Maintenance).\n` +
+      `   • **Telecom New Connection (NC):** Activates the **6 Customer FTTH/NC Registration Fields** and the **3-Step Daily Progress workflow (with Team & Area Lock until page refresh)**.\n` +
+      `   *(Note: If the Telecom New Connection section was deleted, you can also click **+ Restore Telecom New Connection (NC)** at the top of the tab to recreate it in 1 click.)*\n` +
+      `4. Enter the **Section Name**, **Short Code**, **Badge Theme Color**, and **Description**, then click **Create Section**.\n\n` +
       `**Part 2 — Configure a Default Material Template (BOM) for that Section:**\n` +
-      `1. Inside the **New Section Registry & Material Templates** tab, find your section card.\n` +
-      `2. Click **Configure Material Template** (or **Edit Material Template (BOM)**).\n` +
-      `3. Select the standard items routinely used in this section, click **+ Add Item to Template** to add more rows, and enter the optional **Suggested Qty** for each item.\n` +
-      `4. Click **Save Material Template**.\n` +
-      `5. **Automatic Pre-Fill:** Whenever a user selects a project belonging to this section in **Material Usage / Daily Progress Entry**, these template items and suggested quantities load automatically!${
+      `1. Inside **New Section Registry & Material Templates**, click **Configure Material Template** (or **Edit Material Template (BOM)**) on your section card.\n` +
+      `2. Select the standard items routinely used in this section, enter optional **Suggested Qty**, and click **Save Material Template**.\n` +
+      `3. Whenever a user selects this section in **Material Usage / Daily Progress Entry**, these template items load automatically!${
         ctx.activeProjectSectionsCount
           ? `\n\n📌 *Current Workspace Status:* **${ctx.activeProjectSectionsCount} project section(s)** configured${
               ctx.projectSectionNames && ctx.projectSectionNames.length > 0
@@ -117,16 +232,18 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
           : ''
       }`,
     answerSi: (ctx) =>
-      `**අලුත් Project Section එකක් සාදා එයට Material Template (BOM) එකක් සකස් කරන ආකාරය:**\n\n` +
-      `**1 වන පියවර — අලුත් Project Section එකක් සෑදීම (New Section Registry):**\n` +
-      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත යන්න.\n` +
-      `2. ඉහළ දකුණු කෙළවරේ ඇති **"+ New Section Registry"** බටන් එක ක්ලික් කරන්න (නැතිනම් **"New Section Registry & Material Templates"** ටැබ් එකට ගොස් **"+ Create New Section"** ක්ලික් කරන්න).\n` +
-      `3. **Section Name** (උදා: *Telecom New Connection*), **Short Code** (උදා: *TNC*), **Badge Color** සහ විස්තරය ඇතුළත් කර **"Create Section"** ක්ලික් කරන්න.\n\n` +
+      `**අලුත් Project Section එකක් (Standard හෝ Telecom NC Format සහිතව) සාදා එයට Material Template (BOM) එකක් සකස් කරන ආකාරය:**\n\n` +
+      `**1 වන පියවර — අලුත් Project Section එකක් සෑදීම හෝ New Connection Section එක නැවත ගැනීම:**\n` +
+      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත ගොස් **"New Section Registry & Material Templates"** ටැබ් එකෙහි **"+ Create New Section"** ක්ලික් කරන්න.\n` +
+      `2. එහි උඩින්ම ඇති **"1. Select Section Data Entry & Daily Progress Format"** යටතේ අවශ්‍ය ආකෘතිය තෝරන්න:\n` +
+      `   • **Standard Project Format:** සාමාන්‍ය Main / Sub / Individual Projects සඳහා.\n` +
+      `   • **Telecom New Connection (NC):** Customer FTTH/NC කරුණු 6ක Register ආකෘතිය සහ Daily Progress හි 1-2-3 පියවර (Team & Area Lock සමඟ) ලබාගැනීමට.\n` +
+      `   *(New Connection section එක මැකී ඇත්නම් උඩින්ම ඇති **"+ Restore Telecom New Connection (NC)"** බටන් එකෙන්ද එක ක්ලික් එකකින් නැවත සකසාගත හැක.)*\n` +
+      `3. **Section Name**, **Short Code**, **Badge Color** සහ විස්තරය ඇතුළත් කර **"Create Section"** ක්ලික් කරන්න.\n\n` +
       `**2 වන පියවර — එම Section එකට Default Material Template (BOM) එකක් සෑදීම:**\n` +
-      `1. **"New Section Registry & Material Templates"** ටැබ් එකෙහි ඔබ සෑදූ Section Card එක මත ඇති **"Configure Material Template"** (හෝ **"Edit Material Template (BOM)"**) බටන් එක ක්ලික් කරන්න.\n` +
-      `2. එම Section එකේ වැඩ වලට සාමාන්‍යයෙන් වැය වන Items ලැයිස්තුවෙන් තෝරන්න. තවත් Items එකතු කිරීමට **"+ Add Item to Template"** ක්ලික් කරන්න.\n` +
-      `3. එක් එක් Item එකට අදාළ සාමාන්‍ය ප්‍රමාණය (**Suggested Qty**) ඇතුළත් කර **"Save Material Template"** ක්ලික් කරන්න.\n` +
-      `4. **ප්‍රයෝජනය:** ඉන්පසු **"Material Usage / Daily Progress Entry"** පිටුවේදී එම Section එකට අදාළ ඕනෑම Project එකක් තේරූ විට මෙම Template එකේ බඩු ලැයිස්තුව ස්වයංක්‍රීයව (Auto-fill) එතැනට ලැබේ!${
+      `1. Section Card එක මත ඇති **"Configure Material Template"** බටන් එක ක්ලික් කරන්න.\n` +
+      `2. එම Section එකට නිතර වැය වන Items සහ සාමාන්‍ය ප්‍රමාණය (**Suggested Qty**) ඇතුළත් කර **"Save Material Template"** ක්ලික් කරන්න.\n` +
+      `3. ඉන්පසු **Daily Progress Entry** පිටුවේදී එම Section එක තේරූ විට මෙම බඩු ලැයිස්තුව ස්වයංක්‍රීයව (Auto-fill) එතැනට ලැබේ!${
         ctx.activeProjectSectionsCount
           ? `\n\n📌 *දැනට පද්ධතියේ Project Sections **${ctx.activeProjectSectionsCount}ක්** සකස් කර ඇත.*`
           : ''
@@ -272,19 +389,27 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'site ekakata newei',
     ],
     answerEn: () =>
-      `**How to Record Material Usage / Daily Progress Entry (with Section Filter, Branch Lock, Wastage & Full Site Report):**\n\n` +
-      `1. **Open Material Usage / Daily Progress Entry:** Click **Material Usage / Daily Progress Entry** in the left sidebar.\n` +
-      `2. **Section-Filtered Project Lists (Step 1 -> Step 2):** Pick a **Project Section** in Step 1. Step 2 dropdowns (**Main Project** and **Registered Project / Sub-Project**) automatically filter to display **ONLY projects registered under that section**. Its **Default Material Template (BOM)** also loads automatically.\n` +
-      `3. **User-Site Branch Lock Protection (Step 4):** If you select a project belonging to a different **Site Branch** than your assigned user site, Step 4 safely **locks** with a clear notice (*"Selected project is not under [Your Name]'s site"*), preventing accidental cross-branch usage.\n` +
-      `4. **Enter Qty Used + Wastage Qty (Step 4):** Record both **Qty Used (Installed)** and **Wastage Qty** per material. The form shows live **Total Deduct (Used + Wastage)** and validates against **Team In-Hand** balances, automatically updating Team In-Hand Wastage columns, Reconciliation, Site Stock, and **PU** vouchers.\n` +
-      `5. **Usage Vouchers History -> "Full Report for This Site (Project)" & Reconciliation:** In **Usage Vouchers History**, select any project and click **Full Report for This Site (Project)** to inspect separate **Team-by-Team Totals** + **Full Site Grand Total** (Print/PDF & Excel CSV).`,
+      `**How to Record Material Usage / Daily Progress Entry (Standard Projects vs. Telecom New Connection):**\n\n` +
+      `1. **Open Material Usage / Daily Progress Entry:** Click **Material Usage / Daily Progress Entry** in the left sidebar and pick a **Project Section** at the top.\n` +
+      `2. **If "Telecom New Connection" (NC) Section is Selected (Simple 1-2-3 Workflow):**\n` +
+      `   • **Step 1 — Team & Area Selection (Top-Most & Locked Until Refresh):** Select Site Branch, Field Team, and Exchange/Working Area and click **Confirm & Lock Team / Area**. Step 1 stays locked until page refresh so you never have to re-select the team for each NC line.\n` +
+      `   • **Step 2 — Select NC Line or "+ Register New Connection":** Search by Customer Name or NC Number, or click **+ Register New Connection** to enter the 6 subscriber fields (*1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area*) right there.\n` +
+      `   • **Step 3 — Material Usage:** Enter consumed materials and submit (Step 1 stays locked for the next NC line).\n` +
+      `3. **If a Standard Section is Selected (Main / Sub / Individual Projects):**\n` +
+      `   • Step 2 filters to **ONLY projects registered under that section**. If the project belongs to another Site Branch, Step 4 safely **locks**.\n` +
+      `   • Enter **Qty Used (Installed)** and **Wastage Qty** per material (validated live against **Team In-Hand**).\n` +
+      `4. **Usage Vouchers History -> "Full Report for This Site (Project)":** Select any project to print/export separate **Team-by-Team Subtotals** + **Full Site Grand Total**.`,
     answerSi: () =>
-      `**Material Usage / Daily Progress Entry හරහා භාවිතය, Wastage සටහන් කිරීම සහ Full Site වාර්තා ගැනීම:**\n\n` +
-      `1. **විවෘත කිරීම:** වම් පස මෙනුවෙන් **"Material Usage / Daily Progress Entry"** වෙත යන්න.\n` +
-      `2. **Section එකට අනුව Projects පෙරීම (Step 1 -> Step 2):** 1 වන පියවරෙන් **Project Section** එක තෝරා හෝ මාරු කළ විට, 2 වන පියවරේ Dropdown ලැයිස්තුවේ පෙන්වන්නේ **එම Section එකට Register කර ඇති Projects පමණි**. Section එකේ **Material Template (BOM)** ලැයිස්තුවද ඉබේම Load වේ.\n` +
-      `3. **User Site Branch Lock ආරක්ෂාව (Step 4):** තෝරාගත් Project එක ඔබේ ගිණුමට අදාළ **Site Branch** එකට අයත් නොවේ නම් 4 වන පියවර ස්වයංක්‍රීයව **Lock** වී පැහැදිලි අනතුරු ඇඟවීමක් (*"Selected project is not under your site"*) පෙන්වයි.\n` +
-      `4. **Qty Used සමඟ Wastage Qty ඇතුළත් කිරීම:** 4 වන පියවරේදී භාවිතා කළ ප්‍රමාණය (**Qty Used**) මෙන්ම අපතේ ගිය ප්‍රමාණය (**Wastage Qty**) ද සටහන් කරන්න. **Used + Wastage** මුළු එකතුව Team In-Hand තොගයට ගැලපේදැයි සජීවීව පරීක්ෂා වී සියලුම වාර්තා යාවත්කාලීන වේ.\n` +
-      `5. **Full Report for This Site (Project):** **"Usage Vouchers History"** ටැබ් එකෙහි Project එකක් තෝරා **"Full Report for This Site (Project)"** ක්ලික් කිරීමෙන් Teams වෙන වෙනම භාවිතය, Team Totals සහ සම්පූර්ණ Grand Total Print/PDF හෝ Excel CSV ලෙස ලබාගත හැක.`,
+      `**Material Usage / Daily Progress Entry හරහා භාවිතය සටහන් කිරීම (සාමාන්‍ය Projects සහ Telecom New Connection):**\n\n` +
+      `1. වම් පස මෙනුවෙන් **"Material Usage / Daily Progress Entry"** වෙත ගොස් ඉහළින් අදාළ **Project Section** එක තෝරන්න.\n` +
+      `2. **"Telecom New Connection" තේරූ විට (සරල 1, 2, 3 පියවර):**\n` +
+      `   • **පියවර 1 — Team & Area Selection (උඩින්ම):** Field Team එක සහ Area එක තෝරා Confirm කළ පසු **Page එක Refresh කරන තුරු එම විස්තර Lock වී පවතී** (දවසේ NC lines ඔක්කොම එක දිගට දාද්දී නැවත Team තෝරන්න අවශ්‍ය නැත).\n` +
+      `   • **පියවර 2 — Select NC Line හෝ "+ Register New Connection":** Customer Name හෝ NC Number එකෙන් Search කර line එක තෝරන්න, නැතිනම් **"+ Register New Connection"** Tab එකෙන් කරුණු 6 (*NC Number, ONT Serial, Name, Address, Mobile, Exchange Area*) එතැනම ඇතුළත් කර register කරන්න.\n` +
+      `   • **පියවර 3 — Material Usage:** වැය වූ Materials ඇතුළත් කර Submit කරන්න (පියවර 1 වෙනස් නොවී එහෙමම පවතී).\n` +
+      `3. **සාමාන්‍ය Section එකක් තේරූ විට (Main / Sub / Individual):**\n` +
+      `   • එම Section එකට අදාළ Projects පමණක් පෙන්වන අතර, ඔබේ Site Branch එකට අයත් නොවන Project එකක් නම් ආරක්ෂිතව Lock වේ.\n` +
+      `   • **Qty Used** සහ **Wastage Qty** ඇතුළත් කර Submit කළ හැක.\n` +
+      `4. **Full Report for This Site (Project):** **"Usage Vouchers History"** මගින් Teams වෙන වෙනම භාවිතය සහ සම්පූර්ණ Grand Total ලබාගත හැක.`,
   },
   {
     id: 'wastage-and-full-site-report',
@@ -618,16 +743,15 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'delete permanently',
     ],
     answerEn: () =>
-      `**How to Restore or Permanently Delete Records (Recycle Bin):**\n\n` +
-      `1. Open **Recycle Bin** from the left sidebar (or top header trash icon).\n` +
-      `2. Filter or browse deleted **Items, Sites, Teams, Users, Projects, or Stock Transactions**.\n` +
-      `3. Click **Restore** to bring the record back into active use immediately.\n` +
-      `4. Click **Delete Permanently** (or **Empty Recycle Bin**) to erase the record forever so it never reappears on refresh.`,
+      `**Admin Password Protection for Deletions & How to Restore Records (Recycle Bin):**\n\n` +
+      `1. **Mandatory Admin Password Verification on Delete:** Whenever any record or transaction is deleted across the system, the confirmation dialog requires entering the **Admin Password** before the deletion can proceed.\n` +
+      `2. **Open Recycle Bin:** Click **Recycle Bin** from the left sidebar (or top header trash icon).\n` +
+      `3. **Restore or Permanently Delete:** Browse deleted **Items, Sites, Teams, Users, Projects, or Stock Transactions**. Click **Restore** to bring a record back immediately, or **Delete Permanently** (with Admin Password) to erase it forever.`,
     answerSi: () =>
-      `**මැකුණු දත්ත නැවත ගැනීමට (Restore) හෝ ස්ථිරවම මකා දැමීමට (Recycle Bin):**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"Recycle Bin"** වෙත යන්න.\n` +
-      `2. එහි ඇති මැකුණු Items, Sites, Teams, Users, Projects හෝ ගනුදෙනු (Transactions) පරීක්ෂා කරන්න.\n` +
-      `3. නැවත පද්ධතියට ගැනීමට **"Restore"** බටන් එකත්, නැවත කිසිවිටෙක නොඑන ලෙස ස්ථිරවම ඉවත් කිරීමට **"Delete Permanently"** බටන් එකත් භාවිතා කරන්න.`,
+      `**දත්ත මැකීමේදී Admin Password ආරක්ෂාව සහ මැකුණු දත්ත නැවත ගැනීම (Recycle Bin):**\n\n` +
+      `1. **Delete කිරීමේදී Admin Password අනිවාර්ය වීම:** පද්ධතියේ ඕනෑම දෙයක් Delete කිරීමේදී නිකන්ම Confirm වීම වෙනුවට **Admin Password** එක ඇතුළත් කිරීම අනිවාර්ය කර ඇත.\n` +
+      `2. **Recycle Bin විවෘත කිරීම:** වම් පස මෙනුවෙන් **"Recycle Bin"** වෙත යන්න.\n` +
+      `3. **Restore හෝ Delete Permanently:** මැකුණු Items, Sites, Teams, Users, Projects හෝ ගනුදෙනු නැවත පද්ධතියට ගැනීමට **"Restore"** බටන් එකත්, ස්ථිරවම ඉවත් කිරීමට **"Delete Permanently"** බටන් එකත් භාවිතා කරන්න.`,
   },
   {
     id: 'low-stock-inventory',

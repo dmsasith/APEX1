@@ -443,16 +443,31 @@ export interface ProjectType {
   code?: string; // e.g. "TNC", "TCD"
   description?: string;
   color?: string; // 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'teal' | 'indigo'
+  workflowMode?: 'standard' | 'new_connection'; // Explicit workflow format selector when registering/editing a section
   templateItems: ProjectTypeTemplateItem[];
   createdAt: string;
   isDeleted?: boolean;
+}
+
+export function isTelecomNewConnectionSection(
+  section?: Pick<ProjectType, 'id' | 'name' | 'code' | 'workflowMode'> | null,
+  sectionNameFallback?: string
+): boolean {
+  if (section?.workflowMode === 'new_connection') return true;
+  if (section?.workflowMode === 'standard') return false;
+  if (section?.id === 'pt-tnc') return true;
+  const code = (section?.code || '').trim().toUpperCase();
+  if (code === 'TNC' || code === 'NC' || code === 'FTTH-NC') return true;
+  const name = (section?.name || sectionNameFallback || '').trim().toLowerCase();
+  if (name.includes('new connection') || name === 'telecom new connection') return true;
+  return false;
 }
 
 export type ProjectScope = 'individual' | 'main' | 'sub';
 
 export interface Project {
   id: string;
-  projectId: string; // e.g. PRJ-2026-001 or Site ID / Order No
+  projectId: string; // e.g. PRJ-2026-001 or Site ID / Order No / NC Number
   projectName: string;
   projectScope?: ProjectScope; // 'individual' (Standalone) | 'main' (Major Umbrella Project) | 'sub' (Sub-Project under Main Project)
   parentProjectId?: string; // ID of parent Major/Main Project when projectScope === 'sub'
@@ -463,6 +478,11 @@ export interface Project {
   customerName?: string;
   customerPhone?: string;
   siteIdentifier?: string; // Physical Site ID, Connection ID, Work Order No
+  // Telecom New Connection (NC) specific fields
+  ncNumber?: string; // Customer FTTH / NC Number
+  ontSerialNo?: string; // ONT Serial No
+  customerAddress?: string; // Customer Address
+  exchangeArea?: string; // Exchange Area
   projectTypeId?: string; // Link to ProjectType
   projectTypeName?: string; // Display name
   referenceNo: string;
@@ -492,6 +512,10 @@ export interface ProjectMaterialUsage {
   customerName?: string;
   customerPhone?: string;
   siteIdentifier?: string;
+  ncNumber?: string;
+  ontSerialNo?: string;
+  customerAddress?: string;
+  exchangeArea?: string;
   projectTypeId?: string;
   projectTypeName?: string;
   siteId: string;
