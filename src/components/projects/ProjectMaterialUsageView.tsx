@@ -1455,7 +1455,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
       {activeTab === 'log' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form Card (2 Cols) */}
-          <div className="lg:col-span-2 bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-sm">
+          <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-sm">
             {/* Header Banner */}
             <div className="bg-gradient-to-r from-teal-900 via-slate-800 to-slate-900 text-white rounded-xl p-4 shadow-sm mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -1484,15 +1484,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
             )}
 
             {/* Step 1 Card: Select Project Section / Type */}
-            <div className="mb-4 p-4 bg-emerald-50/70 border border-emerald-200/90 rounded-xl shadow-2xs">
-              <div className="flex items-center justify-between mb-2.5">
-                <label className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-emerald-600" />
+            <div className="mb-4 p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm">
+              <div className="flex items-center justify-between mb-2.5 border-b border-[#3d6889] pb-2">
+                <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-sky-300" />
                   <span>1. Select Project Section / Type *</span>
                 </label>
                 {targetSection && (
-                  <span className="text-[11px] font-bold text-emerald-800 bg-white border border-emerald-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span className="text-[11px] font-bold text-slate-800 bg-white/95 border border-white/80 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                    <CheckCircle2 className="w-3 h-3 text-teal-600" />
                     <span>{(targetSection.templateItems || []).length} BOM Template item(s)</span>
                   </span>
                 )}
@@ -1510,17 +1510,17 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       onClick={() => handleSelectSection(pt.id)}
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2.5 ${
                         isSelected
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-emerald-500/50'
-                          : 'bg-white hover:bg-emerald-100/50 text-slate-800 border-emerald-200/80 shadow-2xs'
+                          ? 'bg-[#0e2233] text-white border-sky-400 shadow-md ring-2 ring-sky-300/60'
+                          : 'bg-white/95 hover:bg-white text-slate-900 border-white/80 shadow-xs'
                       }`}
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="text-[10px] font-bold uppercase tracking-wider opacity-75 mb-0.5">{pt.code || 'SEC'}</div>
+                        <div className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>{pt.code || 'SEC'}</div>
                         <div className="text-xs font-bold leading-snug whitespace-normal break-words">{pt.name}</div>
                       </div>
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 mt-0.5 ${
-                          isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-100 text-slate-700'
+                          isSelected ? 'bg-sky-500/25 text-sky-200 border border-sky-400/40' : 'bg-slate-100 text-slate-700'
                         }`}
                       >
                         {bomCount} BOM
@@ -1533,20 +1533,20 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
             <form onSubmit={handleSubmitUsage} className="space-y-4">
               {/* Step 2 Card: Project, Sub-Project & Customer Details */}
-              <div className="p-4 bg-teal-50/70 border border-teal-200/90 rounded-xl shadow-2xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-200/60 pb-2.5">
+              <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3d6889] pb-2.5">
                   <div>
-                    <span className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <FolderPlus className="w-4 h-4 text-teal-600" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <FolderPlus className="w-4 h-4 text-sky-300" />
                       <span>2. Project / Sub-Project & Customer Identification</span>
                     </span>
-                    <span className="text-[11px] text-teal-800/80 block mt-0.5">
+                    <span className="text-[11px] text-sky-100/85 block mt-0.5">
                       Select a Sub-Project under a Major Project (auto-deducts from Main Project Free Stock) or an Individual Project.
                     </span>
                   </div>
 
                   {/* Mode Switcher */}
-                  <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-teal-200 text-[11px] font-semibold self-start sm:self-auto shadow-2xs">
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-[11px] font-semibold self-start sm:self-auto shadow-2xs">
                     <button
                       type="button"
                       onClick={() => setProjectEntryMode('existing')}
@@ -1677,13 +1677,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-100 mb-1">
                           FOC Client / Principal Name {newProjectScope === 'individual' ? '*' : '(Inherited if blank)'}
                         </label>
                         <select
                           value={entryCustomerName}
                           onChange={(e) => setEntryCustomerName(e.target.value)}
-                          className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                           required={newProjectScope === 'individual'}
                         >
                           <option value="">-- Select Registered Client / Principal --</option>
@@ -1696,7 +1696,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-100 mb-1">
                           Customer Phone Number
                         </label>
                         <div className="relative">
@@ -1706,7 +1706,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             value={entryCustomerPhone}
                             onChange={(e) => setEntryCustomerPhone(e.target.value)}
                             placeholder="e.g. 0771234567 / 071xxxxxxx"
-                            className="w-full pl-8 pr-3 py-2 text-xs font-mono border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            className="w-full pl-8 pr-3 py-2 text-xs font-mono border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                           />
                         </div>
                       </div>
@@ -1714,7 +1714,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-100 mb-1">
                           Site ID / Sub-Project Code
                         </label>
                         <div className="relative">
@@ -1724,13 +1724,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             value={entrySiteId}
                             onChange={(e) => setEntrySiteId(e.target.value)}
                             placeholder="e.g. SUB-01, SITE-0891"
-                            className="w-full pl-8 pr-3 py-2 text-xs font-mono uppercase border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            className="w-full pl-8 pr-3 py-2 text-xs font-mono uppercase border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-100 mb-1">
                           District
                         </label>
                         <input
@@ -1738,12 +1738,12 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           value={entryDistrict}
                           onChange={(e) => setEntryDistrict(e.target.value)}
                           placeholder="e.g. Colombo, Kandy"
-                          className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                          className="w-full text-xs font-medium px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-slate-100 mb-1">
                           Sub Area / Location
                         </label>
                         <input
@@ -1751,7 +1751,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           value={entrySubArea}
                           onChange={(e) => setEntrySubArea(e.target.value)}
                           placeholder="e.g. Maharagama, Sector 4"
-                          className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                          className="w-full text-xs font-medium px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                         />
                       </div>
                     </div>
@@ -1788,7 +1788,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 ) : (
                   <div className="pt-1 space-y-2.5">
                     {/* Quick Scope Filter + Main Project Family Filter */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 bg-white/80 p-2 rounded-lg border border-teal-200/80">
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2 rounded-lg border border-slate-200/90">
                       <div className="flex flex-wrap items-center gap-1">
                         {(
                           [
@@ -1857,13 +1857,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-xs font-bold text-slate-100 mb-1">
                         Choose Sub-Project / Project for Material Usage *
                       </label>
                       <select
                         value={selectedProjectId}
                         onChange={(e) => setSelectedProjectId(e.target.value)}
-                        className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                         required
                       >
                         {sectionProjects.length === 0 ? (
@@ -1967,13 +1967,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     )}
 
                     <div className="mt-2">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-xs font-bold text-slate-100 mb-1">
                         Associated FOC Client / Principal (Optional)
                       </label>
                       <select
                         value={existingProjectFocClientId}
                         onChange={(e) => setExistingProjectFocClientId(e.target.value)}
-                        className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                       >
                         <option value="">-- Select Registered Client / Principal --</option>
                         {activeClients.map((clt) => (
@@ -1985,7 +1985,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     </div>
 
                     {targetProject && (
-                      <div className="mt-2 p-2.5 bg-white border border-teal-200 rounded-lg text-[11px] text-slate-700 flex flex-wrap items-center gap-3 shadow-2xs">
+                      <div className="mt-2 p-2.5 bg-white border border-slate-200 rounded-lg text-[11px] text-slate-700 flex flex-wrap items-center gap-3 shadow-2xs">
                         <span><strong>Project Code:</strong> {targetProject.projectId}</span>
                         {targetProject.parentProjectName && (
                           <span><strong>Parent Main Project:</strong> {targetProject.parentProjectName}</span>
@@ -2043,10 +2043,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
               </div>
 
               {/* Step 3 Card: Site Branch, Field Team & Execution Details */}
-              <div className="p-4 bg-sky-50/70 border border-sky-200/90 rounded-xl shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-sky-200/60 pb-2">
-                  <span className="text-xs font-bold text-sky-950 uppercase tracking-wider flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4 text-sky-600" />
+              <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-[#3d6889] pb-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-sky-300" />
                     <span>3. Site Branch & Field Team Execution</span>
                   </span>
                 </div>
@@ -2054,14 +2054,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Site Branch */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-xs font-bold text-slate-100 mb-1">
                       Site Branch *
                     </label>
                     <select
                       value={selectedSiteId}
                       onChange={(e) => handleSiteChange(e.target.value)}
                       disabled={isSingleSiteLocked}
-                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:opacity-75"
+                      className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 disabled:opacity-75"
                     >
                       {allowedSites.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -2073,13 +2073,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                   {/* Executing Field Team */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-xs font-bold text-slate-100 mb-1">
                       Executing Field Team * (Stock Deducted)
                     </label>
                     <select
                       value={selectedTeamId}
                       onChange={(e) => handleTeamChange(e.target.value)}
-                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                      className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                       required
                     >
                       {availableTeams.length === 0 ? (
@@ -2096,7 +2096,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                   {/* Supervisor / Team Leader */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-xs font-bold text-slate-100 mb-1">
                       Supervisor or Team Leader *
                     </label>
                     <div className="relative">
@@ -2106,7 +2106,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         onChange={(e) => setSupervisorName(e.target.value)}
                         placeholder="e.g. John Doe / Team Leader"
                         list="supervisor-presets"
-                        className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                        className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                         required
                       />
                       <datalist id="supervisor-presets">
@@ -2122,14 +2122,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                   {/* Date */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-xs font-bold text-slate-100 mb-1">
                       Usage Date *
                     </label>
                     <input
                       type="date"
                       value={usageDate}
                       onChange={(e) => setUsageDate(e.target.value)}
-                      className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                      className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                       required
                     />
                   </div>
@@ -2137,7 +2137,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                 {/* Work Details / Scope */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-100 mb-1">
                     Work Details / Scope of Installation
                   </label>
                   <input
@@ -2145,34 +2145,34 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     value={workDetails}
                     onChange={(e) => setWorkDetails(e.target.value)}
                     placeholder="e.g. Fibre Drop Installation, Rosette termination & testing"
-                    className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-lg bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    className="w-full text-xs font-medium px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                   />
                 </div>
               </div>
 
               {/* Step 4 Card: Materials Consumed Table (Automatically Locks if Selected Project is Not Under User's Site) */}
               <div
-                className={`p-4 rounded-xl shadow-2xs border transition-colors ${
+                className={`p-4 rounded-xl shadow-sm border transition-colors ${
                   isProjectSiteLocked
-                    ? 'bg-rose-50/75 border-rose-300 ring-2 ring-rose-200/70'
-                    : 'bg-indigo-50/70 border-indigo-200/90'
+                    ? 'bg-rose-50/90 border-rose-400 ring-2 ring-rose-200/80'
+                    : 'bg-gradient-to-br from-[#1d4840] via-[#215249] to-[#265d53] border-[#367c6f]'
                 }`}
               >
                 <div
                   className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 mb-3 ${
-                    isProjectSiteLocked ? 'border-rose-200' : 'border-indigo-200/60'
+                    isProjectSiteLocked ? 'border-rose-200' : 'border-[#388274]'
                   }`}
                 >
                   <div>
                     <span
                       className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-                        isProjectSiteLocked ? 'text-rose-950' : 'text-indigo-950'
+                        isProjectSiteLocked ? 'text-rose-950' : 'text-white'
                       }`}
                     >
                       {isProjectSiteLocked ? (
                         <Lock className="w-4 h-4 text-rose-600" />
                       ) : (
-                        <Boxes className="w-4 h-4 text-indigo-600" />
+                        <Boxes className="w-4 h-4 text-emerald-300" />
                       )}
                       <span>
                         4. Materials Consumed (Deducted from {currentTeam?.teamName || 'Team'} Custody)
@@ -2183,7 +2183,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         </span>
                       )}
                     </span>
-                    <span className="text-[11px] text-slate-600 block mt-0.5">
+                    <span
+                      className={`text-[11px] block mt-0.5 ${
+                        isProjectSiteLocked ? 'text-slate-700' : 'text-emerald-100/90'
+                      }`}
+                    >
                       {isProjectSiteLocked
                         ? `Material usage entry is disabled because the selected project belongs to another site branch.`
                         : `Standard section template items pre-loaded below. Enter actual quantities used or add extra items.`}
@@ -2195,7 +2199,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         type="button"
                         disabled={isProjectSiteLocked}
                         onClick={() => setScannerOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer shadow-xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold bg-emerald-400 text-emerald-950 rounded-lg hover:bg-emerald-300 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer shadow-xs"
                       >
                         <ScanLine className="w-3.5 h-3.5" />
                         <span>Scan Barcode (USB / Mobile)</span>
@@ -2205,7 +2209,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       type="button"
                       disabled={isProjectSiteLocked}
                       onClick={handleAddItemRow}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer shadow-xs"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-extrabold bg-white text-emerald-950 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer shadow-xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>+ Add Extra Item</span>
@@ -2283,8 +2287,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       return (
                         <div
                           key={idx}
-                          className={`bg-white border rounded-xl p-3 flex flex-col lg:flex-row items-center gap-3 transition-colors shadow-2xs ${
-                            isOverLimit ? 'border-rose-300 bg-rose-50/40' : 'border-indigo-100/90 hover:border-indigo-300'
+                          className={`bg-white border rounded-xl p-3 flex flex-col lg:flex-row items-center gap-3 transition-colors shadow-xs ${
+                            isOverLimit ? 'border-rose-400 bg-rose-50' : 'border-white/90 hover:border-emerald-300'
                           }`}
                         >
                           {/* Item select */}
@@ -2296,7 +2300,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               value={row.itemId}
                               disabled={isProjectSiteLocked}
                               onChange={(e) => handleRowChange(idx, 'itemId', e.target.value)}
-                              className="w-full text-xs font-semibold px-2.5 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
+                              className="w-full text-xs font-semibold px-2.5 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-slate-100"
                               required
                             >
                               <option value="">-- Select Material Item --</option>
