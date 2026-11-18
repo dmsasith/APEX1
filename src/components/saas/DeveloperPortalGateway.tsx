@@ -17,6 +17,7 @@ import {
   Warehouse,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
+import { computePlatformPricingMetrics } from '../../types';
 
 interface DeveloperPortalGatewayProps {
   onSelectSaasOwner: () => void;
@@ -27,7 +28,8 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
   onSelectSaasOwner,
   onSelectStockManager,
 }) => {
-  const { logout, switchToMasterStock } = useStock();
+  const { logout, switchToMasterStock, platformPricing } = useStock();
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
   const [resetToast, setResetToast] = useState<string | null>(null);
 
   const handleOpenMyStock = () => {
@@ -159,7 +161,7 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
                   <span>👑 SaaS Master Owner Panel</span>
                 </h2>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">
-                  Platform management dashboard to view all registered client companies, extend 7-day trials, activate $19.90/mo or $189/yr subscriptions, inspect workspaces, and monitor revenue.
+                  Platform management dashboard to view all registered client companies, extend {pricingMetrics.trialDays}-day trials, activate ${pricingMetrics.monthlyPriceFormatted}/mo or ${pricingMetrics.annualPriceClean}/yr subscriptions, inspect workspaces, and monitor revenue.
                 </p>
               </div>
 
@@ -171,7 +173,7 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-slate-700 font-medium">
                   <Award className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>Monthly ($19.90) &amp; Annual ($189) Plans</span>
+                  <span>Monthly (${pricingMetrics.monthlyPriceFormatted}) &amp; Annual (${pricingMetrics.annualPriceClean}) Plans</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-500 font-medium">
                   <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />

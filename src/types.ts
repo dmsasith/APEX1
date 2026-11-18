@@ -954,6 +954,84 @@ export interface SupplierReturn {
 export type TenantPlan = 'free_trial' | 'pro_monthly' | 'pro_annual';
 export type TenantSubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled';
 
+export interface PlatformPricingConfig {
+  monthlyPrice: number; // e.g. 19.90
+  annualPrice: number; // e.g. 189.00
+  trialDays: number; // e.g. 7
+  currency: string; // 'USD'
+  currencySymbol: string; // '$'
+  monthlyPlanName?: string; // 'Pro Monthly'
+  annualPlanName?: string; // 'Pro Annual'
+  trialPlanName?: string; // '7-Day Free Trial'
+  updatedAt?: string;
+}
+
+export const DEFAULT_PLATFORM_PRICING: PlatformPricingConfig = {
+  monthlyPrice: 19.90,
+  annualPrice: 189.00,
+  trialDays: 7,
+  currency: 'USD',
+  currencySymbol: '$',
+  monthlyPlanName: 'Pro Monthly',
+  annualPlanName: 'Pro Annual',
+  trialPlanName: '7-Day Free Trial',
+};
+
+export function computePlatformPricingMetrics(raw?: Partial<PlatformPricingConfig> | null) {
+  const monthlyPrice =
+    typeof raw?.monthlyPrice === 'number' && !Number.isNaN(raw.monthlyPrice) && raw.monthlyPrice > 0
+      ? Number(raw.monthlyPrice)
+      : DEFAULT_PLATFORM_PRICING.monthlyPrice;
+  const annualPrice =
+    typeof raw?.annualPrice === 'number' && !Number.isNaN(raw.annualPrice) && raw.annualPrice > 0
+      ? Number(raw.annualPrice)
+      : DEFAULT_PLATFORM_PRICING.annualPrice;
+  const trialDays =
+    typeof raw?.trialDays === 'number' && !Number.isNaN(raw.trialDays) && raw.trialDays >= 1
+      ? Math.round(raw.trialDays)
+      : DEFAULT_PLATFORM_PRICING.trialDays;
+  const currency = raw?.currency || DEFAULT_PLATFORM_PRICING.currency;
+  const currencySymbol = raw?.currencySymbol || DEFAULT_PLATFORM_PRICING.currencySymbol;
+  const monthlyPlanName = raw?.monthlyPlanName || DEFAULT_PLATFORM_PRICING.monthlyPlanName || 'Pro Monthly';
+  const annualPlanName = raw?.annualPlanName || DEFAULT_PLATFORM_PRICING.annualPlanName || 'Pro Annual';
+  const trialPlanName = raw?.trialPlanName || `${trialDays}-Day Free Trial`;
+
+  const annualMonthlyEquivalent = Number((annualPrice / 12).toFixed(2));
+  const fullYearAtMonthlyRate = Number((monthlyPrice * 12).toFixed(2));
+  const annualSavingsAmount = Math.max(0, Number((fullYearAtMonthlyRate - annualPrice).toFixed(2)));
+  const annualSavingsPercent =
+    fullYearAtMonthlyRate > 0
+      ? Math.max(0, Math.round(((fullYearAtMonthlyRate - annualPrice) / fullYearAtMonthlyRate) * 100))
+      : 0;
+
+  const formatPrice = (val: number, forceDecimals = true) => {
+    if (!forceDecimals && Number.isInteger(val)) {
+      return val.toString();
+    }
+    return val.toFixed(2);
+  };
+
+  return {
+    monthlyPrice,
+    annualPrice,
+    trialDays,
+    currency,
+    currencySymbol,
+    monthlyPlanName,
+    annualPlanName,
+    trialPlanName,
+    annualMonthlyEquivalent,
+    fullYearAtMonthlyRate,
+    annualSavingsAmount,
+    annualSavingsPercent,
+    monthlyPriceFormatted: formatPrice(monthlyPrice, true),
+    annualPriceFormatted: formatPrice(annualPrice, true),
+    annualPriceClean: formatPrice(annualPrice, false),
+    annualMonthlyEquivalentFormatted: formatPrice(annualMonthlyEquivalent, true),
+    annualSavingsFormatted: formatPrice(annualSavingsAmount, true),
+  };
+}
+
 export interface QueuedSubscription {
   plan: TenantPlan;
   billingCycle: 'monthly' | 'annual';

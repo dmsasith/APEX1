@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 import { SystemUserGuideView } from './SystemUserGuideView';
+import { useStock } from '../../context/StockContext';
+import { computePlatformPricingMetrics } from '../../types';
 
 interface LandingPageProps {
   onOpenLogin: () => void;
@@ -39,6 +41,9 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
+  const { platformPricing } = useStock();
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [activeLandingTab, setActiveLandingTab] = useState<'overview' | 'guide'>('overview');
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
@@ -145,12 +150,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
   const faqs = [
     {
-      q: 'How does the 7-Day Free Trial work?',
-      a: 'You can register your company workspace in under 60 seconds with zero commitment. No credit card is required to sign up. You get 100% full access to all enterprise modules—including unlimited site branches, field teams, client-supplied stock tracking, supplier purchase orders, and PDF voucher printing for a full 7 days.',
+      q: `How does the ${pricingMetrics.trialDays}-Day Free Trial work?`,
+      a: `You can register your company workspace in under 60 seconds with zero commitment. No credit card is required to sign up. You get 100% full access to all enterprise modules—including unlimited site branches, field teams, client-supplied stock tracking, supplier purchase orders, and PDF voucher printing for a full ${pricingMetrics.trialDays} days.`,
     },
     {
-      q: 'What happens after the 7-day free trial?',
-      a: 'After 7 days, you can choose between our Pro Monthly plan ($19.90/mo) or our cost-saving Pro Annual VIP plan ($189/yr — Save 21%). All data, inventory records, and transaction history entered during your trial remain 100% safe and intact. You can activate your plan via Bank QR or wire transfer slip upload.',
+      q: `What happens after the ${pricingMetrics.trialDays}-day free trial?`,
+      a: `After ${pricingMetrics.trialDays} days, you can choose between our Pro Monthly plan ($${pricingMetrics.monthlyPriceFormatted}/mo) or our cost-saving Pro Annual VIP plan ($${pricingMetrics.annualPriceClean}/yr — Save ${pricingMetrics.annualSavingsPercent}%). All data, inventory records, and transaction history entered during your trial remain 100% safe and intact. You can activate your plan via Bank QR or wire transfer slip upload.`,
     },
     {
       q: 'How does Client-Supplied Free Stock work with the Master Client Register?',
@@ -189,7 +194,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Monthly Subscription Price (All Modules Unlocked)',
       detail: 'Complete multi-site warehouse, project, procurement & field crew ERP with zero hidden add-on fees.',
       isSpecialHighlight: true,
-      apex: '$19.90 / mo ($15.75/mo Annual)',
+      apex: `$${pricingMetrics.monthlyPriceFormatted} / mo ($${pricingMetrics.annualMonthlyEquivalentFormatted}/mo Annual)`,
       sortly: '$149 – $299+ / mo',
       zoho: '$99 – $249+ / mo',
       inflowCin7: '$149 – $399+ / mo',
@@ -201,7 +206,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Annual Total Cost (For 15 Users & 5 Site Branches)',
       detail: 'Real yearly cost for a typical contractor operating a Central HQ + 5 regional site stores + 15 staff accounts.',
       isSpecialHighlight: true,
-      apex: '$189 / year Flat (Save 90%+)',
+      apex: `$${pricingMetrics.annualPriceClean} / year Flat (Save 90%+)`,
       sortly: '$1,788 – $3,588+ / year',
       zoho: '$1,548 – $2,988+ / year',
       inflowCin7: '$2,148 – $4,788+ / year',
@@ -735,7 +740,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               onClick={() => setIsSignupOpen(true)}
               className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-[#dc9750] hover:bg-[#e5a460] text-[#1e2640] font-black rounded-xl text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-[#dc9750]/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             >
-              <span className="hidden sm:inline">Start 7-Day </span>
+              <span className="hidden sm:inline">Start {pricingMetrics.trialDays}-Day </span>
               <span>Free Trial</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#1e2640] stroke-[2.5]" />
             </button>
@@ -796,7 +801,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <HardHat className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#dc9750]" />
                   <span>Built for Construction, EPC, Telecom & Multi-Site Contractors</span>
                   <span aria-hidden="true" className="text-[#dc9750]/60">·</span>
-                  <span className="text-[#e8ac6e] font-extrabold">7-Day Unrestricted Free Trial</span>
+                  <span className="text-[#e8ac6e] font-extrabold">{pricingMetrics.trialDays}-Day Unrestricted Free Trial</span>
                 </div>
 
                 {/* High-Impact Display Headline */}
@@ -846,7 +851,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     onClick={() => setIsSignupOpen(true)}
                     className="w-full sm:w-auto px-5 sm:px-7 py-3 sm:py-3.5 bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 sm:gap-2.5 shadow-xl shadow-[#dc9750]/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                   >
-                    <span>Start 7-Day Free Trial</span>
+                    <span>Start {pricingMetrics.trialDays}-Day Free Trial</span>
                     <span className="text-[#1e2640]/80 font-bold text-[11px] sm:text-xs">($0 Today)</span>
                     <ArrowRight className="w-4 h-4 text-[#1e2640] stroke-[2.5]" />
                   </button>
@@ -881,7 +886,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <span>No Credit Card Required</span>
                   </span>
                   <span aria-hidden="true" className="text-slate-500">·</span>
-                  <span className="tabular-nums">$19.90/mo or $189/yr (Save 21%)</span>
+                  <span className="tabular-nums">
+                    ${pricingMetrics.monthlyPriceFormatted}/mo or ${pricingMetrics.annualPriceClean}/yr (Save {pricingMetrics.annualSavingsPercent}%)
+                  </span>
                   <span aria-hidden="true" className="text-slate-500">·</span>
                   <span>100% Isolated Tenant Cloud</span>
                 </div>
@@ -1427,7 +1434,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   Choose the Plan That Fits Your Operations
                 </h2>
                 <p className="text-xs sm:text-sm text-[#2d3859] mt-2.5 sm:mt-3 max-w-xl mx-auto font-semibold">
-                  Start with our unrestricted 7-day free trial ($0 today). Continue seamlessly with flexible monthly billing or our discounted annual VIP plan.
+                  Start with our unrestricted {pricingMetrics.trialDays}-day free trial ($0 today). Continue seamlessly with flexible monthly billing or our discounted annual VIP plan.
                 </p>
               </div>
 
@@ -1447,7 +1454,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     02
                   </span>
                   <div className="text-xs">
-                    <div className="font-extrabold text-[#1e2640]">Test Everything for 7 Days</div>
+                    <div className="font-extrabold text-[#1e2640]">Test Everything for {pricingMetrics.trialDays} Days</div>
                     <div className="text-[11px] text-[#475577]">100% full modules unlocked</div>
                   </div>
                 </div>
@@ -1464,11 +1471,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
               {/* 3 Pricing Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto items-stretch pt-2 sm:pt-4">
-                {/* Card 1: 7-Day Free Trial */}
+                {/* Card 1: Free Trial */}
                 <div className="bg-white/95 hover:bg-white border border-[#dc9750]/50 rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col relative transition-all duration-200 shadow-[0_16px_40px_-12px_rgba(30,38,64,0.12)]">
                   <div className="mb-5 sm:mb-6">
                     <div className="text-xs font-bold text-[#526080]">Risk-Free Evaluation</div>
-                    <h3 className="text-xl sm:text-2xl font-black text-[#1e2640] mt-1.5 sm:mt-2">7-Day Free Trial</h3>
+                    <h3 className="text-xl sm:text-2xl font-black text-[#1e2640] mt-1.5 sm:mt-2">
+                      {pricingMetrics.trialDays}-Day Free Trial
+                    </h3>
                     <p className="text-xs text-[#3a4769] mt-2 leading-relaxed font-medium">
                       Full unrestricted access to evaluate our multi-site inventory & dispatch platform with your team.
                     </p>
@@ -1477,7 +1486,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl sm:text-5xl font-black text-[#1e2640] tabular-nums">$0</span>
-                      <span className="text-xs font-bold text-[#526080]">/ 7 days free</span>
+                      <span className="text-xs font-bold text-[#526080]">/ {pricingMetrics.trialDays} days free</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-[#9e5c19] font-extrabold mt-2">
                       <CreditCard className="w-3.5 h-3.5 text-[#b56b21] shrink-0" />
@@ -1516,7 +1525,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     onClick={() => setIsSignupOpen(true)}
                     className="w-full py-3.5 bg-[#1e2640] hover:bg-[#283354] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 shadow-sm whitespace-nowrap"
                   >
-                    <span>Start 7-Day Free Trial</span>
+                    <span>Start {pricingMetrics.trialDays}-Day Free Trial</span>
                     <ArrowRight className="w-4 h-4 text-[#dc9750]" />
                   </button>
                 </div>
@@ -1533,7 +1542,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                   <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl sm:text-5xl font-black text-[#1e2640] tabular-nums">$19.90</span>
+                      <span className="text-4xl sm:text-5xl font-black text-[#1e2640] tabular-nums">
+                        ${pricingMetrics.monthlyPriceFormatted}
+                      </span>
                       <span className="text-xs font-bold text-[#526080]">/ month</span>
                     </div>
                     <div className="text-[11px] text-[#526080] font-semibold mt-2">
@@ -1572,7 +1583,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     onClick={() => setIsSignupOpen(true)}
                     className="w-full py-3.5 bg-[#1e2640] hover:bg-[#283354] text-[#dc9750] font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#1e2640]/15 transition cursor-pointer active:scale-95 whitespace-nowrap"
                   >
-                    <span>Select Pro Monthly</span>
+                    <span>Select Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -1590,7 +1601,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                           <Crown className="w-3.5 h-3.5 text-[#dc9750] fill-[#dc9750]" />
                           <span>Flagship Enterprise VIP</span>
                         </span>
-                        <span className="text-xs font-black text-emerald-400">Save 21%</span>
+                        <span className="text-xs font-black text-emerald-400">
+                          Save {pricingMetrics.annualSavingsPercent}%
+                        </span>
                       </div>
                       <h3 className="text-2xl sm:text-3xl font-black text-white mt-1.5 sm:mt-2 tracking-tight">
                         Pro Annual
@@ -1603,13 +1616,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <div className="mb-6 sm:mb-8 relative z-10">
                       <div className="flex items-baseline gap-2">
                         <span className="text-4xl sm:text-6xl font-black text-[#e5a460] tabular-nums">
-                          $189.00
+                          ${pricingMetrics.annualPriceFormatted}
                         </span>
                         <span className="text-xs font-bold text-slate-300">/ year</span>
                       </div>
                       <div className="mt-2 flex items-center gap-1.5 text-[#f2c391] text-[11px] font-bold tabular-nums">
                         <Zap className="w-3.5 h-3.5 text-[#dc9750] fill-[#dc9750]" />
-                        <span>Only ~$15.75/month · Save $49.80 every year</span>
+                        <span>
+                          Only ~${pricingMetrics.annualMonthlyEquivalentFormatted}/month · Save ${pricingMetrics.annualSavingsFormatted} every year
+                        </span>
                       </div>
                     </div>
 
@@ -1620,7 +1635,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
                       <div className="flex items-center gap-2.5">
                         <Check className="w-4 h-4 text-[#dc9750] shrink-0 stroke-[2.5]" />
-                        <span className="text-[#f2c391] font-semibold">Save 21% compared to monthly billing</span>
+                        <span className="text-[#f2c391] font-semibold">
+                          Save {pricingMetrics.annualSavingsPercent}% compared to monthly billing
+                        </span>
                       </div>
                       <div className="flex items-center gap-2.5">
                         <Check className="w-4 h-4 text-[#dc9750] shrink-0 stroke-[2.5]" />
@@ -1645,7 +1662,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       className="w-full py-4 bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-xl shadow-[#dc9750]/25 transition-all duration-200 cursor-pointer active:scale-95 relative z-10 whitespace-nowrap"
                     >
                       <Crown className="w-4 h-4 fill-[#1e2640]" />
-                      <span>Select Pro Annual (Save 21%)</span>
+                      <span>Select Pro Annual (Save {pricingMetrics.annualSavingsPercent}%)</span>
                       <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                     </button>
                   </div>
@@ -1669,7 +1686,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     Why Pay <span className="text-rose-400 line-through decoration-2">$150 to $400+/Month</span> for Generic Retail Inventory Apps That Still Lack Field Site Control?
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-200 mt-3 leading-relaxed max-w-3xl mx-auto font-medium">
-                    Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH rollouts, client free-issue stock (FOC), or field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today. <strong className="text-[#f0c08d]">Apex Stock gives you 100% of these specialized field &amp; warehouse features for one flat $19.90/mo ($189/year).</strong>
+                    Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH rollouts, client free-issue stock (FOC), or field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today.{' '}
+                    <strong className="text-[#f0c08d]">
+                      Apex Stock gives you 100% of these specialized field &amp; warehouse features for one flat ${pricingMetrics.monthlyPriceFormatted}/mo (${pricingMetrics.annualPriceClean}/year).
+                    </strong>
                   </p>
                 </div>
 
@@ -1683,16 +1703,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
                       <div className="text-base font-black text-[#1e2640] mt-0.5">Apex Stock VIP</div>
                       <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#1e2640] mt-2">
-                        $189<span className="text-xs font-extrabold">/yr</span>
+                        ${pricingMetrics.annualPriceClean}<span className="text-xs font-extrabold">/yr</span>
                       </div>
                       <div className="text-[11px] font-extrabold text-[#1e2640]/90 font-mono tabular-nums">
-                        (~$15.75/mo or $19.90 monthly)
+                        (~${pricingMetrics.annualMonthlyEquivalentFormatted}/mo or ${pricingMetrics.monthlyPriceFormatted} monthly)
                       </div>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-[#1e2640]/20 text-[11px] font-bold text-[#1e2640] space-y-1">
                       <div>✓ Unlimited Users &amp; Sites</div>
                       <div>✓ All 34 Field &amp; ERP Modules</div>
-                      <div>✓ $0 Setup · 7-Day Free Trial</div>
+                      <div>✓ $0 Setup · {pricingMetrics.trialDays}-Day Free Trial</div>
                     </div>
                   </div>
 
@@ -1816,7 +1836,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                         <th className="py-3.5 px-4 w-[18%] bg-[#dc9750] text-[#1e2640] font-black">
                           <div className="flex items-center gap-1.5">
                             <Crown className="w-3.5 h-3.5 fill-[#1e2640]" />
-                            <span>Apex Stock ($19.90/mo)</span>
+                            <span>Apex Stock (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                           </div>
                         </th>
                         <th className="py-3.5 px-3.5 w-[16%] text-slate-200">
@@ -1925,10 +1945,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <div className="mt-8 rounded-2xl bg-gradient-to-r from-[#dc9750] via-[#e8a864] to-[#dc9750] text-[#1e2640] p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
                   <div className="text-center md:text-left">
                     <div className="text-sm sm:text-lg font-black text-[#1e2640]">
-                      Get Every Single Feature Above for $0 Today (7-Day Unrestricted Free Trial)
+                      Get Every Single Feature Above for $0 Today ({pricingMetrics.trialDays}-Day Unrestricted Free Trial)
                     </div>
                     <div className="text-xs font-bold text-[#1e2640]/90 mt-0.5">
-                      Then just <span className="underline font-black">$19.90/month</span> or <span className="underline font-black">$189/year</span> for your entire company — Unlimited Users, Unlimited Sites &amp; Zero Per-Seat Fees.
+                      Then just <span className="underline font-black">${pricingMetrics.monthlyPriceFormatted}/month</span> or <span className="underline font-black">${pricingMetrics.annualPriceClean}/year</span> for your entire company — Unlimited Users, Unlimited Sites &amp; Zero Per-Seat Fees.
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
@@ -1937,7 +1957,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       onClick={() => setIsSignupOpen(true)}
                       className="px-5 py-3 rounded-xl bg-[#1e2640] hover:bg-[#141a2e] text-[#dc9750] font-black text-xs flex items-center gap-2 shadow-md transition cursor-pointer whitespace-nowrap"
                     >
-                      <span>Start Your 7-Day Free Trial Now</span>
+                      <span>Start Your {pricingMetrics.trialDays}-Day Free Trial Now</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                     <button

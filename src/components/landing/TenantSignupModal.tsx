@@ -15,7 +15,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { TenantRegistrationForm } from '../../types';
+import { TenantRegistrationForm, computePlatformPricingMetrics } from '../../types';
 import { TermsConditionsModal } from './TermsConditionsModal';
 import {
   COUNTRY_PHONE_RULES,
@@ -36,7 +36,8 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
   onClose,
   onSuccessLogin,
 }) => {
-  const { registerTenant } = useStock();
+  const { registerTenant, platformPricing } = useStock();
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
   const initialDetectedRule = detectActivePhoneCountry();
 
@@ -146,9 +147,11 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
               <ShieldCheck className="w-3 h-3" />
-              <span>7-Day Free Trial · $0 Today</span>
+              <span>{pricingMetrics.trialDays}-Day Free Trial · $0 Today</span>
             </span>
-            <span className="text-xs text-slate-400">Then $19.90/mo or $189/yr (Save 21%)</span>
+            <span className="text-xs text-slate-400">
+              Then ${pricingMetrics.monthlyPriceFormatted}/mo or ${pricingMetrics.annualPriceClean}/yr (Save {pricingMetrics.annualSavingsPercent}%)
+            </span>
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
@@ -408,7 +411,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
                 <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
                 <div className="text-[11px] text-slate-400 leading-relaxed">
-                  <span className="font-bold text-slate-200">100% Risk Free:</span> No credit card required to start. Your 7-day free trial gives full access to all features. Continue for $19.90/month thereafter.
+                  <span className="font-bold text-slate-200">100% Risk Free:</span> No credit card required to start. Your {pricingMetrics.trialDays}-day free trial gives full access to all features. Continue for ${pricingMetrics.monthlyPriceFormatted}/month thereafter.
                 </div>
               </div>
               
@@ -444,7 +447,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                   <span>Provisioning Workspace...</span>
                 ) : (
                   <>
-                    <span>Create Workspace & Start 7-Day Trial</span>
+                    <span>Create Workspace & Start {pricingMetrics.trialDays}-Day Trial</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

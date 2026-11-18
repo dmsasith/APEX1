@@ -28,9 +28,16 @@ import {
   X,
   Edit3,
   Link2,
+  Sliders,
+  RotateCcw,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { Tenant, TenantSubscription } from '../../types';
+import {
+  Tenant,
+  TenantSubscription,
+  DEFAULT_PLATFORM_PRICING,
+  computePlatformPricingMetrics,
+} from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { TenantWorkspaceInspectorModal } from './TenantWorkspaceInspectorModal';
@@ -48,6 +55,8 @@ export const SaasMasterAdminView: React.FC = () => {
     deleteTenant,
     config,
     updateConfig,
+    platformPricing,
+    updatePlatformPricing,
   } = useStock();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'trialing' | 'active' | 'expired'>('all');
@@ -57,6 +66,32 @@ export const SaasMasterAdminView: React.FC = () => {
   const [editingPackageTenant, setEditingPackageTenant] = useState<Tenant | null>(null);
   const [editingWorkspaceTenant, setEditingWorkspaceTenant] = useState<Tenant | null>(null);
   const [showBankSetupModal, setShowBankSetupModal] = useState(false);
+  const [showPricingPanel, setShowPricingPanel] = useState(true);
+
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+
+  const [editMonthlyPrice, setEditMonthlyPrice] = useState<string>(
+    String(pricingMetrics.monthlyPrice)
+  );
+  const [editAnnualPrice, setEditAnnualPrice] = useState<string>(
+    String(pricingMetrics.annualPrice)
+  );
+  const [editTrialDays, setEditTrialDays] = useState<string>(
+    String(pricingMetrics.trialDays)
+  );
+  const [syncExistingTenantsOnSave, setSyncExistingTenantsOnSave] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    setEditMonthlyPrice(String(pricingMetrics.monthlyPrice));
+    setEditAnnualPrice(String(pricingMetrics.annualPrice));
+    setEditTrialDays(String(pricingMetrics.trialDays));
+  }, [pricingMetrics.monthlyPrice, pricingMetrics.annualPrice, pricingMetrics.trialDays]);
+
+  const draftPricingMetrics = computePlatformPricingMetrics({
+    monthlyPrice: parseFloat(editMonthlyPrice) || pricingMetrics.monthlyPrice,
+    annualPrice: parseFloat(editAnnualPrice) || pricingMetrics.annualPrice,
+    trialDays: parseInt(editTrialDays, 10) || pricingMetrics.trialDays,
+  });
 
   const masterBankConfig = (() => {
     try {
@@ -132,9 +167,10 @@ export const SaasMasterAdminView: React.FC = () => {
 
   const mrr = activePaidTenants.reduce((sum, t) => {
     if (t.subscription.plan === 'pro_annual') {
-      return sum + (189.00 / 12);
+      const annualVal = t.subscription.annualPrice || pricingMetrics.annualPrice;
+      return sum + annualVal / 12;
     }
-    return sum + (t.subscription.monthlyPrice || 19.90);
+    return sum + (t.subscription.monthlyPrice || pricingMetrics.monthlyPrice);
   }, 0);
 
   const arr = mrr * 12;
@@ -164,43 +200,47 @@ export const SaasMasterAdminView: React.FC = () => {
 
   const handleExtendTrial = (tenant: Tenant) => {
     const currentExpiry = new Date(tenant.subscription.trialEndsAt);
-    // Add 7 days to trial expiry
+    const daysToAdd = pricingMetrics.trialDays || 7;
     const newExpiry = new Date(
-      Math.max(Date.now(), currentExpiry.getTime()) + 7 * 24 * 60 * 60 * 1000
+      Math.max(Date.now(), currentExpiry.getTime()) + daysToAdd * 24 * 60 * 60 * 1000
     ).toISOString();
 
     updateTenantSubscription(tenant.id, {
       status: 'trialing',
       trialEndsAt: newExpiry,
     });
-    showNotification(`Extended 7-Day Free Trial for ${tenant.companyName}.`);
+    showNotification(`Extended ${daysToAdd}-Day Free Trial for ${tenant.companyName}.`);
   };
 
   const handleActivatePro = (tenant: Tenant) => {
     updateTenantSubscription(tenant.id, {
       plan: 'pro_monthly',
       status: 'active',
-      monthlyPrice: 19.90,
+      monthlyPrice: pricingMetrics.monthlyPrice,
       billingCycle: 'monthly',
       paymentMethodStatus: 'active',
       lastBillingDate: new Date().toISOString(),
       nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
-    showNotification(`Activated Monthly Pro Subscription ($19.90/mo) for ${tenant.companyName}!`);
+    showNotification(
+      `Activated Monthly Pro Subscription ($${pricingMetrics.monthlyPriceFormatted}/mo) for ${tenant.companyName}!`
+    );
   };
 
   const handleActivateAnnual = (tenant: Tenant) => {
     updateTenantSubscription(tenant.id, {
       plan: 'pro_annual',
       status: 'active',
-      monthlyPrice: 15.75,
-      annualPrice: 189.00,
+      monthlyPrice: pricingMetrics.annualMonthlyEquivalent,
+      annualPrice: pricingMetrics.annualPrice,
       billingCycle: 'annual',
       paymentMethodStatus: 'active',
       lastBillingDate: new Date().toISOString(),
       nextBillingDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
     });
-    showNotification(`Activated Annual Pro Subscription ($189.00/yr) for ${tenant.companyName}!`);
+    showNotification(
+      `Activated Annual Pro Subscription ($${pricingMetrics.annualPriceFormatted}/yr) for ${tenant.companyName}!`
+    );
   };
 
   const handleToggleActive = (tenant: Tenant) => {
@@ -228,8 +268,8 @@ export const SaasMasterAdminView: React.FC = () => {
     updateTenantSubscription(tenant.id, {
       plan,
       status: 'active',
-      monthlyPrice: isAnnual ? 15.75 : 19.90,
-      annualPrice: isAnnual ? 189.00 : undefined,
+      monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
+      annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
       billingCycle: isAnnual ? 'annual' : 'monthly',
       paymentMethodStatus: 'active',
       lastBillingDate: new Date().toISOString(),
@@ -245,7 +285,9 @@ export const SaasMasterAdminView: React.FC = () => {
 
     showNotification(
       `Approved Bank Deposit Slip for ${tenant.companyName}! ${
-        isAnnual ? 'Pro Annual ($189.00/yr)' : 'Pro Monthly ($19.90/mo)'
+        isAnnual
+          ? `Pro Annual ($${pricingMetrics.annualPriceFormatted}/yr)`
+          : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`
       } subscription activated.`
     );
   };
@@ -316,6 +358,49 @@ export const SaasMasterAdminView: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleSavePricingPlans = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedMonthly = parseFloat(editMonthlyPrice);
+    const parsedAnnual = parseFloat(editAnnualPrice);
+    const parsedTrialDays = parseInt(editTrialDays, 10);
+
+    if (Number.isNaN(parsedMonthly) || parsedMonthly <= 0) {
+      showNotification('Please enter a valid Pro Monthly price greater than $0.');
+      return;
+    }
+    if (Number.isNaN(parsedAnnual) || parsedAnnual <= 0) {
+      showNotification('Please enter a valid Pro Annual price greater than $0.');
+      return;
+    }
+    if (Number.isNaN(parsedTrialDays) || parsedTrialDays < 1) {
+      showNotification('Please enter a valid Free Trial duration (at least 1 day).');
+      return;
+    }
+
+    updatePlatformPricing(
+      {
+        monthlyPrice: Number(parsedMonthly.toFixed(2)),
+        annualPrice: Number(parsedAnnual.toFixed(2)),
+        trialDays: Math.round(parsedTrialDays),
+      },
+      syncExistingTenantsOnSave
+    );
+
+    showNotification(
+      `Subscription Plan Prices updated globally ($${parsedMonthly.toFixed(2)}/mo · $${parsedAnnual.toFixed(2)}/yr · ${Math.round(parsedTrialDays)}-Day Trial) and synced across Landing Page, Comparison Table & All Workspaces!`
+    );
+  };
+
+  const handleResetDefaultPricing = () => {
+    setEditMonthlyPrice(String(DEFAULT_PLATFORM_PRICING.monthlyPrice));
+    setEditAnnualPrice(String(DEFAULT_PLATFORM_PRICING.annualPrice));
+    setEditTrialDays(String(DEFAULT_PLATFORM_PRICING.trialDays));
+    updatePlatformPricing(DEFAULT_PLATFORM_PRICING, syncExistingTenantsOnSave);
+    showNotification(
+      'Restored default subscription pricing ($19.90/mo · $189.00/yr · 7-Day Free Trial) across all views!'
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Title Header */}
@@ -332,11 +417,25 @@ export const SaasMasterAdminView: React.FC = () => {
               SaaS Multi-Tenant Master Management
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Monitor registered company workspaces, verify bank payment slips, manage 7-Day trials, activate subscriptions, and track MRR.
+              Monitor registered company workspaces, customize subscription plan prices, verify bank payment slips, manage trials, and track MRR.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setShowPricingPanel((prev) => !prev)}
+              className={`px-3.5 py-2.5 font-bold rounded-xl text-xs transition border flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer ${
+                showPricingPanel
+                  ? 'bg-amber-500 text-slate-950 border-amber-400'
+                  : 'bg-slate-800 hover:bg-slate-700 text-emerald-300 border-emerald-500/30'
+              }`}
+              title="Customize Pro Monthly, Pro Annual & Free Trial Pricing Across the Entire Platform"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Subscription Plans &amp; Pricing (${pricingMetrics.monthlyPriceFormatted} / ${pricingMetrics.annualPriceClean})</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowBankSetupModal(true)}
@@ -344,7 +443,7 @@ export const SaasMasterAdminView: React.FC = () => {
               title="Configure Bank Account Details & Scan QR Image"
             >
               <QrCode className="w-3.5 h-3.5 text-amber-400" />
-              <span>Configure Bank & QR</span>
+              <span>Configure Bank &amp; QR</span>
             </button>
 
             <button
@@ -381,6 +480,184 @@ export const SaasMasterAdminView: React.FC = () => {
         </div>
       )}
 
+      {/* ==================== PLATFORM SUBSCRIPTION PLANS & PRICING CONTROL PANEL ==================== */}
+      {showPricingPanel && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border-2 border-amber-500/60 rounded-2xl p-5 sm:p-6 text-white shadow-xl space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-black text-white">
+                    Global Subscription Plans &amp; Dynamic Pricing Control
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Live Real-Time Sync
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Any price or trial duration change saved here automatically updates the <strong>Landing Page Pricing Cards</strong>, <strong>Global 34-Feature Comparison Matrix</strong>, <strong>Signup Modal</strong>, <strong>Tenant Billing &amp; QR Modal</strong>, and <strong>Official Invoices</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleResetDefaultPricing}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
+                title="Reset to default $19.90/mo and $189.00/yr"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                <span>Reset Defaults ($19.90 / $189)</span>
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSavePricingPlans} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 1. Pro Monthly Price Input */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Pro Monthly Plan Price (USD)</span>
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400">Per Month</span>
+                </div>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3.5 text-sm font-black text-emerald-400 font-mono">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.50"
+                    required
+                    value={editMonthlyPrice}
+                    onChange={(e) => setEditMonthlyPrice(e.target.value)}
+                    className="w-full pl-8 pr-16 py-2.5 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-xl text-base font-black font-mono text-white focus:outline-none"
+                  />
+                  <span className="absolute right-3 text-xs font-bold text-slate-400">/ month</span>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                  <span>12 Months at Monthly Rate:</span>
+                  <strong className="text-slate-200 font-mono">${draftPricingMetrics.fullYearAtMonthlyRate.toFixed(2)}/yr</strong>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>LKR Equivalent (@ Rs.{usdToLkrRate.toFixed(2)}):</span>
+                  <strong className="text-emerald-300 font-mono">
+                    Rs. {Math.round(draftPricingMetrics.monthlyPrice * (usdToLkrRate || 332.64)).toLocaleString()}/mo
+                  </strong>
+                </div>
+              </div>
+
+              {/* 2. Pro Annual VIP Price Input */}
+              <div className="bg-slate-950/90 border border-amber-500/40 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-amber-400 flex items-center gap-1.5">
+                    <Crown className="w-3.5 h-3.5" />
+                    <span>Pro Annual VIP Price (USD)</span>
+                  </label>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-black border border-amber-500/30">
+                    Save {draftPricingMetrics.annualSavingsPercent}%
+                  </span>
+                </div>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3.5 text-sm font-black text-amber-400 font-mono">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1.00"
+                    required
+                    value={editAnnualPrice}
+                    onChange={(e) => setEditAnnualPrice(e.target.value)}
+                    className="w-full pl-8 pr-16 py-2.5 bg-slate-900 border border-amber-500/50 focus:border-amber-400 rounded-xl text-base font-black font-mono text-amber-300 focus:outline-none"
+                  />
+                  <span className="absolute right-3 text-xs font-bold text-slate-400">/ year</span>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                  <span>Monthly Breakdown &amp; Savings:</span>
+                  <strong className="text-amber-300 font-mono">
+                    ~${draftPricingMetrics.annualMonthlyEquivalentFormatted}/mo (Save ${draftPricingMetrics.annualSavingsFormatted})
+                  </strong>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>LKR Equivalent (@ Rs.{usdToLkrRate.toFixed(2)}):</span>
+                  <strong className="text-amber-300 font-mono">
+                    Rs. {Math.round(draftPricingMetrics.annualPrice * (usdToLkrRate || 332.64)).toLocaleString()}/yr
+                  </strong>
+                </div>
+              </div>
+
+              {/* 3. Free Trial Days & Live Preview */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-2">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-extrabold text-sky-400 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Free Trial Period Duration</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-slate-400">$0 Risk-Free</span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="90"
+                      required
+                      value={editTrialDays}
+                      onChange={(e) => setEditTrialDays(e.target.value)}
+                      className="w-full pl-3.5 pr-16 py-2.5 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl text-base font-black font-mono text-white focus:outline-none"
+                    />
+                    <span className="absolute right-3.5 text-xs font-bold text-slate-400">Days</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 space-y-1">
+                  <div className="font-bold text-white flex items-center justify-between">
+                    <span>Landing Page &amp; Comparison Preview:</span>
+                    <span className="text-emerald-400 font-mono">LIVE</span>
+                  </div>
+                  <div>
+                    • Card 1: <strong>{draftPricingMetrics.trialDays}-Day Free Trial ($0)</strong>
+                  </div>
+                  <div>
+                    • Card 2: <strong>${draftPricingMetrics.monthlyPriceFormatted}/mo</strong>
+                  </div>
+                  <div>
+                    • Card 3: <strong>${draftPricingMetrics.annualPriceFormatted}/yr (Save {draftPricingMetrics.annualSavingsPercent}%)</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={syncExistingTenantsOnSave}
+                  onChange={(e) => setSyncExistingTenantsOnSave(e.target.checked)}
+                  className="w-4 h-4 rounded accent-emerald-500 cursor-pointer"
+                />
+                <span>
+                  Also sync updated plan prices to existing tenant workspace records &amp; MRR calculations
+                </span>
+              </label>
+
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-95"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Save &amp; Publish Pricing Everywhere</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Workspaces */}
@@ -401,14 +678,14 @@ export const SaasMasterAdminView: React.FC = () => {
           </div>
           <div className="text-3xl font-black text-emerald-600">{activePaidTenants.length}</div>
           <p className="text-[11px] text-emerald-700 font-semibold mt-1">
-            {activeMonthlyTenants.length} Monthly ($19.90) · {activeAnnualTenants.length} Annual ($189)
+            {activeMonthlyTenants.length} Monthly (${pricingMetrics.monthlyPriceFormatted}) · {activeAnnualTenants.length} Annual (${pricingMetrics.annualPriceClean})
           </p>
         </div>
 
-        {/* Active 7-Day Trials */}
+        {/* Active Free Trials */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-2">
-            <span>Active 7-Day Trials</span>
+            <span>Active {pricingMetrics.trialDays}-Day Trials</span>
             <Clock className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-3xl font-black text-amber-600">{activeTrialTenants.length}</div>
@@ -463,7 +740,9 @@ export const SaasMasterAdminView: React.FC = () => {
                       <div className="text-xs text-slate-500">{t.contactEmail}</div>
                     </div>
                     <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      {isAnnual ? 'Annual Pro ($189.00/yr)' : 'Monthly Pro ($19.90/mo)'}
+                      {isAnnual
+                        ? `Annual Pro ($${pricingMetrics.annualPriceFormatted}/yr)`
+                        : `Monthly Pro ($${pricingMetrics.monthlyPriceFormatted}/mo)`}
                     </span>
                   </div>
 
@@ -493,7 +772,7 @@ export const SaasMasterAdminView: React.FC = () => {
                       className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Approve & Activate Pro</span>
+                      <span>Approve &amp; Activate Pro</span>
                     </button>
                     <button
                       type="button"
@@ -517,7 +796,7 @@ export const SaasMasterAdminView: React.FC = () => {
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-emerald-600" />
-              <span>Revenue Distribution & Plan Composition</span>
+              <span>Revenue Distribution &amp; Plan Composition</span>
             </h3>
             <span className="text-xs text-slate-500 font-mono">Monthly Total: ${mrr.toFixed(2)}</span>
           </div>
@@ -528,10 +807,10 @@ export const SaasMasterAdminView: React.FC = () => {
               <div className="flex justify-between text-xs mb-1 font-semibold">
                 <span className="text-slate-700 flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                  Pro Monthly ($19.90/mo)
+                  Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)
                 </span>
                 <span className="text-slate-900 font-bold">
-                  {activeMonthlyTenants.length} clients (${(activeMonthlyTenants.length * 19.9).toFixed(2)}/mo)
+                  {activeMonthlyTenants.length} clients (${(activeMonthlyTenants.length * pricingMetrics.monthlyPrice).toFixed(2)}/mo)
                 </span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
@@ -551,10 +830,10 @@ export const SaasMasterAdminView: React.FC = () => {
               <div className="flex justify-between text-xs mb-1 font-semibold">
                 <span className="text-slate-700 flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
-                  Pro Annual ($189.00/yr)
+                  Pro Annual (${pricingMetrics.annualPriceFormatted}/yr)
                 </span>
                 <span className="text-slate-900 font-bold">
-                  {activeAnnualTenants.length} clients (${(activeAnnualTenants.length * 15.75).toFixed(2)}/mo equiv)
+                  {activeAnnualTenants.length} clients (${(activeAnnualTenants.length * pricingMetrics.annualMonthlyEquivalent).toFixed(2)}/mo equiv)
                 </span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
@@ -574,7 +853,7 @@ export const SaasMasterAdminView: React.FC = () => {
               <div className="flex justify-between text-xs mb-1 font-semibold">
                 <span className="text-slate-700 flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
-                  Active 7-Day Free Trial
+                  Active {pricingMetrics.trialDays}-Day Free Trial
                 </span>
                 <span className="text-slate-900 font-bold">{activeTrialTenants.length} clients</span>
               </div>
@@ -784,12 +1063,12 @@ export const SaasMasterAdminView: React.FC = () => {
                         {tenant.subscription.plan === 'pro_annual' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
                             <Crown className="w-3 h-3 text-amber-600" />
-                            <span>Pro Annual ($189/yr)</span>
+                            <span>Pro Annual (${pricingMetrics.annualPriceClean}/yr)</span>
                           </span>
                         ) : tenant.subscription.status === 'active' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
                             <Zap className="w-3 h-3 text-emerald-600" />
-                            <span>Pro Monthly ($19.90/mo)</span>
+                            <span>Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                           </span>
                         ) : isTrialExpired ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1">
@@ -804,7 +1083,7 @@ export const SaasMasterAdminView: React.FC = () => {
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1">
                             <Clock className="w-3 h-3 text-amber-600" />
-                            <span>7-Day Trial ({daysLeft} Days Left)</span>
+                            <span>{pricingMetrics.trialDays}-Day Trial ({daysLeft} Days Left)</span>
                           </span>
                         )}
                       </td>
@@ -1035,7 +1314,7 @@ export const SaasMasterAdminView: React.FC = () => {
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Live market rate: <strong className="text-slate-800">Rs. {usdToLkrRate.toFixed(2)}</strong>. Pro Monthly ($19.90) ≈ <strong>Rs. {Math.round(19.90 * (usdToLkrRate || 332.64)).toLocaleString()}</strong> | Pro Annual ($189.00) ≈ <strong>Rs. {Math.round(189 * (usdToLkrRate || 332.64)).toLocaleString()}</strong>
+                  Live market rate: <strong className="text-slate-800">Rs. {usdToLkrRate.toFixed(2)}</strong>. Pro Monthly (${pricingMetrics.monthlyPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.monthlyPrice * (usdToLkrRate || 332.64)).toLocaleString()}</strong> | Pro Annual (${pricingMetrics.annualPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.annualPrice * (usdToLkrRate || 332.64)).toLocaleString()}</strong>
                 </p>
               </div>
 

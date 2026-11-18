@@ -18,6 +18,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
+import { computePlatformPricingMetrics } from '../../types';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
 import { EmailVerificationModal } from '../auth/EmailVerificationModal';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -28,7 +29,8 @@ interface SubscriptionModalProps {
 }
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
-  const { currentTenant, updateTenantSubscription, config } = useStock();
+  const { currentTenant, updateTenantSubscription, config, platformPricing } = useStock();
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
   // Retrieve global master owner bank config (synced across all tenants)
   const masterBankConfig = (() => {
@@ -82,8 +84,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     };
   }, []);
 
-  const monthlyLkr = Math.round(19.90 * usdRate);
-  const annualLkr = Math.round(189.00 * usdRate);
+  const monthlyLkr = Math.round(pricingMetrics.monthlyPrice * usdRate);
+  const annualLkr = Math.round(pricingMetrics.annualPrice * usdRate);
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>(
     currentTenant?.subscription?.billingCycle || 'annual'
@@ -125,7 +127,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       pendingBankPayment: {
         submittedAt: new Date().toISOString(),
         referenceNo: txnRef.trim(),
-        amount: isAnnual ? 189.00 : 19.90,
+        amount: isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice,
         billingCycle: billingCycle,
         notes: bankNotes.trim(),
         slipName: slipFileName || 'Bank_Transfer_Slip.pdf',
@@ -223,10 +225,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                 <div>
                   <div className="text-base font-black text-white">
                     {sub.plan === 'pro_annual'
-                      ? 'Pro Annual Plan ($189.00/yr)'
+                      ? `Pro Annual Plan ($${pricingMetrics.annualPriceFormatted}/yr)`
                       : sub.plan === 'pro_monthly'
-                      ? 'Pro Monthly Plan ($19.90/mo)'
-                      : '7-Day Free Trial'}
+                      ? `Pro Monthly Plan ($${pricingMetrics.monthlyPriceFormatted}/mo)`
+                      : `${pricingMetrics.trialDays}-Day Free Trial`}
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
                     Tenant Workspace: <span className="font-mono text-emerald-400 font-bold">{currentTenant.companyName} ({currentTenant.slug.toUpperCase()})</span>
@@ -250,7 +252,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                   <div>
                     <strong className="text-amber-300 font-bold">Upcoming Package Queued:</strong>{' '}
                     <strong className="text-white">
-                      {sub.queuedSubscription.plan === 'pro_annual' ? 'Pro Annual Plan ($189.00/yr)' : 'Pro Monthly Plan ($19.90/mo)'}
+                      {sub.queuedSubscription.plan === 'pro_annual'
+                        ? `Pro Annual Plan ($${pricingMetrics.annualPriceFormatted}/yr)`
+                        : `Pro Monthly Plan ($${pricingMetrics.monthlyPriceFormatted}/mo)`}
                     </strong>{' '}
                     will automatically activate on{' '}
                     <strong className="text-emerald-300">{formatDate(sub.queuedSubscription.scheduledStartDate)}</strong> when current package finishes.
@@ -284,7 +288,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Monthly ($19.90/mo)
+                Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)
               </button>
               <button
                 type="button"
@@ -295,9 +299,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>Annual ($189/yr)</span>
+                <span>Annual (${pricingMetrics.annualPriceClean}/yr)</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded font-black ${billingCycle === 'annual' ? 'bg-amber-400 text-slate-950' : 'bg-emerald-100 text-emerald-800'}`}>
-                  Save 21%
+                  Save {pricingMetrics.annualSavingsPercent}%
                 </span>
               </button>
             </div>
@@ -340,7 +344,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     LANKAPAY / Universal Bank QR
                   </div>
                   <div className="text-[11px] text-slate-700 font-bold mt-1">
-                    Amount: <span className="text-emerald-700 font-mono">{isAnnual ? `$189.00 (Rs. ${annualLkr.toLocaleString()})` : `$19.90 (Rs. ${monthlyLkr.toLocaleString()})`}</span>
+                    Amount: <span className="text-emerald-700 font-mono">{isAnnual ? `$${pricingMetrics.annualPriceFormatted} (Rs. ${annualLkr.toLocaleString()})` : `$${pricingMetrics.monthlyPriceFormatted} (Rs. ${monthlyLkr.toLocaleString()})`}</span>
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1">
                     <span>Rate: $1 USD = Rs. {usdRate.toFixed(2)}</span>
@@ -461,7 +465,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
                 <div className="flex items-center justify-between pt-1">
                   <div className="text-[11px] text-slate-500">
-                    Amount: <strong className="text-slate-900 font-mono">{isAnnual ? `$189.00 (Rs. ${annualLkr.toLocaleString()})` : `$19.90 (Rs. ${monthlyLkr.toLocaleString()})`}</strong> · Auto-notifies Master Admin
+                    Amount: <strong className="text-slate-900 font-mono">{isAnnual ? `$${pricingMetrics.annualPriceFormatted} (Rs. ${annualLkr.toLocaleString()})` : `$${pricingMetrics.monthlyPriceFormatted} (Rs. ${monthlyLkr.toLocaleString()})`}</strong> · Auto-notifies Master Admin
                   </div>
 
                   <button
@@ -528,7 +532,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           items={[
             {
               itemCode: 'SAAS-PRO-SUB',
-              itemName: `Apex Stock & Site Management System - Pro Plan (${sub.billingCycle === 'annual' ? 'Annual Subscription $189.00/yr' : 'Monthly Subscription $19.90/mo'})`,
+              itemName: `Apex Stock & Site Management System - Pro Plan (${sub.billingCycle === 'annual' ? `Annual Subscription $${pricingMetrics.annualPriceFormatted}/yr` : `Monthly Subscription $${pricingMetrics.monthlyPriceFormatted}/mo`})`,
               category: 'Software License & Cloud Infrastructure',
               quantity: 1,
               unit: 'License',

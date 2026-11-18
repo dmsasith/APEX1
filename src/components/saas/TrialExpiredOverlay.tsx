@@ -14,10 +14,13 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
+import { computePlatformPricingMetrics } from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 
 export const TrialExpiredOverlay: React.FC = () => {
-  const { currentTenant, updateTenantSubscription } = useStock();
+  const { currentTenant, updateTenantSubscription, platformPricing, config } = useStock();
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+  const usdRate = config?.usdToLkrRate || 332.64;
   const [bankSlipRef, setBankSlipRef] = useState('');
   const [showSlipSuccess, setShowSlipSuccess] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -43,8 +46,8 @@ export const TrialExpiredOverlay: React.FC = () => {
       updateTenantSubscription(currentTenant.id, {
         plan: isAnnual ? 'pro_annual' : 'pro_monthly',
         status: 'active',
-        monthlyPrice: isAnnual ? 15.75 : 19.90,
-        annualPrice: isAnnual ? 189.00 : undefined,
+        monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
+        annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
         billingCycle: selectedPlan,
         paymentMethodStatus: 'active',
         lastBillingDate: new Date().toISOString(),
@@ -55,7 +58,7 @@ export const TrialExpiredOverlay: React.FC = () => {
   };
 
   const handleExtendTrialDemo = () => {
-    const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const newExpiry = new Date(Date.now() + pricingMetrics.trialDays * 24 * 60 * 60 * 1000).toISOString();
     updateTenantSubscription(currentTenant.id, {
       status: 'trialing',
       trialEndsAt: newExpiry,
@@ -78,7 +81,7 @@ export const TrialExpiredOverlay: React.FC = () => {
           </div>
 
           <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            7-Day Free Trial Ended
+            {pricingMetrics.trialDays}-Day Free Trial Ended
           </span>
 
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-2">
@@ -120,7 +123,7 @@ export const TrialExpiredOverlay: React.FC = () => {
                     Flexible
                   </span>
                 </div>
-                <div className="text-xl font-black text-white mt-2">$19.90</div>
+                <div className="text-xl font-black text-white mt-2">${pricingMetrics.monthlyPriceFormatted}</div>
                 <div className="text-[10px] text-slate-400 font-semibold">/ month · Billed monthly</div>
               </div>
             </button>
@@ -136,7 +139,7 @@ export const TrialExpiredOverlay: React.FC = () => {
               }`}
             >
               <div className="absolute -top-2.5 right-3 bg-amber-500 text-slate-950 font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow">
-                Save 21%
+                Save {pricingMetrics.annualSavingsPercent}%
               </div>
               <div>
                 <div className="flex items-center justify-between">
@@ -145,9 +148,9 @@ export const TrialExpiredOverlay: React.FC = () => {
                     Best Value
                   </span>
                 </div>
-                <div className="text-xl font-black text-amber-400 mt-2">$189.00</div>
+                <div className="text-xl font-black text-amber-400 mt-2">${pricingMetrics.annualPriceFormatted}</div>
                 <div className="text-[10px] text-amber-300 font-semibold">
-                  / year (~$15.75/mo · 2+ Months Free)
+                  / year (~${pricingMetrics.annualMonthlyEquivalentFormatted}/mo · Save ${pricingMetrics.annualSavingsFormatted}/yr)
                 </div>
               </div>
             </button>
@@ -159,7 +162,7 @@ export const TrialExpiredOverlay: React.FC = () => {
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
                 <strong className="text-white block">Payment Verification Submitted!</strong>
-                Thank you! Our platform administrator is verifying your transfer reference (Ref: {bankSlipRef}) for the {selectedPlan === 'annual' ? 'Annual Plan ($189.00)' : 'Monthly Plan ($19.90)'}. Your workspace will be unlocked shortly.
+                Thank you! Our platform administrator is verifying your transfer reference (Ref: {bankSlipRef}) for the {selectedPlan === 'annual' ? `Annual Plan ($${pricingMetrics.annualPriceFormatted})` : `Monthly Plan ($${pricingMetrics.monthlyPriceFormatted})`}. Your workspace will be unlocked shortly.
               </div>
             </div>
           ) : (
@@ -176,7 +179,9 @@ export const TrialExpiredOverlay: React.FC = () => {
                 <div>
                   Amount to Transfer:{' '}
                   <strong className="text-amber-400 font-bold">
-                    {selectedPlan === 'annual' ? '$189.00 / Rs. 58,500' : '$19.90 / Rs. 6,200'}
+                    {selectedPlan === 'annual'
+                      ? `$${pricingMetrics.annualPriceFormatted} / Rs. ${Math.round(pricingMetrics.annualPrice * usdRate).toLocaleString()}`
+                      : `$${pricingMetrics.monthlyPriceFormatted} / Rs. ${Math.round(pricingMetrics.monthlyPrice * usdRate).toLocaleString()}`}
                   </strong>
                 </div>
               </div>
@@ -208,7 +213,7 @@ export const TrialExpiredOverlay: React.FC = () => {
               onClick={handleExtendTrialDemo}
               className="text-amber-400 hover:text-amber-300 text-xs font-bold underline cursor-pointer"
             >
-              ⚡ Extend Trial +7 Days (Testing Demo)
+              ⚡ Extend Trial +{pricingMetrics.trialDays} Days (Testing Demo)
             </button>
 
             <button
@@ -218,7 +223,11 @@ export const TrialExpiredOverlay: React.FC = () => {
               className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
             >
               <Zap className="w-4 h-4" />
-              <span>{isUpgrading ? 'Upgrading Workspace...' : 'Activate Pro Subscription Now ($19.90)'}</span>
+              <span>
+                {isUpgrading
+                  ? 'Upgrading Workspace...'
+                  : `Activate Pro Subscription Now ($${selectedPlan === 'annual' ? pricingMetrics.annualPriceFormatted : pricingMetrics.monthlyPriceFormatted})`}
+              </span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

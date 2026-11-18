@@ -14,7 +14,8 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
-import { Tenant, TenantPlan, TenantSubscription } from '../../types';
+import { Tenant, TenantPlan, TenantSubscription, computePlatformPricingMetrics } from '../../types';
+import { useStock } from '../../context/StockContext';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
 
 interface TenantPackageEditModalProps {
@@ -36,13 +37,16 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
   onSaveSubscription,
   onClearQueuedSubscription,
 }) => {
+  const { platformPricing } = useStock();
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+
   const sub: TenantSubscription = tenant?.subscription || {
     plan: 'pro_monthly',
     status: 'active',
     billingCycle: 'monthly',
     trialStartedAt: new Date().toISOString(),
     trialEndsAt: new Date().toISOString(),
-    monthlyPrice: 19.90,
+    monthlyPrice: pricingMetrics.monthlyPrice,
     currency: 'USD',
     nextBillingDate: new Date().toISOString(),
   };
@@ -98,8 +102,8 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
       {
         plan: isAnnual ? 'pro_annual' : 'pro_monthly',
         status: 'active',
-        monthlyPrice: isAnnual ? 15.75 : 19.90,
-        annualPrice: isAnnual ? 189.00 : undefined,
+        monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
+        annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
         billingCycle: isAnnual ? 'annual' : 'monthly',
         paymentMethodStatus: 'active',
         lastBillingDate: new Date().toISOString(),
@@ -125,7 +129,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
         plan: 'free_trial',
         status: 'trialing',
         trialEndsAt: newExpiry,
-        monthlyPrice: 19.90,
+        monthlyPrice: pricingMetrics.monthlyPrice,
         billingCycle: 'monthly',
         queuedSubscription: undefined,
       },
@@ -162,7 +166,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
       // Immediate upgrade / change
       if (isTrial) {
         const newExpiry = new Date(
-          Math.max(Date.now(), currentExpiry.getTime()) + (customTrialDays || 7) * 24 * 60 * 60 * 1000
+          Math.max(Date.now(), currentExpiry.getTime()) + (customTrialDays || pricingMetrics.trialDays) * 24 * 60 * 60 * 1000
         ).toISOString();
 
         onSaveSubscription(
@@ -171,7 +175,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
             plan: 'free_trial',
             status: 'trialing',
             trialEndsAt: newExpiry,
-            monthlyPrice: 19.90,
+            monthlyPrice: pricingMetrics.monthlyPrice,
             billingCycle: 'monthly',
             queuedSubscription: undefined,
           },
@@ -187,8 +191,8 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
           {
             plan: isAnnual ? 'pro_annual' : 'pro_monthly',
             status: 'active',
-            monthlyPrice: isAnnual ? 15.75 : 19.90,
-            annualPrice: isAnnual ? 189.00 : undefined,
+            monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
+            annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
             billingCycle: isAnnual ? 'annual' : 'monthly',
             paymentMethodStatus: 'active',
             lastBillingDate: new Date().toISOString(),
@@ -255,10 +259,10 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                 <div className="text-[10px] text-slate-400 font-semibold">ACTIVE PLAN</div>
                 <div className="font-black text-slate-900 text-sm mt-0.5">
                   {sub.plan === 'pro_annual'
-                    ? 'Pro Annual ($189/yr)'
+                    ? `Pro Annual ($${pricingMetrics.annualPriceClean}/yr)`
                     : sub.plan === 'pro_monthly'
-                    ? 'Pro Monthly ($19.90/mo)'
-                    : '7-Day Free Trial'}
+                    ? `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`
+                    : `${pricingMetrics.trialDays}-Day Free Trial`}
                 </div>
               </div>
 
@@ -283,8 +287,8 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                     <span>Upcoming Queued Package:</span>
                     <strong className="text-amber-950 font-black">
                       {sub.queuedSubscription.plan === 'pro_annual'
-                        ? 'Pro Annual ($189/yr)'
-                        : 'Pro Monthly ($19.90/mo)'}
+                        ? `Pro Annual ($${pricingMetrics.annualPriceClean}/yr)`
+                        : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`}
                     </strong>
                   </div>
                   <div className="text-[11px] text-amber-800 mt-0.5">
@@ -348,7 +352,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                     className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>Activate Pro Monthly ($19.90/mo)</span>
+                    <span>Activate Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                   </button>
 
                   <button
@@ -357,16 +361,16 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                     className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
                   >
                     <Crown className="w-3.5 h-3.5" />
-                    <span>Activate Pro Annual ($189.00/yr)</span>
+                    <span>Activate Pro Annual (${pricingMetrics.annualPriceFormatted}/yr)</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleQuickExtendTrial(7)}
+                    onClick={() => handleQuickExtendTrial(pricingMetrics.trialDays)}
                     className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95"
                   >
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>+7 Days Trial</span>
+                    <span>+{pricingMetrics.trialDays} Days Trial</span>
                   </button>
                 </div>
               </div>
@@ -387,7 +391,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                     <span className="font-extrabold text-slate-900 text-xs">Pro Monthly</span>
                     <Zap className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <div className="font-black text-emerald-700 text-base">$19.90 <span className="text-[10px] font-normal text-slate-500">/month</span></div>
+                  <div className="font-black text-emerald-700 text-base">${pricingMetrics.monthlyPriceFormatted} <span className="text-[10px] font-normal text-slate-500">/month</span></div>
                   <div className="text-[10px] text-slate-500 mt-1">Full multi-site features & support.</div>
                 </button>
 
@@ -402,14 +406,14 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                   }`}
                 >
                   <span className="absolute -top-2 right-2 px-1.5 py-0.2 rounded font-black text-[9px] bg-amber-500 text-white shadow-2xs">
-                    Save 21%
+                    Save {pricingMetrics.annualSavingsPercent}%
                   </span>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-extrabold text-slate-900 text-xs">Pro Annual</span>
                     <Crown className="w-4 h-4 text-amber-600" />
                   </div>
-                  <div className="font-black text-amber-700 text-base">$189.00 <span className="text-[10px] font-normal text-slate-500">/year</span></div>
-                  <div className="text-[10px] text-slate-500 mt-1">$15.75/mo equivalent.</div>
+                  <div className="font-black text-amber-700 text-base">${pricingMetrics.annualPriceFormatted} <span className="text-[10px] font-normal text-slate-500">/year</span></div>
+                  <div className="text-[10px] text-slate-500 mt-1">${pricingMetrics.annualMonthlyEquivalentFormatted}/mo equivalent.</div>
                 </button>
 
                 {/* 3. Free Trial Extension */}
@@ -423,7 +427,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-extrabold text-slate-900 text-xs">7-Day Free Trial</span>
+                    <span className="font-extrabold text-slate-900 text-xs">{pricingMetrics.trialDays}-Day Free Trial</span>
                     <Clock className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="font-black text-blue-700 text-base">FREE <span className="text-[10px] font-normal text-slate-500">($0)</span></div>
@@ -482,7 +486,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                           <span>🟢 Schedule After Current Package Expires (Recommended)</span>
                         </div>
                         <p className="text-[11px] text-slate-600 mt-0.5">
-                          Tenant maintains their existing plan until <strong>{formatDate(sub.trialEndsAt || sub.nextBillingDate || '')}</strong> ({daysRemaining} days remaining). When the active period finishes, the new <strong>{selectedCycle === 'annual' ? 'Pro Annual ($189/yr)' : 'Pro Monthly ($19.90/mo)'}</strong> plan automatically activates.
+                          Tenant maintains their existing plan until <strong>{formatDate(sub.trialEndsAt || sub.nextBillingDate || '')}</strong> ({daysRemaining} days remaining). When the active period finishes, the new <strong>{selectedCycle === 'annual' ? `Pro Annual ($${pricingMetrics.annualPriceClean}/yr)` : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`}</strong> plan automatically activates.
                         </p>
                       </div>
                     </label>

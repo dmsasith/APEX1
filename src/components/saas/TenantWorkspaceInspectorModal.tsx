@@ -22,8 +22,8 @@ import {
   Tag,
   AlertTriangle,
 } from 'lucide-react';
-import { Tenant, Site, Item, User, Team, StockTransferRequest } from '../../types';
-import { loadTenantData } from '../../context/StockContext';
+import { Tenant, Site, Item, User, Team, StockTransferRequest, computePlatformPricingMetrics } from '../../types';
+import { loadTenantData, useStock } from '../../context/StockContext';
 import { formatDateTime } from '../../utils/exportUtils';
 
 interface TenantWorkspaceInspectorModalProps {
@@ -45,6 +45,8 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
   onActivateProAnnual,
   onToggleActive,
 }) => {
+  const { platformPricing } = useStock();
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
   const [activeTab, setActiveTab] = useState<'overview' | 'items' | 'sites' | 'requests' | 'users'>('overview');
 
   if (!isOpen || !tenant) return null;
@@ -84,12 +86,12 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
                 {sub.plan === 'pro_annual' ? (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    <span>Pro Annual ($189/yr)</span>
+                    <span>Pro Annual (${pricingMetrics.annualPriceClean}/yr)</span>
                   </span>
                 ) : sub.status === 'active' ? (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                     <Zap className="w-3 h-3" />
-                    <span>Pro Monthly ($19.90/mo)</span>
+                    <span>Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                   </span>
                 ) : trialExpired ? (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
@@ -146,7 +148,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
               className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+7 Days Free Trial</span>
+              <span>+{pricingMetrics.trialDays} Days Free Trial</span>
             </button>
 
             <button
@@ -155,7 +157,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
               className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap"
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>Activate Monthly ($19.90/mo)</span>
+              <span>Activate Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
             </button>
 
             <button
@@ -164,7 +166,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
               className="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
             >
               <Crown className="w-3.5 h-3.5" />
-              <span>Activate Annual ($189/yr)</span>
+              <span>Activate Annual (${pricingMetrics.annualPriceClean}/yr)</span>
             </button>
 
             <button
@@ -265,7 +267,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
                     <span className="text-slate-500">Created Timestamp:</span> {formatDateTime(tenant.createdAt)}
                   </div>
                   <div>
-                    <span className="text-slate-500">Monthly Value:</span> ${sub.monthlyPrice || 19.90} / month
+                    <span className="text-slate-500">Monthly Value:</span> ${sub.monthlyPrice || pricingMetrics.monthlyPriceFormatted} / month
                   </div>
                 </div>
               </div>
@@ -278,7 +280,7 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
                     <span>Commercial Pricing Options for this Client:</span>
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Clients can choose between standard <strong>$19.90 / month</strong> or discounted <strong>$189.00 / year</strong> (save ~$50/yr).
+                    Clients can choose between standard <strong>${pricingMetrics.monthlyPriceFormatted} / month</strong> or discounted <strong>${pricingMetrics.annualPriceFormatted} / year</strong> (save ${pricingMetrics.annualSavingsFormatted}/yr).
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -287,14 +289,14 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
                     onClick={() => onActivateProMonthly(tenant)}
                     className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg text-xs font-bold transition cursor-pointer"
                   >
-                    Set Monthly ($19.90)
+                    Set Monthly (${pricingMetrics.monthlyPriceFormatted})
                   </button>
                   <button
                     type="button"
                     onClick={() => onActivateProAnnual(tenant)}
                     className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition cursor-pointer"
                   >
-                    Set Annual ($189)
+                    Set Annual (${pricingMetrics.annualPriceClean})
                   </button>
                 </div>
               </div>

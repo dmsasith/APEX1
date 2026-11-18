@@ -40,6 +40,7 @@ import {
   PurchaseOrder,
   SupplierReturn,
   Tenant,
+  PlatformPricingConfig,
 } from './types';
 
 export const OFFICIAL_SYSTEM_DOMAIN = 'apexstox.com';
@@ -1288,3 +1289,64 @@ export async function fetchTenantDataFromFirebase<T>(
     return null;
   }
 }
+
+/**
+ * Realtime sync listeners for Global SaaS Platform Subscription Pricing
+ */
+export function subscribeToFirebasePlatformPricing(
+  onData: (pricing: PlatformPricingConfig) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const pricingRef = ref(rtdb, 'saasPlatformPricing');
+  const unsubscribe = onValue(
+    pricingRef,
+    (snapshot: DataSnapshot) => {
+      const val = snapshot.val();
+      if (val && typeof val === 'object' && typeof val.monthlyPrice === 'number') {
+        onData(val as PlatformPricingConfig);
+      }
+    },
+    (error) => {
+      console.warn('Firebase saasPlatformPricing subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
+  return unsubscribe;
+}
+
+export async function writePlatformPricingToFirebase(pricing: PlatformPricingConfig): Promise<void> {
+  try {
+    const cleanPricing = sanitizeData(pricing);
+    const updates: Record<string, unknown> = {
+      saasPlatformPricing: cleanPricing,
+      'tenantsData/tenant-apex-main/platformPricing': cleanPricing,
+    };
+    await update(ref(rtdb), updates);
+  } catch (err) {
+    console.error('Failed to write saasPlatformPricing to Firebase:', err);
+  }
+}
+
+export async function fetchPlatformPricingFromFirebase(): Promise<PlatformPricingConfig | null> {
+  try {
+    const snap = await get(ref(rtdb, 'saasPlatformPricing'));
+    if (snap.exists()) {
+      const val = snap.val();
+      if (val && typeof val === 'object' && typeof val.monthlyPrice === 'number') {
+        return val as PlatformPricingConfig;
+      }
+    }
+    const fallbackSnap = await get(ref(rtdb, 'tenantsData/tenant-apex-main/platformPricing'));
+    if (fallbackSnap.exists()) {
+      const val = fallbackSnap.val();
+      if (val && typeof val === 'object' && typeof val.monthlyPrice === 'number') {
+        return val as PlatformPricingConfig;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn('Failed to fetch saasPlatformPricing from Firebase:', err);
+    return null;
+  }
+}
+

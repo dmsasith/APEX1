@@ -36,6 +36,9 @@ import {
   TenantPlan,
   TenantSubscription,
   TenantRegistrationForm,
+  PlatformPricingConfig,
+  DEFAULT_PLATFORM_PRICING,
+  computePlatformPricingMetrics,
   ProjectType,
   ProjectTypeTemplateItem,
   CrossProjectOverrideRequest,
@@ -84,6 +87,9 @@ import {
   fetchTenantsFromFirebase,
   subscribeToFirebaseDeletedTenants,
   deleteTenantInFirebase,
+  subscribeToFirebasePlatformPricing,
+  writePlatformPricingToFirebase,
+  fetchPlatformPricingFromFirebase,
   subscribeToFirebaseTenantData,
   writeTenantDataToFirebase,
   fetchTenantDataFromFirebase,
@@ -519,6 +525,8 @@ interface StockContextType {
     updates: Partial<Pick<Tenant, 'companyName' | 'contactEmail' | 'contactPhone' | 'currencySymbol' | 'country' | 'slug' | 'emailVerified'>>
   ) => void;
   deleteTenant: (tenantId: string) => void;
+  platformPricing: PlatformPricingConfig;
+  updatePlatformPricing: (updates: Partial<PlatformPricingConfig>, syncExistingTenants?: boolean) => void;
 
   // Firebase Realtime Database
   firebaseConnected: boolean;
@@ -1294,6 +1302,69 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     tenantsRef.current = tenants;
   }, [tenants]);
 
+  // Global Platform Subscription Pricing State (synced across Landing Page, Owner Panel & Tenant Modals)
+  const [platformPricing, setPlatformPricing] = useState<PlatformPricingConfig>(() => {
+    try {
+      const raw = localStorage.getItem('apex_platform_pricing_config_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const metrics = computePlatformPricingMetrics(parsed);
+        return {
+          ...DEFAULT_PLATFORM_PRICING,
+          ...parsed,
+          monthlyPrice: metrics.monthlyPrice,
+          annualPrice: metrics.annualPrice,
+          trialDays: metrics.trialDays,
+        };
+      }
+    } catch {
+      // Fallback to default pricing
+    }
+    return DEFAULT_PLATFORM_PRICING;
+  });
+
+  useEffect(() => {
+    fetchPlatformPricingFromFirebase()
+      .then((remotePricing) => {
+        if (remotePricing && typeof remotePricing.monthlyPrice === 'number') {
+          const metrics = computePlatformPricingMetrics(remotePricing);
+          const normalized: PlatformPricingConfig = {
+            ...DEFAULT_PLATFORM_PRICING,
+            ...remotePricing,
+            monthlyPrice: metrics.monthlyPrice,
+            annualPrice: metrics.annualPrice,
+            trialDays: metrics.trialDays,
+          };
+          setPlatformPricing(normalized);
+          try {
+            localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(normalized));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    const unsubPricing = subscribeToFirebasePlatformPricing((remotePricing) => {
+      if (remotePricing && typeof remotePricing.monthlyPrice === 'number') {
+        const metrics = computePlatformPricingMetrics(remotePricing);
+        const normalized: PlatformPricingConfig = {
+          ...DEFAULT_PLATFORM_PRICING,
+          ...remotePricing,
+          monthlyPrice: metrics.monthlyPrice,
+          annualPrice: metrics.annualPrice,
+          trialDays: metrics.trialDays,
+        };
+        setPlatformPricing(normalized);
+        try {
+          localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(normalized));
+        } catch {}
+      }
+    });
+
+    return () => {
+      unsubPricing();
+    };
+  }, []);
+
   const [currentTenantId, setCurrentTenantId] = useState<string>(() => {
     try {
       const deletedIds = getDeletedTenantIds();
@@ -1906,6 +1977,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           hasChanges = true;
           const q = sub.queuedSubscription;
           const isAnnual = q.billingCycle === 'annual' || q.plan === 'pro_annual';
+          const pricingMetrics = computePlatformPricingMetrics(platformPricing);
           const nextBilling = new Date(now.getTime() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString();
           return {
             ...t,
@@ -1913,8 +1985,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               ...sub,
               plan: (isAnnual ? 'pro_annual' : 'pro_monthly') as TenantPlan,
               status: 'active' as const,
-              monthlyPrice: isAnnual ? 15.75 : 19.90,
-              annualPrice: isAnnual ? 189.00 : undefined,
+              monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
+              annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
               billingCycle: isAnnual ? ('annual' as const) : ('monthly' as const),
               paymentMethodStatus: 'active' as const,
               lastBillingDate: now.toISOString(),
@@ -1933,7 +2005,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       saveTenantData(DEFAULT_TENANT.id, 'tenants', updatedTenants);
       writeTenantsToFirebase(updatedTenants).catch(console.warn);
     }
-  }, [tenants]);
+  }, [tenants, platformPricing]);
 
   // Enforce support@apexstox.com on master tenant and sanitize any lingering legacy emails
   useEffect(() => {
@@ -2667,6 +2739,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         tenantId = `tenant-${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
       }
 
+      const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+
       const newTenant: Tenant = {
         id: tenantId,
         companyName: cleanName,
@@ -2679,9 +2753,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           plan: 'free_trial',
           status: 'trialing',
           trialStartedAt: new Date().toISOString(),
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          monthlyPrice: 19.90,
-          currency: 'USD',
+          trialEndsAt: new Date(Date.now() + pricingMetrics.trialDays * 24 * 60 * 60 * 1000).toISOString(),
+          monthlyPrice: pricingMetrics.monthlyPrice,
+          annualPrice: pricingMetrics.annualPrice,
+          currency: pricingMetrics.currency || 'USD',
           paymentMethodStatus: 'pending_setup',
         },
         createdAt: new Date().toISOString(),
@@ -2729,7 +2804,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         referenceNo: tenantId,
         siteName: newInitialSite.name,
         performedBy: newAdminUser.fullName,
-        details: `Workspace registered for ${cleanName}. 7-Day Free Trial activated ($19.90/mo).`,
+        details: `Workspace registered for ${cleanName}. ${pricingMetrics.trialDays}-Day Free Trial activated ($${pricingMetrics.monthlyPriceFormatted}/mo).`,
       };
 
       // Save initial clean datasets specifically for this new tenantId
@@ -2830,6 +2905,59 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       tenantsRef.current = updated;
       writeTenantsToFirebase(updated).catch(console.warn);
       return updated;
+    });
+  };
+
+  const updatePlatformPricing = (
+    updates: Partial<PlatformPricingConfig>,
+    syncExistingTenants = true
+  ) => {
+    setPlatformPricing((prev) => {
+      const mergedRaw = {
+        ...prev,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+      const metrics = computePlatformPricingMetrics(mergedRaw);
+      const nextPricing: PlatformPricingConfig = {
+        ...DEFAULT_PLATFORM_PRICING,
+        ...mergedRaw,
+        monthlyPrice: metrics.monthlyPrice,
+        annualPrice: metrics.annualPrice,
+        trialDays: metrics.trialDays,
+        trialPlanName: updates.trialPlanName || `${metrics.trialDays}-Day Free Trial`,
+      };
+
+      try {
+        localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(nextPricing));
+      } catch (err) {
+        console.warn('Failed to save platform pricing to localStorage:', err);
+      }
+
+      writePlatformPricingToFirebase(nextPricing).catch(console.warn);
+
+      if (syncExistingTenants) {
+        setTenants((prevTenants) => {
+          const updatedTenants = persistTenantsLocal(
+            prevTenants.map((t) => {
+              const isAnnual = t.subscription.plan === 'pro_annual' || t.subscription.billingCycle === 'annual';
+              return {
+                ...t,
+                subscription: {
+                  ...t.subscription,
+                  monthlyPrice: isAnnual ? metrics.annualMonthlyEquivalent : metrics.monthlyPrice,
+                  annualPrice: isAnnual ? metrics.annualPrice : metrics.annualPrice,
+                },
+              };
+            })
+          );
+          tenantsRef.current = updatedTenants;
+          writeTenantsToFirebase(updatedTenants).catch(console.warn);
+          return updatedTenants;
+        });
+      }
+
+      return nextPricing;
     });
   };
 
@@ -9094,6 +9222,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateTenantSubscription,
         updateTenantDetails,
         deleteTenant,
+        platformPricing,
+        updatePlatformPricing,
         getWorkspaceLoginUrl,
       }}
     >
