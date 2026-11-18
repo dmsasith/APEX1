@@ -321,10 +321,57 @@ export function matchCountryByNameOrCode(countryNameOrCode?: string): CountryPho
 }
 
 /**
+ * Reads active tenant country & currency symbol from localStorage as a fallback
+ * when callers invoke detectActivePhoneCountry / enforceCountryPhoneInput without options.
+ */
+function getStoredTenantPhoneContext(): { tenantCountry?: string; currencySymbol?: string } {
+  if (typeof window === 'undefined' || !window.localStorage) return {};
+  try {
+    const prefix = 'apex_stock_site_v1_';
+    const activeTenantId = window.localStorage.getItem(prefix + 'current_tenant_id') || 'tenant-apex-main';
+
+    let tenantCountry: string | undefined;
+    let currencySymbol: string | undefined;
+
+    const rawTenants =
+      window.localStorage.getItem(prefix + 'tenants') ||
+      window.localStorage.getItem(`${prefix}tenant-apex-main_tenants`);
+    if (rawTenants) {
+      const parsedTenants = JSON.parse(rawTenants);
+      if (Array.isArray(parsedTenants)) {
+        const matched = parsedTenants.find((t: any) => t && t.id === activeTenantId);
+        if (matched) {
+          if (typeof matched.country === 'string' && matched.country.trim()) {
+            tenantCountry = matched.country.trim();
+          }
+          if (typeof matched.currencySymbol === 'string' && matched.currencySymbol.trim()) {
+            currencySymbol = matched.currencySymbol.trim();
+          }
+        }
+      }
+    }
+
+    const rawTenantConfig =
+      window.localStorage.getItem(`${prefix}${activeTenantId}_config`) ||
+      (activeTenantId === 'tenant-apex-main' ? window.localStorage.getItem(prefix + 'config') : null);
+    if (rawTenantConfig) {
+      const parsedCfg = JSON.parse(rawTenantConfig);
+      if (parsedCfg && typeof parsedCfg.currencySymbol === 'string' && parsedCfg.currencySymbol.trim()) {
+        currencySymbol = parsedCfg.currencySymbol.trim();
+      }
+    }
+
+    return { tenantCountry, currencySymbol };
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Detects the active country phone rule using:
  * 1. Explicit +dialCode in the typed phone number
- * 2. Explicit tenantCountry / form country override
- * 3. Currency symbol if distinctive
+ * 2. Explicit tenantCountry / form country override (or stored active tenant country)
+ * 3. Currency symbol if distinctive (or stored active tenant currency, e.g. Rs. -> Sri Lanka)
  * 4. Browser timezone (e.g. Asia/Colombo -> Sri Lanka)
  * 5. Fallback to Sri Lanka (+94)
  */
@@ -337,31 +384,29 @@ export function detectActivePhoneCountry(options?: {
   const byDial = matchCountryByDialPrefix(options?.phoneValue);
   if (byDial) return byDial;
 
-  // 2. Check explicit tenant country
-  const byCountry = matchCountryByNameOrCode(options?.tenantCountry);
+  const stored = getStoredTenantPhoneContext();
+  const effectiveCountry = options?.tenantCountry || stored.tenantCountry;
+  const effectiveCurrency = options?.currencySymbol || stored.currencySymbol;
+
+  // 2. Check explicit or stored tenant country
+  const byCountry = matchCountryByNameOrCode(effectiveCountry);
   if (byCountry) return byCountry;
 
-  // 3. Check browser timezone first when currency is generic or matches
+  // 3. Check currency symbol (so 'Rs.' / 'LKR' always resolves to Sri Lanka even on Windows UTC+5:30 Asia/Calcutta)
+  if (effectiveCurrency) {
+    const byCurr = COUNTRY_PHONE_RULES.find(r => r.currencies.includes(effectiveCurrency));
+    if (byCurr) return byCurr;
+  }
+
+  // 4. Check browser timezone
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz) {
       const byTz = COUNTRY_PHONE_RULES.find(r => r.timezones.includes(tz));
-      // If currency symbol isn't overriding to a different country, or if currency matches
-      if (byTz) {
-        if (!options?.currencySymbol) return byTz;
-        const byCurr = COUNTRY_PHONE_RULES.find(r => r.currencies.includes(options.currencySymbol!));
-        if (!byCurr || byCurr.code === byTz.code) return byTz;
-        return byCurr;
-      }
+      if (byTz) return byTz;
     }
   } catch {
     // ignore timezone errors
-  }
-
-  // 4. Check currency symbol
-  if (options?.currencySymbol) {
-    const byCurr = COUNTRY_PHONE_RULES.find(r => r.currencies.includes(options.currencySymbol!));
-    if (byCurr) return byCurr;
   }
 
   // 5. Default to Sri Lanka (+94)

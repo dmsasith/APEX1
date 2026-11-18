@@ -29,6 +29,7 @@ interface ItemTraceabilitySummaryPanelProps {
   item: Item;
   mode: 'central' | 'site';
   siteId?: string;
+  focProjectId?: string;
   onClose?: () => void;
 }
 
@@ -36,6 +37,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
   item,
   mode,
   siteId,
+  focProjectId,
   onClose,
 }) => {
   const {
@@ -64,11 +66,16 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [activeSubView, setActiveSubView] = useState<'overview' | 'inbound' | 'sites' | 'teams' | 'projects'>('overview');
 
-  const printElementId = `item-trace-print-${mode}-${item.id}-${siteId || 'hq'}`;
+  const printElementId = `item-trace-print-${mode}-${item.id}-${siteId || 'hq'}-${focProjectId || 'all'}`;
 
   const targetSite = useMemo(
     () => (siteId ? sites.find((s) => s.id === siteId) || null : null),
     [sites, siteId]
+  );
+
+  const targetFocProject = useMemo(
+    () => (focProjectId ? projects.find((p) => p.id === focProjectId) || null : null),
+    [projects, focProjectId]
   );
 
   // 1. CENTRAL WAREHOUSE STOCK METRICS
@@ -343,18 +350,36 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
         });
       });
 
-    // Also include direct site FOC allocations if any
+    // Also include direct site FOC allocations (by assignedSiteId or project's assigned site or focProjectId)
     clientFreeIssues
-      .filter((f) => !f.isDeleted && f.assignedSiteId && (!siteId || mode === 'central' || f.assignedSiteId === siteId))
+      .filter((f) => {
+        if (f.isDeleted) return false;
+        if (mode === 'central' && !siteId && !focProjectId) return Boolean(f.assignedSiteId);
+        const fProj = projects.find((p) => p.id === f.projectId || p.id === f.parentProjectId);
+        const effectiveSiteId = f.assignedSiteId || fProj?.siteId;
+        if (focProjectId && (f.projectId === focProjectId || f.parentProjectId === focProjectId)) {
+          return true;
+        }
+        if (siteId && effectiveSiteId === siteId) {
+          return true;
+        }
+        return false;
+      })
       .forEach((f) => {
         const row = (f.items || []).find((i) => i.itemId === item.id);
         if (row && Number(row.quantity) > 0) {
+          const fProj = projects.find((p) => p.id === f.projectId || p.id === f.parentProjectId);
+          const effectiveSiteId = f.assignedSiteId || fProj?.siteId || siteId;
           list.push({
             id: `foc-site-${f.id}`,
             voucherNo: f.voucherNumber,
             date: f.receivedDate || f.createdAt,
-            siteName: f.assignedSiteName || sites.find((s) => s.id === f.assignedSiteId)?.name || 'Site Yard',
-            category: `Direct Client FOC (${f.clientName})`,
+            siteName:
+              f.assignedSiteName ||
+              sites.find((s) => s.id === effectiveSiteId)?.name ||
+              targetSite?.name ||
+              'Assigned Site Yard',
+            category: `Client FOC (${f.clientName} — ${f.projectName})`,
             status: 'Allocated',
             qty: Number(row.quantity),
             byUser: f.receivedBy,
@@ -363,13 +388,23 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
       });
 
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [stockRequests, clientFreeIssues, sites, item.id, siteId, mode]);
+  }, [stockRequests, clientFreeIssues, projects, sites, targetSite, item.id, siteId, focProjectId, mode]);
 
   // 5. FIELD TEAMS BREAKDOWN (Issued, Used, Wasted, Returned, Team In-Hand)
   const teamBreakdown = useMemo(() => {
-    const relevantTeams = activeTeams.filter((t) =>
-      mode === 'site' && siteId ? t.assignedSiteId === siteId : true
-    );
+    const relevantTeams = activeTeams.filter((t) => {
+      if (mode === 'site' && siteId) {
+        if (t.assignedSiteId === siteId) return true;
+        const hadSiteIssue = teamIssues.some(
+          (iss) => iss.teamId === t.id && iss.siteId === siteId && (iss.items || []).some((i) => i.itemId === item.id)
+        );
+        const hadSiteUsage = projectUsages.some(
+          (u) => !u.isDeleted && u.teamId === t.id && u.siteId === siteId && (u.items || []).some((i) => i.itemId === item.id)
+        );
+        return hadSiteIssue || hadSiteUsage;
+      }
+      return true;
+    });
 
     return relevantTeams
       .map((team) => {
@@ -604,8 +639,15 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
               <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
                 {mode === 'central'
                   ? 'Full End-to-End Material Lifecycle & Custody Summary'
+                  : focProjectId
+                  ? `🏢 Assigned Site FOC Traceability — ${targetSite?.name || 'Assigned Site Branch'}`
                   : `Site Branch Forward Traceability — ${targetSite?.name || 'Branch Yard'}`}
               </span>
+              {targetFocProject && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-500/30 text-indigo-100 border border-indigo-300/40">
+                  Project: [{targetFocProject.projectId}] {targetFocProject.projectName}
+                </span>
+              )}
               <span className="font-mono text-xs font-bold text-emerald-300 bg-black/25 px-2 py-0.5 rounded">
                 {item.itemCode}
               </span>
@@ -616,6 +658,11 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
             <h3 className="text-base sm:text-lg font-extrabold text-white mt-0.5 tracking-tight">
               {item.itemName}
             </h3>
+            {mode === 'site' && targetSite && (
+              <p className="text-[11px] text-emerald-200/90 font-medium mt-0.5">
+                ✓ Scoped exclusively to Assigned Site <strong>{targetSite.name}</strong> — showing only stock received at this site, issued to teams of this site, and consumed on projects by those teams.
+              </p>
+            )}
           </div>
         </div>
 

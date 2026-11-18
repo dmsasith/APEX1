@@ -21,6 +21,7 @@ import {
   ArrowRight,
   TrendingDown,
   ChevronDown,
+  ChevronUp,
   Hash,
   Eye,
   Info,
@@ -36,10 +37,11 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } from '../../types';
+import { Item, ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } from '../../types';
 import { formatNumber, formatDate, formatDateTime, exportToCsv } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { ItemTraceabilitySummaryPanel } from '../common/ItemTraceabilitySummaryPanel';
 import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
@@ -75,6 +77,8 @@ export const ClientFreeIssueView: React.FC = () => {
     addClient,
     updateClient,
     deleteClient,
+    stockRequests,
+    projectUsages,
   } = useStock();
 
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
@@ -95,6 +99,30 @@ export const ClientFreeIssueView: React.FC = () => {
   const [clientToast, setClientToast] = useState<string | null>(null);
   const [viewingVoucher, setViewingVoucher] = useState<ClientFreeIssueEntry | null>(null);
   const [printingVoucher, setPrintingVoucher] = useState<ClientFreeIssueEntry | null>(null);
+  const [expandedTraceKey, setExpandedTraceKey] = useState<string | null>(null);
+  const [voucherModalTraceItemId, setVoucherModalTraceItemId] = useState<string | null>(null);
+
+  const resolveCatalogItem = (
+    itemId: string,
+    itemCode?: string,
+    itemName?: string,
+    unit?: string
+  ): Item => {
+    const found =
+      activeItems.find((i) => i.id === itemId || (itemCode && i.itemCode === itemCode)) ||
+      items.find((i) => i.id === itemId || (itemCode && i.itemCode === itemCode));
+    if (found) return found;
+    return {
+      id: itemId,
+      itemCode: itemCode || 'FOC-ITEM',
+      itemName: itemName || 'Client Free-Issue Material',
+      category: 'Client Free-Issue (FOC)',
+      unit: unit || 'units',
+      unitPrice: 0,
+      lowStockThreshold: 0,
+      createdAt: new Date().toISOString(),
+    };
+  };
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -166,6 +194,25 @@ export const ClientFreeIssueView: React.FC = () => {
           (s.location && s.location.trim().toLowerCase().includes(dLow))
       );
       if (byDist) return { siteId: byDist.id, siteName: byDist.name };
+    }
+    const reqForProject = stockRequests.find(
+      (r) =>
+        r.siteId &&
+        (r.focProjectId === p.id || (p.parentProjectId && r.focProjectId === p.parentProjectId))
+    );
+    if (reqForProject?.siteId) {
+      const matched = sites.find((s) => s.id === reqForProject.siteId);
+      return { siteId: reqForProject.siteId, siteName: matched?.name || '' };
+    }
+    const usageForProject = projectUsages.find(
+      (u) => !u.isDeleted && u.siteId && (u.projectId === p.id || (p.parentProjectId && u.projectId === p.parentProjectId))
+    );
+    if (usageForProject?.siteId) {
+      const matched = sites.find((s) => s.id === usageForProject.siteId);
+      return { siteId: usageForProject.siteId, siteName: matched?.name || '' };
+    }
+    if (branchSites.length > 0) {
+      return { siteId: branchSites[0].id, siteName: branchSites[0].name };
     }
     return { siteId: '', siteName: p.siteName || '' };
   };
@@ -987,9 +1034,29 @@ export const ClientFreeIssueView: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
+                <div className="px-4 py-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-950">
+                  <div className="flex items-center gap-2 font-bold">
+                    <Layers className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>
+                      Click any item row or <strong>&ldquo;Summary / Trace&rdquo;</strong> button below to view its <strong>Assigned Site Branch</strong> Traceability Summary (Inbound FOC/Transfers to that Assigned Site, Field Teams of that Site, Used/Wasted by those Teams &amp; Printable A4 Report).
+                    </span>
+                  </div>
+                  {expandedTraceKey && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedTraceKey(null)}
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] cursor-pointer"
+                    >
+                      Collapse Open Summary
+                    </button>
+                  )}
+                </div>
+
                 {projectSummaries
                   .filter((p) => p.items.length > 0)
-                  .map(({ project, isMainProject, childSubProjects, items: freeItems, totalRecv, totalDispatched, totalUsed, totalRem }) => (
+                  .map(({ project, isMainProject, childSubProjects, items: freeItems, totalRecv, totalDispatched, totalUsed, totalRem }) => {
+                    const resolvedBranch = resolveProjectBranch(project);
+                    return (
                     <div
                       key={project.id}
                       className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs hover:border-indigo-300 transition-all"
@@ -1013,15 +1080,12 @@ export const ClientFreeIssueView: React.FC = () => {
                             <h3 className="text-base font-extrabold text-slate-900">
                               {project.projectName}
                             </h3>
-                            {(() => {
-                              const resolvedBranch = resolveProjectBranch(project);
-                              return resolvedBranch.siteName ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-extrabold">
-                                  <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Allocated Branch: {resolvedBranch.siteName}</span>
-                                </span>
-                              ) : null;
-                            })()}
+                            {resolvedBranch.siteName ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-extrabold">
+                                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Allocated Branch: {resolvedBranch.siteName}</span>
+                              </span>
+                            ) : null}
                             {project.siteIdentifier && (
                               <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                                 Site: {project.siteIdentifier}
@@ -1086,6 +1150,7 @@ export const ClientFreeIssueView: React.FC = () => {
                               </th>
                               <th className="py-2.5 px-3 text-right">Central Pool Balance</th>
                               <th className="py-2.5 px-3 text-center">Status</th>
+                              <th className="py-2.5 px-3 text-center">Action / Trace Summary</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 font-medium">
@@ -1093,42 +1158,95 @@ export const ClientFreeIssueView: React.FC = () => {
                               const totalDeducted = Math.max(it.dispatchedToSites, it.totalUsed);
                               const percentAllocated = it.totalReceived > 0 ? (totalDeducted / it.totalReceived) * 100 : 0;
                               const isDepleted = it.centralWarehouseAvailable <= 0;
+                              const rowTraceKey = `${project.id}:${it.itemId}`;
+                              const isExpanded = expandedTraceKey === rowTraceKey;
+                              const catalogItem = resolveCatalogItem(it.itemId, it.itemCode, it.itemName, it.unit);
                               return (
-                                <tr key={it.itemId} className="hover:bg-slate-50/70 transition-colors">
-                                  <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                                    {it.itemCode}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-slate-800 font-semibold">
-                                    {it.itemName}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono text-slate-700 font-bold">
-                                    {formatNumber(it.totalReceived)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono text-sky-700 font-bold">
-                                    {it.dispatchedToSites > 0 ? `-${formatNumber(it.dispatchedToSites)}` : '0'}{' '}
-                                    <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono text-amber-700 font-bold">
-                                    {formatNumber(it.totalUsed)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900">
-                                    <span className={isDepleted ? 'text-rose-600' : 'text-emerald-700'}>
-                                      {formatNumber(it.centralWarehouseAvailable)}
-                                    </span>{' '}
-                                    <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-center">
-                                    {isDepleted ? (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
-                                        {it.dispatchedToSites > 0 ? 'Dispatched to Sites (100%)' : 'Fully Consumed (100%)'}
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                        Active Pool ({Math.round(percentAllocated)}% Allocated)
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
+                                <React.Fragment key={it.itemId}>
+                                  <tr
+                                    onClick={() =>
+                                      setExpandedTraceKey((prev) => (prev === rowTraceKey ? null : rowTraceKey))
+                                    }
+                                    className={`transition-colors cursor-pointer ${
+                                      isExpanded
+                                        ? 'bg-emerald-50/80 border-l-4 border-l-emerald-600'
+                                        : 'hover:bg-slate-50/80'
+                                    }`}
+                                  >
+                                    <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                      <div className="flex items-center gap-1.5">
+                                        {isExpanded ? (
+                                          <ChevronUp className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                        ) : (
+                                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        )}
+                                        <span>{it.itemCode}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-slate-800 font-semibold">
+                                      {it.itemName}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-slate-700 font-bold">
+                                      {formatNumber(it.totalReceived)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-sky-700 font-bold">
+                                      {it.dispatchedToSites > 0 ? `-${formatNumber(it.dispatchedToSites)}` : '0'}{' '}
+                                      <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-amber-700 font-bold">
+                                      {formatNumber(it.totalUsed)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900">
+                                      <span className={isDepleted ? 'text-rose-600' : 'text-emerald-700'}>
+                                        {formatNumber(it.centralWarehouseAvailable)}
+                                      </span>{' '}
+                                      <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center">
+                                      {isDepleted ? (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                                          {it.dispatchedToSites > 0 ? 'Dispatched to Sites (100%)' : 'Fully Consumed (100%)'}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                          Active Pool ({Math.round(percentAllocated)}% Allocated)
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td
+                                      className="py-2.5 px-3 text-center whitespace-nowrap"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setExpandedTraceKey((prev) => (prev === rowTraceKey ? null : rowTraceKey))
+                                        }
+                                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border shadow-2xs transition-all cursor-pointer active:scale-95 ${
+                                          isExpanded
+                                            ? 'bg-emerald-700 text-white border-emerald-800'
+                                            : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900'
+                                        }`}
+                                      >
+                                        <Layers className="w-3.5 h-3.5" />
+                                        <span>{isExpanded ? 'Hide Trace' : 'Summary'}</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                  {isExpanded && (
+                                    <tr className="bg-slate-100/70">
+                                      <td colSpan={8} className="p-2 sm:p-3">
+                                        <ItemTraceabilitySummaryPanel
+                                          item={catalogItem}
+                                          mode={resolvedBranch.siteId ? 'site' : 'central'}
+                                          siteId={resolvedBranch.siteId || undefined}
+                                          focProjectId={project.id}
+                                          onClose={() => setExpandedTraceKey(null)}
+                                        />
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                           </tbody>
@@ -1268,7 +1386,8 @@ export const ClientFreeIssueView: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -2470,7 +2589,11 @@ export const ClientFreeIssueView: React.FC = () => {
       {/* ------------------ MODAL: VIEW DETAILS ------------------ */}
       {viewingVoucher && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-auto">
+          <div
+            className={`bg-white rounded-2xl ${
+              voucherModalTraceItemId ? 'max-w-5xl' : 'max-w-2xl'
+            } w-full p-6 shadow-2xl border border-slate-200 my-auto transition-all`}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <FileCheck className="w-5 h-5 text-indigo-600" />
@@ -2478,7 +2601,13 @@ export const ClientFreeIssueView: React.FC = () => {
                   Client Free-Issue Voucher: {viewingVoucher.voucherNumber}
                 </h3>
               </div>
-              <button onClick={() => setViewingVoucher(null)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button
+                onClick={() => {
+                  setVoucherModalTraceItemId(null);
+                  setViewingVoucher(null);
+                }}
+                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
                 ✕
               </button>
             </div>
@@ -2520,7 +2649,20 @@ export const ClientFreeIssueView: React.FC = () => {
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase text-[10px] mb-1.5">Materials List</h4>
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="font-bold text-slate-900 uppercase text-[10px]">
+                    Materials List (Click &ldquo;Summary&rdquo; to view Full Item Traceability)
+                  </h4>
+                  {voucherModalTraceItemId && (
+                    <button
+                      type="button"
+                      onClick={() => setVoucherModalTraceItemId(null)}
+                      className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                    >
+                      Hide Item Summary
+                    </button>
+                  )}
+                </div>
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
                   <table className="w-full text-left text-xs">
                     <thead>
@@ -2529,19 +2671,78 @@ export const ClientFreeIssueView: React.FC = () => {
                         <th className="py-2 px-3">Description</th>
                         <th className="py-2 px-3 text-right">Quantity</th>
                         <th className="py-2 px-3">Remarks / Drum</th>
+                        <th className="py-2 px-3 text-center">Full Summary</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {viewingVoucher.items.map((it, idx) => (
-                        <tr key={idx}>
-                          <td className="py-2 px-3 font-mono font-bold text-slate-900">{it.itemCode}</td>
-                          <td className="py-2 px-3 font-semibold text-slate-800">{it.itemName}</td>
-                          <td className="py-2 px-3 text-right font-mono font-bold text-indigo-700">
-                            {formatNumber(it.quantity)} {it.unit}
-                          </td>
-                          <td className="py-2 px-3 text-slate-500">{it.remarks || '—'}</td>
-                        </tr>
-                      ))}
+                      {viewingVoucher.items.map((it, idx) => {
+                        const catalogItem = resolveCatalogItem(it.itemId, it.itemCode, it.itemName, it.unit);
+                        const isTraceOpen = voucherModalTraceItemId === catalogItem.id;
+                        return (
+                          <React.Fragment key={idx}>
+                            <tr
+                              onClick={() =>
+                                setVoucherModalTraceItemId((prev) =>
+                                  prev === catalogItem.id ? null : catalogItem.id
+                                )
+                              }
+                              className={`cursor-pointer transition-colors ${
+                                isTraceOpen ? 'bg-emerald-50/70' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <td className="py-2 px-3 font-mono font-bold text-slate-900">{it.itemCode}</td>
+                              <td className="py-2 px-3 font-semibold text-slate-800">{it.itemName}</td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-indigo-700">
+                                {formatNumber(it.quantity)} {it.unit}
+                              </td>
+                              <td className="py-2 px-3 text-slate-500">{it.remarks || '—'}</td>
+                              <td
+                                className="py-2 px-3 text-center"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setVoucherModalTraceItemId((prev) =>
+                                      prev === catalogItem.id ? null : catalogItem.id
+                                    )
+                                  }
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border cursor-pointer transition-colors ${
+                                    isTraceOpen
+                                      ? 'bg-emerald-700 text-white border-emerald-800'
+                                      : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900'
+                                  }`}
+                                >
+                                  <Layers className="w-3 h-3" />
+                                  <span>{isTraceOpen ? 'Hide Trace' : 'Summary'}</span>
+                                </button>
+                              </td>
+                            </tr>
+                            {isTraceOpen && (
+                              <tr className="bg-slate-100/80">
+                                <td colSpan={5} className="p-2">
+                                  {(() => {
+                                    const voucherSiteId =
+                                      viewingVoucher.assignedSiteId ||
+                                      resolveProjectBranch(
+                                        projects.find((p) => p.id === viewingVoucher.projectId)
+                                      ).siteId;
+                                    return (
+                                      <ItemTraceabilitySummaryPanel
+                                        item={catalogItem}
+                                        mode={voucherSiteId ? 'site' : 'central'}
+                                        siteId={voucherSiteId || undefined}
+                                        focProjectId={viewingVoucher.projectId}
+                                        onClose={() => setVoucherModalTraceItemId(null)}
+                                      />
+                                    );
+                                  })()}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

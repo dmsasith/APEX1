@@ -32,7 +32,13 @@ import { useStock } from '../../context/StockContext';
 import { Project, ProjectScope, ProjectType, ProjectTypeTemplateItem, isTelecomNewConnectionSection } from '../../types';
 import { formatNumber } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
-import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
+import {
+  COUNTRY_PHONE_RULES,
+  enforceCountryPhoneInput,
+  detectActivePhoneCountry,
+  analyzeCountryPhone,
+  matchCountryByDialPrefix,
+} from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
 export const ProjectsManagementView: React.FC = () => {
@@ -54,6 +60,8 @@ export const ProjectsManagementView: React.FC = () => {
     saveProjectTypeTemplate,
     activeClients,
     getProjectFreeStockList,
+    config,
+    currentTenant,
   } = useStock();
 
   const branchSites = useMemo(
@@ -113,6 +121,13 @@ export const ProjectsManagementView: React.FC = () => {
   const [projectName, setProjectName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<string>(
+    () =>
+      detectActivePhoneCountry({
+        tenantCountry: currentTenant?.country,
+        currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+      }).name
+  );
   const [siteIdentifier, setSiteIdentifier] = useState('');
   // Telecom New Connection (NC) 6 specific fields
   const [ncNumber, setNcNumber] = useState('');
@@ -454,6 +469,19 @@ export const ProjectsManagementView: React.FC = () => {
         setFormError('Customer FTTH / NC Number and Customer Name are required for Telecom New Connection.');
         return;
       }
+      if (customerPhone.trim()) {
+        const mobileCheck = analyzeCountryPhone(customerPhone, {
+          tenantCountry: phoneCountry || currentTenant?.country,
+          currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+        });
+        if (!mobileCheck.isValid) {
+          setFormError(
+            mobileCheck.error ||
+              `Customer Mobile No requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
+          );
+          return;
+        }
+      }
       const cleanNcNo = ncNumber.trim().toUpperCase();
       const cleanCustName = customerName.trim();
       const cleanOnt = ontSerialNo.trim();
@@ -526,6 +554,20 @@ export const ProjectsManagementView: React.FC = () => {
     if (projectScope === 'sub' && !parentProjectId) {
       setFormError('Please select the Parent Major / Main Project for this Sub-Project.');
       return;
+    }
+
+    if (customerPhone.trim()) {
+      const mobileCheck = analyzeCountryPhone(customerPhone, {
+        tenantCountry: phoneCountry || currentTenant?.country,
+        currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+      });
+      if (!mobileCheck.isValid) {
+        setFormError(
+          mobileCheck.error ||
+            `Customer Phone requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
+        );
+        return;
+      }
     }
 
     const parentObj =
@@ -2063,25 +2105,95 @@ export const ProjectsManagementView: React.FC = () => {
                         />
                       </div>
 
-                      {/* 5. Customer Mobile No */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <label className="block text-xs font-bold text-slate-100">
-                            5. Customer Mobile No
-                          </label>
-                          <PhoneCountryBadge value={customerPhone} />
-                        </div>
-                        <div className="relative">
-                          <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="tel"
-                            value={customerPhone}
-                            onChange={(e) => setCustomerPhone(enforceCountryPhoneInput(e.target.value))}
-                            placeholder={detectActivePhoneCountry({ phoneValue: customerPhone }).localPlaceholder}
-                            className="w-full pl-8 pr-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 text-xs font-mono focus:ring-2 focus:ring-sky-400 focus:outline-none"
-                          />
-                        </div>
-                      </div>
+                      {/* 5. Customer Mobile No (Country-Aware Digit Counter) */}
+                      {(() => {
+                        const ncMobileAnalysis = analyzeCountryPhone(customerPhone, {
+                          tenantCountry: phoneCountry || currentTenant?.country,
+                          currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+                        });
+                        return (
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <label className="block text-xs font-bold text-slate-100">
+                                5. Customer Mobile No
+                              </label>
+                              <PhoneCountryBadge
+                                value={customerPhone}
+                                countryOverride={phoneCountry}
+                                currencyOverride={config?.currencySymbol}
+                                dark
+                              />
+                            </div>
+                            <div className="flex items-stretch gap-1.5">
+                              <select
+                                value={ncMobileAnalysis.country.name}
+                                onChange={(e) => {
+                                  const chosenCountry = e.target.value;
+                                  setPhoneCountry(chosenCountry);
+                                  setCustomerPhone((prev) =>
+                                    enforceCountryPhoneInput(prev, {
+                                      tenantCountry: chosenCountry,
+                                      currencySymbol: config?.currencySymbol,
+                                    })
+                                  );
+                                }}
+                                title="Select Country for Phone Digit Counting"
+                                className="px-2 py-2 border border-white/80 rounded-lg bg-slate-100 text-slate-900 text-xs font-bold focus:ring-2 focus:ring-sky-400 focus:outline-none shrink-0 cursor-pointer"
+                              >
+                                {COUNTRY_PHONE_RULES.map((rule) => (
+                                  <option key={rule.code} value={rule.name}>
+                                    {rule.flag} {rule.dialCode} ({rule.code})
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="relative flex-1">
+                                <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                                <input
+                                  type="tel"
+                                  value={customerPhone}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const dialedRule = matchCountryByDialPrefix(raw);
+                                    const activeCountryName = dialedRule ? dialedRule.name : phoneCountry;
+                                    if (dialedRule && dialedRule.name !== phoneCountry) {
+                                      setPhoneCountry(dialedRule.name);
+                                    }
+                                    setCustomerPhone(
+                                      enforceCountryPhoneInput(raw, {
+                                        tenantCountry: activeCountryName || currentTenant?.country,
+                                        currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+                                      })
+                                    );
+                                  }}
+                                  placeholder={ncMobileAnalysis.country.localPlaceholder}
+                                  className={`w-full pl-8 pr-3 py-2 border rounded-lg bg-white text-slate-900 text-xs font-mono focus:ring-2 focus:outline-none ${
+                                    !ncMobileAnalysis.isEmpty && !ncMobileAnalysis.isComplete
+                                      ? 'border-amber-400 focus:ring-amber-400'
+                                      : !ncMobileAnalysis.isEmpty && ncMobileAnalysis.isComplete
+                                      ? 'border-emerald-400 focus:ring-emerald-400'
+                                      : 'border-white/80 focus:ring-sky-400'
+                                  }`}
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-[10px] font-semibold">
+                              {ncMobileAnalysis.isEmpty ? (
+                                <span className="text-sky-200/90">
+                                  {ncMobileAnalysis.country.flag} {ncMobileAnalysis.country.name} ({ncMobileAnalysis.country.dialCode}) • {ncMobileAnalysis.expectedTotalDigits} digits
+                                </span>
+                              ) : ncMobileAnalysis.isComplete ? (
+                                <span className="text-emerald-300 font-bold">
+                                  ✓ {ncMobileAnalysis.country.flag} {ncMobileAnalysis.enteredTotalDigits}/{ncMobileAnalysis.expectedTotalDigits} digits valid ({ncMobileAnalysis.country.name})
+                                </span>
+                              ) : (
+                                <span className="text-amber-300 font-bold">
+                                  {ncMobileAnalysis.country.flag} {ncMobileAnalysis.enteredTotalDigits}/{ncMobileAnalysis.expectedTotalDigits} digits — {Math.max(0, ncMobileAnalysis.expectedTotalDigits - ncMobileAnalysis.enteredTotalDigits)} more needed
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* 6. Exchange Area */}
                       <div>
@@ -2329,24 +2441,72 @@ export const ProjectsManagementView: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <label className="block text-xs font-semibold text-slate-700">
-                          Customer / Contact Phone
-                        </label>
-                        <PhoneCountryBadge value={customerPhone} />
-                      </div>
-                      <div className="relative">
-                        <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="tel"
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(enforceCountryPhoneInput(e.target.value))}
-                          placeholder={detectActivePhoneCountry({ phoneValue: customerPhone }).localPlaceholder}
-                          className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                        />
-                      </div>
-                    </div>
+                    {(() => {
+                      const stdPhoneAnalysis = analyzeCountryPhone(customerPhone, {
+                        tenantCountry: phoneCountry || currentTenant?.country,
+                        currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+                      });
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <label className="block text-xs font-semibold text-slate-700">
+                              Customer / Contact Phone
+                            </label>
+                            <PhoneCountryBadge
+                              value={customerPhone}
+                              countryOverride={phoneCountry}
+                              currencyOverride={config?.currencySymbol}
+                            />
+                          </div>
+                          <div className="flex items-stretch gap-1.5">
+                            <select
+                              value={stdPhoneAnalysis.country.name}
+                              onChange={(e) => {
+                                const chosenCountry = e.target.value;
+                                setPhoneCountry(chosenCountry);
+                                setCustomerPhone((prev) =>
+                                  enforceCountryPhoneInput(prev, {
+                                    tenantCountry: chosenCountry,
+                                    currencySymbol: config?.currencySymbol,
+                                  })
+                                );
+                              }}
+                              title="Select Country for Phone Digit Counting"
+                              className="px-2 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-900 text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none shrink-0 cursor-pointer"
+                            >
+                              {COUNTRY_PHONE_RULES.map((rule) => (
+                                <option key={rule.code} value={rule.name}>
+                                  {rule.flag} {rule.dialCode} ({rule.code})
+                                </option>
+                              ))}
+                            </select>
+                            <div className="relative flex-1">
+                              <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                              <input
+                                type="tel"
+                                value={customerPhone}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  const dialedRule = matchCountryByDialPrefix(raw);
+                                  const activeCountryName = dialedRule ? dialedRule.name : phoneCountry;
+                                  if (dialedRule && dialedRule.name !== phoneCountry) {
+                                    setPhoneCountry(dialedRule.name);
+                                  }
+                                  setCustomerPhone(
+                                    enforceCountryPhoneInput(raw, {
+                                      tenantCountry: activeCountryName || currentTenant?.country,
+                                      currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+                                    })
+                                  );
+                                }}
+                                placeholder={stdPhoneAnalysis.country.localPlaceholder}
+                                className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
