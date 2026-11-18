@@ -44,6 +44,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [selectedIndustryIdx, setSelectedIndustryIdx] = useState<number>(0);
   const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState<boolean>(false);
+  const [comparisonCategory, setComparisonCategory] = useState<
+    'all' | 'pricing' | 'warehouse' | 'field' | 'projects' | 'security'
+  >('all');
 
   const handleOpenGuideTab = () => {
     setActiveLandingTab('guide');
@@ -164,6 +167,467 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       q: 'Can we import our existing inventory catalog from Excel and back up our data?',
       a: 'Yes! You can bulk-import thousands of material items and machinery assets from Excel/CSV in seconds, and export a 1-Click Full System JSON Backup (or Excel spreadsheets) anytime from your header toolbar.',
+    },
+  ];
+
+  const comparisonRows: Array<{
+    category: 'pricing' | 'warehouse' | 'field' | 'projects' | 'security';
+    categoryLabel: string;
+    feature: string;
+    detail: string;
+    isSpecialHighlight?: boolean;
+    apex: string;
+    sortly: string;
+    zoho: string;
+    inflowCin7: string;
+    legacyErp: string;
+  }> = [
+    // 1. PRICING, USERS & SCALABILITY
+    {
+      category: 'pricing',
+      categoryLabel: 'Pricing & Scale',
+      feature: 'Monthly Subscription Price (All Modules Unlocked)',
+      detail: 'Complete multi-site warehouse, project, procurement & field crew ERP with zero hidden add-on fees.',
+      isSpecialHighlight: true,
+      apex: '$19.90 / mo ($15.75/mo Annual)',
+      sortly: '$149 – $299+ / mo',
+      zoho: '$99 – $249+ / mo',
+      inflowCin7: '$149 – $399+ / mo',
+      legacyErp: '$800 – $2,500+ / mo',
+    },
+    {
+      category: 'pricing',
+      categoryLabel: 'Pricing & Scale',
+      feature: 'Annual Total Cost (For 15 Users & 5 Site Branches)',
+      detail: 'Real yearly cost for a typical contractor operating a Central HQ + 5 regional site stores + 15 staff accounts.',
+      isSpecialHighlight: true,
+      apex: '$189 / year Flat (Save 90%+)',
+      sortly: '$1,788 – $3,588+ / year',
+      zoho: '$1,548 – $2,988+ / year',
+      inflowCin7: '$2,148 – $4,788+ / year',
+      legacyErp: '$10,000+ / year + Setup Fees',
+    },
+    {
+      category: 'pricing',
+      categoryLabel: 'Pricing & Scale',
+      feature: 'Unlimited System Users & Staff Logins',
+      detail: 'Create accounts for all HQ Storekeepers, Branch Admins, and Site Supervisors without paying per-seat fees.',
+      apex: '✓ Unlimited Users ($0 extra)',
+      sortly: '✕ 5–8 Users (Extra seats $20+/mo)',
+      zoho: '✕ 2–5 Users (Extra seats charged)',
+      inflowCin7: '✕ 2–5 Users (Extra seats $39+/mo)',
+      legacyErp: '✕ $75 – $150+ per user/month',
+    },
+    {
+      category: 'pricing',
+      categoryLabel: 'Pricing & Scale',
+      feature: 'Unlimited Regional Site Branches & Yards',
+      detail: 'Add unlimited regional site stores, project yards, and central warehouses as your projects expand.',
+      apex: '✓ Unlimited Site Yards ($0 extra)',
+      sortly: '◐ Folder-based only (No branch RBAC)',
+      zoho: '✕ Limited warehouses per tier',
+      inflowCin7: '✕ Paid per-location add-on',
+      legacyErp: '✕ Paid multi-location licensing',
+    },
+    {
+      category: 'pricing',
+      categoryLabel: 'Pricing & Scale',
+      feature: 'Unlimited Items, Barcodes, Orders & Monthly Transactions',
+      detail: 'Zero artificial caps on SKU count, monthly purchase orders, dispatches, or barcode scans.',
+      apex: '✓ 100% Unlimited',
+      sortly: '✕ Capped by item/entry tier',
+      zoho: '✕ Capped by monthly order volume',
+      inflowCin7: '◐ Capped on lower plans',
+      legacyErp: '✓ Unlimited (High contract cost)',
+    },
+
+    // 2. CENTRAL WAREHOUSE, PO/GRN/RTV & ITEM LIFECYCLE TRACEABILITY
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: '1-Click Central Stock End-to-End Item Lifecycle Summary (Printable A4/PDF)',
+      detail: 'Select any item in Central Stock to view every PO/Manual/FOC inbound source, how it split across Sites, how Sites issued to Teams, Used/Wasted, and Central/Site/Team In-Hand.',
+      isSpecialHighlight: true,
+      apex: '✓ Built-In Interactive + A4/PDF Print',
+      sortly: '✕ Not Available',
+      zoho: '✕ Basic stock card only (No team/site chain)',
+      inflowCin7: '✕ Warehouse level only',
+      legacyErp: '◐ Requires custom BI report coding',
+    },
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: '1-Click Site Branch Forward Traceability Summary (Printable A4/PDF)',
+      detail: 'Select any item inside a Site Branch to see HQ transfers received, quantities issued to each Field Team at that site, Project Used/Wastage, and Site/Team In-Hand.',
+      isSpecialHighlight: true,
+      apex: '✓ Built-In Forward Traceability + Print',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '✕ Not Available',
+    },
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: 'Client-Supplied Free Stock (FOC) with Auto-Locked Site Branch',
+      detail: 'Receive client/telecom-operator free materials at zero cost liability; selecting the project auto-locks the Allocated Site Branch so FOC stock never mixes across branches.',
+      isSpecialHighlight: true,
+      apex: '✓ Native FOC Pool + Auto Branch Lock',
+      sortly: '✕ No Client FOC concept',
+      zoho: '✕ Built for retail sales, not Client FOC',
+      inflowCin7: '✕ No Client FOC accounting',
+      legacyErp: '◐ Complex manual workaround',
+    },
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: 'Admin FOC Voucher Reassignment (1-Click Project Correction)',
+      detail: 'If a client FOC shipment was mistakenly logged under the wrong project, Admins can edit and reassign the voucher to the right project with full Audit Trail.',
+      apex: '✓ 1-Click Admin Reassignment',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '✕ Requires reversal journal entries',
+    },
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: 'Official Supplier Purchase Orders (PO) & Multi-Item Atomic GRN',
+      detail: 'Generate sequential 0001-numbered POs with tax/discount/commercial terms and receive full or partial multi-item batch deliveries with printable GRN vouchers.',
+      apex: '✓ Included (PO + Full/Partial GRN)',
+      sortly: '◐ Basic PO only on higher tiers',
+      zoho: '✓ Included',
+      inflowCin7: '✓ Included',
+      legacyErp: '✓ Included',
+    },
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: 'Return to Vendor (RTV), Official Debit Notes & Outward Gate Passes',
+      detail: 'Dispatch defective supplier goods with vehicle/driver Gate Pass, print official commercial Debit Notes, and track vendor settlements (Replacement, Credit, Refund).',
+      apex: '✓ Full RTV + Debit Note + Gate Pass',
+      sortly: '✕ Not Available',
+      zoho: '◐ Vendor credits only (No Gate Pass)',
+      inflowCin7: '◐ Basic vendor return',
+      legacyErp: '✓ Included',
+    },
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: 'Damaged Stock Ledger & 1-Click Repair Restoration to Main Stock',
+      detail: 'Quarantine damaged items returned from teams/sites and restore repaired equipment back into usable Main Stock with DSR vouchers.',
+      apex: '✓ Dedicated Damaged & Restoration Ledger',
+      sortly: '✕ Manual folder move only',
+      zoho: '✕ Manual adjustment only',
+      inflowCin7: '✕ Manual adjustment only',
+      legacyErp: '◐ Complex scrap module',
+    },
+
+    // 3. SITE TRANSFERS, FIELD CREW CUSTODY & BARCODE SCANNING
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: '2-Tab Site Stock Requisitions (Normal Stock vs. Branch-Exclusive FOC)',
+      detail: 'Separate requisition tabs for regular warehouse stock and branch-assigned Client FOC projects so supervisors never request another site’s project materials.',
+      isSpecialHighlight: true,
+      apex: '✓ 2-Tab Normal vs. Branch-Locked FOC',
+      sortly: '✕ No requisition approval workflow',
+      zoho: '✕ Inter-warehouse transfer only',
+      inflowCin7: '✕ Standard stock transfer only',
+      legacyErp: '◐ Generic internal requisition',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'Auto Low-Stock Priority Top Sorting & Live "Site Avl:" + "Main:" Balances',
+      detail: 'When a site creates a requisition, items low at that site automatically appear at the very top with a "⚠️ Site Low" badge and live Site vs. HQ stock numbers.',
+      isSpecialHighlight: true,
+      apex: '✓ Auto Priority Sort + Dual Live Balances',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '✕ Not Available',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'HQ "Send Available Only" 1-Click Shortage Adjustment',
+      detail: 'If a branch requests 100 units when Central HQ only holds 60, HQ can adjust to the available 60 units in one click during dispatch approval.',
+      apex: '✓ 1-Click Shortage Adjustment',
+      sortly: '✕ Not Available',
+      zoho: '✕ Manual edit required',
+      inflowCin7: '✕ Manual edit required',
+      legacyErp: '✕ Manual edit required',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'Live Field Crew In-Hand Stock Custody Ledger (TSR Audit Reports)',
+      detail: 'Track exact balances held by every Field Crew Leader right now (Issued − Used in Projects − Wastage − Returned to Site) with printable TSR reports.',
+      isSpecialHighlight: true,
+      apex: '✓ Real-Time Crew In-Hand Ledger',
+      sortly: '✕ No field crew custody tracking',
+      zoho: '✕ Designed for customers, not field crews',
+      inflowCin7: '✕ No crew custody balance',
+      legacyErp: '✕ Requires custom sub-warehouse per crew',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'Consumable Materials vs. Returnable Heavy Machinery & Tools Fleet',
+      detail: 'Dedicated Plant & Equipment Fleet view to track excavators, generators, fusion splicers, and testing meters separately from consumable materials.',
+      apex: '✓ Materials + Plant/Machinery Fleet',
+      sortly: '◐ Basic asset tags only',
+      zoho: '✕ E-commerce SKU focus only',
+      inflowCin7: '✕ Inventory parts only',
+      legacyErp: '◐ Paid Fixed Assets add-on module',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'Auto-Calculated Crew Size (1 Leader + N NIC Members) & Usage History Protection',
+      detail: 'Crew size auto-calculates as NIC-verified members are added; blocks duplicate team names and restores deleted teams in 1 click so past usage stays unified.',
+      apex: '✓ Auto Crew Size + NIC Roster + History Guard',
+      sortly: '✕ No crew directory',
+      zoho: '✕ No crew directory',
+      inflowCin7: '✕ No crew directory',
+      legacyErp: '✕ Requires separate HR module',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'Single-Shot Camera & USB Barcode Scanner with Auto-Hide & "Scan Now"',
+      detail: 'Mobile camera and USB gun scanner detects once, immediately stops/hides the camera to prevent duplicate rapid scans, and gives a 1-click "Scan Now" button + sticker printing.',
+      isSpecialHighlight: true,
+      apex: '✓ Single-Shot Anti-Duplicate Scan + Stickers',
+      sortly: '◐ Camera scan (No single-shot auto-hide)',
+      zoho: '◐ Barcode support',
+      inflowCin7: '◐ Barcode support',
+      legacyErp: '◐ Requires paid mobile scanner license',
+    },
+
+    // 4. PROJECTS, TELECOM NEW CONNECTION (NC) & WASTAGE ACCOUNTING
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Telecom NC',
+      feature: '3-Tier Project Hierarchy (Major/Main Umbrella, Sub-Projects & Individual)',
+      detail: 'Receive bulk Client FOC under a Major Project; logging usage on any linked Sub-Project automatically deducts from the parent Main Project FOC pool.',
+      isSpecialHighlight: true,
+      apex: '✓ 3-Tier Main/Sub/Individual + Auto Pool Deduct',
+      sortly: '✕ Flat folders only',
+      zoho: '✕ No Main/Sub-Project FOC pool sharing',
+      inflowCin7: '✕ Single job reference only',
+      legacyErp: '✓ WBS Hierarchy (Complex setup)',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Telecom NC',
+      feature: 'Telecom New Connection (NC / FTTH) 6-Field Subscriber Registration',
+      detail: 'Selecting Telecom New Connection automatically switches to the 6 subscriber fields in order: 1. FTTH/NC No, 2. ONT Serial No, 3. Customer Name, 4. Address, 5. Mobile, 6. Exchange Area.',
+      isSpecialHighlight: true,
+      apex: '✓ Purpose-Built 6-Field FTTH / NC Mode',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '✕ Requires expensive custom development',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Telecom NC',
+      feature: 'Telecom NC 3-Step Daily Progress with Session-Locked Team & Area',
+      detail: 'Step 1 (Team & Area) sits at the top and LOCKS until page refresh so supervisors can log all daily NC lines for a team back-to-back, search/register NC lines in Step 2, and log usage in Step 3.',
+      isSpecialHighlight: true,
+      apex: '✓ 1-2-3 NC Flow + Team/Area Session Lock',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '✕ Not Available',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Telecom NC',
+      feature: 'Custom Project Section Registry, BOM Templates & 1-Click NC Section Restore',
+      detail: 'Create custom sections (Standard or NC Format), attach Default Material Templates (BOM) that auto-fill daily progress, and restore the NC section in 1 click if ever deleted.',
+      apex: '✓ Custom Sections + Auto BOM + 1-Click Restore',
+      sortly: '✕ Not Available',
+      zoho: '✕ Manufacturing BOM only (Not field sections)',
+      inflowCin7: '✕ Assembly BOM only',
+      legacyErp: '◐ Complex engineering BOM',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Telecom NC',
+      feature: 'Installed Qty + "Wastage Qty" Dual Tracking & Live In-Hand Validation',
+      detail: 'Enter both Installed Qty and Wastage Qty per item; validates live (Used + Wastage <= Team In-Hand) and updates Team Wastage columns, Reconciliation, and PU vouchers.',
+      isSpecialHighlight: true,
+      apex: '✓ Installed + Wastage Dual Ledger',
+      sortly: '✕ Simple quantity reduction only',
+      zoho: '✕ No field crew wastage breakdown',
+      inflowCin7: '✕ No field wastage tracking',
+      legacyErp: '◐ Separate scrap transaction required',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Telecom NC',
+      feature: 'User-Site Branch Lock & Project-Reserved Item Override Workflow',
+      detail: 'Automatically locks usage entry if a project belongs to another branch, and protects project-reserved items with an Admin Cross-Project Override approval flow.',
+      apex: '✓ Auto Branch Lock + Override Approval',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '◐ Custom permission rules required',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Telecom NC',
+      feature: '"Full Report for This Site (Project)" — Team Subtotals + Site Grand Total',
+      detail: '1-click A4 PDF & Excel report showing Part 1 (Every Team’s individual consumption, wastage & Team Subtotal) and Part 2 (Full Site Consolidated Grand Total).',
+      isSpecialHighlight: true,
+      apex: '✓ 1-Click Team Subtotals + Grand Total Report',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '◐ Custom Crystal/BI report needed',
+    },
+
+    // 5. ISO 9001:2015 FORMAT STUDIO, DIGITAL SIGNATURES & ENTERPRISE SECURITY
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
+      feature: 'ISO 9001:2015 Controlled Formats (FORMAT-01 to 04) + Auto Tenant Header',
+      detail: 'Every RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO & RTV prints in official ISO 9001:2015 layout with your registered Company Name, Logo, Address & Contact auto-synced.',
+      isSpecialHighlight: true,
+      apex: '✓ Built-In ISO 9001:2015 QMS Formats',
+      sortly: '✕ Basic generic PDF list',
+      zoho: '◐ Retail invoice templates only',
+      inflowCin7: '◐ Standard commercial invoices',
+      legacyErp: '◐ Requires paid form designer',
+    },
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
+      feature: 'Upload Your Own Company PDF / Image Format (Max 1MB) + Live A4 Studio',
+      detail: 'Upload your official company letterhead/stationery as PDF or Image, adjust header crop %, rename table columns, or unify Format-01 & 02 in 1 click.',
+      isSpecialHighlight: true,
+      apex: '✓ PDF/Image Upload + Live A4 Studio',
+      sortly: '✕ Cannot upload PDF stationery',
+      zoho: '✕ HTML/CSS coding required',
+      inflowCin7: '✕ Word template mail-merge required',
+      legacyErp: '✕ Developer consultant required',
+    },
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
+      feature: 'ISO Signer Matrix & Interactive Digital Signatures (Draw on Pad or Upload)',
+      detail: 'Configure Prepared By, Approved By & Reviewed By names/designations; draw signatures on screen or upload PNG/JPG that auto-match signers + Per-Voucher live override.',
+      isSpecialHighlight: true,
+      apex: '✓ Draw/Upload Signatures + Auto-Match',
+      sortly: '◐ Simple sign-on-glass only',
+      zoho: '◐ Requires paid Zoho Sign integration',
+      inflowCin7: '✕ Not built-in',
+      legacyErp: '✕ Requires 3rd-party e-sign plugin',
+    },
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
+      feature: 'Isolated Single-Click A4 Print Preview & Genuine Vector PDF Download',
+      detail: 'Clicking Print on any voucher or report opens an isolated, clean A4 print window of ONLY that document (never prints the messy browser screen).',
+      apex: '✓ Isolated A4 Print + Direct Vector PDF',
+      sortly: '✕ Basic browser print',
+      zoho: '✓ PDF print',
+      inflowCin7: '✓ PDF print',
+      legacyErp: '✓ PDF print',
+    },
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
+      feature: 'Mandatory Admin Password Verification for Any Deletion + Safe Recycle Bin',
+      detail: 'Zero accidental deletions: deleting any item, project, section, or transaction across the system requires entering the Admin Password, backed by Recycle Bin restore.',
+      isSpecialHighlight: true,
+      apex: '✓ Admin Password Gate on Every Delete',
+      sortly: '✕ Simple click confirmation',
+      zoho: '✕ Simple click confirmation',
+      inflowCin7: '✕ Simple click confirmation',
+      legacyErp: '◐ Role-based only (No password prompt)',
+    },
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
+      feature: 'Sequential 0001 Auto-Numbering & Country-Aware Phone Digit Validation',
+      detail: 'All codes (ITM-0001, PO-2026-0001, PU-2026-0001) increment cleanly from 0001, and phone fields automatically enforce exact digit rules for your country.',
+      apex: '✓ 0001 Sequential IDs + Country Phone Guard',
+      sortly: '✕ Random/manual IDs',
+      zoho: '◐ Basic numbering (No phone digit guard)',
+      inflowCin7: '◐ Basic numbering',
+      legacyErp: '◐ Manual number series setup',
+    },
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
+      feature: '1-Click JSON Offline Backup Viewer, Admin View-As Mode & Bilingual (EN/SI) Help',
+      detail: 'Export/inspect full JSON backups offline, preview the workspace as any staff user (View-As Mode), and access built-in English & Sinhala User Guides + 24/7 AI Chat Support.',
+      isSpecialHighlight: true,
+      apex: '✓ Offline Backup Viewer + EN/SI AI Support',
+      sortly: '✕ CSV export only (English only)',
+      zoho: '✕ Paid backup add-on (English only)',
+      inflowCin7: '✕ CSV export only (English only)',
+      legacyErp: '✕ DBA required for backups',
+    },
+  ];
+
+  const filteredComparisonRows =
+    comparisonCategory === 'all'
+      ? comparisonRows
+      : comparisonRows.filter((r) => r.category === comparisonCategory);
+
+  const microFeaturesSpotlight = [
+    {
+      title: 'Admin Password Gate on Every Delete',
+      desc: 'No staff member can accidentally delete a record with a casual click—every deletion prompts for the Admin Password first.',
+    },
+    {
+      title: '1-Click Item Lifecycle & Forward Summary',
+      desc: 'Click any item in Central Stock or Site Branch Stock to see every PO, site transfer, team issue, project usage, and wastage in one printable A4 view.',
+    },
+    {
+      title: 'Telecom NC 6-Field & Team-Locked Progress',
+      desc: 'Locks Field Team & Exchange Area until page refresh so supervisors can enter 20+ daily FTTH/NC subscriber lines without re-selecting the team.',
+    },
+    {
+      title: 'Auto Low-Stock Top Sorting in Requisitions',
+      desc: 'Items running low at a requesting site automatically jump to the top of the requisition list with live "Site Avl:" and "Main:" balances.',
+    },
+    {
+      title: 'Single-Shot Barcode Scan ("Scan Now")',
+      desc: 'Camera scanner detects once and immediately hides to prevent duplicate rapid scans, with a 1-click "Scan Now" trigger for the next item.',
+    },
+    {
+      title: 'Client FOC Auto-Locked Site Branch',
+      desc: 'Selecting a project when receiving Client Free Stock automatically locks the Allocated Site Branch so FOC materials never leak to another branch.',
+    },
+    {
+      title: 'Installed Qty + Wastage Qty Dual Check',
+      desc: 'Validates (Used + Wastage <= Team In-Hand) in real time and updates Team Wastage columns, Reconciliation, and PU vouchers automatically.',
+    },
+    {
+      title: 'Custom PDF/Image Stationery (Max 1MB)',
+      desc: 'Upload your own company letterhead PDF or Image into 4 ISO 9001:2015 format slots, draw digital signatures on screen, and print isolated A4 vouchers.',
+    },
+    {
+      title: 'Country-Aware Phone Digit Validation',
+      desc: 'Automatically detects your registered company country (e.g., Sri Lanka 10 local / 9 subscriber digits) and prevents invalid phone numbers.',
+    },
+    {
+      title: 'Auto Crew Size (1 Leader + N NIC Members)',
+      desc: 'Automatically calculates crew size as NIC-verified members are added and protects historical usage if a deleted team is restored.',
+    },
+    {
+      title: 'Full Site Report (Team Subtotals + Grand Total)',
+      desc: 'Generates a 2-part A4 PDF & Excel report showing each team’s individual subtotal followed by the consolidated site grand total.',
+    },
+    {
+      title: '0001 Sequential Numbering & Offline Viewer',
+      desc: 'Every Item, Project, PO, GRN, RN, IN & PU starts cleanly from 0001—plus a built-in Offline JSON Backup Viewer to inspect snapshots anytime.',
     },
   ];
 
@@ -1188,8 +1652,308 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
               </div>
 
+              {/* ==================== GLOBAL COMPETITOR & ALL-FEATURES COMPARISON MATRIX (BELOW PRICING CARDS) ==================== */}
+              <div
+                id="global-comparison"
+                className="mt-14 sm:mt-20 rounded-2xl sm:rounded-[30px] bg-gradient-to-br from-[#161d33] via-[#1c2540] to-[#12182b] text-white border-2 border-[#dc9750] shadow-[0_28px_70px_-15px_rgba(15,20,38,0.65)] p-4 sm:p-8 lg:p-10 relative overflow-hidden"
+              >
+                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#dc9750] via-[#f3c896] to-[#dc9750]" />
+
+                {/* Executive Header: The Core Message to the Customer */}
+                <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
+                  <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#e8ac6e] tracking-wide mb-2.5">
+                    <Crown className="w-4 h-4 text-[#dc9750] fill-[#dc9750]" />
+                    <span>Global Market &amp; Feature-by-Feature Comparison (34 Built-In Capabilities)</span>
+                  </div>
+                  <h3 className="text-2xl sm:text-4xl lg:text-[40px] font-black text-white tracking-tight leading-tight text-balance">
+                    Why Pay <span className="text-rose-400 line-through decoration-2">$150 to $400+/Month</span> for Generic Retail Inventory Apps That Still Lack Field Site Control?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-200 mt-3 leading-relaxed max-w-3xl mx-auto font-medium">
+                    Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH rollouts, client free-issue stock (FOC), or field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today. <strong className="text-[#f0c08d]">Apex Stock gives you 100% of these specialized field &amp; warehouse features for one flat $19.90/mo ($189/year).</strong>
+                  </p>
+                </div>
+
+                {/* Visual Annual Cost Shock Comparison Cards (5 Site Branches + 15 Staff Users Scenario) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-3.5 mb-8 sm:mb-10">
+                  {/* Apex Stock Winner Card */}
+                  <div className="lg:col-span-1 rounded-2xl bg-gradient-to-b from-[#dc9750] to-[#c9823b] text-[#1e2640] p-4 shadow-lg border-2 border-white/80 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-[#1e2640]/80">
+                        ★ Best Value Worldwide
+                      </div>
+                      <div className="text-base font-black text-[#1e2640] mt-0.5">Apex Stock VIP</div>
+                      <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#1e2640] mt-2">
+                        $189<span className="text-xs font-extrabold">/yr</span>
+                      </div>
+                      <div className="text-[11px] font-extrabold text-[#1e2640]/90 font-mono tabular-nums">
+                        (~$15.75/mo or $19.90 monthly)
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-2.5 border-t border-[#1e2640]/20 text-[11px] font-bold text-[#1e2640] space-y-1">
+                      <div>✓ Unlimited Users &amp; Sites</div>
+                      <div>✓ All 34 Field &amp; ERP Modules</div>
+                      <div>✓ $0 Setup · 7-Day Free Trial</div>
+                    </div>
+                  </div>
+
+                  {/* Sortly */}
+                  <div className="rounded-2xl bg-[#232d4b]/90 border border-white/15 p-4 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400">Visual Asset Tracker</div>
+                      <div className="text-sm font-extrabold text-white mt-0.5">Sortly (Ultra / Ent.)</div>
+                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                        ~$1,788+<span className="text-xs font-semibold text-slate-300">/yr</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">($149 – $299+ / month)</div>
+                    </div>
+                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                      <div>✕ Extra fees for users &amp; items</div>
+                      <div>✕ No Crew In-Hand or Client FOC</div>
+                      <div>✕ No Telecom NC or Wastage ledger</div>
+                    </div>
+                  </div>
+
+                  {/* Zoho Inventory */}
+                  <div className="rounded-2xl bg-[#232d4b]/90 border border-white/15 p-4 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400">Retail / E-Commerce App</div>
+                      <div className="text-sm font-extrabold text-white mt-0.5">Zoho Inventory</div>
+                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                        ~$1,548+<span className="text-xs font-semibold text-slate-300">/yr</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">($129 – $249+ / month)</div>
+                    </div>
+                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                      <div>✕ Capped orders, users &amp; stores</div>
+                      <div>✕ Built for online shops, not sites</div>
+                      <div>✕ No Main/Sub FOC or Team custody</div>
+                    </div>
+                  </div>
+
+                  {/* inFlow / Cin7 Core */}
+                  <div className="rounded-2xl bg-[#232d4b]/90 border border-white/15 p-4 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400">Wholesale Warehouse</div>
+                      <div className="text-sm font-extrabold text-white mt-0.5">inFlow / Cin7 Core</div>
+                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                        ~$2,388+<span className="text-xs font-semibold text-slate-300">/yr</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">($199 – $399+ / month)</div>
+                    </div>
+                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                      <div>✕ Expensive per-location fees</div>
+                      <div>✕ No Field Crew issue/return loop</div>
+                      <div>✕ No Custom PDF stationery upload</div>
+                    </div>
+                  </div>
+
+                  {/* Legacy Construction ERP */}
+                  <div className="rounded-2xl bg-[#232d4b]/90 border border-white/15 p-4 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400">Heavy Legacy ERP</div>
+                      <div className="text-sm font-extrabold text-white mt-0.5">Procore / SAP / NetSuite</div>
+                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                        $10,000+<span className="text-xs font-semibold text-slate-300">/yr</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">(+ $5,000+ Consultant Setup)</div>
+                    </div>
+                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                      <div>✕ Months of complex training</div>
+                      <div>✕ Paid consultants for every change</div>
+                      <div>✕ Locked into multi-year contracts</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Category Filter Buttons for the 34-Feature Matrix */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/15">
+                  <div className="text-left">
+                    <h4 className="text-sm sm:text-base font-black text-white">
+                      Complete 34-Point Feature &amp; Micro-Capability Comparison
+                    </h4>
+                    <p className="text-[11px] text-slate-300">
+                      Filter by operational area or inspect all 34 large and small specialized features side-by-side:
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                      { id: 'all', label: `All Features (${comparisonRows.length})` },
+                      { id: 'pricing', label: 'Pricing & Scale' },
+                      { id: 'warehouse', label: 'Warehouse, PO & FOC' },
+                      { id: 'field', label: 'Site & Field Crews' },
+                      { id: 'projects', label: 'Projects & Telecom NC' },
+                      { id: 'security', label: 'ISO Formats & Security' },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() =>
+                          setComparisonCategory(
+                            tab.id as 'all' | 'pricing' | 'warehouse' | 'field' | 'projects' | 'security'
+                          )
+                        }
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                          comparisonCategory === tab.id
+                            ? 'bg-[#dc9750] text-[#1e2640] shadow-xs'
+                            : 'bg-[#232d4b] hover:bg-[#2c385c] text-slate-200 border border-white/10'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Responsive Comparison Table */}
+                <div className="overflow-x-auto rounded-2xl border border-[#dc9750]/45 bg-[#12182b] shadow-inner">
+                  <table className="w-full text-left border-collapse min-w-[880px]">
+                    <thead>
+                      <tr className="bg-[#1e2640] border-b border-[#dc9750]/40 text-[11px] font-black text-slate-200">
+                        <th className="py-3.5 px-4 w-[34%]">
+                          System Capability / Specialized Feature ({filteredComparisonRows.length})
+                        </th>
+                        <th className="py-3.5 px-4 w-[18%] bg-[#dc9750] text-[#1e2640] font-black">
+                          <div className="flex items-center gap-1.5">
+                            <Crown className="w-3.5 h-3.5 fill-[#1e2640]" />
+                            <span>Apex Stock ($19.90/mo)</span>
+                          </div>
+                        </th>
+                        <th className="py-3.5 px-3.5 w-[16%] text-slate-200">
+                          Sortly ($149+/mo)
+                        </th>
+                        <th className="py-3.5 px-3.5 w-[16%] text-slate-200">
+                          Zoho Inventory ($99+/mo)
+                        </th>
+                        <th className="py-3.5 px-3.5 w-[16%] text-slate-200">
+                          inFlow / Cin7 ($199+/mo)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10 text-xs">
+                      {filteredComparisonRows.map((row, idx) => (
+                        <tr
+                          key={row.feature}
+                          className={`transition-colors ${
+                            row.isSpecialHighlight
+                              ? 'bg-[#1c2644]/90 hover:bg-[#232f52]'
+                              : idx % 2 === 0
+                              ? 'bg-[#141b30] hover:bg-[#1c2540]'
+                              : 'bg-[#171f36] hover:bg-[#1c2540]'
+                          }`}
+                        >
+                          <td className="py-3 px-4 align-top">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-[#e8ac6e] mb-0.5">
+                              <span>{row.categoryLabel}</span>
+                              {row.isSpecialHighlight && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <span className="text-emerald-400 font-extrabold">★ Exclusive Advantage</span>
+                                </>
+                              )}
+                            </div>
+                            <div className="font-extrabold text-white text-xs leading-snug">
+                              {row.feature}
+                            </div>
+                            <div className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                              {row.detail}
+                            </div>
+                          </td>
+
+                          {/* Apex Stock Highlighted Column */}
+                          <td className="py-3 px-4 align-middle bg-[#dc9750]/14 border-x border-[#dc9750]/35 font-extrabold text-emerald-300 text-xs">
+                            {row.apex}
+                          </td>
+
+                          {/* Sortly */}
+                          <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                            {row.sortly}
+                          </td>
+
+                          {/* Zoho */}
+                          <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                            {row.zoho}
+                          </td>
+
+                          {/* inFlow / Cin7 */}
+                          <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                            {row.inflowCin7}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 12 Small-Yet-Special Micro-Features Spotlight Grid ("Podi Podi Unata Wisesa Features") */}
+                <div className="mt-8 sm:mt-10 pt-7 border-t border-white/15">
+                  <div className="text-center max-w-3xl mx-auto mb-6">
+                    <div className="text-xs font-extrabold text-[#e8ac6e] mb-1">
+                      Thoughtful Field-Engineered Details You Won&apos;t Find Anywhere Else
+                    </div>
+                    <h4 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+                      12 Small-Yet-Special Features Built for Real Daily Site Challenges
+                    </h4>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Every micro-feature in Apex Stock was designed around real warehouse storekeepers, site supervisors, and field crew leaders:
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
+                    {microFeaturesSpotlight.map((mf, i) => (
+                      <div
+                        key={mf.title}
+                        className="rounded-xl bg-[#222c4a]/90 border border-[#dc9750]/30 p-3.5 text-left hover:border-[#dc9750] transition"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[11px] font-mono font-black text-[#dc9750] tabular-nums">
+                            {String(i + 1).padStart(2, '0')}.
+                          </span>
+                          <h5 className="text-xs font-extrabold text-white leading-snug">
+                            {mf.title}
+                          </h5>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          {mf.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bottom Decision Banner inside Comparison */}
+                <div className="mt-8 rounded-2xl bg-gradient-to-r from-[#dc9750] via-[#e8a864] to-[#dc9750] text-[#1e2640] p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+                  <div className="text-center md:text-left">
+                    <div className="text-sm sm:text-lg font-black text-[#1e2640]">
+                      Get Every Single Feature Above for $0 Today (7-Day Unrestricted Free Trial)
+                    </div>
+                    <div className="text-xs font-bold text-[#1e2640]/90 mt-0.5">
+                      Then just <span className="underline font-black">$19.90/month</span> or <span className="underline font-black">$189/year</span> for your entire company — Unlimited Users, Unlimited Sites &amp; Zero Per-Seat Fees.
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsSignupOpen(true)}
+                      className="px-5 py-3 rounded-xl bg-[#1e2640] hover:bg-[#141a2e] text-[#dc9750] font-black text-xs flex items-center gap-2 shadow-md transition cursor-pointer whitespace-nowrap"
+                    >
+                      <span>Start Your 7-Day Free Trial Now</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenGuideTab}
+                      className="px-4 py-3 rounded-xl bg-white/90 hover:bg-white text-[#1e2640] font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>View Full User Guide</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Payment Method Notice */}
-              <div className="mt-12 max-w-2xl mx-auto bg-white/95 border border-[#dc9750]/50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#2d3859] text-center sm:text-left shadow-sm">
+              <div className="mt-10 max-w-2xl mx-auto bg-white/95 border border-[#dc9750]/50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#2d3859] text-center sm:text-left shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#1e2640] flex items-center justify-center text-[#dc9750] shrink-0">
                     <QrCode className="w-5 h-5" />
