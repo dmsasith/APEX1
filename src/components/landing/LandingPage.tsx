@@ -203,14 +203,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'pricing',
       categoryLabel: 'Pricing & Scale',
-      feature: 'Annual Total Cost (For 15 Users & 5 Site Branches)',
-      detail: 'Real yearly cost for a typical contractor operating a Central HQ + 5 regional site stores + 15 staff accounts.',
+      feature: 'Annual Total Cost (Unlimited Users & Unlimited Site Branches)',
+      detail: 'Flat yearly rate for your entire company with Unlimited Users, Unlimited Regional Site Branches & Unlimited Field Teams — vs. competitor tiered user/branch caps & add-on seat fees.',
       isSpecialHighlight: true,
-      apex: `$${pricingMetrics.annualPriceClean} / year Flat (Save 90%+)`,
-      sortly: '$1,788 – $3,588+ / year',
-      zoho: '$1,548 – $2,988+ / year',
-      inflowCin7: '$2,148 – $4,788+ / year',
-      legacyErp: '$10,000+ / year + Setup Fees',
+      apex: `✓ $${pricingMetrics.annualPriceClean} / year Flat (Unlimited Users & Unlimited Branches · Save 90%+)`,
+      sortly: '✕ $1,788 – $3,588+ / year (Capped at 5–8 users; +$240/yr per extra user & no branch RBAC)',
+      zoho: '✕ $1,548 – $2,988+ / year (Capped at 2–5 users & limited warehouses; extra seats & locations billed extra)',
+      inflowCin7: '✕ $2,148 – $4,788+ / year (Capped at 2–5 users; +$468/yr per extra user & paid per-location add-ons)',
+      legacyErp: '✕ $10,000+ / year (+$900–$1,800/yr per user + paid branch licenses & setup fees)',
     },
     {
       category: 'pricing',
@@ -218,9 +218,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Unlimited System Users & Staff Logins',
       detail: 'Create accounts for all HQ Storekeepers, Branch Admins, and Site Supervisors without paying per-seat fees.',
       apex: '✓ Unlimited Users ($0 extra)',
-      sortly: '✕ 5–8 Users (Extra seats $20+/mo)',
-      zoho: '✕ 2–5 Users (Extra seats charged)',
-      inflowCin7: '✕ 2–5 Users (Extra seats $39+/mo)',
+      sortly: '✕ 5–8 Users max (Extra seats $20+/mo each)',
+      zoho: '✕ 2–5 Users max (Extra seats charged per user)',
+      inflowCin7: '✕ 2–5 Users max (Extra seats $39+/mo each)',
       legacyErp: '✕ $75 – $150+ per user/month',
     },
     {
@@ -229,9 +229,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Unlimited Regional Site Branches & Yards',
       detail: 'Add unlimited regional site stores, project yards, and central warehouses as your projects expand.',
       apex: '✓ Unlimited Site Yards ($0 extra)',
-      sortly: '◐ Folder-based only (No branch RBAC)',
-      zoho: '✕ Limited warehouses per tier',
-      inflowCin7: '✕ Paid per-location add-on',
+      sortly: '✕ Folder-based only (No branch RBAC)',
+      zoho: '✕ Limited warehouses per tier (Extra locations paid)',
+      inflowCin7: '✕ Paid per-location add-on fee',
       legacyErp: '✕ Paid multi-location licensing',
     },
     {
@@ -1753,7 +1753,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                {/* Visual Annual Cost Shock Comparison Cards (5 Site Branches + 15 Staff Users Scenario) */}
+                {/* Visual Annual Cost Shock Comparison Cards (Unlimited Users & Site Branches Flat Rate vs. Competitor Caps) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-3.5 mb-8 sm:mb-10">
                   {/* Apex Stock Winner Card */}
                   <div className="lg:col-span-1 rounded-2xl bg-gradient-to-b from-[#dc9750] to-[#c9823b] text-[#1e2640] p-4 shadow-lg border-2 border-white/80 flex flex-col justify-between">
@@ -1770,7 +1770,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-[#1e2640]/20 text-[11px] font-bold text-[#1e2640] space-y-1">
-                      <div>✓ Unlimited Users &amp; Sites</div>
+                      <div>✓ Unlimited Users &amp; Branches</div>
                       <div>✓ All {comparisonRows.length} Field &amp; ERP Modules</div>
                       <div>✓ $0 Setup · {pricingMetrics.trialDays}-Day Free Trial</div>
                     </div>
@@ -1787,9 +1787,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       <div className="text-[11px] text-slate-300 font-mono tabular-nums">($149 – $299+ / month)</div>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
-                      <div>✕ Extra fees for users &amp; items</div>
-                      <div>✕ No Crew In-Hand or Client FOC</div>
-                      <div>✕ No Industry Templates or Wastage</div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>Capped at 5–8 users (+$20/mo/seat)</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>No Crew In-Hand or Client FOC</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>No Industry Templates or Wastage</span></div>
                     </div>
                   </div>
 
@@ -1804,9 +1804,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       <div className="text-[11px] text-slate-300 font-mono tabular-nums">($129 – $249+ / month)</div>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
-                      <div>✕ Capped orders, users &amp; stores</div>
-                      <div>✕ Built for online shops, not sites</div>
-                      <div>✕ No Main/Sub FOC or Team custody</div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>Capped at 2–5 users &amp; warehouses</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>Built for online shops, not sites</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>No Main/Sub FOC or Team custody</span></div>
                     </div>
                   </div>
 
@@ -1821,9 +1821,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       <div className="text-[11px] text-slate-300 font-mono tabular-nums">($199 – $399+ / month)</div>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
-                      <div>✕ Expensive per-location fees</div>
-                      <div>✕ No Field Crew issue/return loop</div>
-                      <div>✕ No Custom PDF stationery upload</div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>2–5 user cap (+$39/mo/user &amp; branch)</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>No Field Crew issue/return loop</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>No Custom PDF stationery upload</span></div>
                     </div>
                   </div>
 
@@ -1838,9 +1838,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       <div className="text-[11px] text-slate-300 font-mono tabular-nums">(+ $5,000+ Consultant Setup)</div>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
-                      <div>✕ Months of complex training</div>
-                      <div>✕ Paid consultants for every change</div>
-                      <div>✕ Locked into multi-year contracts</div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>$75–$150+/mo per user &amp; branch license</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>Paid consultants for every change</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-red-500 font-black">✗</span><span>Locked into multi-year contracts</span></div>
                     </div>
                   </div>
                 </div>
@@ -1911,56 +1911,105 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10 text-xs">
-                      {filteredComparisonRows.map((row, idx) => (
-                        <tr
-                          key={row.feature}
-                          className={`transition-colors ${
-                            row.isSpecialHighlight
-                              ? 'bg-[#1c2644]/90 hover:bg-[#232f52]'
-                              : idx % 2 === 0
-                              ? 'bg-[#141b30] hover:bg-[#1c2540]'
-                              : 'bg-[#171f36] hover:bg-[#1c2540]'
-                          }`}
-                        >
-                          <td className="py-3 px-4 align-top">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-[#e8ac6e] mb-0.5">
-                              <span>{row.categoryLabel}</span>
-                              {row.isSpecialHighlight && (
-                                <>
-                                  <span aria-hidden="true">·</span>
-                                  <span className="text-emerald-400 font-extrabold">★ Exclusive Advantage</span>
-                                </>
-                              )}
-                            </div>
-                            <div className="font-extrabold text-white text-xs leading-snug">
-                              {row.feature}
-                            </div>
-                            <div className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                              {row.detail}
-                            </div>
-                          </td>
+                      {filteredComparisonRows.map((row, idx) => {
+                        const renderCompetitorCell = (val: string) => {
+                          const trimmed = val.trim();
+                          if (trimmed.startsWith('✕') || trimmed.startsWith('✗') || trimmed.startsWith('❌')) {
+                            const textPart = trimmed.replace(/^[✕✗❌]\s*/, '');
+                            return (
+                              <div className="flex items-start gap-2">
+                                <span
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-red-500/25 border border-red-500/60 text-[#ff3b3b] font-black text-xs leading-none shrink-0 mt-0.5 shadow-xs"
+                                  aria-label="Missing or Capped Feature"
+                                >
+                                  ✗
+                                </span>
+                                <span className="text-slate-200 font-semibold leading-snug">{textPart}</span>
+                              </div>
+                            );
+                          }
+                          if (trimmed.startsWith('◐')) {
+                            const textPart = trimmed.replace(/^◐\s*/, '');
+                            return (
+                              <div className="flex items-start gap-2">
+                                <span
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-500/20 border border-amber-400/50 text-amber-400 font-black text-xs leading-none shrink-0 mt-0.5"
+                                  aria-label="Partial Support"
+                                >
+                                  ◐
+                                </span>
+                                <span className="text-slate-300 font-medium leading-snug">{textPart}</span>
+                              </div>
+                            );
+                          }
+                          if (trimmed.startsWith('✓')) {
+                            const textPart = trimmed.replace(/^✓\s*/, '');
+                            return (
+                              <div className="flex items-start gap-2">
+                                <span
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-500/20 border border-emerald-400/50 text-emerald-400 font-black text-xs leading-none shrink-0 mt-0.5"
+                                  aria-label="Included"
+                                >
+                                  ✓
+                                </span>
+                                <span className="text-slate-200 font-medium leading-snug">{textPart}</span>
+                              </div>
+                            );
+                          }
+                          return <span className="text-slate-200 font-semibold leading-snug">{val}</span>;
+                        };
 
-                          {/* Apex Stock Highlighted Column */}
-                          <td className="py-3 px-4 align-middle bg-[#dc9750]/14 border-x border-[#dc9750]/35 font-extrabold text-emerald-300 text-xs">
-                            {row.apex}
-                          </td>
+                        return (
+                          <tr
+                            key={row.feature}
+                            className={`transition-colors ${
+                              row.isSpecialHighlight
+                                ? 'bg-[#1c2644]/90 hover:bg-[#232f52]'
+                                : idx % 2 === 0
+                                ? 'bg-[#141b30] hover:bg-[#1c2540]'
+                                : 'bg-[#171f36] hover:bg-[#1c2540]'
+                            }`}
+                          >
+                            <td className="py-3 px-4 align-top">
+                              <div className="flex items-center gap-2 text-[10px] font-bold text-[#e8ac6e] mb-0.5">
+                                <span>{row.categoryLabel}</span>
+                                {row.isSpecialHighlight && (
+                                  <>
+                                    <span aria-hidden="true">·</span>
+                                    <span className="text-emerald-400 font-extrabold">★ Exclusive Advantage</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="font-extrabold text-white text-xs leading-snug">
+                                {row.feature}
+                              </div>
+                              <div className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                                {row.detail}
+                              </div>
+                            </td>
 
-                          {/* Sortly */}
-                          <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
-                            {row.sortly}
-                          </td>
+                            {/* Apex Stock Highlighted Column */}
+                            <td className="py-3 px-4 align-middle bg-[#dc9750]/14 border-x border-[#dc9750]/35 font-extrabold text-emerald-300 text-xs">
+                              {row.apex}
+                            </td>
 
-                          {/* Zoho */}
-                          <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
-                            {row.zoho}
-                          </td>
+                            {/* Sortly */}
+                            <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                              {renderCompetitorCell(row.sortly)}
+                            </td>
 
-                          {/* inFlow / Cin7 */}
-                          <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
-                            {row.inflowCin7}
-                          </td>
-                        </tr>
-                      ))}
+                            {/* Zoho */}
+                            <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                              {renderCompetitorCell(row.zoho)}
+                            </td>
+
+                            {/* inFlow / Cin7 */}
+                            <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                              {renderCompetitorCell(row.inflowCin7)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
