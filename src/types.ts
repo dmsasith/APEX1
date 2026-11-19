@@ -250,12 +250,41 @@ export interface TeamMember {
   phone?: string;
 }
 
+export interface TeamSiteAssignmentHistoryRecord {
+  id: string;
+  siteId: string;
+  siteName: string;
+  assignmentType: 'Permanent' | 'Temporary';
+  status: 'Active' | 'Completed / Transferred';
+  previousSiteId?: string;
+  previousSiteName?: string;
+  pendingStockUnitsAtTransfer?: number;
+  stockCleared?: boolean;
+  stockClearedAt?: string;
+  assignedAt: string;
+  assignedBy?: string;
+  promotedToPermanentAt?: string;
+  promotedBy?: string;
+  endedAt?: string;
+  notes?: string;
+}
+
 export interface Team {
   id: string;
   teamName: string;
+  baseTeamName?: string; // Original base team name without (Ref: ...) suffix
   teamLeaderName: string;
   teamLeaderIdNumber?: string; // Leader NIC or Worker ID Number
   assignedSiteId: string;
+  assignmentStatus?: 'Permanent' | 'Temporary'; // Current site assignment state
+  previousSiteId?: string; // Prior registered site ID before transfer
+  previousSiteName?: string; // Prior registered site name (for Ref: [Previous Site Name])
+  pendingClearanceSiteId?: string; // Previous site ID where unreturned stock is still pending clearance
+  pendingClearanceSiteName?: string; // Previous site name where stock is pending clearance
+  temporaryAssignedAt?: string;
+  permanentConfirmedAt?: string;
+  permanentConfirmedBy?: string;
+  siteAssignmentHistory?: TeamSiteAssignmentHistoryRecord[];
   contactPhone: string;
   crewSize: number;
   members?: TeamMember[];
@@ -698,14 +727,44 @@ export interface TeamInHandBalanceItem {
   totalWastageInProjects?: number;
   currentInHand: number;
   lastIssuedDate: string;
+  siteId?: string;
+  siteName?: string;
+  isStockToReturn?: boolean;
+  stockToReturnLabel?: string; // e.g. "Stock to Return - [Site Name]"
+}
+
+export interface TeamSiteStockBreakdown {
+  siteId: string;
+  siteName: string;
+  isCurrentAssignedSite: boolean;
+  isStockToReturn: boolean;
+  sectionLabel: string; // e.g. "Stock to Return - [Site Name]" or "[Site Name] — Active Site Stock"
+  items: TeamInHandBalanceItem[];
+  totalIssued: number;
+  totalReturned: number;
+  totalUsedInProjects: number;
+  totalWastageInProjects: number;
+  totalUnitsHeld: number;
+  distinctItemsCount: number;
 }
 
 export interface TeamInHandSummary {
   team: Team;
   site: Site;
+  /** Strictly the items issued & usable at the team's currently assigned site (or requested filterSiteId) */
   items: TeamInHandBalanceItem[];
+  /** Usable units held at the team's currently assigned site (or requested filterSiteId) */
   totalUnitsHeld: number;
+  /** Distinct items held at the team's currently assigned site (or requested filterSiteId) */
   distinctItemsCount: number;
+  /** Separate site-by-site stock groups belonging to previous site(s) that must be returned ("Stock to Return - [Site Name]") */
+  previousSitesStockToReturn?: TeamSiteStockBreakdown[];
+  /** Total unreturned units across previous site(s) ("Stock to Return") */
+  totalUnitsToReturnFromPreviousSites?: number;
+  /** Distinct unreturned items count across previous site(s) */
+  distinctItemsToReturnCount?: number;
+  /** All site breakdowns (Current Assigned Site + Previous Sites) kept strictly separated by site */
+  siteBreakdowns?: TeamSiteStockBreakdown[];
 }
 
 export type DocumentFormatGroupId =

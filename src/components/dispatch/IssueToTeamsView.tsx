@@ -34,6 +34,7 @@ import {
   matchItemByScannedCode,
   playScanBeep,
 } from '../../utils/barcodeUtils';
+import { getTemporaryAssignmentBadgeLabel } from '../../utils/teamAssignmentUtils';
 
 export const IssueToTeamsView: React.FC = () => {
   const {
@@ -395,7 +396,11 @@ export const IssueToTeamsView: React.FC = () => {
                 ) : (
                   availableTeams.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.teamName} (Lead: {t.teamLeaderName})
+                      {t.teamName}
+                      {t.assignmentStatus === 'Temporary'
+                        ? ` [${getTemporaryAssignmentBadgeLabel(selectedSite?.name || 'Site')}]`
+                        : ''}{' '}
+                      (Lead: {t.teamLeaderName})
                     </option>
                   ))
                 )}
@@ -410,12 +415,39 @@ export const IssueToTeamsView: React.FC = () => {
 
           {/* Selected Team Profile card */}
           {selectedTeam && (
-            <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 flex items-center justify-between">
-              <div>
-                <span className="font-bold text-slate-900">{selectedTeam.teamName}</span>
-                <div className="text-[11px] text-slate-600">Leader: {selectedTeam.teamLeaderName} · Crew: {selectedTeam.crewSize} · Phone: {selectedTeam.contactPhone}</div>
+            <div
+              className={`border rounded-lg p-3 text-xs flex flex-wrap items-center justify-between gap-2 ${
+                selectedTeam.assignmentStatus === 'Temporary'
+                  ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                  : 'bg-blue-50/60 border-blue-200 text-blue-900'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-slate-900">{selectedTeam.teamName}</span>
+                  {selectedTeam.assignmentStatus === 'Temporary' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-950 border border-amber-500/50">
+                      <Clock className="w-3 h-3 text-amber-700" />
+                      {getTemporaryAssignmentBadgeLabel(selectedSite?.name || 'Site')}
+                    </span>
+                  ) : selectedTeam.previousSiteName ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Permanent · Ref: {selectedTeam.previousSiteName}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-[11px] text-slate-600">
+                  Leader: {selectedTeam.teamLeaderName} · Crew: {selectedTeam.crewSize} · Phone: {selectedTeam.contactPhone}
+                  {selectedTeam.assignmentStatus === 'Temporary' && selectedTeam.previousSiteName
+                    ? ` · Previous Site: ${selectedTeam.previousSiteName}`
+                    : ''}
+                </div>
               </div>
-              <Users2 className="w-5 h-5 text-blue-600 shrink-0" />
+              <Users2
+                className={`w-5 h-5 shrink-0 ${
+                  selectedTeam.assignmentStatus === 'Temporary' ? 'text-amber-600' : 'text-blue-600'
+                }`}
+              />
             </div>
           )}
 

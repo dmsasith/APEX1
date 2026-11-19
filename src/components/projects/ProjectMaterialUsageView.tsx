@@ -67,6 +67,7 @@ import {
   matchCountryByDialPrefix,
 } from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
+import { getTemporaryAssignmentBadgeLabel } from '../../utils/teamAssignmentUtils';
 
 interface ItemEntryRow {
   itemId: string;
@@ -89,6 +90,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
     projectUsages,
     currentUser,
     getTeamInHandStock,
+    getTeamSiteInHandStock,
     logProjectMaterialUsage,
     updateProjectUsage,
     deleteProjectUsage,
@@ -168,9 +170,19 @@ export const ProjectMaterialUsageView: React.FC = () => {
     }
   }, [currentUser?.id, allowedSites, selectedSiteId, activeTeams, teams]);
 
-  // Teams for selected site
+  // Teams assigned to selected site (strictly teams assigned to this site can use this site's stock)
   const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
   const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
+
+  useEffect(() => {
+    if (availableTeams.length > 0 && !availableTeams.some((t) => t.id === selectedTeamId)) {
+      const nextTeam = availableTeams[0];
+      setSelectedTeamId(nextTeam.id);
+      setSupervisorName(nextTeam.teamLeaderName);
+    } else if (availableTeams.length === 0 && selectedTeamId !== '') {
+      setSelectedTeamId('');
+    }
+  }, [selectedSiteId, availableTeams, selectedTeamId]);
 
   // Section / Project Type Selection (Step 1)
   const [selectedSectionId, setSelectedSectionId] = useState<string>(activeProjectTypes[0]?.id || '');
@@ -396,8 +408,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [usageDate, setUsageDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [workDetails, setWorkDetails] = useState('');
 
-  // Team in-hand stock calculation
-  const teamInHand = selectedTeamId ? getTeamInHandStock(selectedTeamId) : null;
+  // Team in-hand stock calculation — STRICTLY isolated to selectedSiteId (never combined across sites)
+  const selectedSiteName = sites.find((s) => s.id === selectedSiteId)?.name || 'Selected Site';
+  const teamInHand =
+    selectedTeamId && selectedSiteId ? getTeamSiteInHandStock(selectedTeamId, selectedSiteId) : null;
+  const fullTeamInHandSummary = selectedTeamId ? getTeamInHandStock(selectedTeamId) : null;
+  const previousSitesStockToReturn = (fullTeamInHandSummary?.previousSitesStockToReturn || []).filter(
+    (grp) => grp.siteId !== selectedSiteId && grp.totalUnitsHeld > 0
+  );
   const eligibleItems = teamInHand?.items.filter((i) => i.currentInHand > 0) || [];
 
   // Multi-row items table
@@ -775,8 +793,17 @@ export const ProjectMaterialUsageView: React.FC = () => {
       const maxAllowed = inHandItem?.currentInHand || 0;
       if (totalRowDeducted > maxAllowed) {
         const itemInfo = items.find((itm) => itm.id === row.itemId);
+        const lockedInPrevSites = previousSitesStockToReturn
+          .map((grp) => {
+            const found = grp.items.find((i) => i.itemId === row.itemId && i.currentInHand > 0);
+            return found ? `${found.currentInHand} ${itemInfo?.unit || 'units'} under "Stock to Return - ${grp.siteName}"` : null;
+          })
+          .filter(Boolean);
+
         setErrorMsg(
-          `Total consumed + wastage for "${itemInfo?.itemName || row.itemId}" (${qty} used + ${wastageQty} wastage = ${totalRowDeducted}) exceeds ${currentTeam?.teamName || 'team'}'s in-hand balance (${maxAllowed} ${itemInfo?.unit || 'units'}). Issue stock to team first.`
+          lockedInPrevSites.length > 0
+            ? `Cannot use "${itemInfo?.itemName || row.itemId}" at ${selectedSiteName}: ${currentTeam?.teamName || 'Team'} only holds ${maxAllowed} ${itemInfo?.unit || 'units'} issued under ${selectedSiteName} (requested ${totalRowDeducted}). Note: ${lockedInPrevSites.join(', ')} belongs to their previous site and must be returned to that site — only stock issued at ${selectedSiteName} can be used at ${selectedSiteName}.`
+            : `Total consumed + wastage for "${itemInfo?.itemName || row.itemId}" (${qty} used + ${wastageQty} wastage = ${totalRowDeducted}) exceeds ${currentTeam?.teamName || 'team'}'s usable in-hand balance at ${selectedSiteName} (${maxAllowed} ${itemInfo?.unit || 'units'}). Issue stock to team under ${selectedSiteName} first.`
         );
         return;
       }
@@ -1870,11 +1897,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           {availableTeams.length === 0 ? (
                             <option value="">No Teams Assigned to this Site</option>
                           ) : (
-                            availableTeams.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.teamName} (Lead: {t.teamLeaderName})
-                              </option>
-                            ))
+                            availableTeams.map((t) => {
+                              const selSiteName =
+                                activeSites.find((s) => s.id === selectedSiteId)?.name || 'Site';
+                              const isPendingFromPrev = t.assignedSiteId !== selectedSiteId;
+                              return (
+                                <option key={t.id} value={t.id}>
+                                  {t.teamName}
+                                  {isPendingFromPrev
+                                    ? ` [Clearing Pending Stock on ${selSiteName}]`
+                                    : t.assignmentStatus === 'Temporary'
+                                    ? ` [${getTemporaryAssignmentBadgeLabel(selSiteName)}]`
+                                    : ''}{' '}
+                                  (Lead: {t.teamLeaderName})
+                                </option>
+                              );
+                            })
                           )}
                         </select>
                       </div>
@@ -2884,11 +2922,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           {availableTeams.length === 0 ? (
                             <option value="">No Teams Assigned to this Site</option>
                           ) : (
-                            availableTeams.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.teamName} (Lead: {t.teamLeaderName})
-                              </option>
-                            ))
+                            availableTeams.map((t) => {
+                              const selSiteName =
+                                activeSites.find((s) => s.id === selectedSiteId)?.name || 'Site';
+                              const isPendingFromPrev = t.assignedSiteId !== selectedSiteId;
+                              return (
+                                <option key={t.id} value={t.id}>
+                                  {t.teamName}
+                                  {isPendingFromPrev
+                                    ? ` [Clearing Pending Stock on ${selSiteName}]`
+                                    : t.assignmentStatus === 'Temporary'
+                                    ? ` [${getTemporaryAssignmentBadgeLabel(selSiteName)}]`
+                                    : ''}{' '}
+                                  (Lead: {t.teamLeaderName})
+                                </option>
+                              );
+                            })
                           )}
                         </select>
                       </div>
@@ -3112,6 +3161,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               {activeItems.map((itm) => {
                                 const custody = teamInHand?.items.find((x) => x.itemId === itm.id);
                                 const balance = custody?.currentInHand || 0;
+                                const prevSiteLocks = previousSitesStockToReturn
+                                  .map((grp) => {
+                                    const found = grp.items.find((x) => x.itemId === itm.id && x.currentInHand > 0);
+                                    return found ? `Stock to Return - ${grp.siteName}: ${found.currentInHand} ${itm.unit}` : null;
+                                  })
+                                  .filter(Boolean);
+                                const prevLockLabel =
+                                  prevSiteLocks.length > 0 ? ` [⚠️ ${prevSiteLocks.join(' | ')} — Cannot Use Here]` : '';
                                 const currentTargetProjId = projectEntryMode === 'existing' ? selectedProjectId : '';
                                 const focBal = currentTargetProjId ? getClientFreeStockBalance(currentTargetProjId, itm.id) : { remainingBalance: 0 };
                                 const focTag = focBal.remainingBalance > 0 ? ` [🎁 Client Free: ${formatNumber(focBal.remainingBalance)} ${itm.unit}]` : '';
@@ -3125,7 +3182,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 }
                                 return (
                                   <option key={itm.id} value={itm.id}>
-                                    [{itm.itemCode}] {itm.itemName}{resTag}{focTag} ({balance > 0 ? `Holds: ${balance} ${itm.unit}` : '0 in custody'})
+                                    [{itm.itemCode}] {itm.itemName}{resTag}{focTag} ({balance > 0 ? `${selectedSiteName}: ${balance} ${itm.unit}` : `0 at ${selectedSiteName}`})
+                                    {prevLockLabel}
                                   </option>
                                 );
                               })}
@@ -3355,45 +3413,118 @@ export const ProjectMaterialUsageView: React.FC = () => {
             </form>
           </div>
 
-          {/* In-Hand Balance Quick Reference (1 Col) */}
+          {/* In-Hand Balance Quick Reference (1 Col) — Strictly Site-Separated */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col">
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
               <Users2 className="w-4 h-4 text-teal-600" />
               <span>{currentTeam?.teamName || 'Team'} In-Hand Custody</span>
             </h2>
             <p className="text-[11px] text-slate-500 mb-3">
-              Real-time material custody held by this team before deduction.
+              Stock is strictly separated by site. Only stock issued under <strong>{selectedSiteName}</strong> can be used on this site.
             </p>
 
-            <div className="flex-1 overflow-y-auto max-h-[380px] space-y-2 pr-1">
-              {eligibleItems.length === 0 ? (
-                <div className="text-center py-8 text-xs text-slate-400">
-                  No active in-hand items currently held by {currentTeam?.teamName || 'this team'}.
-                </div>
-              ) : (
-                eligibleItems.map((e) => {
-                  const itm = items.find((x) => x.id === e.itemId);
-                  return (
-                    <div
-                      key={e.itemId}
-                      className="p-2.5 border border-slate-100 rounded-xl bg-slate-50 flex items-center justify-between"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="text-xs font-bold text-slate-800 truncate">{itm?.itemName}</div>
-                        <div className="text-[10px] text-slate-500 font-mono">
-                          {itm?.itemCode} · Category: {itm?.category}
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-xs font-black text-teal-700">
-                          {formatNumber(e.currentInHand)} {itm?.unit}
-                        </div>
-                        <div className="text-[10px] text-slate-400">In Custody</div>
-                      </div>
+            <div className="flex-1 overflow-y-auto max-h-[440px] space-y-3 pr-1">
+              {/* Section 1: Active Usable Stock at Selected Site */}
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 overflow-hidden">
+                <div className="px-3 py-2 bg-emerald-100/80 border-b border-emerald-200 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[11px] font-extrabold text-emerald-950 uppercase tracking-wide">
+                      {selectedSiteName} — Usable Site Stock
                     </div>
-                  );
-                })
-              )}
+                    <div className="text-[10px] text-emerald-800 font-medium">
+                      Available to use on {selectedSiteName} projects
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white font-mono text-[10px] font-extrabold shrink-0">
+                    {formatNumber(teamInHand?.totalUnitsHeld || 0)} Units
+                  </span>
+                </div>
+
+                <div className="p-2.5 space-y-2">
+                  {eligibleItems.length === 0 ? (
+                    <div className="text-center py-5 text-xs text-slate-400">
+                      No active in-hand items issued under <strong>{selectedSiteName}</strong> for {currentTeam?.teamName || 'this team'}.
+                    </div>
+                  ) : (
+                    eligibleItems.map((e) => {
+                      const itm = items.find((x) => x.id === e.itemId);
+                      return (
+                        <div
+                          key={e.itemId}
+                          className="p-2.5 border border-emerald-200/80 rounded-xl bg-white flex items-center justify-between shadow-2xs"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="text-xs font-bold text-slate-800 truncate">{itm?.itemName}</div>
+                            <div className="text-[10px] text-slate-500 font-mono">
+                              {itm?.itemCode} · Site: {selectedSiteName}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs font-black text-teal-700 font-mono">
+                              {formatNumber(e.currentInHand)} {itm?.unit}
+                            </div>
+                            <div className="text-[10px] text-emerald-700 font-semibold">Usable Here</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Section 2: Unreturned Stock from Previous Site(s) — Locked / Cannot Use Here */}
+              {previousSitesStockToReturn.map((prevGroup) => {
+                const heldItems = prevGroup.items.filter((i) => i.currentInHand > 0);
+                if (heldItems.length === 0) return null;
+                return (
+                  <div
+                    key={prevGroup.siteId}
+                    className="rounded-xl border-2 border-amber-300 bg-amber-50/60 overflow-hidden"
+                  >
+                    <div className="px-3 py-2 bg-amber-100 border-b border-amber-300 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[11px] font-extrabold text-amber-950 uppercase tracking-wide flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                          <span>Stock to Return - {prevGroup.siteName}</span>
+                        </div>
+                        <div className="text-[10px] text-amber-900 font-semibold">
+                          Unreturned stock from {prevGroup.siteName} · Cannot be used at {selectedSiteName}
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md bg-amber-700 text-white font-mono text-[10px] font-extrabold shrink-0">
+                        {formatNumber(prevGroup.totalUnitsHeld)} Units
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 space-y-1.5">
+                      {heldItems.map((e) => {
+                        const itm = items.find((x) => x.id === e.itemId);
+                        return (
+                          <div
+                            key={`${prevGroup.siteId}-${e.itemId}`}
+                            className="p-2 border border-amber-200 rounded-lg bg-white flex items-center justify-between"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <div className="text-xs font-bold text-slate-800 truncate">{itm?.itemName || e.itemName}</div>
+                              <div className="text-[10px] text-amber-800 font-mono font-semibold">
+                                {e.itemCode} · Stock to Return - {prevGroup.siteName}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-xs font-black text-amber-800 font-mono">
+                                {formatNumber(e.currentInHand)} {e.unit}
+                              </div>
+                              <div className="text-[9px] text-rose-700 font-bold uppercase">
+                                Return to {prevGroup.siteName}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

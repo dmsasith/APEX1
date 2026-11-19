@@ -31,6 +31,9 @@ import {
   Handshake,
   ScanLine,
   Printer,
+  ArrowRightLeft,
+  Clock,
+  History,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -63,6 +66,11 @@ import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
 import { ItemImageUploader } from '../common/ItemImageUploader';
 import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
+import { TeamTransferAndDetailsModal } from '../common/TeamTransferAndDetailsModal';
+import {
+  getTemporaryAssignmentBadgeLabel,
+  getTeamCompleteAssignmentHistory,
+} from '../../utils/teamAssignmentUtils';
 
 interface MasterRegistrationsViewProps {
   initialTab?: 'items' | 'sites' | 'users' | 'teams' | 'clients';
@@ -103,6 +111,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     clearAllTeams,
     getMainWarehouseStock,
     getTeamInHandStock,
+    getTeamSiteInHandStock,
+    transferTeamToSite,
+    promoteTeamAssignmentToPermanent,
     teamIssues,
     projectUsages,
     teamReturns,
@@ -159,6 +170,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [editingSiteUserIds, setEditingSiteUserIds] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [teamModalState, setTeamModalState] = useState<{
+    teamId: string;
+    tab: 'details' | 'transfer';
+  } | null>(null);
 
   const showToast = (msg: string) => {
     setSuccessToast(msg);
@@ -638,13 +653,23 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       return;
     }
 
+    const originalTeam = teams.find((t) => t.id === editingTeam.id);
+    const isSiteChanged = originalTeam && originalTeam.assignedSiteId !== editingTeam.assignedSiteId;
+    const targetSiteObj = activeSites.find((s) => s.id === editingTeam.assignedSiteId);
+
     const autoCrewSize = (editingTeam.members?.length || 0) + 1;
     updateTeam(editingTeam.id, {
       ...editingTeam,
       teamName: trimmedName,
       crewSize: autoCrewSize,
     });
-    showToast(`Field Team "${trimmedName}" updated (Crew Size: ${autoCrewSize}).`);
+    if (isSiteChanged && targetSiteObj) {
+      showToast(
+        `Team transferred: "Temporary Assigned to - ${targetSiteObj.name}". Confirm as Permanent once ready.`
+      );
+    } else {
+      showToast(`Field Team "${trimmedName}" updated (Crew Size: ${autoCrewSize}).`);
+    }
     setEditingTeam(null);
   };
 
@@ -699,11 +724,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleBulkDeleteTeams = () => {
     const teamsWithStock = selectedTeamIds
       .map((id) => activeTeams.find((t) => t.id === id))
-      .filter((t): t is Team => Boolean(t && getTeamInHandStock(t.id).totalUnitsHeld > 0));
+      .filter((t): t is Team => {
+        if (!t) return false;
+        const summary = getTeamInHandStock(t.id);
+        return summary.totalUnitsHeld > 0 || (summary.totalUnitsToReturnFromPreviousSites || 0) > 0;
+      });
 
     if (teamsWithStock.length > 0) {
       showToast(
-        `Cannot delete ${teamsWithStock.map((t) => `"${t.teamName}"`).join(', ')} while they still hold unreturned In-Hand Stock. Please log usage or return stock first.`
+        `Cannot delete ${teamsWithStock.map((t) => `"${t.teamName}"`).join(', ')} while they still hold unreturned In-Hand Stock or "Stock to Return" from a previous site. Please log usage or return stock first.`
       );
       return;
     }
@@ -767,9 +796,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   const handleDeleteTeam = (t: Team) => {
     const inHandSummary = getTeamInHandStock(t.id);
-    if (inHandSummary.totalUnitsHeld > 0) {
+    const prevToReturn = inHandSummary.totalUnitsToReturnFromPreviousSites || 0;
+    if (inHandSummary.totalUnitsHeld > 0 || prevToReturn > 0) {
+      const prevLabels = (inHandSummary.previousSitesStockToReturn || [])
+        .map((g) => `Stock to Return - ${g.siteName}: ${g.totalUnitsHeld} unit(s)`)
+        .join(', ');
       showToast(
-        `Cannot delete team "${t.teamName}" because they currently hold ${inHandSummary.totalUnitsHeld} unit(s) of unreturned In-Hand Stock (${inHandSummary.distinctItemsCount} item type(s)). Please log material usage or return stock first.`
+        `Cannot delete team "${t.teamName}" because they still hold unreturned stock (${inHandSummary.site.name}: ${inHandSummary.totalUnitsHeld} unit(s)${prevLabels ? ` | ${prevLabels}` : ''}). Please return or clear stock first.`
       );
       return;
     }
@@ -2183,6 +2216,51 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             </div>
                           )}
                         </div>
+
+                        {/* Assigned Field Teams on this Site (with Temporary / Permanent Indicator) */}
+                        <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                          <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none mb-1.5">
+                            Assigned Field Teams ({assignedTeams.length})
+                          </div>
+                          {assignedTeams.length === 0 ? (
+                            <div className="text-slate-400 dark:text-slate-500 italic">
+                              No field team currently assigned
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {assignedTeams.map((tm) => {
+                                const isTemp = tm.assignmentStatus === 'Temporary';
+                                return (
+                                  <div
+                                    key={tm.id}
+                                    onClick={() => setTeamModalState({ teamId: tm.id, tab: 'details' })}
+                                    className={`flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-colors ${
+                                      isTemp
+                                        ? 'bg-amber-50/90 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60 hover:bg-amber-100/80'
+                                        : 'bg-white/80 dark:bg-slate-900/70 border-slate-200/70 dark:border-slate-800 hover:border-emerald-400'
+                                    }`}
+                                    title="Click to view team assigned sites history & transfer details"
+                                  >
+                                    <span className="font-bold text-slate-900 dark:text-white break-words">
+                                      {tm.teamName}
+                                    </span>
+                                    {isTemp ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-400/50">
+                                        <Clock className="w-2.5 h-2.5" />
+                                        {getTemporaryAssignmentBadgeLabel(s.name)}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
+                                        <CheckCircle2 className="w-2.5 h-2.5" />
+                                        Permanent
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -2974,12 +3052,28 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     .map((part) => part[0]?.toUpperCase())
                     .join('');
 
+                  const isTemp = t.assignmentStatus === 'Temporary';
+                  const prevSiteId = t.pendingClearanceSiteId || t.previousSiteId;
+                  const prevSiteObj = prevSiteId ? activeSites.find((st) => st.id === prevSiteId) : undefined;
+                  const prevSiteName = t.pendingClearanceSiteName || t.previousSiteName || prevSiteObj?.name;
+                  const prevSitePendingUnits = prevSiteId
+                    ? getTeamSiteInHandStock(t.id, prevSiteId).totalUnitsHeld
+                    : 0;
+                  const completeHistory = getTeamCompleteAssignmentHistory(t, activeSites);
+                  const canPromote =
+                    isSuperAdmin(currentUser.role) ||
+                    isCentralOrAllSiteAdmin(currentUser.role) ||
+                    normalizeRole(currentUser.role) === 'Branch Admin' ||
+                    currentUser.username === 'admin';
+
                   return (
                     <div
                       key={t.id}
                       className={`relative overflow-hidden rounded-3xl p-5 sm:p-6 transition-all duration-200 flex flex-col justify-between group ${
                         isChecked
                           ? 'bg-emerald-50/40 dark:bg-slate-900 border-2 border-emerald-500 shadow-md'
+                          : isTemp
+                          ? 'bg-gradient-to-br from-amber-50/70 via-white/95 to-amber-50/40 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-amber-950/20 backdrop-blur-xl border-2 border-amber-400/80 dark:border-amber-600/60 shadow-[0_10px_28px_-12px_rgba(245,158,11,0.2)]'
                           : 'bg-gradient-to-br from-white/95 via-white/90 to-slate-50/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-800/80 backdrop-blur-xl border border-white/95 dark:border-slate-800 ring-1 ring-slate-900/[0.06] dark:ring-white/[0.06] shadow-[0_10px_28px_-12px_rgba(15,23,42,0.1)] hover:shadow-[0_18px_38px_-12px_rgba(16,185,129,0.18)] hover:border-emerald-400/50'
                       }`}
                     >
@@ -2987,7 +3081,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         {/* Header: Icon Badge + Squad Title + Actions */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
+                            <div
+                              className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center shrink-0 shadow-md ${
+                                isTemp
+                                  ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/20'
+                                  : 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-emerald-600/20'
+                              }`}
+                            >
                               <Users2 className="w-5 h-5" />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -3018,6 +3118,20 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               className="w-3.5 h-3.5 mx-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                             />
                             <button
+                              onClick={() => setTeamModalState({ teamId: t.id, tab: 'details' })}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                              title="View All Assigned Sites & Team Profile"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setTeamModalState({ teamId: t.id, tab: 'transfer' })}
+                              className="p-1.5 rounded-lg text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                              title="Transfer Team to Another Site"
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => setEditingTeam({ ...t })}
                               className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
                               title="Edit Team"
@@ -3034,8 +3148,69 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           </div>
                         </div>
 
+                        {/* TEMPORARY OR PERMANENT SITE ASSIGNMENT BANNER */}
+                        {isTemp ? (
+                          <div className="mt-3.5 rounded-2xl bg-amber-100/80 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700/70 p-3 space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-950 dark:text-amber-200">
+                                <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                {getTemporaryAssignmentBadgeLabel(s?.name || 'New Site')}
+                              </span>
+                              {prevSiteName && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-900/70 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800">
+                                  Previous Site: {prevSiteName}
+                                </span>
+                              )}
+                            </div>
+
+                            {prevSitePendingUnits > 0 ? (
+                              <div className="flex items-start gap-2 text-[11px] text-rose-800 dark:text-rose-300 bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 rounded-xl p-2">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                                <div>
+                                  <strong>{formatNumber(prevSitePendingUnits)} Units Unreturned</strong> on{' '}
+                                  <strong>{prevSiteName || 'Previous Site'}</strong>. Once cleared, this assignment automatically promotes to{' '}
+                                  <strong>Permanent (Ref: {prevSiteName})</strong>.
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <span className="text-[11px] text-amber-900/90 dark:text-amber-300/90 font-medium">
+                                  {prevSiteName
+                                    ? `0 pending stock on ${prevSiteName}. Ready to confirm as Permanent.`
+                                    : 'Temporary assignment ready for Permanent confirmation.'}
+                                </span>
+                                {canPromote && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const res = promoteTeamAssignmentToPermanent(t.id);
+                                      showToast(res.message);
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shadow-xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>
+                                      Confirm Permanent{prevSiteName ? ` (Ref: ${prevSiteName})` : ''}
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : t.previousSiteName ? (
+                          <div className="mt-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                            <span className="inline-flex items-center gap-1.5 font-extrabold text-emerald-800 dark:text-emerald-300">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              Permanent Assignment — {s?.name || 'Site'}
+                            </span>
+                            <span className="font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/50">
+                              Ref: {t.previousSiteName}
+                            </span>
+                          </div>
+                        ) : null}
+
                         {/* Structured Leader & Contact Surface */}
-                        <div className="mt-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-2.5">
+                        <div className="mt-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-2.5">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="flex items-start gap-2.5 min-w-0 flex-1">
                               <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-emerald-600 text-emerald-400 dark:text-white font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
@@ -3062,16 +3237,59 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
                               <div className="min-w-0 flex-1">
                                 <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
-                                  Assigned Base
+                                  Current Assigned Base ({isTemp ? 'Temporary' : 'Permanent'})
                                 </div>
                                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words mt-0.5">
-                                  {s?.name || 'Central HQ'}
+                                  {isTemp
+                                    ? getTemporaryAssignmentBadgeLabel(s?.name || 'Central HQ')
+                                    : s?.name || 'Central HQ'}
                                   {s?.location ? (
                                     <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
                                       {' '}· {s.location}
                                     </span>
                                   ) : null}
                                 </div>
+                              </div>
+                            </div>
+
+                            {/* All Assigned Sites History Summary */}
+                            <div className="pt-2 border-t border-slate-200/50 dark:border-slate-700/50 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                  <History className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                  All Assigned Sites ({completeHistory.length})
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setTeamModalState({ teamId: t.id, tab: 'details' })}
+                                  className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                                >
+                                  View Full History →
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {completeHistory.map((h) => {
+                                  const isCurrent = h.status === 'Active';
+                                  return (
+                                    <span
+                                      key={h.id}
+                                      onClick={() => setTeamModalState({ teamId: t.id, tab: 'details' })}
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer ${
+                                        isCurrent
+                                          ? h.assignmentType === 'Temporary'
+                                            ? 'bg-amber-100/90 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                                            : 'bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                      }`}
+                                    >
+                                      <span>{h.siteName}</span>
+                                      <span className="opacity-75">
+                                        ({h.assignmentType}
+                                        {isCurrent ? ' • Active' : ''})
+                                      </span>
+                                    </span>
+                                  );
+                                })}
                               </div>
                             </div>
 
@@ -3128,15 +3346,32 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       </div>
 
                       {/* Footer Telemetry Strip */}
-                      <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                      <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
                         <span className="text-slate-600 dark:text-slate-400">
-                          Total Strength: <strong className="font-mono tabular-nums text-slate-900 dark:text-white font-extrabold">{t.crewSize} Personnel</strong>
+                          Total Strength:{' '}
+                          <strong className="font-mono tabular-nums text-slate-900 dark:text-white font-extrabold">
+                            {t.crewSize} Personnel
+                          </strong>
                         </span>
 
-                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                          <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Active Squad</span>
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setTeamModalState({ teamId: t.id, tab: 'details' })}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <History className="w-3 h-3" />
+                            <span>Assigned Sites ({completeHistory.length})</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTeamModalState({ teamId: t.id, tab: 'transfer' })}
+                            className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 border border-amber-400/40 text-[11px] font-extrabold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <ArrowRightLeft className="w-3 h-3" />
+                            <span>Transfer Site</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -4833,6 +5068,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           }
         />
       )}
+
+      {/* Team Site Transfer & Complete Assigned Sites History Modal */}
+      {teamModalState && (() => {
+        const liveTeam = activeTeams.find((t) => t.id === teamModalState.teamId) || null;
+        return (
+          <TeamTransferAndDetailsModal
+            isOpen={Boolean(liveTeam)}
+            team={liveTeam}
+            initialTab={teamModalState.tab}
+            onClose={() => setTeamModalState(null)}
+          />
+        );
+      })()}
     </div>
   );
 };

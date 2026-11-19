@@ -716,6 +716,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
       case 'TEAM_STOCK_REPORT': {
         const rep = document.data;
+        const prevSitesToReturn = rep.previousSitesStockToReturn || [];
         return (
           <div className="space-y-4">
             <div className="text-center my-2">
@@ -727,7 +728,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     : { color: effectiveFormat.accentColor || '#0f172a' }
                 }
               >
-                {effectiveFormat.customMainTitle || 'FIELD TEAM IN-HAND STOCK BALANCE AUDIT'}
+                {effectiveFormat.customMainTitle || 'FIELD TEAM IN-HAND STOCK BALANCE AUDIT (SITE-SEPARATED)'}
               </h2>
             </div>
 
@@ -738,52 +739,128 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                 <div>Leader: {rep.team.teamLeaderName} | Crew Size: {rep.team.crewSize}</div>
               </div>
               <div>
-                <div className="font-bold text-slate-900">ATTACHED BRANCH SITE:</div>
+                <div className="font-bold text-slate-900">CURRENT ASSIGNED SITE:</div>
                 <div className="font-semibold text-slate-900">{rep.site.name}</div>
-                <div>Total Units in Hand: <strong className="font-mono">{formatNumber(rep.totalUnitsHeld)}</strong></div>
+                <div>
+                  {rep.site.name} Active Stock: <strong className="font-mono">{formatNumber(rep.totalUnitsHeld)} units</strong>
+                </div>
+                {prevSitesToReturn.map((prevGrp) => (
+                  <div key={prevGrp.siteId} className="text-amber-900 font-bold">
+                    Stock to Return - {prevGrp.siteName}: <strong className="font-mono">{formatNumber(prevGrp.totalUnitsHeld)} units</strong>
+                  </div>
+                ))}
               </div>
             </div>
 
+            {/* Section 1: Unreturned Stock from Previous Site(s) — Stock to Return - [Site Name] */}
+            {prevSitesToReturn.map((prevGrp) => (
+              <div key={prevGrp.siteId} className="border-2 border-black mb-3">
+                <div className="bg-amber-100 text-black font-extrabold text-[11px] px-2.5 py-1.5 border-b border-black flex items-center justify-between">
+                  <span>STOCK TO RETURN - {prevGrp.siteName.toUpperCase()} (CANNOT BE USED AT {rep.site.name.toUpperCase()})</span>
+                  <span className="font-mono">TOTAL TO RETURN: {formatNumber(prevGrp.totalUnitsHeld)} UNITS</span>
+                </div>
+                <table className="w-full text-[10.5px] border-collapse">
+                  <thead>
+                    <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
+                      <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
+                      <th className="py-1.5 px-2 w-[44%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
+                      <th className="py-1.5 px-1 w-[8%] border-r border-black/40 font-extrabold">{colUnit}</th>
+                      <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Issued ({prevGrp.siteName})</th>
+                      <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Returned ({prevGrp.siteName})</th>
+                      <th className="py-1.5 px-1.5 w-[14%] text-right font-extrabold">Stock to Return</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black text-black bg-white/90">
+                    {prevGrp.items
+                      .filter((r) => r.currentInHand > 0 || r.totalIssued > 0)
+                      .map((row, idx) => {
+                        const itm = items.find((i) => i.id === row.itemId || i.itemCode === row.itemCode);
+                        return (
+                          <tr key={`${prevGrp.siteId}-${row.itemId}`} className="h-6">
+                            <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                            <td className="py-1 px-2 text-left border-r border-black font-medium">
+                              <div className="flex items-center gap-2">
+                                {printWithImage && itm?.imageUrl && (
+                                  <img
+                                    src={itm.imageUrl}
+                                    alt={row.itemName}
+                                    className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                                  />
+                                )}
+                                <div>
+                                  <span className="font-mono font-bold mr-1.5">{row.itemCode}</span>
+                                  <span>{row.itemName}</span>
+                                  <span className="ml-1.5 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-amber-100 border border-black/40">
+                                    Stock to Return - {prevGrp.siteName}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-1 px-1 text-center font-mono border-r border-black">{row.unit}</td>
+                            <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
+                            <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
+                            <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+
+            {/* Section 2: Current Assigned Site Usable Stock */}
             <div className="border border-black">
+              <div className="bg-slate-100 text-black font-extrabold text-[11px] px-2.5 py-1.5 border-b border-black flex items-center justify-between">
+                <span>{rep.site.name.toUpperCase()} — ACTIVE SITE STOCK (USABLE ONLY AT {rep.site.name.toUpperCase()})</span>
+                <span className="font-mono">ACTIVE USABLE: {formatNumber(rep.totalUnitsHeld)} UNITS</span>
+              </div>
               <table className="w-full text-[10.5px] border-collapse">
                 <thead>
                   <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
                     <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
                     <th className="py-1.5 px-2 w-[44%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
                     <th className="py-1.5 px-1 w-[8%] border-r border-black/40 font-extrabold">{colUnit}</th>
-                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Total Issued</th>
-                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Total Returned</th>
-                    <th className="py-1.5 px-1.5 w-[14%] text-right font-extrabold">In Hand Balance</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Issued ({rep.site.name})</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Returned ({rep.site.name})</th>
+                    <th className="py-1.5 px-1.5 w-[14%] text-right font-extrabold">In Hand ({rep.site.name})</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black text-black bg-white/90">
-                  {rep.items.map((row, idx) => {
-                    const itm = items.find((i) => i.id === row.itemId || i.itemCode === row.itemCode);
-                    return (
-                      <tr key={row.itemId} className="h-6">
-                        <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                        <td className="py-1 px-2 text-left border-r border-black font-medium">
-                          <div className="flex items-center gap-2">
-                            {printWithImage && itm?.imageUrl && (
-                              <img
-                                src={itm.imageUrl}
-                                alt={row.itemName}
-                                className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
-                              />
-                            )}
-                            <div>
-                              <span className="font-mono font-bold mr-1.5">{row.itemCode}</span>
-                              <span>{row.itemName}</span>
+                  {rep.items.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-3 text-center text-slate-500 italic">
+                        No stock issued under {rep.site.name}.
+                      </td>
+                    </tr>
+                  ) : (
+                    rep.items.map((row, idx) => {
+                      const itm = items.find((i) => i.id === row.itemId || i.itemCode === row.itemCode);
+                      return (
+                        <tr key={row.itemId} className="h-6">
+                          <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                          <td className="py-1 px-2 text-left border-r border-black font-medium">
+                            <div className="flex items-center gap-2">
+                              {printWithImage && itm?.imageUrl && (
+                                <img
+                                  src={itm.imageUrl}
+                                  alt={row.itemName}
+                                  className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                                />
+                              )}
+                              <div>
+                                <span className="font-mono font-bold mr-1.5">{row.itemCode}</span>
+                                <span>{row.itemName}</span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-1 px-1 text-center font-mono border-r border-black">{row.unit}</td>
-                        <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
-                        <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
-                        <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="py-1 px-1 text-center font-mono border-r border-black">{row.unit}</td>
+                          <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
+                          <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
+                          <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

@@ -30,6 +30,7 @@ import {
   matchItemByScannedCode,
   playScanBeep,
 } from '../../utils/barcodeUtils';
+import { getTemporaryAssignmentBadgeLabel } from '../../utils/teamAssignmentUtils';
 
 export const TeamReturnsView: React.FC = () => {
   const {
@@ -42,6 +43,7 @@ export const TeamReturnsView: React.FC = () => {
     teamReturns,
     currentUser,
     getTeamInHandStock,
+    getTeamSiteInHandStock,
     getSiteItemStock,
     returnStockFromTeam,
     clearTeamReturns,
@@ -93,7 +95,13 @@ export const TeamReturnsView: React.FC = () => {
     }
   }, [isSiteRestricted, allowedSites, selectedSiteId]);
 
-  const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
+  // Include teams currently assigned to selectedSiteId OR teams that were transferred away and still hold pending stock on selectedSiteId
+  const availableTeams = activeTeams.filter(
+    (t) =>
+      t.assignedSiteId === selectedSiteId ||
+      t.pendingClearanceSiteId === selectedSiteId ||
+      getTeamSiteInHandStock(t.id, selectedSiteId).totalUnitsHeld > 0
+  );
 
   const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
   const [returnedBy, setReturnedBy] = useState('');
@@ -102,11 +110,27 @@ export const TeamReturnsView: React.FC = () => {
   const [returnQty, setReturnQty] = useState<number | ''>('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Get active in-hand stock for selected team
-  const teamInHand = selectedTeamId ? getTeamInHandStock(selectedTeamId) : null;
+  // Strictly get in-hand stock for selectedTeamId at selectedSiteId (never mix across sites)
+  const selectedSiteObj = activeSites.find((s) => s.id === selectedSiteId);
+  const selectedSiteName = selectedSiteObj?.name || 'Selected Site';
+  const siteSpecificInHand =
+    selectedTeamId && selectedSiteId ? getTeamSiteInHandStock(selectedTeamId, selectedSiteId) : null;
+  const globalTeamInHand = selectedTeamId ? getTeamInHandStock(selectedTeamId) : null;
+  const teamInHand = siteSpecificInHand;
   const eligibleItems = teamInHand?.items.filter((i) => i.currentInHand > 0) || [];
+  const otherSiteBreakdowns = (globalTeamInHand?.siteBreakdowns || []).filter(
+    (b) => b.siteId !== selectedSiteId && b.totalUnitsHeld > 0
+  );
 
   const [selectedItemId, setSelectedItemId] = useState<string>(eligibleItems[0]?.itemId || '');
+
+  useEffect(() => {
+    if (eligibleItems.length > 0 && !eligibleItems.some((i) => i.itemId === selectedItemId)) {
+      setSelectedItemId(eligibleItems[0].itemId);
+    } else if (eligibleItems.length === 0 && selectedItemId !== '') {
+      setSelectedItemId('');
+    }
+  }, [selectedSiteId, selectedTeamId, eligibleItems, selectedItemId]);
 
   useUsbBarcodeScanner({
     enabled: !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
@@ -133,10 +157,10 @@ export const TeamReturnsView: React.FC = () => {
     },
   });
 
-  // Handle Team Change
-  const handleTeamChange = (newTeamId: string) => {
+  // Handle Team Change — strictly scoped to forSiteId
+  const handleTeamChange = (newTeamId: string, forSiteId: string = selectedSiteId) => {
     setSelectedTeamId(newTeamId);
-    const summary = getTeamInHandStock(newTeamId);
+    const summary = getTeamSiteInHandStock(newTeamId, forSiteId);
     const firstEligible = summary.items.find((i) => i.currentInHand > 0);
     setSelectedItemId(firstEligible?.itemId || '');
     const t = activeTeams.find((x) => x.id === newTeamId) || teams.find((x) => x.id === newTeamId);
@@ -272,10 +296,17 @@ export const TeamReturnsView: React.FC = () => {
                   value={selectedSiteId}
                   disabled={isSingleSiteLocked}
                   onChange={(e) => {
-                    if (isSiteRestricted && !allowedSites.some((s) => s.id === e.target.value)) return;
-                    setSelectedSiteId(e.target.value);
-                    const newTeams = teams.filter((t) => t.assignedSiteId === e.target.value);
-                    if (newTeams[0]) handleTeamChange(newTeams[0].id);
+                    const nextSiteId = e.target.value;
+                    if (isSiteRestricted && !allowedSites.some((s) => s.id === nextSiteId)) return;
+                    setSelectedSiteId(nextSiteId);
+                    const newTeams = activeTeams.filter(
+                      (t) =>
+                        t.assignedSiteId === nextSiteId ||
+                        t.pendingClearanceSiteId === nextSiteId ||
+                        getTeamSiteInHandStock(t.id, nextSiteId).totalUnitsHeld > 0
+                    );
+                    if (newTeams[0]) handleTeamChange(newTeams[0].id, nextSiteId);
+                    else setSelectedTeamId('');
                   }}
                   className={`w-full px-3 py-2 border rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none transition-colors ${
                     isSingleSiteLocked
@@ -309,11 +340,22 @@ export const TeamReturnsView: React.FC = () => {
                   {availableTeams.length === 0 ? (
                     <option value="">No teams at this site</option>
                   ) : (
-                    availableTeams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.teamName}
-                      </option>
-                    ))
+                    availableTeams.map((t) => {
+                      const currentAssignedSiteName =
+                        activeSites.find((s) => s.id === t.assignedSiteId)?.name || 'New Site';
+                      const isTransferredPendingHere = t.assignedSiteId !== selectedSiteId;
+                      const unitsHeldAtThisSite = getTeamSiteInHandStock(t.id, selectedSiteId).totalUnitsHeld;
+                      return (
+                        <option key={t.id} value={t.id}>
+                          {t.teamName}
+                          {isTransferredPendingHere
+                            ? ` [Stock to Return - ${selectedSiteName}: ${unitsHeldAtThisSite} units · Assigned to ${currentAssignedSiteName}]`
+                            : t.assignmentStatus === 'Temporary'
+                            ? ` [${getTemporaryAssignmentBadgeLabel(selectedSiteName)} · ${unitsHeldAtThisSite} units]`
+                            : ` (${selectedSiteName}: ${unitsHeldAtThisSite} units)`}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
               </div>
@@ -466,21 +508,35 @@ export const TeamReturnsView: React.FC = () => {
           </form>
         </div>
 
-        {/* Right Info: Live Team In-Hand Snapshot */}
+        {/* Right Info: Live Team In-Hand Snapshot — Strictly Site-Separated */}
         <div className="lg:col-span-6 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
-              <h2 className="font-semibold text-sm text-slate-900">
-                In-Hand Custody for: {teamInHand?.team.teamName || 'Select Team'}
-              </h2>
-              <span className="text-xs font-mono text-slate-500">
-                {teamInHand?.totalUnitsHeld || 0} active units held
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+              <div>
+                <h2 className="font-semibold text-sm text-slate-900">
+                  In-Hand Custody for: {teamInHand?.team.teamName || 'Select Team'}
+                </h2>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {teamInHand && teamInHand.team.assignedSiteId !== selectedSiteId ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                      <AlertTriangle className="w-3 h-3 text-amber-700" />
+                      <span>Stock to Return - {selectedSiteName}</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                      <span>{selectedSiteName} — Active Site Stock</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                {selectedSiteName}: {formatNumber(teamInHand?.totalUnitsHeld || 0)} units
               </span>
             </div>
 
             {eligibleItems.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs italic">
-                This team does not currently hold any materials. All previous issues have either been returned or no dispatches have been made.
+              <div className="py-8 px-4 text-center text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                This team currently holds <strong>0 units</strong> issued from <strong>{selectedSiteName}</strong>.
               </div>
             ) : (
               <div className="border border-slate-200 rounded-lg overflow-hidden max-h-72 overflow-y-auto">
@@ -489,7 +545,11 @@ export const TeamReturnsView: React.FC = () => {
                     <tr>
                       <th className="py-2.5 px-3">Item Code</th>
                       <th className="py-2.5 px-3">Material Description</th>
-                      <th className="py-2.5 px-3 text-right">In-Hand</th>
+                      <th className="py-2.5 px-3 text-right">
+                        {teamInHand && teamInHand.team.assignedSiteId !== selectedSiteId
+                          ? `Stock to Return (${selectedSiteName})`
+                          : `In-Hand (${selectedSiteName})`}
+                      </th>
                       <th className="py-2.5 px-3 text-center">Yard Documented</th>
                     </tr>
                   </thead>
@@ -522,10 +582,74 @@ export const TeamReturnsView: React.FC = () => {
                 </table>
               </div>
             )}
+
+            {/* Separate Display for Stock Held Under Other Site(s) — Never Combined */}
+            {otherSiteBreakdowns.length > 0 && (
+              <div className="space-y-2.5 pt-2 border-t border-slate-200">
+                <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                  Separate Stock Held Under Other Site Branch(es) (Not Combinable)
+                </div>
+                {otherSiteBreakdowns.map((b) => {
+                  const canSwitchToSite = allowedSites.some((s) => s.id === b.siteId);
+                  return (
+                    <div
+                      key={b.siteId}
+                      className={`p-3 rounded-xl border ${
+                        b.isStockToReturn
+                          ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                          : 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div className="text-xs font-extrabold flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                          <span>
+                            {b.isStockToReturn
+                              ? `Stock to Return - ${b.siteName}`
+                              : `${b.siteName} — Active Site Stock`}
+                          </span>
+                          <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-white border border-amber-300">
+                            {formatNumber(b.totalUnitsHeld)} units
+                          </span>
+                        </div>
+                        {canSwitchToSite && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSiteId(b.siteId);
+                              handleTeamChange(selectedTeamId, b.siteId);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-[10px] font-extrabold transition cursor-pointer"
+                          >
+                            Switch Site to {b.siteName} to Return
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {b.items
+                          .filter((i) => i.currentInHand > 0)
+                          .map((itm) => (
+                            <span
+                              key={`${b.siteId}-${itm.itemId}`}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-amber-200 text-[11px] font-medium text-slate-800"
+                            >
+                              <strong className="font-mono">{itm.itemCode}</strong> {itm.itemName}:{' '}
+                              <strong className="font-mono text-amber-900">
+                                {formatNumber(itm.currentInHand)} {itm.unit}
+                              </strong>
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
-            <strong>System Rule:</strong> Returns marked as <em>Good / Restock</em> immediately re-enter the Site Branch available pool and become eligible for dispatch to other teams.
+            <strong>System Rule:</strong> Stock is strictly isolated per site. Items issued under a previous site (
+            <strong>Stock to Return - [Site Name]</strong>) must be returned to that specific site and are never mixed with the new site&apos;s stock.
           </div>
         </div>
       </div>

@@ -52,9 +52,15 @@ import {
   normalizeRole,
   isUserAllSites,
   getUserAssignedSiteIds,
+  TeamSiteAssignmentHistoryRecord,
+  TeamSiteStockBreakdown,
 } from '../types';
 import { DEFAULT_SECTION_FORMATS, deriveCompanyMonogram } from '../utils/formatAnalyzerUtils';
 import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
+import {
+  extractBaseTeamName,
+  formatPermanentTransferredTeamName,
+} from '../utils/teamAssignmentUtils';
 import {
   INITIAL_CONFIG,
   INITIAL_SITES,
@@ -269,6 +275,24 @@ interface StockContextType {
   updateUser: (id: string, updates: Partial<User>) => void;
   updateItem: (id: string, updates: Partial<Item>) => void;
   updateTeam: (id: string, updates: Partial<Team>) => void;
+  transferTeamToSite: (
+    teamId: string,
+    targetSiteId: string,
+    notes?: string
+  ) => {
+    success: boolean;
+    message: string;
+    pendingStockUnitsOnPrevSite: number;
+    assignmentStatus: 'Temporary' | 'Permanent';
+  };
+  promoteTeamAssignmentToPermanent: (
+    teamId: string,
+    forceOverride?: boolean
+  ) => {
+    success: boolean;
+    message: string;
+  };
+  getTeamSiteInHandStock: (teamId: string, siteId?: string) => TeamInHandSummary;
   updateProject: (id: string, updates: Partial<Project>) => void;
 
   // Soft Delete (Move to Recycle Bin)
@@ -5661,10 +5685,32 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const addTeam = (teamData: Omit<Team, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>): Team => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const nowIso = new Date().toISOString();
+    const initialSiteName = sites.find((s) => s.id === teamData.assignedSiteId)?.name || 'Unassigned';
+    const cleanBaseName = extractBaseTeamName(teamData.teamName, teamData.baseTeamName);
+    const initialHistoryRecord: TeamSiteAssignmentHistoryRecord = {
+      id: `tsh-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      siteId: teamData.assignedSiteId,
+      siteName: initialSiteName,
+      assignmentType: teamData.assignmentStatus || 'Permanent',
+      status: 'Active',
+      pendingStockUnitsAtTransfer: 0,
+      stockCleared: true,
+      assignedAt: nowIso,
+      assignedBy: currentUser?.fullName || 'System Admin',
+      notes: `Initial team registration at ${initialSiteName}`,
+    };
+
     const newTeam: Team = {
       ...teamData,
+      baseTeamName: cleanBaseName,
+      assignmentStatus: teamData.assignmentStatus || 'Permanent',
+      siteAssignmentHistory:
+        teamData.siteAssignmentHistory && teamData.siteAssignmentHistory.length > 0
+          ? teamData.siteAssignmentHistory
+          : [initialHistoryRecord],
       id: `team-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
       isDeleted: false,
     };
     setTeams((prev) => {
@@ -5676,11 +5722,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return updated;
     });
-    const siteName = sites.find((s) => s.id === newTeam.assignedSiteId)?.name || 'Unassigned';
     addAuditLog(
       'MASTER_TEAM_CREATED',
       newTeam.teamName,
-      siteName,
+      initialSiteName,
       `Field team registered: ${newTeam.teamName} (Lead: ${newTeam.teamLeaderName}, Crew: ${newTeam.crewSize})`
     );
     return newTeam;
@@ -6049,10 +6094,410 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  // Compute site-specific or total in-hand stock for a team
+  const computeTeamSiteInHandUnits = useCallback(
+    (teamId: string, targetSiteId?: string): number => {
+      const issuesForTeam = teamIssues.filter(
+        (iss) => iss.teamId === teamId && (!targetSiteId || iss.siteId === targetSiteId)
+      );
+      const returnsForTeam = teamReturns.filter(
+        (ret) => ret.teamId === teamId && (!targetSiteId || ret.siteId === targetSiteId)
+      );
+      const usagesForTeam = projectUsages.filter(
+        (pu) => pu.teamId === teamId && !pu.isDeleted && (!targetSiteId || pu.siteId === targetSiteId)
+      );
+
+      const itemTotals = new Map<string, { issued: number; returned: number; used: number; wasted: number }>();
+
+      issuesForTeam.forEach((iss) => {
+        iss.items.forEach((row) => {
+          const cur = itemTotals.get(row.itemId) || { issued: 0, returned: 0, used: 0, wasted: 0 };
+          cur.issued += Number(row.quantity || 0);
+          itemTotals.set(row.itemId, cur);
+        });
+      });
+
+      returnsForTeam.forEach((ret) => {
+        const cur = itemTotals.get(ret.itemId) || { issued: 0, returned: 0, used: 0, wasted: 0 };
+        cur.returned += Number(ret.quantity || 0);
+        itemTotals.set(ret.itemId, cur);
+      });
+
+      usagesForTeam.forEach((pu) => {
+        pu.items.forEach((row) => {
+          const cur = itemTotals.get(row.itemId) || { issued: 0, returned: 0, used: 0, wasted: 0 };
+          cur.used += Number(row.quantity || 0);
+          cur.wasted += Number(row.wastageQuantity || 0);
+          itemTotals.set(row.itemId, cur);
+        });
+      });
+
+      let held = 0;
+      itemTotals.forEach((v) => {
+        held += Math.max(0, v.issued - v.returned - v.used - v.wasted);
+      });
+      return held;
+    },
+    [teamIssues, teamReturns, projectUsages]
+  );
+
+  const transferTeamToSite = (
+    teamId: string,
+    targetSiteId: string,
+    notes?: string
+  ): {
+    success: boolean;
+    message: string;
+    pendingStockUnitsOnPrevSite: number;
+    assignmentStatus: 'Temporary' | 'Permanent';
+  } => {
+    const team = teams.find((t) => t.id === teamId);
+    if (!team) {
+      return {
+        success: false,
+        message: 'Selected team was not found.',
+        pendingStockUnitsOnPrevSite: 0,
+        assignmentStatus: 'Permanent',
+      };
+    }
+
+    if (team.assignedSiteId === targetSiteId) {
+      return {
+        success: false,
+        message: 'Team is already assigned to this site branch.',
+        pendingStockUnitsOnPrevSite: 0,
+        assignmentStatus: team.assignmentStatus || 'Permanent',
+      };
+    }
+
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const prevSiteId = team.assignedSiteId;
+    const prevSite = sites.find((s) => s.id === prevSiteId);
+    const prevSiteName = prevSite?.name || 'Previous Site';
+    const nextSite = sites.find((s) => s.id === targetSiteId);
+    const nextSiteName = nextSite?.name || 'New Site';
+    const nowIso = new Date().toISOString();
+
+    // Check unreturned / pending stock on current site (or overall if legacy records lack siteId)
+    const siteSpecificPending = computeTeamSiteInHandUnits(teamId, prevSiteId);
+    const totalPending = computeTeamSiteInHandUnits(teamId);
+    const pendingUnitsOnPrevSite = siteSpecificPending > 0 ? siteSpecificPending : totalPending;
+    const cleanBase = extractBaseTeamName(team.teamName, team.baseTeamName);
+
+    // Build updated assignment history
+    const existingHistory: TeamSiteAssignmentHistoryRecord[] =
+      team.siteAssignmentHistory && team.siteAssignmentHistory.length > 0
+        ? team.siteAssignmentHistory.map((h) =>
+            h.status === 'Active'
+              ? {
+                  ...h,
+                  status: 'Completed / Transferred' as const,
+                  endedAt: nowIso,
+                  stockCleared: pendingUnitsOnPrevSite <= 0,
+                }
+              : h
+          )
+        : [
+            {
+              id: `tsh-prev-${Date.now()}`,
+              siteId: prevSiteId,
+              siteName: prevSiteName,
+              assignmentType: team.assignmentStatus || 'Permanent',
+              status: 'Completed / Transferred',
+              pendingStockUnitsAtTransfer: pendingUnitsOnPrevSite,
+              stockCleared: pendingUnitsOnPrevSite <= 0,
+              assignedAt: team.createdAt,
+              endedAt: nowIso,
+              notes: `Prior assignment at ${prevSiteName}`,
+            },
+          ];
+
+    const newHistoryEntry: TeamSiteAssignmentHistoryRecord = {
+      id: `tsh-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      siteId: targetSiteId,
+      siteName: nextSiteName,
+      assignmentType: 'Temporary',
+      status: 'Active',
+      previousSiteId: prevSiteId,
+      previousSiteName: prevSiteName,
+      pendingStockUnitsAtTransfer: pendingUnitsOnPrevSite,
+      stockCleared: pendingUnitsOnPrevSite <= 0,
+      assignedAt: nowIso,
+      assignedBy: currentUser?.fullName || 'Branch Admin',
+      notes:
+        notes?.trim() ||
+        (pendingUnitsOnPrevSite > 0
+          ? `Temporary Assigned to - ${nextSiteName} (${pendingUnitsOnPrevSite} unit(s) pending clearance at ${prevSiteName})`
+          : `Temporary Assigned to - ${nextSiteName} (0 pending stock at ${prevSiteName} — ready for permanent confirmation)`),
+    };
+
+    const transferUpdates: Partial<Team> = {
+      baseTeamName: cleanBase,
+      teamName: cleanBase, // While temporary, display base name + "Temporary Assigned to - [New Site Name]" badge
+      assignedSiteId: targetSiteId,
+      assignmentStatus: 'Temporary',
+      previousSiteId: prevSiteId,
+      previousSiteName: prevSiteName,
+      pendingClearanceSiteId: pendingUnitsOnPrevSite > 0 ? prevSiteId : undefined,
+      pendingClearanceSiteName: pendingUnitsOnPrevSite > 0 ? prevSiteName : undefined,
+      temporaryAssignedAt: nowIso,
+      siteAssignmentHistory: [...existingHistory, newHistoryEntry],
+    };
+
+    setTeams((prev) => {
+      const updated = prev.map((t) => (t.id === teamId ? { ...t, ...transferUpdates } : t));
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
+
+    const msg =
+      pendingUnitsOnPrevSite > 0
+        ? `Team "${cleanBase}" transferred as Temporary Assigned to - ${nextSiteName}. (${pendingUnitsOnPrevSite} unit(s) still pending clearance at ${prevSiteName}; will auto-promote to Permanent with Ref: ${prevSiteName} once cleared).`
+        : `Team "${cleanBase}" transferred as Temporary Assigned to - ${nextSiteName} (No pending stock at ${prevSiteName}). Branch Admin or System Admin can now confirm Permanent assignment (Ref: ${prevSiteName}).`;
+
+    addAuditLog(
+      'MASTER_TEAM_UPDATED',
+      cleanBase,
+      nextSiteName,
+      msg
+    );
+
+    return {
+      success: true,
+      message: msg,
+      pendingStockUnitsOnPrevSite: pendingUnitsOnPrevSite,
+      assignmentStatus: 'Temporary',
+    };
+  };
+
+  const promoteTeamAssignmentToPermanent = (
+    teamId: string,
+    forceOverride: boolean = false
+  ): {
+    success: boolean;
+    message: string;
+  } => {
+    const team = teams.find((t) => t.id === teamId);
+    if (!team) {
+      return { success: false, message: 'Team not found.' };
+    }
+
+    const prevSiteId = team.pendingClearanceSiteId || team.previousSiteId;
+    const prevSite = sites.find((s) => s.id === prevSiteId);
+    const prevSiteName =
+      team.previousSiteName || team.pendingClearanceSiteName || prevSite?.name || '';
+    const currentSite = sites.find((s) => s.id === team.assignedSiteId);
+    const currentSiteName = currentSite?.name || 'Current Site';
+
+    const pendingOnPrev = prevSiteId
+      ? computeTeamSiteInHandUnits(teamId, prevSiteId)
+      : computeTeamSiteInHandUnits(teamId);
+
+    if (pendingOnPrev > 0 && !forceOverride) {
+      return {
+        success: false,
+        message: `Cannot promote "${team.teamName}" to Permanent yet: ${pendingOnPrev} unit(s) of stock remain uncleared on previous site (${prevSiteName || 'Previous Site'}). Clear or return the previous site stock first.`,
+      };
+    }
+
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const nowIso = new Date().toISOString();
+    const cleanBase = extractBaseTeamName(team.teamName, team.baseTeamName);
+    const permanentTeamName = prevSiteName
+      ? formatPermanentTransferredTeamName(cleanBase, prevSiteName)
+      : cleanBase;
+
+    const updatedHistory: TeamSiteAssignmentHistoryRecord[] = (
+      team.siteAssignmentHistory && team.siteAssignmentHistory.length > 0
+        ? team.siteAssignmentHistory
+        : []
+    ).map((h) => {
+      if (h.status === 'Active' && h.siteId === team.assignedSiteId) {
+        return {
+          ...h,
+          assignmentType: 'Permanent' as const,
+          stockCleared: true,
+          stockClearedAt: nowIso,
+          promotedToPermanentAt: nowIso,
+          promotedBy: currentUser?.fullName || 'Branch Admin',
+          notes: prevSiteName
+            ? `Promoted to Permanent at ${currentSiteName} (Ref: ${prevSiteName})`
+            : `Confirmed Permanent at ${currentSiteName}`,
+        };
+      }
+      if (prevSiteId && h.siteId === prevSiteId) {
+        return {
+          ...h,
+          stockCleared: true,
+          stockClearedAt: h.stockClearedAt || nowIso,
+        };
+      }
+      return h;
+    });
+
+    const updates: Partial<Team> = {
+      baseTeamName: cleanBase,
+      teamName: permanentTeamName,
+      assignmentStatus: 'Permanent',
+      pendingClearanceSiteId: undefined,
+      pendingClearanceSiteName: undefined,
+      permanentConfirmedAt: nowIso,
+      permanentConfirmedBy: currentUser?.fullName || 'Branch Admin',
+      siteAssignmentHistory: updatedHistory,
+    };
+
+    setTeams((prev) => {
+      const updated = prev.map((t) => (t.id === teamId ? { ...t, ...updates } : t));
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
+
+    const msg = `Team assignment promoted to PERMANENT at ${currentSiteName}: "${permanentTeamName}".`;
+    addAuditLog('MASTER_TEAM_UPDATED', permanentTeamName, currentSiteName, msg);
+
+    return {
+      success: true,
+      message: msg,
+    };
+  };
+
+  // Auto-promote temporary teams whose pending clearance stock on their previous site has now dropped to 0
+  useEffect(() => {
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const teamsToPromote = teams.filter((t) => {
+      if (t.isDeleted) return false;
+      if (t.assignmentStatus !== 'Temporary') return false;
+      // Only auto-promote teams that were waiting on pendingClearanceSiteId stock clearance
+      if (!t.pendingClearanceSiteId) return false;
+      const remainingPrevStock = computeTeamSiteInHandUnits(t.id, t.pendingClearanceSiteId);
+      const remainingTotalStock = computeTeamSiteInHandUnits(t.id);
+      return remainingPrevStock <= 0 && remainingTotalStock <= 0;
+    });
+
+    if (teamsToPromote.length === 0) return;
+
+    const nowIso = new Date().toISOString();
+    setTeams((prev) => {
+      let changed = false;
+      const updated = prev.map((t) => {
+        const match = teamsToPromote.find((tp) => tp.id === t.id);
+        if (!match) return t;
+        changed = true;
+        const prevSiteName =
+          t.previousSiteName ||
+          t.pendingClearanceSiteName ||
+          sites.find((s) => s.id === (t.pendingClearanceSiteId || t.previousSiteId))?.name ||
+          '';
+        const cleanBase = extractBaseTeamName(t.teamName, t.baseTeamName);
+        const permanentName = prevSiteName
+          ? formatPermanentTransferredTeamName(cleanBase, prevSiteName)
+          : cleanBase;
+
+        const nextHistory = (t.siteAssignmentHistory || []).map((h) => {
+          if (h.status === 'Active' && h.siteId === t.assignedSiteId) {
+            return {
+              ...h,
+              assignmentType: 'Permanent' as const,
+              stockCleared: true,
+              stockClearedAt: nowIso,
+              promotedToPermanentAt: nowIso,
+              promotedBy: 'Auto-Clearance Engine',
+              notes: `Previous site (${prevSiteName}) stock cleared — Auto-promoted to Permanent (Ref: ${prevSiteName})`,
+            };
+          }
+          if (t.pendingClearanceSiteId && h.siteId === t.pendingClearanceSiteId) {
+            return {
+              ...h,
+              stockCleared: true,
+              stockClearedAt: nowIso,
+            };
+          }
+          return h;
+        });
+
+        return {
+          ...t,
+          baseTeamName: cleanBase,
+          teamName: permanentName,
+          assignmentStatus: 'Permanent' as const,
+          pendingClearanceSiteId: undefined,
+          pendingClearanceSiteName: undefined,
+          permanentConfirmedAt: nowIso,
+          permanentConfirmedBy: currentUser?.fullName || 'Auto Stock Clearance',
+          siteAssignmentHistory: nextHistory,
+        };
+      });
+
+      if (changed) {
+        saveTenantData(activeTenantId, 'teams', updated);
+        const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+        if (isMaster) {
+          writeTeamsToFirebase(updated).catch(console.warn);
+        }
+      }
+      return updated;
+    });
+  }, [teamIssues, teamReturns, projectUsages, teams, sites, computeTeamSiteInHandUnits, currentTenantId, currentUser]);
+
   const updateTeam = (id: string, updates: Partial<Team>) => {
+    const existingTeam = teams.find((t) => t.id === id);
+    // If assignedSiteId is changing via updateTeam, route through transferTeamToSite so Temporary/Permanent rules & history are always enforced
+    if (
+      existingTeam &&
+      updates.assignedSiteId &&
+      updates.assignedSiteId !== existingTeam.assignedSiteId &&
+      !updates.siteAssignmentHistory
+    ) {
+      const { assignedSiteId: nextSiteId, ...otherUpdates } = updates;
+      const activeTenantId = currentTenantIdRef.current || currentTenantId;
+      if (Object.keys(otherUpdates).length > 0) {
+        setTeams((prev) => {
+          const updated = prev.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  ...otherUpdates,
+                  baseTeamName: extractBaseTeamName(
+                    otherUpdates.teamName || t.teamName,
+                    otherUpdates.baseTeamName || t.baseTeamName
+                  ),
+                }
+              : t
+          );
+          saveTenantData(activeTenantId, 'teams', updated);
+          return updated;
+        });
+      }
+      transferTeamToSite(id, nextSiteId);
+      return;
+    }
+
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setTeams((prev) => {
-      const updated = prev.map((t) => (t.id === id ? { ...t, ...updates } : t));
+      const updated = prev.map((t) => {
+        if (t.id !== id) return t;
+        const nextBase = updates.teamName
+          ? extractBaseTeamName(updates.teamName, updates.baseTeamName || t.baseTeamName)
+          : t.baseTeamName;
+        const nextTeamName =
+          updates.teamName && t.assignmentStatus === 'Permanent' && t.previousSiteName
+            ? formatPermanentTransferredTeamName(nextBase || updates.teamName, t.previousSiteName)
+            : updates.teamName || t.teamName;
+        return {
+          ...t,
+          ...updates,
+          baseTeamName: nextBase,
+          teamName: nextTeamName,
+        };
+      });
       saveTenantData(activeTenantId, 'teams', updated);
       const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
@@ -7303,6 +7748,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       );
     }
 
+    // ENFORCE RULE: Team can only return stock to the specific site that issued it
+    const siteCustody = computeTeamInHandStock(data.teamId, data.siteId);
+    const heldAtThisSite = siteCustody.items.find((i) => i.itemId === data.itemId)?.currentInHand || 0;
+    if (Number(data.quantity) > heldAtThisSite) {
+      const targetSiteName = sites.find((s) => s.id === data.siteId)?.name || 'this site';
+      throw new Error(
+        `Return blocked: Team only holds ${heldAtThisSite} unit(s) of this item issued under "${targetSiteName}". Stock must be returned to the exact site from which it was issued.`
+      );
+    }
+
     const nextNum = teamReturns.length + 1;
     const returnVoucherNumber = `RV-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
     const newReturn: TeamReturn = {
@@ -7345,6 +7800,44 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const teamName = data.teamName || team?.teamName || 'Field Team';
     const projName = data.projectName || proj?.projectName || 'Project';
     const leaderName = data.supervisorOrLeaderName || data.supervisorOrLeader || team?.teamLeaderName || 'Supervisor';
+
+    // ENFORCE STRICT SITE-ISOLATED TEAM CUSTODY:
+    // A team can ONLY use stock that was issued to them under `data.siteId`.
+    // Stock held from any previous site ("Stock to Return - [Previous Site Name]") CANNOT be used on the new site.
+    const siteCustody = computeTeamInHandStock(data.teamId, data.siteId);
+    const fullTeamCustody = computeTeamInHandStock(data.teamId);
+    for (const row of data.items) {
+      const neededQty = Number(row.quantity || 0) + Number(row.wastageQuantity || 0);
+      if (neededQty <= 0) continue;
+      const heldAtThisSite = siteCustody.items.find((i) => i.itemId === row.itemId)?.currentInHand || 0;
+      if (neededQty > heldAtThisSite) {
+        const itmObj = items.find((i) => i.id === row.itemId);
+        const prevGroupWithItem = (fullTeamCustody.previousSitesStockToReturn || []).find((g) =>
+          g.items.some((gi) => gi.itemId === row.itemId && gi.currentInHand > 0)
+        );
+        if (prevGroupWithItem) {
+          const prevItem = prevGroupWithItem.items.find((gi) => gi.itemId === row.itemId);
+          throw new Error(
+            `Site Stock Isolation Rule: "${itmObj?.itemName || row.itemId}" has only ${heldAtThisSite} ${
+              itmObj?.unit || 'units'
+            } issued under "${site?.name || 'current site'}" (Requested: ${neededQty}). The ${
+              prevItem?.currentInHand || 0
+            } ${itmObj?.unit || 'units'} under "${prevGroupWithItem.sectionLabel}" belong to ${
+              prevGroupWithItem.siteName
+            } and must be returned to ${prevGroupWithItem.siteName} — they cannot be used at "${
+              site?.name || 'current site'
+            }".`
+          );
+        }
+        throw new Error(
+          `Insufficient stock under "${site?.name || 'selected site'}": ${teamName} holds ${heldAtThisSite} ${
+            itmObj?.unit || 'units'
+          } of "${itmObj?.itemName || row.itemId}" at "${site?.name || 'this site'}", but ${neededQty} ${
+            itmObj?.unit || 'units'
+          } was entered.`
+        );
+      }
+    }
 
     const newUsage: ProjectMaterialUsage = {
       ...data,
@@ -8881,7 +9374,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     [siteItemStockCache]
   );
 
-  const computeTeamInHandStock = (teamId: string): TeamInHandSummary => {
+  const computeTeamInHandStock = (teamId: string, filterSiteId?: string): TeamInHandSummary => {
     const team = teams.find((t) => t.id === teamId) || {
       id: teamId,
       teamName: 'Unknown Team',
@@ -8891,106 +9384,225 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       crewSize: 0,
       createdAt: '',
     };
-    const site = sites.find((s) => s.id === team.assignedSiteId) || {
-      id: '',
-      name: 'Unassigned Site',
-      isMainWarehouse: false,
-      supervisorName: '',
-      location: '',
-      contactNumber: '',
-      createdAt: '',
+
+    const resolveSiteObj = (sId: string): Site =>
+      sites.find((s) => s.id === sId) || {
+        id: sId || '',
+        name:
+          (sId && sId === team.previousSiteId && team.previousSiteName) ||
+          (sId && sId === team.pendingClearanceSiteId && team.pendingClearanceSiteName) ||
+          'Unassigned Site',
+        isMainWarehouse: false,
+        supervisorName: '',
+        location: '',
+        contactNumber: '',
+        createdAt: '',
+      };
+
+    const buildSingleSiteBreakdown = (
+      targetSiteId: string,
+      isCurrentAssignedSite: boolean
+    ): TeamSiteStockBreakdown => {
+      const sObj = resolveSiteObj(targetSiteId);
+      const fallbackSiteId = team.previousSiteId || team.assignedSiteId;
+
+      const issuesForSite = teamIssues.filter(
+        (iss) => iss.teamId === teamId && (iss.siteId || fallbackSiteId) === targetSiteId
+      );
+      const returnsForSite = teamReturns.filter(
+        (ret) => ret.teamId === teamId && (ret.siteId || fallbackSiteId) === targetSiteId
+      );
+      const usagesForSite = projectUsages.filter(
+        (pu) => pu.teamId === teamId && !pu.isDeleted && (pu.siteId || fallbackSiteId) === targetSiteId
+      );
+
+      const itemMap = new Map<
+        string,
+        { totalIssued: number; totalReturned: number; totalUsed: number; totalWastage: number; lastDate: string }
+      >();
+
+      issuesForSite.forEach((issue) => {
+        issue.items.forEach((itemRow) => {
+          const existing = itemMap.get(itemRow.itemId) || {
+            totalIssued: 0,
+            totalReturned: 0,
+            totalUsed: 0,
+            totalWastage: 0,
+            lastDate: issue.issueDate,
+          };
+          existing.totalIssued += Number(itemRow.quantity);
+          if (new Date(issue.issueDate) > new Date(existing.lastDate)) {
+            existing.lastDate = issue.issueDate;
+          }
+          itemMap.set(itemRow.itemId, existing);
+        });
+      });
+
+      returnsForSite.forEach((ret) => {
+        const existing = itemMap.get(ret.itemId) || {
+          totalIssued: 0,
+          totalReturned: 0,
+          totalUsed: 0,
+          totalWastage: 0,
+          lastDate: ret.returnDate,
+        };
+        existing.totalReturned += Number(ret.quantity);
+        itemMap.set(ret.itemId, existing);
+      });
+
+      usagesForSite.forEach((pu) => {
+        const uDate = pu.date || pu.usageDate || '';
+        pu.items.forEach((itemRow) => {
+          const existing = itemMap.get(itemRow.itemId) || {
+            totalIssued: 0,
+            totalReturned: 0,
+            totalUsed: 0,
+            totalWastage: 0,
+            lastDate: uDate,
+          };
+          existing.totalUsed += Number(itemRow.quantity || 0);
+          existing.totalWastage += Number(itemRow.wastageQuantity || 0);
+          if (new Date(uDate) > new Date(existing.lastDate)) {
+            existing.lastDate = uDate;
+          }
+          itemMap.set(itemRow.itemId, existing);
+        });
+      });
+
+      const balanceItems: TeamInHandBalanceItem[] = [];
+      let totalIssuedSum = 0;
+      let totalReturnedSum = 0;
+      let totalUsedSum = 0;
+      let totalWastageSum = 0;
+      let totalUnitsHeld = 0;
+      const isStockToReturn = !isCurrentAssignedSite;
+      const stockToReturnLabel = isStockToReturn ? `Stock to Return - ${sObj.name}` : undefined;
+
+      itemMap.forEach((val, itemId) => {
+        const totalUsed = val.totalUsed || 0;
+        const totalWastage = val.totalWastage || 0;
+        const currentInHand = Math.max(0, val.totalIssued - val.totalReturned - totalUsed - totalWastage);
+        const itemMaster = items.find((i) => i.id === itemId);
+        if (val.totalIssued > 0 || val.totalReturned > 0 || totalUsed > 0 || totalWastage > 0) {
+          balanceItems.push({
+            itemId,
+            itemCode: itemMaster?.itemCode || 'UNKNOWN',
+            itemName: itemMaster?.itemName || 'Item Not Found',
+            unit: itemMaster?.unit || 'units',
+            totalIssued: val.totalIssued,
+            totalReturned: val.totalReturned,
+            totalUsedInProjects: totalUsed,
+            totalWastageInProjects: totalWastage,
+            currentInHand,
+            lastIssuedDate: val.lastDate,
+            siteId: targetSiteId,
+            siteName: sObj.name,
+            isStockToReturn,
+            stockToReturnLabel,
+          });
+          totalIssuedSum += val.totalIssued;
+          totalReturnedSum += val.totalReturned;
+          totalUsedSum += totalUsed;
+          totalWastageSum += totalWastage;
+          totalUnitsHeld += currentInHand;
+        }
+      });
+
+      balanceItems.sort((a, b) => b.currentInHand - a.currentInHand);
+
+      return {
+        siteId: targetSiteId,
+        siteName: sObj.name,
+        isCurrentAssignedSite,
+        isStockToReturn,
+        sectionLabel: isStockToReturn ? `Stock to Return - ${sObj.name}` : sObj.name,
+        items: balanceItems,
+        totalIssued: totalIssuedSum,
+        totalReturned: totalReturnedSum,
+        totalUsedInProjects: totalUsedSum,
+        totalWastageInProjects: totalWastageSum,
+        totalUnitsHeld,
+        distinctItemsCount: balanceItems.filter((i) => i.currentInHand > 0).length,
+      };
     };
 
-    const issuesForTeam = teamIssues.filter((iss) => iss.teamId === teamId);
-    const returnsForTeam = teamReturns.filter((ret) => ret.teamId === teamId);
-    const usagesForTeam = projectUsages.filter((pu) => pu.teamId === teamId && !pu.isDeleted);
-
-    const itemMap = new Map<
-      string,
-      { totalIssued: number; totalReturned: number; totalUsed: number; totalWastage: number; lastDate: string }
-    >();
-
-    issuesForTeam.forEach((issue) => {
-      issue.items.forEach((itemRow) => {
-        const existing = itemMap.get(itemRow.itemId) || {
-          totalIssued: 0,
-          totalReturned: 0,
-          totalUsed: 0,
-          totalWastage: 0,
-          lastDate: issue.issueDate,
-        };
-        existing.totalIssued += Number(itemRow.quantity);
-        if (new Date(issue.issueDate) > new Date(existing.lastDate)) {
-          existing.lastDate = issue.issueDate;
-        }
-        itemMap.set(itemRow.itemId, existing);
-      });
-    });
-
-    returnsForTeam.forEach((ret) => {
-      const existing = itemMap.get(ret.itemId) || {
-        totalIssued: 0,
-        totalReturned: 0,
-        totalUsed: 0,
-        totalWastage: 0,
-        lastDate: ret.returnDate,
+    // Case 1: Specific site requested (`getTeamSiteInHandStock(teamId, filterSiteId)`)
+    if (filterSiteId) {
+      const targetSite = resolveSiteObj(filterSiteId);
+      const isCurr = filterSiteId === team.assignedSiteId;
+      const singleBreakdown = buildSingleSiteBreakdown(filterSiteId, isCurr);
+      return {
+        team,
+        site: targetSite,
+        items: singleBreakdown.items,
+        totalUnitsHeld: singleBreakdown.totalUnitsHeld,
+        distinctItemsCount: singleBreakdown.distinctItemsCount,
+        previousSitesStockToReturn: isCurr ? [] : singleBreakdown.totalUnitsHeld > 0 ? [singleBreakdown] : [],
+        totalUnitsToReturnFromPreviousSites: isCurr ? 0 : singleBreakdown.totalUnitsHeld,
+        distinctItemsToReturnCount: isCurr ? 0 : singleBreakdown.distinctItemsCount,
+        siteBreakdowns: [singleBreakdown],
       };
-      existing.totalReturned += Number(ret.quantity);
-      itemMap.set(ret.itemId, existing);
-    });
+    }
 
-    usagesForTeam.forEach((pu) => {
-      const uDate = pu.date || pu.usageDate || '';
-      pu.items.forEach((itemRow) => {
-        const existing = itemMap.get(itemRow.itemId) || {
-          totalIssued: 0,
-          totalReturned: 0,
-          totalUsed: 0,
-          totalWastage: 0,
-          lastDate: uDate,
-        };
-        existing.totalUsed += Number(itemRow.quantity || 0);
-        existing.totalWastage += Number(itemRow.wastageQuantity || 0);
-        if (new Date(uDate) > new Date(existing.lastDate)) {
-          existing.lastDate = uDate;
+    // Case 2: Team summary (`getTeamInHandStock(teamId)` / `allTeamsInHandStock`)
+    // NEVER combine or add stock across different sites!
+    // Current assigned site stock is kept under `items` / `totalUnitsHeld`,
+    // and any unreturned stock from previous sites is kept strictly separate under `previousSitesStockToReturn` ("Stock to Return - [Site Name]").
+    const currentSiteObj = resolveSiteObj(team.assignedSiteId);
+    const currentSiteBreakdown = buildSingleSiteBreakdown(team.assignedSiteId, true);
+
+    const otherSiteIdSet = new Set<string>();
+    if (team.previousSiteId && team.previousSiteId !== team.assignedSiteId) {
+      otherSiteIdSet.add(team.previousSiteId);
+    }
+    if (team.pendingClearanceSiteId && team.pendingClearanceSiteId !== team.assignedSiteId) {
+      otherSiteIdSet.add(team.pendingClearanceSiteId);
+    }
+    if (Array.isArray(team.siteAssignmentHistory)) {
+      team.siteAssignmentHistory.forEach((h) => {
+        if (h.siteId && h.siteId !== team.assignedSiteId) {
+          otherSiteIdSet.add(h.siteId);
         }
-        itemMap.set(itemRow.itemId, existing);
       });
-    });
-
-    const balanceItems: TeamInHandBalanceItem[] = [];
-    let totalUnitsHeld = 0;
-
-    itemMap.forEach((val, itemId) => {
-      const totalUsed = val.totalUsed || 0;
-      const totalWastage = val.totalWastage || 0;
-      const currentInHand = Math.max(0, val.totalIssued - val.totalReturned - totalUsed - totalWastage);
-      const itemMaster = items.find((i) => i.id === itemId);
-      if (val.totalIssued > 0 || val.totalReturned > 0 || totalUsed > 0 || totalWastage > 0) {
-        balanceItems.push({
-          itemId,
-          itemCode: itemMaster?.itemCode || 'UNKNOWN',
-          itemName: itemMaster?.itemName || 'Item Not Found',
-          unit: itemMaster?.unit || 'units',
-          totalIssued: val.totalIssued,
-          totalReturned: val.totalReturned,
-          totalUsedInProjects: totalUsed,
-          totalWastageInProjects: totalWastage,
-          currentInHand,
-          lastIssuedDate: val.lastDate,
-        });
-        totalUnitsHeld += currentInHand;
+    }
+    teamIssues.forEach((iss) => {
+      if (iss.teamId === teamId && iss.siteId && iss.siteId !== team.assignedSiteId) {
+        otherSiteIdSet.add(iss.siteId);
       }
     });
 
-    balanceItems.sort((a, b) => b.currentInHand - a.currentInHand);
+    const previousSitesStockToReturn: TeamSiteStockBreakdown[] = [];
+    otherSiteIdSet.forEach((otherSiteId) => {
+      const breakdown = buildSingleSiteBreakdown(otherSiteId, false);
+      // Only include items that still have unreturned balance > 0 in the "Stock to Return - [Site Name]" list
+      const unreturnedItems = breakdown.items.filter((i) => i.currentInHand > 0);
+      if (unreturnedItems.length > 0 && breakdown.totalUnitsHeld > 0) {
+        previousSitesStockToReturn.push({
+          ...breakdown,
+          items: unreturnedItems,
+        });
+      }
+    });
+
+    const totalUnitsToReturnFromPreviousSites = previousSitesStockToReturn.reduce(
+      (sum, g) => sum + g.totalUnitsHeld,
+      0
+    );
+    const distinctItemsToReturnCount = previousSitesStockToReturn.reduce(
+      (sum, g) => sum + g.distinctItemsCount,
+      0
+    );
 
     return {
       team,
-      site,
-      items: balanceItems,
-      totalUnitsHeld,
-      distinctItemsCount: balanceItems.filter((i) => i.currentInHand > 0).length,
+      site: currentSiteObj,
+      items: currentSiteBreakdown.items,
+      totalUnitsHeld: currentSiteBreakdown.totalUnitsHeld,
+      distinctItemsCount: currentSiteBreakdown.distinctItemsCount,
+      previousSitesStockToReturn,
+      totalUnitsToReturnFromPreviousSites,
+      distinctItemsToReturnCount,
+      siteBreakdowns: [currentSiteBreakdown, ...previousSitesStockToReturn],
     };
   };
 
@@ -9003,6 +9615,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return computed;
     },
     [teamInHandStockCache]
+  );
+
+  const getTeamSiteInHandStock = useCallback(
+    (teamId: string, siteId?: string): TeamInHandSummary => {
+      if (!siteId) return getTeamInHandStock(teamId);
+      return computeTeamInHandStock(teamId, siteId);
+    },
+    [getTeamInHandStock, teamIssues, teamReturns, projectUsages, teams, sites, items]
   );
 
   const allTeamsInHandStock = useMemo(() => {
@@ -9079,6 +9699,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateUser,
         updateItem,
         updateTeam,
+        transferTeamToSite,
+        promoteTeamAssignmentToPermanent,
+        getTeamSiteInHandStock,
         updateProject,
         softDeleteItem,
         softDeleteSite,

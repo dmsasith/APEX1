@@ -18,22 +18,59 @@ import {
   Filter,
   CheckCircle2,
   Calendar,
+  Clock,
+  History,
+  ArrowRightLeft,
+  AlertTriangle,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
 import { printHtmlElement } from '../../utils/printUtils';
-import { Site, Team, User as AppUser, isUserAssignedToSite } from '../../types';
+import {
+  Site,
+  Team,
+  User as AppUser,
+  isUserAssignedToSite,
+  isSuperAdmin,
+  isCentralOrAllSiteAdmin,
+  normalizeRole,
+} from '../../types';
+import { TeamTransferAndDetailsModal } from '../common/TeamTransferAndDetailsModal';
+import {
+  getTemporaryAssignmentBadgeLabel,
+  getTeamCompleteAssignmentHistory,
+} from '../../utils/teamAssignmentUtils';
 
 interface BranchDirectoryViewProps {
   onNavigate?: (tabId: string) => void;
 }
 
 export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavigate }) => {
-  const { config, activeSites, activeTeams, activeUsers, currentTenant } = useStock();
+  const {
+    config,
+    currentUser,
+    activeSites,
+    activeTeams,
+    activeUsers,
+    currentTenant,
+    getTeamSiteInHandStock,
+    promoteTeamAssignmentToPermanent,
+  } = useStock();
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [teamModalState, setTeamModalState] = useState<{
+    teamId: string;
+    tab: 'details' | 'transfer';
+  } | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const canManageTeamAssignment =
+    isSuperAdmin(currentUser.role) ||
+    isCentralOrAllSiteAdmin(currentUser.role) ||
+    normalizeRole(currentUser.role) === 'Branch Admin' ||
+    currentUser.username === 'admin';
 
   // Filtered branches
   const filteredSites = useMemo(() => {
@@ -530,38 +567,176 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                     {teams.map((team) => {
                       const membersList = team.members || [];
                       const actualCrewCount = membersList.length > 0 ? membersList.length + 1 : team.crewSize;
+                      const isTemp = team.assignmentStatus === 'Temporary';
+                      const prevSiteId = team.pendingClearanceSiteId || team.previousSiteId;
+                      const prevSiteObj = prevSiteId ? activeSites.find((st) => st.id === prevSiteId) : undefined;
+                      const prevSiteName =
+                        team.pendingClearanceSiteName || team.previousSiteName || prevSiteObj?.name;
+                      const prevSitePendingUnits = prevSiteId
+                        ? getTeamSiteInHandStock(team.id, prevSiteId).totalUnitsHeld
+                        : 0;
+                      const completeHistory = getTeamCompleteAssignmentHistory(team, activeSites);
 
                       return (
                         <div
                           key={team.id}
-                          className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs hover:shadow-xs transition-all"
+                          className={`rounded-xl border bg-white overflow-hidden shadow-2xs hover:shadow-xs transition-all ${
+                            isTemp ? 'border-amber-400 ring-1 ring-amber-400/40' : 'border-slate-200'
+                          }`}
                         >
                           {/* Team Summary Bar */}
-                          <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
+                          <div
+                            className={`p-4 border-b flex flex-col lg:flex-row lg:items-center justify-between gap-3 ${
+                              isTemp
+                                ? 'bg-amber-50/70 border-amber-200'
+                                : 'bg-slate-50/80 border-slate-200'
+                            }`}
+                          >
+                            <div className="space-y-1.5">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-slate-900 text-sm">{team.teamName}</span>
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 font-mono">
                                   {actualCrewCount} Personnel Total
                                 </span>
+                                {isTemp ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-amber-500/20 text-amber-950 border border-amber-500/50">
+                                    <Clock className="w-3 h-3 text-amber-700" />
+                                    {getTemporaryAssignmentBadgeLabel(site.name)}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Permanent Assignment
+                                    {team.previousSiteName ? ` · Ref: ${team.previousSiteName}` : ''}
+                                  </span>
+                                )}
                               </div>
-                              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-3">
-                                <span>Phone: <strong className="text-slate-700 font-mono">{team.contactPhone || 'N/A'}</strong></span>
+                              <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <span>
+                                  Phone:{' '}
+                                  <strong className="text-slate-700 font-mono">{team.contactPhone || 'N/A'}</strong>
+                                </span>
                                 <span className="text-slate-300">·</span>
-                                <span>Base: <strong className="text-slate-700">{site.name}</strong></span>
+                                <span>
+                                  Current Base:{' '}
+                                  <strong className="text-slate-700">
+                                    {isTemp ? getTemporaryAssignmentBadgeLabel(site.name) : site.name}
+                                  </strong>
+                                </span>
+                                {prevSiteName && (
+                                  <>
+                                    <span className="text-slate-300">·</span>
+                                    <span>
+                                      Previous Site: <strong className="text-slate-800">{prevSiteName}</strong>
+                                    </span>
+                                  </>
+                                )}
                               </div>
+
+                              {/* All Assigned Sites History Pills */}
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mr-1">
+                                  <History className="w-3 h-3 text-emerald-600" />
+                                  Assigned Sites ({completeHistory.length}):
+                                </span>
+                                {completeHistory.map((h) => {
+                                  const isCurrent = h.status === 'Active';
+                                  return (
+                                    <span
+                                      key={h.id}
+                                      onClick={() => setTeamModalState({ teamId: team.id, tab: 'details' })}
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border cursor-pointer ${
+                                        isCurrent
+                                          ? h.assignmentType === 'Temporary'
+                                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                            : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                          : 'bg-white text-slate-600 border-slate-200'
+                                      }`}
+                                    >
+                                      <span>{h.siteName}</span>
+                                      <span className="opacity-75">
+                                        ({h.assignmentType}
+                                        {isCurrent ? ' • Active' : ''})
+                                      </span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Pending Stock Alert or Permanent Promotion Action for Temporary Teams */}
+                              {isTemp && (
+                                <div className="pt-1 no-print">
+                                  {prevSitePendingUnits > 0 ? (
+                                    <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-800 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
+                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                      <span>
+                                        {formatNumber(prevSitePendingUnits)} Units pending clearance on{' '}
+                                        <strong>{prevSiteName || 'Previous Site'}</strong> before permanent promotion.
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    canManageTeamAssignment && (
+                                      <div className="inline-flex flex-wrap items-center gap-2 bg-white/90 border border-amber-300 px-2.5 py-1.5 rounded-lg">
+                                        <span className="text-[11px] font-semibold text-amber-900">
+                                          {prevSiteName
+                                            ? `0 Pending Stock on ${prevSiteName} — Ready for Permanent Confirmation`
+                                            : 'Ready for Permanent Confirmation'}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const res = promoteTeamAssignmentToPermanent(team.id);
+                                            setToastMsg(res.message);
+                                            setTimeout(() => setToastMsg(null), 4000);
+                                          }}
+                                          className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold transition flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          <span>
+                                            Confirm Permanent{prevSiteName ? ` (Ref: ${prevSiteName})` : ''}
+                                          </span>
+                                        </button>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
                             </div>
 
-                            {/* Team Leader Profile Pill */}
-                            <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 flex items-center gap-3 shadow-2xs">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                {team.teamLeaderName.charAt(0).toUpperCase()}
+                            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-1.5 no-print">
+                                <button
+                                  type="button"
+                                  onClick={() => setTeamModalState({ teamId: team.id, tab: 'details' })}
+                                  className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                                >
+                                  <History className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Site History & Details</span>
+                                </button>
+                                {canManageTeamAssignment && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setTeamModalState({ teamId: team.id, tab: 'transfer' })}
+                                    className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-extrabold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                                  >
+                                    <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
+                                    <span>Transfer Site</span>
+                                  </button>
+                                )}
                               </div>
-                              <div className="text-xs">
-                                <div className="text-[10px] uppercase font-bold text-slate-500">Team Leader</div>
-                                <div className="font-bold text-slate-900">{team.teamLeaderName}</div>
-                                <div className="text-[11px] font-mono text-emerald-700 font-semibold">
-                                  ID / NIC: {team.teamLeaderIdNumber || 'Not Specified'}
+
+                              {/* Team Leader Profile Pill */}
+                              <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 flex items-center gap-3 shadow-2xs">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                  {team.teamLeaderName.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="text-xs">
+                                  <div className="text-[10px] uppercase font-bold text-slate-500">Team Leader</div>
+                                  <div className="font-bold text-slate-900">{team.teamLeaderName}</div>
+                                  <div className="text-[11px] font-mono text-emerald-700 font-semibold">
+                                    ID / NIC: {team.teamLeaderIdNumber || 'Not Specified'}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -680,6 +855,27 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-emerald-500/40 flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-bottom-3">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Team Site Transfer & Complete Assigned Sites History Modal */}
+      {teamModalState && (() => {
+        const liveTeam = activeTeams.find((t) => t.id === teamModalState.teamId) || null;
+        return (
+          <TeamTransferAndDetailsModal
+            isOpen={Boolean(liveTeam)}
+            team={liveTeam}
+            initialTab={teamModalState.tab}
+            onClose={() => setTeamModalState(null)}
+          />
+        );
+      })()}
     </div>
   );
 };
