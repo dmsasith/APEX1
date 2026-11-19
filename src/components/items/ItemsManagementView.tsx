@@ -40,7 +40,9 @@ import {
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
+import { ItemImageUploader } from '../common/ItemImageUploader';
 import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
+import { printHtmlElement } from '../../utils/printUtils';
 
 interface ItemsManagementViewProps {
   initialType?: 'all' | 'Material' | 'Machinery';
@@ -97,9 +99,16 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
   const [newItemPrice, setNewItemPrice] = useState<number | ''>(150);
   const [newItemThreshold, setNewItemThreshold] = useState<number | ''>(config.defaultLowStockThreshold);
   const [newItemDesc, setNewItemDesc] = useState('');
+  const [newItemImageUrl, setNewItemImageUrl] = useState<string | undefined>(undefined);
+  const [newItemImageSizeKb, setNewItemImageSizeKb] = useState<number | undefined>(undefined);
 
   // Edit Item Modal
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+
+  // Image Lightbox Preview & Printable Catalog Sheet Modal
+  const [previewImageItem, setPreviewImageItem] = useState<Item | null>(null);
+  const [showCatalogPrintModal, setShowCatalogPrintModal] = useState(false);
+  const [printCatalogWithImage, setPrintCatalogWithImage] = useState(true);
 
   // Barcode Scanner & Label Printing Modals
   const [scannerTarget, setScannerTarget] = useState<'search' | 'create' | 'edit' | null>(null);
@@ -229,6 +238,8 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
       unitPrice: Number(newItemPrice) || 0,
       lowStockThreshold: Number(newItemThreshold) || config.defaultLowStockThreshold,
       description: newItemDesc.trim() || newItemName.trim(),
+      imageUrl: newItemImageUrl,
+      imageSizeKb: newItemImageSizeKb,
     });
 
     showToast(`Master Item ${codeUpper} created successfully!`);
@@ -237,6 +248,8 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
     setNewItemBarcode('');
     setNewItemName('');
     setNewItemDesc('');
+    setNewItemImageUrl(undefined);
+    setNewItemImageSizeKb(undefined);
   };
 
   // Update item
@@ -342,6 +355,17 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
               <span>Export Catalog ({activeItems.length})</span>
             </button>
 
+            {/* Print Catalog Sheet (with 'Print with Image' option) */}
+            <button
+              type="button"
+              onClick={() => setShowCatalogPrintModal(true)}
+              className="px-3.5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white border border-amber-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              title="Print Master Item Catalog Sheet with optional item photos"
+            >
+              <Printer className="w-4 h-4 text-amber-100" />
+              <span>Print Item Sheet ({filteredItems.length})</span>
+            </button>
+
             {/* Print Barcode Labels */}
             <button
               type="button"
@@ -349,7 +373,7 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
               className="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
               title="Print Code-128 / Code-39 Barcode Sticker Sheet for items"
             >
-              <Printer className="w-4 h-4 text-indigo-100" />
+              <ScanLine className="w-4 h-4 text-indigo-100" />
               <span>Print Barcode Labels ({filteredItems.length})</span>
             </button>
 
@@ -669,12 +693,35 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                         )}
                       </td>
                       <td className="py-2.5 px-2.5 text-slate-800 font-medium whitespace-normal break-words leading-tight">
-                        <div>{item.itemName}</div>
-                        {item.description && item.description !== item.itemName && (
-                          <div className="text-[10px] text-slate-500 mt-0.5 whitespace-normal break-words">
-                            {item.description}
+                        <div className="flex items-start gap-2.5">
+                          {item.imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImageItem(item)}
+                              className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 hover:ring-2 hover:ring-emerald-500 transition-all cursor-pointer shadow-2xs"
+                              title={`Click to view photo (${item.imageSizeKb ? `${item.imageSizeKb} KB` : '< 200KB'})`}
+                            >
+                              <img
+                                src={item.imageUrl}
+                                alt={item.itemName}
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div>{item.itemName}</div>
+                            {item.description && item.description !== item.itemName && (
+                              <div className="text-[10px] text-slate-500 mt-0.5 whitespace-normal break-words">
+                                {item.description}
+                              </div>
+                            )}
+                            {item.imageUrl && (
+                              <span className="inline-block mt-1 text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                                Photo: {item.imageSizeKb ? `${item.imageSizeKb} KB` : '<200 KB'}
+                              </span>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </td>
                       <td className="py-2.5 px-2 text-slate-600 font-medium whitespace-normal break-words leading-tight">
                         <span className="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700 whitespace-normal break-words">
@@ -1191,6 +1238,16 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                 />
               </div>
 
+              <ItemImageUploader
+                imageUrl={newItemImageUrl}
+                imageSizeKb={newItemImageSizeKb}
+                onChange={(url, kb) => {
+                  setNewItemImageUrl(url);
+                  setNewItemImageSizeKb(kb);
+                }}
+                compact
+              />
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
@@ -1424,6 +1481,19 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                 />
               </div>
 
+              <ItemImageUploader
+                imageUrl={editingItem.imageUrl}
+                imageSizeKb={editingItem.imageSizeKb}
+                onChange={(url, kb) =>
+                  setEditingItem({
+                    ...editingItem,
+                    imageUrl: url,
+                    imageSizeKb: kb,
+                  })
+                }
+                compact
+              />
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
@@ -1496,6 +1566,182 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
               : `Print Catalog Barcode Labels (${labelPrintItems.length} Items)`
           }
         />
+      )}
+
+      {/* Item Image Full Lightbox Modal */}
+      {previewImageItem && previewImageItem.imageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setPreviewImageItem(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                  {previewImageItem.itemCode}
+                </span>
+                <h4 className="text-sm font-bold text-slate-900 mt-1">{previewImageItem.itemName}</h4>
+                <p className="text-[11px] text-slate-500">
+                  Optimized Image Size: {previewImageItem.imageSizeKb ? `${previewImageItem.imageSizeKb} KB` : '< 200 KB'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImageItem(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center max-h-96">
+              <img
+                src={previewImageItem.imageUrl}
+                alt={previewImageItem.itemName}
+                className="max-h-96 w-auto object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Printable Master Item Catalog Sheet Modal (with Print with Image Toggle) */}
+      {showCatalogPrintModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Control Header */}
+            <div className="px-5 py-3.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Printer className="w-4 h-4 text-amber-400" />
+                  <span>Print Master Item Catalog Sheet ({filteredItems.length} Items)</span>
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  Toggle &ldquo;Print with Image&rdquo; to include or hide item photos on the printed sheet
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-bold text-amber-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={printCatalogWithImage}
+                    onChange={(e) => setPrintCatalogWithImage(e.target.checked)}
+                    className="rounded border-slate-600 text-amber-500 focus:ring-amber-500"
+                  />
+                  <span>Print with Image</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    printHtmlElement('printable-item-catalog-sheet', 'Master_Item_Catalog');
+                  }}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Now</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCatalogPrintModal(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Preview Body */}
+            <div className="p-6 overflow-y-auto bg-slate-100 flex-1">
+              <div
+                id="printable-item-catalog-sheet"
+                className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs max-w-4xl mx-auto"
+              >
+                <div className="border-b border-slate-200 pb-3 mb-4 flex items-center justify-between">
+                  <div>
+                    <h1 className="text-base font-extrabold text-slate-900">
+                      {config.companyName} — Master Item Catalog
+                    </h1>
+                    <p className="text-xs text-slate-500">
+                      Generated on {formatDate(new Date().toISOString())} · Showing {filteredItems.length} items{' '}
+                      {printCatalogWithImage ? '(With Item Photos)' : '(Text Only)'}
+                    </p>
+                  </div>
+                </div>
+
+                <table className="w-full text-xs border-collapse border border-slate-300">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800">
+                      <th className="border border-slate-300 px-2 py-1.5 text-center w-10">#</th>
+                      {printCatalogWithImage && (
+                        <th className="border border-slate-300 px-2 py-1.5 text-center w-16">Image</th>
+                      )}
+                      <th className="border border-slate-300 px-2.5 py-1.5 w-32">Item Code</th>
+                      <th className="border border-slate-300 px-2.5 py-1.5">Item Name &amp; Description</th>
+                      <th className="border border-slate-300 px-2.5 py-1.5 w-36">Category</th>
+                      <th className="border border-slate-300 px-2 py-1.5 text-center w-14">Unit</th>
+                      <th className="border border-slate-300 px-2.5 py-1.5 text-right w-24">Unit Price</th>
+                      <th className="border border-slate-300 px-2.5 py-1.5 text-right w-24">Central Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredItems.map((item, idx) => {
+                      const stock = getMainWarehouseStock(item.id);
+                      return (
+                        <tr key={item.id} className="border-b border-slate-200">
+                          <td className="border border-slate-300 px-2 py-1.5 text-center font-mono">
+                            {idx + 1}
+                          </td>
+                          {printCatalogWithImage && (
+                            <td className="border border-slate-300 px-2 py-1.5 text-center">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.itemName}
+                                  className="item-thumb w-10 h-10 object-cover rounded border border-slate-300 mx-auto"
+                                />
+                              ) : (
+                                <span className="no-img text-[10px] text-slate-400">No Image</span>
+                              )}
+                            </td>
+                          )}
+                          <td className="border border-slate-300 px-2.5 py-1.5 font-mono font-bold">
+                            {item.itemCode}
+                            {item.barcode && (
+                              <div className="text-[10px] font-normal text-slate-500">{item.barcode}</div>
+                            )}
+                          </td>
+                          <td className="border border-slate-300 px-2.5 py-1.5">
+                            <div className="font-semibold text-slate-900">{item.itemName}</div>
+                            {item.description && item.description !== item.itemName && (
+                              <div className="text-[10px] text-slate-500">{item.description}</div>
+                            )}
+                          </td>
+                          <td className="border border-slate-300 px-2.5 py-1.5 text-slate-700">
+                            {item.category}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">
+                            {item.unit}
+                          </td>
+                          <td className="border border-slate-300 px-2.5 py-1.5 text-right font-mono">
+                            {config.currencySymbol}{formatNumber(item.unitPrice)}
+                          </td>
+                          <td className="border border-slate-300 px-2.5 py-1.5 text-right font-mono font-semibold">
+                            {formatNumber(stock.availableBalance)} {item.unit}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

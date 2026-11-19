@@ -61,6 +61,7 @@ import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
+import { ItemImageUploader } from '../common/ItemImageUploader';
 import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
 
 interface MasterRegistrationsViewProps {
@@ -182,6 +183,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [itemPrice, setItemPrice] = useState<number | ''>(25.0);
   const [itemThreshold, setItemThreshold] = useState<number | ''>(config.defaultLowStockThreshold);
   const [initialReceivedQty, setInitialReceivedQty] = useState<number | ''>('');
+  const [itemImageUrl, setItemImageUrl] = useState<string | undefined>(undefined);
+  const [itemImageSizeKb, setItemImageSizeKb] = useState<number | undefined>(undefined);
   const [reservedProjectId, setReservedProjectId] = useState<string>('none');
   const [projectSearchQuery, setProjectSearchQuery] = useState('');
   const [editProjectSearchQuery, setEditProjectSearchQuery] = useState('');
@@ -274,6 +277,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         unit: finalUnit,
         unitPrice: Number(itemPrice) || 0,
         lowStockThreshold: Number(itemThreshold) || config.defaultLowStockThreshold,
+        imageUrl: itemImageUrl,
+        imageSizeKb: itemImageSizeKb,
       },
       initialReceivedQty ? Number(initialReceivedQty) : 0
     );
@@ -283,6 +288,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     setItemBarcode('');
     setItemName('');
     setInitialReceivedQty('');
+    setItemImageUrl(undefined);
+    setItemImageSizeKb(undefined);
     setReservedProjectId('none');
   };
 
@@ -552,6 +559,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     setItemPrice(25.0);
     setItemThreshold(config.defaultLowStockThreshold);
     setInitialReceivedQty('');
+    setItemImageUrl(undefined);
+    setItemImageSizeKb(undefined);
   };
 
   const handleClearSiteForm = () => {
@@ -1452,6 +1461,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 />
               </div>
 
+              <ItemImageUploader
+                imageUrl={itemImageUrl}
+                imageSizeKb={itemImageSizeKb}
+                onChange={(url, kb) => {
+                  setItemImageUrl(url);
+                  setItemImageSizeKb(kb);
+                }}
+                compact
+              />
+
               <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
@@ -1645,15 +1664,32 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             )}
                           </td>
                           <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-semibold whitespace-normal break-words" title={i.itemName}>
-                            <div>{i.itemName}</div>
-                            {i.isProjectReserved && (
-                              <div className="mt-1">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800/80 px-2 py-0.5 rounded-md">
-                                  <Target className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                                  <span>Reserved: {i.reservedProjectName || i.reservedProjectId}</span>
-                                </span>
+                            <div className="flex items-start gap-2.5">
+                              {i.imageUrl && (
+                                <img
+                                  src={i.imageUrl}
+                                  alt={i.itemName}
+                                  className="w-9 h-9 rounded-lg object-cover border border-slate-200 dark:border-slate-700 bg-white shrink-0"
+                                  title={`Compressed Image (${i.imageSizeKb ? `${i.imageSizeKb} KB` : '< 200KB'})`}
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div>{i.itemName}</div>
+                                {i.imageUrl && (
+                                  <span className="inline-block mt-0.5 text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                                    Photo: {i.imageSizeKb ? `${i.imageSizeKb} KB` : '<200 KB'}
+                                  </span>
+                                )}
+                                {i.isProjectReserved && (
+                                  <div className="mt-1">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800/80 px-2 py-0.5 rounded-md">
+                                      <Target className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                      <span>Reserved: {i.reservedProjectName || i.reservedProjectId}</span>
+                                    </span>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </td>
                           <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium whitespace-normal break-words">{i.category}</td>
                           <td className="py-3 px-3 text-center text-slate-600 dark:text-slate-400">{i.unit}</td>
@@ -3339,6 +3375,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   </div>
                 )}
               </div>
+
+              <ItemImageUploader
+                imageUrl={editingItem.imageUrl}
+                imageSizeKb={editingItem.imageSizeKb}
+                onChange={(url, kb) =>
+                  setEditingItem({
+                    ...editingItem,
+                    imageUrl: url,
+                    imageSizeKb: kb,
+                  })
+                }
+                compact
+              />
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button

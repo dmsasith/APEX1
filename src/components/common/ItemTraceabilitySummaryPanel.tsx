@@ -64,6 +64,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
   } = useStock();
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [printWithImage, setPrintWithImage] = useState<boolean>(() => Boolean(item.imageUrl));
   const [activeSubView, setActiveSubView] = useState<'overview' | 'inbound' | 'sites' | 'teams' | 'projects'>('overview');
 
   const printElementId = `item-trace-print-${mode}-${item.id}-${siteId || 'hq'}-${focProjectId || 'all'}`;
@@ -631,9 +632,18 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
       {/* Top Header Banner */}
       <div className="bg-gradient-to-r from-[#071a12] via-[#0c2e20] to-[#134e35] text-white px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="flex items-start sm:items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0">
-            <Layers className="w-5 h-5 text-emerald-300" />
-          </div>
+          {item.imageUrl ? (
+            <img
+              src={item.imageUrl}
+              alt={item.itemName}
+              className="w-12 h-12 rounded-xl object-cover border border-emerald-400/40 bg-white shrink-0 shadow-sm"
+              title={`Item Image (${item.imageSizeKb ? `${item.imageSizeKb} KB` : '< 200KB'})`}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-emerald-300" />
+            </div>
+          )}
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
@@ -666,8 +676,17 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           </div>
         </div>
 
-        {/* Action Buttons: Print & PDF & Close */}
+        {/* Action Buttons: Print with Image Toggle & Print & PDF & Close */}
         <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/30 hover:bg-black/40 border border-amber-400/40 text-amber-200 text-xs font-bold cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={printWithImage}
+              onChange={(e) => setPrintWithImage(e.target.checked)}
+              className="rounded border-amber-400 text-amber-500 focus:ring-amber-500"
+            />
+            <span>Print with Image</span>
+          </label>
           <button
             type="button"
             onClick={handlePrintReport}
@@ -1386,19 +1405,28 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           </div>
 
           {/* Item Metadata Box */}
-          <div className="grid grid-cols-4 gap-3 bg-slate-50 p-3 border border-slate-300 text-xs">
-            <div>
-              <div className="text-[10px] uppercase text-slate-500 font-bold">Item Code</div>
-              <div className="font-mono font-black text-sm text-slate-900">{item.itemCode}</div>
-            </div>
-            <div className="col-span-2">
-              <div className="text-[10px] uppercase text-slate-500 font-bold">Material / Asset Description</div>
-              <div className="font-black text-sm text-slate-900">{item.itemName}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase text-slate-500 font-bold">Category & Unit</div>
-              <div className="font-bold text-slate-900">
-                {item.category} ({item.unit})
+          <div className="flex items-center gap-4 bg-slate-50 p-3 border border-slate-300 text-xs">
+            {printWithImage && item.imageUrl && (
+              <img
+                src={item.imageUrl}
+                alt={item.itemName}
+                className="w-16 h-16 object-cover rounded-lg border border-slate-300 bg-white shrink-0"
+              />
+            )}
+            <div className="grid grid-cols-4 gap-3 flex-1">
+              <div>
+                <div className="text-[10px] uppercase text-slate-500 font-bold">Item Code</div>
+                <div className="font-mono font-black text-sm text-slate-900">{item.itemCode}</div>
+              </div>
+              <div className="col-span-2">
+                <div className="text-[10px] uppercase text-slate-500 font-bold">Material / Asset Description</div>
+                <div className="font-black text-sm text-slate-900">{item.itemName}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase text-slate-500 font-bold">Category & Unit</div>
+                <div className="font-bold text-slate-900">
+                  {item.category} ({item.unit})
+                </div>
               </div>
             </div>
           </div>

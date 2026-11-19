@@ -79,6 +79,9 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
   const [labelSize, setLabelSize] = useState<'compact' | 'standard' | 'large'>('standard');
   const [showPriceOnLabel, setShowPriceOnLabel] = useState<boolean>(false);
   const [showCompanyOnLabel, setShowCompanyOnLabel] = useState<boolean>(true);
+  const [showImageOnLabel, setShowImageOnLabel] = useState<boolean>(() =>
+    items.some((i) => Boolean(i.imageUrl))
+  );
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -168,7 +171,16 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="inline-flex items-center gap-1.5 cursor-pointer font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+              <input
+                type="checkbox"
+                checked={showImageOnLabel}
+                onChange={(e) => setShowImageOnLabel(e.target.checked)}
+                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              <span>Print with Image</span>
+            </label>
             <label className="inline-flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700">
               <input
                 type="checkbox"
@@ -212,6 +224,21 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
                     {showCompanyOnLabel && (
                       <div className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 truncate">
                         {config.companyName}
+                      </div>
+                    )}
+                    {showImageOnLabel && item.imageUrl && (
+                      <div className="my-1.5 flex justify-center">
+                        <img
+                          src={item.imageUrl}
+                          alt={item.itemName}
+                          className={`${
+                            labelSize === 'compact'
+                              ? 'w-10 h-10'
+                              : labelSize === 'large'
+                              ? 'w-16 h-16'
+                              : 'w-12 h-12'
+                          } object-cover rounded-lg border border-slate-200 bg-white`}
+                        />
                       </div>
                     )}
                     <div className="text-xs font-extrabold text-slate-900 truncate mt-0.5" title={item.itemName}>

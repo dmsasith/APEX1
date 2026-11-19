@@ -209,6 +209,8 @@ export interface Item {
   reservedProjectId?: string; // Optional: ID of project this item is strictly reserved for ('none' or project.id)
   reservedProjectName?: string; // Optional: Display name of assigned project
   isProjectReserved?: boolean; // Optional: Flag indicating item is restricted to assigned project
+  imageUrl?: string; // Optional: Client-side compressed <200KB base64 data URL or image link
+  imageSizeKb?: number; // Optional: Compressed image size in KB (guaranteed <= 200KB)
   createdAt: string;
   isDeleted?: boolean;
   deletedAt?: string;

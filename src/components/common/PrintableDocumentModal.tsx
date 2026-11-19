@@ -157,6 +157,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
   );
   const [customDocNumber, setCustomDocNumber] = useState<string>('');
   const [customDate, setCustomDate] = useState<string>('');
+  const [printWithImage, setPrintWithImage] = useState<boolean>(false);
 
   // Sync state whenever activeTemplate or document changes
   useEffect(() => {
@@ -407,19 +408,38 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  customItems.map((item, idx) => (
-                    <tr key={idx} className="h-6">
-                      <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                      <td className="py-1 px-2 text-left border-r border-black font-medium">
-                        <span className="font-mono font-bold mr-1.5">{item.itemCode}</span>
-                        <span>{item.itemName}</span>
-                      </td>
-                      <td className="py-1 px-1 text-center border-r border-black text-slate-600">{item.category || 'General'}</td>
-                      <td className="py-1 px-1 text-center font-mono border-r border-black">{item.unit || 'Nos'}</td>
-                      <td className="py-1 px-1.5 text-right font-mono font-bold border-r border-black">{formatNumber(item.quantity)}</td>
-                      <td className="py-1 px-2 text-left text-slate-600 text-[10px]">{item.remarks || 'Verified / Logged'}</td>
-                    </tr>
-                  ))
+                  customItems.map((item, idx) => {
+                    const matchedItm = items.find(
+                      (i) =>
+                        i.itemCode.toUpperCase() === (item.itemCode || '').toUpperCase() ||
+                        i.itemName === item.itemName
+                    );
+                    const imgUrl = matchedItm?.imageUrl;
+                    return (
+                      <tr key={idx} className="h-6">
+                        <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                        <td className="py-1 px-2 text-left border-r border-black font-medium">
+                          <div className="flex items-center gap-2">
+                            {printWithImage && imgUrl && (
+                              <img
+                                src={imgUrl}
+                                alt={item.itemName}
+                                className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                              />
+                            )}
+                            <div>
+                              <span className="font-mono font-bold mr-1.5">{item.itemCode}</span>
+                              <span>{item.itemName}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-1 px-1 text-center border-r border-black text-slate-600">{item.category || 'General'}</td>
+                        <td className="py-1 px-1 text-center font-mono border-r border-black">{item.unit || 'Nos'}</td>
+                        <td className="py-1 px-1.5 text-right font-mono font-bold border-r border-black">{formatNumber(item.quantity)}</td>
+                        <td className="py-1 px-2 text-left text-slate-600 text-[10px]">{item.remarks || 'Verified / Logged'}</td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -483,13 +503,24 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                       <tr key={row.itemId} className="h-6">
                         <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
                         <td className="py-1 px-2 text-left border-r border-black font-medium">
-                          <span className="font-mono font-bold mr-1.5">{itm?.itemCode}</span>
-                          {itm && isMachineryItem(itm) && (
-                            <span className="text-[9px] font-bold bg-slate-200 px-1 py-0.2 rounded mr-1">
-                              [Machinery]
-                            </span>
-                          )}
-                          <span>{itm?.itemName}</span>
+                          <div className="flex items-center gap-2">
+                            {printWithImage && itm?.imageUrl && (
+                              <img
+                                src={itm.imageUrl}
+                                alt={itm.itemName}
+                                className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                              />
+                            )}
+                            <div>
+                              <span className="font-mono font-bold mr-1.5">{itm?.itemCode}</span>
+                              {itm && isMachineryItem(itm) && (
+                                <span className="text-[9px] font-bold bg-slate-200 px-1 py-0.2 rounded mr-1">
+                                  [Machinery]
+                                </span>
+                              )}
+                              <span>{itm?.itemName}</span>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>
                         <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.requestedQty)}</td>
@@ -567,8 +598,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                       <tr key={row.itemId} className="h-6">
                         <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
                         <td className="py-1 px-2 text-left border-r border-black font-medium">
-                          <span className="font-mono font-bold mr-1.5">{itm?.itemCode}</span>
-                          <span>{itm?.itemName}</span>
+                          <div className="flex items-center gap-2">
+                            {printWithImage && itm?.imageUrl && (
+                              <img
+                                src={itm.imageUrl}
+                                alt={itm.itemName}
+                                className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                              />
+                            )}
+                            <div>
+                              <span className="font-mono font-bold mr-1.5">{itm?.itemCode}</span>
+                              <span>{itm?.itemName}</span>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>
                         <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
@@ -642,8 +684,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                       <tr className="h-6">
                         <td className="py-1 px-1.5 text-center font-mono border-r border-black">1</td>
                         <td className="py-1 px-2 text-left border-r border-black font-medium">
-                          <span className="font-mono font-bold mr-1.5">{itm?.itemCode || 'CODE'}</span>
-                          <span>{itm?.itemName || 'Material Item'}</span>
+                          <div className="flex items-center gap-2">
+                            {printWithImage && itm?.imageUrl && (
+                              <img
+                                src={itm.imageUrl}
+                                alt={itm.itemName}
+                                className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                              />
+                            )}
+                            <div>
+                              <span className="font-mono font-bold mr-1.5">{itm?.itemCode || 'CODE'}</span>
+                              <span>{itm?.itemName || 'Material Item'}</span>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit || 'Nos'}</td>
                         <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
@@ -704,19 +757,33 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black text-black bg-white/90">
-                  {rep.items.map((row, idx) => (
-                    <tr key={row.itemId} className="h-6">
-                      <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                      <td className="py-1 px-2 text-left border-r border-black font-medium">
-                        <span className="font-mono font-bold mr-1.5">{row.itemCode}</span>
-                        <span>{row.itemName}</span>
-                      </td>
-                      <td className="py-1 px-1 text-center font-mono border-r border-black">{row.unit}</td>
-                      <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
-                      <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
-                      <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
-                    </tr>
-                  ))}
+                  {rep.items.map((row, idx) => {
+                    const itm = items.find((i) => i.id === row.itemId || i.itemCode === row.itemCode);
+                    return (
+                      <tr key={row.itemId} className="h-6">
+                        <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                        <td className="py-1 px-2 text-left border-r border-black font-medium">
+                          <div className="flex items-center gap-2">
+                            {printWithImage && itm?.imageUrl && (
+                              <img
+                                src={itm.imageUrl}
+                                alt={row.itemName}
+                                className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                              />
+                            )}
+                            <div>
+                              <span className="font-mono font-bold mr-1.5">{row.itemCode}</span>
+                              <span>{row.itemName}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-1 px-1 text-center font-mono border-r border-black">{row.unit}</td>
+                        <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
+                        <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
+                        <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -752,6 +819,17 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           </div>
 
           <div className="flex items-center flex-wrap gap-2">
+            {/* Print with Image Option Checkbox */}
+            <label className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 px-2.5 py-1.5 rounded-lg border border-amber-500/40 text-xs text-amber-300 font-bold cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={printWithImage}
+                onChange={(e) => setPrintWithImage(e.target.checked)}
+                className="rounded border-slate-600 text-amber-500 focus:ring-amber-500"
+              />
+              <span>Print with Image</span>
+            </label>
+
             {/* ISO Standard & Tenant Auto-Sync Badge */}
             <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 text-[11px] text-emerald-300 font-semibold">
               <Building2 className="w-3.5 h-3.5 text-emerald-400" />
