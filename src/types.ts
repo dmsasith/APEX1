@@ -212,6 +212,7 @@ export interface Item {
   imageUrl?: string; // Optional: Client-side compressed <200KB base64 data URL or image link
   imageSizeKb?: number; // Optional: Compressed image size in KB (guaranteed <= 200KB)
   createdAt: string;
+  updatedAt?: string;
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
@@ -289,6 +290,7 @@ export interface Team {
   crewSize: number;
   members?: TeamMember[];
   createdAt: string;
+  updatedAt?: string;
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;

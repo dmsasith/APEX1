@@ -224,7 +224,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
             }
           }
         }}
-        className={`w-full min-h-[42px] px-3.5 py-2 border rounded-xl text-xs bg-white flex items-center justify-between cursor-pointer transition-all min-w-0 shadow-2xs ${
+        className={`w-full min-h-[54px] px-3.5 py-2.5 border rounded-xl text-xs bg-white flex items-center justify-between cursor-pointer transition-all min-w-0 shadow-2xs ${
           disabled
             ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
             : isOpen
@@ -233,67 +233,73 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         }`}
       >
         {selectedItem ? (
-          <div className="flex items-center gap-2 pr-2 min-w-0 flex-1 overflow-hidden">
-            <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-xs shrink-0 border border-slate-200">
-              {selectedItem.itemCode}
-            </span>
-            {isMachineryItem(selectedItem) ? (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 shrink-0 border border-amber-200">
-                🚜 Machinery
+          <div className="flex flex-col gap-1 pr-2 min-w-0 flex-1">
+            {/* Top Row: Item Code, Classification Badge, Unit, and Stock Badges */}
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-xs shrink-0 border border-slate-200">
+                {selectedItem.itemCode}
               </span>
-            ) : (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
-                📦 Material
+              {isMachineryItem(selectedItem) ? (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 shrink-0 border border-amber-200">
+                  🚜 Machinery
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
+                  📦 Material
+                </span>
+              )}
+              <span className="text-slate-500 text-[11px] shrink-0 font-semibold">
+                Unit: <strong className="text-slate-700">{selectedItem.unit}</strong>
               </span>
-            )}
-            <span
-              className="text-slate-900 font-semibold truncate min-w-0 flex-1 text-xs sm:text-sm"
+
+              {showStockBadge && (() => {
+                const stock = getItemStockInfo(selectedItem.id);
+                return (
+                  <div className="ml-auto flex items-center gap-1.5 flex-wrap shrink-0">
+                    {hasRequestingSite && stock.siteAvailable !== undefined && (
+                      <span
+                        className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                          stock.siteIsLowActive || stock.siteAvailable === 0
+                            ? 'bg-amber-50 text-amber-800 border border-amber-300'
+                            : stock.siteIsLowOrZero
+                            ? 'bg-amber-50/70 text-amber-700 border border-amber-200'
+                            : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}
+                        title={`Site Available Stock: ${formatNumber(stock.siteAvailable)} ${selectedItem.unit} (Min Threshold: ${stock.siteThreshold ?? 0})`}
+                      >
+                        {stock.siteIsLowOrZero ? '⚠️ ' : ''}Site Avl: {formatNumber(stock.siteAvailable)} {selectedItem.unit}
+                      </span>
+                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
+                        stock.available === 0
+                          ? 'bg-red-50 text-red-600 border border-red-200'
+                          : stock.isFocMode
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : stock.isLow
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}
+                      title={`${stock.label}: ${formatNumber(stock.available)} ${selectedItem.unit}`}
+                    >
+                      {stock.isFocMode
+                        ? `FOC Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
+                        : hasRequestingSite
+                        ? `Main Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
+                        : `${formatNumber(stock.available)} ${selectedItem.unit}`}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Bottom Row (Underneath Item Code): Full Item Name clearly visible */}
+            <div
+              className="text-slate-900 font-extrabold text-xs sm:text-sm leading-snug break-words"
               title={`${selectedItem.itemName}${selectedItem.description ? ` (${selectedItem.description})` : ''}`}
             >
               {selectedItem.itemName}
-            </span>
-            <span className="text-slate-500 text-xs shrink-0 font-medium">
-              ({selectedItem.unit})
-            </span>
-            {showStockBadge && (() => {
-              const stock = getItemStockInfo(selectedItem.id);
-              return (
-                <div className="ml-auto flex items-center gap-1.5 shrink-0">
-                  {hasRequestingSite && stock.siteAvailable !== undefined && (
-                    <span
-                      className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
-                        stock.siteIsLowActive || stock.siteAvailable === 0
-                          ? 'bg-amber-50 text-amber-800 border border-amber-300'
-                          : stock.siteIsLowOrZero
-                          ? 'bg-amber-50/70 text-amber-700 border border-amber-200'
-                          : 'bg-blue-50 text-blue-700 border border-blue-200'
-                      }`}
-                      title={`Site Available Stock: ${formatNumber(stock.siteAvailable)} ${selectedItem.unit} (Min Threshold: ${stock.siteThreshold ?? 0})`}
-                    >
-                      {stock.siteIsLowOrZero ? '⚠️ ' : ''}Site Avl: {formatNumber(stock.siteAvailable)} {selectedItem.unit}
-                    </span>
-                  )}
-                  <span
-                    className={`px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
-                      stock.available === 0
-                        ? 'bg-red-50 text-red-600 border border-red-200'
-                        : stock.isFocMode
-                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                        : stock.isLow
-                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    }`}
-                    title={`${stock.label}: ${formatNumber(stock.available)} ${selectedItem.unit}`}
-                  >
-                    {stock.isFocMode
-                      ? `FOC Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
-                      : hasRequestingSite
-                      ? `Main Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
-                      : `${formatNumber(stock.available)} ${selectedItem.unit}`}
-                  </span>
-                </div>
-              );
-            })()}
+            </div>
           </div>
         ) : (
           <span className="text-slate-400 select-none truncate flex-1 min-w-0 text-xs sm:text-sm">{placeholder}</span>
@@ -346,9 +352,9 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         />
       )}
 
-      {/* Dropdown Menu - Spacious and Unconstrained */}
+      {/* Dropdown Menu - Extra Wide & Tall for Clear Item Name Visibility */}
       {isOpen && (
-        <div className="absolute z-50 left-0 w-full min-w-[340px] sm:min-w-[480px] md:min-w-[560px] max-w-[92vw] mt-1.5 bg-white border border-slate-300 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-100 ring-1 ring-slate-900/10">
+        <div className="absolute z-50 left-0 w-full min-w-[350px] sm:min-w-[580px] md:min-w-[680px] lg:min-w-[760px] max-w-[94vw] mt-1.5 bg-white border border-slate-300 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-100 ring-1 ring-slate-900/10">
           {/* Classification Selection Tabs */}
           <div className="p-2 bg-slate-100 border-b border-slate-200 flex items-center gap-1.5 text-xs font-bold">
             <button
@@ -481,7 +487,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
           </div>
 
           {/* Items List - Deep Scrollable Area */}
-          <div className="overflow-y-auto divide-y divide-slate-100 flex-1 max-h-80 min-h-[220px]">
+          <div className="overflow-y-auto divide-y divide-slate-100 flex-1 max-h-[420px] min-h-[280px]">
             {filteredItems.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400">
                 No matching {selectedType === 'Machinery' ? 'machinery' : selectedType === 'Material' ? 'materials' : 'items'} found for &ldquo;{searchQuery}&rdquo;.
@@ -500,16 +506,17 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                       setIsOpen(false);
                       setSearchQuery('');
                     }}
-                    className={`p-3 hover:bg-slate-100/80 cursor-pointer flex items-center justify-between gap-3 transition-colors ${
+                    className={`p-3.5 hover:bg-slate-100/90 cursor-pointer flex items-start justify-between gap-3 transition-colors ${
                       isSelected
-                        ? 'bg-slate-100 font-medium'
+                        ? 'bg-emerald-50/70 font-medium'
                         : hasRequestingSite && stock.siteIsLowOrZero
                         ? 'bg-amber-50/35'
                         : ''
                     }`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 min-w-0 flex-wrap sm:flex-nowrap">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      {/* Line 1: Item Code & Status/Type Badges */}
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
                         <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md shrink-0 border border-slate-200">
                           {item.itemCode}
                         </span>
@@ -539,19 +546,24 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                             ⚠️ {stock.siteIsLowActive ? 'Low Site Stock' : (stock.siteAvailable ?? 0) === 0 ? 'Site Avl: 0' : 'Low at Site'}
                           </span>
                         )}
-                        <span className="text-xs sm:text-sm text-slate-900 truncate font-bold min-w-0 flex-1" title={item.itemName}>
-                          {item.itemName}
-                        </span>
+                      </div>
+
+                      {/* Line 2 (Directly Underneath Item Code): Full Item Name */}
+                      <div
+                        className="text-xs sm:text-sm text-slate-900 font-extrabold leading-snug break-words"
+                        title={item.itemName}
+                      >
+                        {item.itemName}
                       </div>
 
                       {item.description && (
-                        <div className="text-xs text-slate-500 truncate mt-1 min-w-0" title={item.description}>
+                        <div className="text-xs text-slate-500 break-words leading-snug" title={item.description}>
                           {item.description}
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
-                        <span className="truncate font-medium">{item.category}</span>
+                      <div className="flex items-center gap-2 flex-wrap pt-0.5 text-xs text-slate-500">
+                        <span className="font-medium">{item.category}</span>
                         <span>·</span>
                         <span>Unit: <strong className="text-slate-700">{item.unit}</strong></span>
                         {item.unitPrice > 0 && (
@@ -563,7 +575,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 pt-0.5">
                       {showStockBadge && (
                         <div className="flex items-center gap-2">
                           {hasRequestingSite && stock.siteAvailable !== undefined && (

@@ -1746,13 +1746,16 @@ export const MainStockView: React.FC = () => {
                 {selectedItem && (
                   <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
                     <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-mono font-bold text-slate-900">{selectedItem.itemCode}</span>
+                      <span className="font-mono font-bold text-slate-900">[{selectedItem.itemCode}]</span>
                       <span className="text-[11px] text-slate-500 font-mono">
                         Main Balance:{' '}
                         <strong className="text-slate-900">
                           {formatNumber(getMainWarehouseStock(selectedItem.id).availableBalance)} {selectedItem.unit}
                         </strong>
                       </span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold text-slate-900 break-words leading-snug">
+                      {selectedItem.itemName}
                     </div>
                     {selectedItem.description && (
                       <p className="text-[11px] text-slate-600 line-clamp-2 break-words italic">

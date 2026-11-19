@@ -1520,7 +1520,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return 0;
     };
     const getEffectiveTimeMs = (obj: any): number => {
-      const ts = obj?.updatedAt || obj?.acceptanceDate || obj?.approvalDate || obj?.requestedDate || obj?.createdAt;
+      const ts =
+        obj?.updatedAt ||
+        obj?.deletedAt ||
+        obj?.permanentConfirmedAt ||
+        obj?.temporaryAssignedAt ||
+        obj?.acceptanceDate ||
+        obj?.approvalDate ||
+        obj?.requestedDate ||
+        obj?.createdAt;
       if (!ts) return 0;
       const ms = new Date(ts).getTime();
       return Number.isNaN(ms) ? 0 : ms;
@@ -6257,6 +6265,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       pendingClearanceSiteId: pendingUnitsOnPrevSite > 0 ? prevSiteId : undefined,
       pendingClearanceSiteName: pendingUnitsOnPrevSite > 0 ? prevSiteName : undefined,
       temporaryAssignedAt: nowIso,
+      updatedAt: nowIso,
       siteAssignmentHistory: [...existingHistory, newHistoryEntry],
     };
 
@@ -6363,6 +6372,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       pendingClearanceSiteName: undefined,
       permanentConfirmedAt: nowIso,
       permanentConfirmedBy: currentUser?.fullName || 'Branch Admin',
+      updatedAt: nowIso,
       siteAssignmentHistory: updatedHistory,
     };
 
@@ -6448,6 +6458,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           pendingClearanceSiteName: undefined,
           permanentConfirmedAt: nowIso,
           permanentConfirmedBy: currentUser?.fullName || 'Auto Stock Clearance',
+          updatedAt: nowIso,
           siteAssignmentHistory: nextHistory,
         };
       });
@@ -6465,6 +6476,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateTeam = (id: string, updates: Partial<Team>) => {
     const existingTeam = teams.find((t) => t.id === id);
+    const nowIso = new Date().toISOString();
+
+    // Enforce business rule: Once a team has received at least one stock item, its Team Name cannot be manually changed
+    const hasReceivedAnyStock =
+      teamIssues.some(
+        (iss) =>
+          iss.teamId === id &&
+          (!Array.isArray(iss.items) || iss.items.some((row) => Number(row.quantity || 0) > 0))
+      ) ||
+      projectUsages.some((u) => u.teamId === id && !u.isDeleted) ||
+      teamReturns.some((ret) => ret.teamId === id);
+
     // If assignedSiteId is changing via updateTeam, route through transferTeamToSite so Temporary/Permanent rules & history are always enforced
     if (
       existingTeam &&
@@ -6476,18 +6499,23 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const activeTenantId = currentTenantIdRef.current || currentTenantId;
       if (Object.keys(otherUpdates).length > 0) {
         setTeams((prev) => {
-          const updated = prev.map((t) =>
-            t.id === id
-              ? {
-                  ...t,
-                  ...otherUpdates,
-                  baseTeamName: extractBaseTeamName(
-                    otherUpdates.teamName || t.teamName,
-                    otherUpdates.baseTeamName || t.baseTeamName
-                  ),
-                }
-              : t
-          );
+          const updated = prev.map((t) => {
+            if (t.id !== id) return t;
+            const lockedName = hasReceivedAnyStock ? t.teamName : otherUpdates.teamName || t.teamName;
+            const lockedBase = hasReceivedAnyStock
+              ? t.baseTeamName || extractBaseTeamName(t.teamName, t.baseTeamName)
+              : extractBaseTeamName(
+                  otherUpdates.teamName || t.teamName,
+                  otherUpdates.baseTeamName || t.baseTeamName
+                );
+            return {
+              ...t,
+              ...otherUpdates,
+              teamName: lockedName,
+              baseTeamName: lockedBase,
+              updatedAt: nowIso,
+            };
+          });
           saveTenantData(activeTenantId, 'teams', updated);
           return updated;
         });
@@ -6500,6 +6528,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setTeams((prev) => {
       const updated = prev.map((t) => {
         if (t.id !== id) return t;
+        if (hasReceivedAnyStock) {
+          return {
+            ...t,
+            ...updates,
+            teamName: t.teamName,
+            baseTeamName: t.baseTeamName || extractBaseTeamName(t.teamName, t.baseTeamName),
+            updatedAt: nowIso,
+          };
+        }
         const nextBase = updates.teamName
           ? extractBaseTeamName(updates.teamName, updates.baseTeamName || t.baseTeamName)
           : t.baseTeamName;
@@ -6512,6 +6549,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ...updates,
           baseTeamName: nextBase,
           teamName: nextTeamName,
+          updatedAt: nowIso,
         };
       });
       saveTenantData(activeTenantId, 'teams', updated);
@@ -6522,11 +6560,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return updated;
     });
     const team = teams.find((t) => t.id === id);
+    const effectiveLogName = hasReceivedAnyStock
+      ? team?.teamName || id
+      : updates.teamName || team?.teamName || id;
     addAuditLog(
       'MASTER_TEAM_UPDATED',
-      updates.teamName || team?.teamName || id,
+      effectiveLogName,
       'Field Base',
-      `Updated field team: ${updates.teamName || team?.teamName} (Lead: ${updates.teamLeaderName || team?.teamLeaderName})`
+      `Updated field team: ${effectiveLogName} (Lead: ${updates.teamLeaderName || team?.teamLeaderName})`
     );
   };
 
@@ -6807,7 +6848,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const deletedBy = currentUser?.fullName || 'Administrator';
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setTeams((prev) => {
-      const updated = prev.map((t) => (t.id === id ? { ...t, isDeleted: true, deletedAt: timestamp, deletedBy } : t));
+      const updated = prev.map((t) =>
+        t.id === id
+          ? { ...t, isDeleted: true, deletedAt: timestamp, deletedBy, updatedAt: timestamp }
+          : t
+      );
       saveTenantData(activeTenantId, 'teams', updated);
       const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
       if (isMaster) {
@@ -6857,7 +6902,30 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     ids.forEach((id) => softDeleteUser(id));
   };
   const bulkSoftDeleteTeams = (ids: string[]) => {
-    ids.forEach((id) => softDeleteTeam(id));
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    const timestamp = new Date().toISOString();
+    const deletedBy = currentUser?.fullName || 'Administrator';
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    setTeams((prev) => {
+      const updated = prev.map((t) =>
+        idSet.has(t.id)
+          ? { ...t, isDeleted: true, deletedAt: timestamp, deletedBy, updatedAt: timestamp }
+          : t
+      );
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
+    addAuditLog(
+      'MASTER_TEAM_SOFT_DELETED',
+      `BULK-${ids.length}`,
+      'Field Base',
+      `Moved ${ids.length} field team(s) to Recycle Bin`
+    );
   };
 
   // Recycle Bin Listing
@@ -6997,10 +7065,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const restoreTeam = (id: string) => {
-    unmarkTenantRecordDeleted(currentTenantIdRef.current, id);
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const timestamp = new Date().toISOString();
+    unmarkTenantRecordDeleted(activeTenantId, id);
     setTeams((prev) => {
-      const updated = prev.map((t) => (t.id === id ? { ...t, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : t));
-      saveTenantData(currentTenantIdRef.current, 'teams', updated);
+      const updated = prev.map((t) =>
+        t.id === id
+          ? { ...t, isDeleted: false, deletedAt: undefined, deletedBy: undefined, updatedAt: timestamp }
+          : t
+      );
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
       return updated;
     });
     const team = teams.find((t) => t.id === id);
@@ -7170,21 +7248,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const permanentlyDeleteTeam = (id: string) => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const team = teams.find((t) => t.id === id);
-    const hasLedgerHistory =
-      teamIssues.some((iss) => iss.teamId === id) ||
-      projectUsages.some((u) => u.teamId === id) ||
-      teamReturns.some((ret) => ret.teamId === id);
-
-    if (hasLedgerHistory) {
-      // Preserve soft-deleted state so historical Issue/Usage/Return vouchers never lose their team reference
-      addAuditLog(
-        'MASTER_TEAM_SOFT_DELETED',
-        team?.teamName || id,
-        'Field Base',
-        `Team "${team?.teamName}" retained in archived state because it is linked to historical material issue/usage records`
-      );
-      return;
-    }
 
     markTenantRecordsDeleted(activeTenantId, [id]);
 
@@ -7270,6 +7333,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setTeams((prev) => {
       const updated = prev.filter((t) => !t.isDeleted);
       saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
       return updated;
     });
     setProjects((prev) => {
@@ -7362,9 +7429,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const clearAllTeams = () => {
     const timestamp = new Date().toISOString();
     const deletedBy = currentUser?.fullName || 'Administrator';
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setTeams((prev) => {
-      const updated = prev.map((t) => ({ ...t, isDeleted: true, deletedAt: timestamp, deletedBy }));
-      saveTenantData(currentTenantIdRef.current, 'teams', updated);
+      const updated = prev.map((t) => ({
+        ...t,
+        isDeleted: true,
+        deletedAt: timestamp,
+        deletedBy,
+        updatedAt: timestamp,
+      }));
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
       return updated;
     });
     addAuditLog('MASTER_TEAM_SOFT_DELETED', 'CLEAR-TEAMS', 'Field Base', 'Moved all field teams to Recycle Bin.');

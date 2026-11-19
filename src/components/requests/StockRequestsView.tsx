@@ -1710,10 +1710,14 @@ export const StockRequestsView: React.FC = () => {
                                           ]);
                                         }
                                       }}
-                                      className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-pointer transition-colors"
+                                      className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 cursor-pointer transition-colors text-left"
                                       title="Click to add this FOC item to request lines"
                                     >
-                                      + {itm.itemCode} ({formatNumber(entry.centralWarehouseAvailable)} {itm.unit} avail)
+                                      <span className="font-mono font-extrabold">+ [{itm.itemCode}]</span>{' '}
+                                      <span>{itm.itemName}</span>{' '}
+                                      <span className="text-emerald-700 font-mono">
+                                        ({formatNumber(entry.centralWarehouseAvailable)} {itm.unit} avail)
+                                      </span>
                                     </button>
                                   );
                                 })}
@@ -1957,11 +1961,11 @@ export const StockRequestsView: React.FC = () => {
                 </div>
 
                 {/* Table of items with comfortable height to let dropdown unfold fully */}
-                <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white min-h-[440px] pb-52 shadow-2xs">
-                  <table className="w-full text-xs text-left min-w-[820px]">
+                <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white min-h-[500px] pb-64 shadow-2xs">
+                  <table className="w-full text-xs text-left min-w-[900px]">
                     <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-xs font-bold uppercase tracking-wider">
                       <tr>
-                        <th className="py-3 px-4 min-w-[360px] sm:min-w-[440px] md:min-w-[480px]">
+                        <th className="py-3 px-4 min-w-[420px] sm:min-w-[520px] md:min-w-[580px]">
                           Item Description & Classification
                         </th>
                         <th className="py-3 px-3 text-center w-20">Unit</th>
@@ -2025,7 +2029,7 @@ export const StockRequestsView: React.FC = () => {
                               className="hover:bg-slate-50/70 transition-colors relative"
                               style={{ zIndex: 40 - originalIndex }}
                             >
-                              <td className="py-3 px-4 min-w-[360px] sm:min-w-[440px] md:min-w-[480px]">
+                              <td className="py-3 px-4 min-w-[420px] sm:min-w-[520px] md:min-w-[580px]">
                                 <div className="space-y-1.5">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {isMach ? (
@@ -2069,6 +2073,20 @@ export const StockRequestsView: React.FC = () => {
                                         : 'Search & select material item...'
                                     }
                                   />
+                                  {item && (
+                                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/90 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                      <div className="min-w-0 flex-1">
+                                        <span className="font-mono font-bold text-slate-700 mr-1.5">[{item.itemCode}]</span>
+                                        <span className="font-extrabold text-slate-900 break-words">{item.itemName}</span>
+                                        {item.description && (
+                                          <span className="text-slate-500 ml-1.5 text-[11px]">— {item.description}</span>
+                                        )}
+                                      </div>
+                                      <span className="text-[11px] font-semibold text-slate-500 shrink-0">
+                                        Unit: <strong className="text-slate-800">{item.unit}</strong>
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                               <td className="py-3 px-3 text-center text-slate-800 font-bold whitespace-nowrap text-xs sm:text-sm">

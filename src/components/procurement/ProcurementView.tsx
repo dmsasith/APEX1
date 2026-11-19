@@ -2102,12 +2102,12 @@ Email: ${tenantEmail}`;
                 </div>
 
                 {/* 2. Desktop Table Layout (Shown on md+ screens with proper horizontal scroll protection & deep dropdown area) */}
-                <div className="hidden md:block border border-slate-200 rounded-xl overflow-x-auto shadow-2xs min-h-[300px] pb-44">
-                  <table className="w-full text-left text-xs min-w-[880px]">
+                <div className="hidden md:block border border-slate-200 rounded-xl overflow-x-auto shadow-2xs min-h-[380px] pb-64">
+                  <table className="w-full text-left text-xs min-w-[940px]">
                     <thead className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3 w-10 text-center">#</th>
-                        <th className="py-2.5 px-3 min-w-[320px] lg:min-w-[400px]">Material / Catalog Item</th>
+                        <th className="py-2.5 px-3 min-w-[400px] lg:min-w-[520px]">Material / Catalog Item</th>
                         <th className="py-2.5 px-3 w-32 min-w-[110px]">Qty *</th>
                         <th className="py-2.5 px-3 w-28 min-w-[90px]">Unit</th>
                         <th className="py-2.5 px-3 w-40 min-w-[140px]">Unit Price ({config.currencySymbol})</th>
@@ -2121,22 +2121,27 @@ Email: ${tenantEmail}`;
                           <td className="py-2.5 px-3 text-slate-400 font-bold text-center">{idx + 1}</td>
 
                           {/* Item Selector with Search Bar / Custom input */}
-                          <td className="py-2.5 px-3 min-w-[320px] lg:min-w-[400px]">
+                          <td className="py-2.5 px-3 min-w-[400px] lg:min-w-[520px]">
                             {activeItems.length > 0 ? (
-                              <div className="space-y-1 relative" style={{ zIndex: 40 - idx }}>
+                              <div className="space-y-1.5 relative" style={{ zIndex: 40 - idx }}>
                                 <SearchableItemSelect
                                   selectedItemId={item.itemId}
                                   onSelectItem={(selected) => handleItemChange(idx, selected.id)}
                                   placeholder="Search item by code, name, category..."
                                   showStockBadge={true}
                                 />
-                                <input
-                                  type="text"
-                                  placeholder="Or enter custom item description"
-                                  value={item.itemName}
-                                  onChange={(e) => handleItemCustomNameChange(idx, e.target.value)}
-                                  className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-700 focus:bg-white focus:outline-none"
-                                />
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase shrink-0">
+                                    Item Name:
+                                  </span>
+                                  <input
+                                    type="text"
+                                    placeholder="Selected item name or custom description"
+                                    value={item.itemName}
+                                    onChange={(e) => handleItemCustomNameChange(idx, e.target.value)}
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:bg-white focus:outline-none"
+                                  />
+                                </div>
                               </div>
                             ) : (
                               <input

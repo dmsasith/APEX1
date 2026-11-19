@@ -637,30 +637,73 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     setEditingUser(null);
   };
 
+  // Check if a team has ever received at least one stock item (via Team Issues, Project Usages, or Team Returns)
+  const hasTeamReceivedAnyStock = (teamId: string): boolean => {
+    return (
+      teamIssues.some(
+        (iss) =>
+          iss.teamId === teamId &&
+          (!Array.isArray(iss.items) || iss.items.some((row) => Number(row.quantity || 0) > 0))
+      ) ||
+      projectUsages.some((u) => u.teamId === teamId && !u.isDeleted) ||
+      teamReturns.some((ret) => ret.teamId === teamId)
+    );
+  };
+
+  const getTeamReceivedStockStats = (teamId: string) => {
+    const issuesForTeam = teamIssues.filter(
+      (iss) =>
+        iss.teamId === teamId &&
+        (!Array.isArray(iss.items) || iss.items.some((row) => Number(row.quantity || 0) > 0))
+    );
+    const totalUnitsIssued = issuesForTeam.reduce(
+      (sum, iss) =>
+        sum +
+        (Array.isArray(iss.items)
+          ? iss.items.reduce((s, r) => s + Number(r.quantity || 0), 0)
+          : 0),
+      0
+    );
+    const usageCount = projectUsages.filter((u) => u.teamId === teamId && !u.isDeleted).length;
+    return {
+      issueNotesCount: issuesForTeam.length,
+      totalUnitsIssued,
+      usageCount,
+    };
+  };
+
   const handleSaveTeamEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTeam) return;
-    const trimmedName = editingTeam.teamName.trim();
-    if (!trimmedName) return;
-
-    const duplicateTeam = teams.find(
-      (t) => t.id !== editingTeam.id && t.teamName.trim().toLowerCase() === trimmedName.toLowerCase()
-    );
-    if (duplicateTeam) {
-      showToast(
-        `Team name "${trimmedName}" is already used by another ${duplicateTeam.isDeleted ? 'archived (Recycle Bin)' : 'active'} team. Duplicate team names are blocked to protect material usage history.`
-      );
-      return;
-    }
 
     const originalTeam = teams.find((t) => t.id === editingTeam.id);
+    const isNameLocked = hasTeamReceivedAnyStock(editingTeam.id);
+    const effectiveTeamName =
+      isNameLocked && originalTeam ? originalTeam.teamName : editingTeam.teamName.trim();
+
+    if (!effectiveTeamName) return;
+
+    if (!isNameLocked) {
+      const duplicateTeam = teams.find(
+        (t) =>
+          t.id !== editingTeam.id &&
+          t.teamName.trim().toLowerCase() === effectiveTeamName.toLowerCase()
+      );
+      if (duplicateTeam) {
+        showToast(
+          `Team name "${effectiveTeamName}" is already used by another ${duplicateTeam.isDeleted ? 'archived (Recycle Bin)' : 'active'} team. Duplicate team names are blocked to protect material usage history.`
+        );
+        return;
+      }
+    }
+
     const isSiteChanged = originalTeam && originalTeam.assignedSiteId !== editingTeam.assignedSiteId;
     const targetSiteObj = activeSites.find((s) => s.id === editingTeam.assignedSiteId);
 
     const autoCrewSize = (editingTeam.members?.length || 0) + 1;
     updateTeam(editingTeam.id, {
       ...editingTeam,
-      teamName: trimmedName,
+      teamName: effectiveTeamName,
       crewSize: autoCrewSize,
     });
     if (isSiteChanged && targetSiteObj) {
@@ -668,7 +711,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         `Team transferred: "Temporary Assigned to - ${targetSiteObj.name}". Confirm as Permanent once ready.`
       );
     } else {
-      showToast(`Field Team "${trimmedName}" updated (Crew Size: ${autoCrewSize}).`);
+      showToast(`Field Team "${effectiveTeamName}" updated (Crew Size: ${autoCrewSize}).`);
     }
     setEditingTeam(null);
   };
@@ -722,6 +765,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleBulkDeleteTeams = () => {
+    if (selectedTeamIds.length === 0) return;
+
     const teamsWithStock = selectedTeamIds
       .map((id) => activeTeams.find((t) => t.id === id))
       .filter((t): t is Team => {
@@ -730,21 +775,22 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         return summary.totalUnitsHeld > 0 || (summary.totalUnitsToReturnFromPreviousSites || 0) > 0;
       });
 
-    if (teamsWithStock.length > 0) {
-      showToast(
-        `Cannot delete ${teamsWithStock.map((t) => `"${t.teamName}"`).join(', ')} while they still hold unreturned In-Hand Stock or "Stock to Return" from a previous site. Please log usage or return stock first.`
-      );
-      return;
-    }
+    const inHandNotice =
+      teamsWithStock.length > 0
+        ? ` Note: ${teamsWithStock.map((t) => `"${t.teamName}"`).join(', ')} currently hold recorded In-Hand Stock. Moving them to the Recycle Bin will archive them from active lists while keeping all in-hand & historical stock records intact (restorable anytime).`
+        : '';
+
+    const countToDelete = selectedTeamIds.length;
+    const idsToDelete = [...selectedTeamIds];
 
     setConfirmState({
       isOpen: true,
-      title: `Move ${selectedTeamIds.length} Team(s) to Recycle Bin?`,
-      message: `Are you sure you want to move ${selectedTeamIds.length} selected field teams to the Recycle Bin? Historical material usage records will remain safely preserved.`,
-      confirmLabel: `Move (${selectedTeamIds.length}) to Recycle Bin`,
+      title: `Move ${countToDelete} Team(s) to Recycle Bin?`,
+      message: `Are you sure you want to move ${countToDelete} selected field team(s) to the Recycle Bin? Historical material usage and issue records will remain safely preserved.${inHandNotice}`,
+      confirmLabel: `Move (${countToDelete}) to Recycle Bin`,
       onConfirm: () => {
-        bulkSoftDeleteTeams(selectedTeamIds);
-        showToast(`Moved ${selectedTeamIds.length} teams to Recycle Bin.`);
+        bulkSoftDeleteTeams(idsToDelete);
+        showToast(`Moved ${countToDelete} field team(s) to Recycle Bin.`);
         setSelectedTeamIds([]);
       },
     });
@@ -797,23 +843,24 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleDeleteTeam = (t: Team) => {
     const inHandSummary = getTeamInHandStock(t.id);
     const prevToReturn = inHandSummary.totalUnitsToReturnFromPreviousSites || 0;
-    if (inHandSummary.totalUnitsHeld > 0 || prevToReturn > 0) {
+    const hasUnreturnedStock = inHandSummary.totalUnitsHeld > 0 || prevToReturn > 0;
+
+    let stockHoldingNote = '';
+    if (hasUnreturnedStock) {
       const prevLabels = (inHandSummary.previousSitesStockToReturn || [])
         .map((g) => `Stock to Return - ${g.siteName}: ${g.totalUnitsHeld} unit(s)`)
         .join(', ');
-      showToast(
-        `Cannot delete team "${t.teamName}" because they still hold unreturned stock (${inHandSummary.site.name}: ${inHandSummary.totalUnitsHeld} unit(s)${prevLabels ? ` | ${prevLabels}` : ''}). Please return or clear stock first.`
-      );
-      return;
+      stockHoldingNote = ` Note: This team currently has unreturned stock recorded (${inHandSummary.site.name}: ${inHandSummary.totalUnitsHeld} unit(s)${prevLabels ? ` | ${prevLabels}` : ''}). Moving this team to the Recycle Bin will archive the team from active dispatch lists while preserving all in-hand & historical stock records (you can restore the team anytime from the Recycle Bin).`;
     }
 
     setConfirmState({
       isOpen: true,
       title: `Move Team "${t.teamName}" to Recycle Bin?`,
-      message: `Are you sure you want to move field team "${t.teamName}" (Leader: ${t.teamLeaderName}) to the Recycle Bin? All past material usage & issue records for this team will remain safely preserved.`,
+      message: `Are you sure you want to move field team "${t.teamName}" (Leader: ${t.teamLeaderName}) to the Recycle Bin? All past material usage & issue records for this team will remain safely preserved.${stockHoldingNote}`,
       confirmLabel: 'Move to Recycle Bin',
       onConfirm: () => {
         softDeleteTeam(t.id);
+        setSelectedTeamIds((prev) => prev.filter((id) => id !== t.id));
         showToast(`Team "${t.teamName}" moved to Recycle Bin.`);
       },
     });
@@ -1047,19 +1094,35 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
+      {/* Toast Notification (Top Banner + Floating Viewport Toast) */}
       {successToast && (
-        <div className="bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl text-xs font-medium flex items-center justify-between gap-3 shadow-xl animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+        <>
+          <div className="bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl text-xs font-medium flex items-center justify-between gap-3 shadow-xl animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <span>{successToast}</span>
             </div>
-            <span>{successToast}</span>
+            <button onClick={() => setSuccessToast(null)} className="text-slate-400 hover:text-white p-1">
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button onClick={() => setSuccessToast(null)} className="text-slate-400 hover:text-white p-1">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+          <div className="fixed bottom-6 right-6 z-[90] max-w-md bg-slate-900/95 backdrop-blur-md border border-slate-700 text-white px-4 py-3 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <span className="leading-snug">{successToast}</span>
+            </div>
+            <button
+              onClick={() => setSuccessToast(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </>
       )}
 
       {/* Executive Header Banner */}
@@ -3101,6 +3164,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
                                 {t.teamName}
                               </h3>
+                              {hasTeamReceivedAnyStock(t.id) && (
+                                <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                  <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                  <span>Team Name Locked (Stock Issued)</span>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -4690,16 +4759,58 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
 
             <form onSubmit={handleSaveTeamEdit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Team Name</label>
-                <input
-                  type="text"
-                  value={editingTeam.teamName}
-                  onChange={(e) => setEditingTeam({ ...editingTeam, teamName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
-                  required
-                />
-              </div>
+              {(() => {
+                const isTeamNameLocked = hasTeamReceivedAnyStock(editingTeam.id);
+                const stockStats = getTeamReceivedStockStats(editingTeam.id);
+                return (
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Team Name
+                      </label>
+                      {isTeamNameLocked && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-[10px] font-extrabold text-amber-900 dark:text-amber-300">
+                          <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          <span>Locked — Stock Received</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={editingTeam.teamName}
+                        onChange={(e) => {
+                          if (isTeamNameLocked) return;
+                          setEditingTeam({ ...editingTeam, teamName: e.target.value });
+                        }}
+                        readOnly={isTeamNameLocked}
+                        disabled={isTeamNameLocked}
+                        className={`w-full px-3.5 py-2.5 border rounded-xl text-xs transition-all ${
+                          isTeamNameLocked
+                            ? 'border-amber-300/80 dark:border-amber-800/70 bg-slate-100 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 font-bold cursor-not-allowed pr-9'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none'
+                        }`}
+                        required
+                      />
+                      {isTeamNameLocked && (
+                        <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      )}
+                    </div>
+                    {isTeamNameLocked && (
+                      <div className="mt-1.5 flex items-start gap-2 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 p-2.5 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
+                        <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Team Name cannot be changed</strong> because this team has already received stock items
+                          {stockStats.issueNotesCount > 0
+                            ? ` (${stockStats.issueNotesCount} Issue Note${stockStats.issueNotesCount !== 1 ? 's' : ''} · ${formatNumber(stockStats.totalUnitsIssued)} unit${stockStats.totalUnitsIssued !== 1 ? 's' : ''} issued)`
+                            : ''}
+                          . You can still update the Team Leader, Crew Members, Assigned Site, or Contact Phone below.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
