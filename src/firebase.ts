@@ -1203,6 +1203,22 @@ export function subscribeToFirebaseDeletedTenants(
   return unsubscribe;
 }
 
+export async function fetchDeletedTenantsFromFirebase(): Promise<Record<string, number>> {
+  try {
+    const snap = await get(ref(rtdb, 'saasDeletedTenants'));
+    if (snap.exists()) {
+      const val = snap.val();
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        return val as Record<string, number>;
+      }
+    }
+    return {};
+  } catch (err) {
+    console.warn('Failed to fetch saasDeletedTenants from Firebase:', err);
+    return {};
+  }
+}
+
 export async function deleteTenantInFirebase(
   tenantId: string,
   updatedTenants: Tenant[]

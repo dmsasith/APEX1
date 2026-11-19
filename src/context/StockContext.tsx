@@ -93,6 +93,7 @@ import {
   writeTenantsToFirebase,
   fetchTenantsFromFirebase,
   subscribeToFirebaseDeletedTenants,
+  fetchDeletedTenantsFromFirebase,
   deleteTenantInFirebase,
   subscribeToFirebasePlatformPricing,
   writePlatformPricingToFirebase,
@@ -1364,6 +1365,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   useEffect(() => {
+    const PRICING_CACHE_KEY = 'apex_platform_pricing_fetched_at_v1';
+    try {
+      const lastFetched = Number(sessionStorage.getItem(PRICING_CACHE_KEY) || '0');
+      if (Date.now() - lastFetched < 10 * 60 * 1000) {
+        return;
+      }
+    } catch {}
+
     fetchPlatformPricingFromFirebase()
       .then((remotePricing) => {
         if (remotePricing && typeof remotePricing.monthlyPrice === 'number') {
@@ -1378,31 +1387,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           setPlatformPricing(normalized);
           try {
             localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(normalized));
+            sessionStorage.setItem(PRICING_CACHE_KEY, String(Date.now()));
           } catch {}
         }
       })
       .catch(() => {});
-
-    const unsubPricing = subscribeToFirebasePlatformPricing((remotePricing) => {
-      if (remotePricing && typeof remotePricing.monthlyPrice === 'number') {
-        const metrics = computePlatformPricingMetrics(remotePricing);
-        const normalized: PlatformPricingConfig = {
-          ...DEFAULT_PLATFORM_PRICING,
-          ...remotePricing,
-          monthlyPrice: metrics.monthlyPrice,
-          annualPrice: metrics.annualPrice,
-          trialDays: metrics.trialDays,
-        };
-        setPlatformPricing(normalized);
-        try {
-          localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(normalized));
-        } catch {}
-      }
-    });
-
-    return () => {
-      unsubPricing();
-    };
   }, []);
 
   const [currentTenantId, setCurrentTenantId] = useState<string>(() => {
@@ -1445,12 +1434,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     currentTenantIdRef.current = activeTenantId;
   }, [activeTenantId]);
 
-  // Fetch remote tenants list once on mount so fresh browsers with ?workspace=slug discover the workspace immediately
+  // Fetch remote tenants & deleted tenants list once on mount (with sessionStorage cooldown) so fresh browsers with ?workspace=slug discover the workspace immediately without holding permanent root listeners
   useEffect(() => {
-    fetchTenantsFromFirebase()
-      .then((remoteList) => {
+    const TENANTS_CACHE_KEY = 'apex_saas_tenants_fetched_at_v1';
+    try {
+      const lastFetched = Number(sessionStorage.getItem(TENANTS_CACHE_KEY) || '0');
+      if (Date.now() - lastFetched < 5 * 60 * 1000 && tenantsRef.current.length > 0) {
+        return;
+      }
+    } catch {}
+
+    Promise.all([fetchDeletedTenantsFromFirebase(), fetchTenantsFromFirebase()])
+      .then(([remoteDeletedMap, remoteList]) => {
+        const deletedIds = mergeRemoteDeletedTenantIds(remoteDeletedMap || {});
         if (remoteList && remoteList.length > 0) {
-          const deletedIds = getDeletedTenantIds();
           const map = new Map<string, Tenant>();
           (tenantsRef.current.length > 0 ? tenantsRef.current : getAllSavedTenants()).forEach((t) => {
             if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
@@ -1461,7 +1458,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           const merged = persistTenantsLocal(Array.from(map.values()));
           tenantsRef.current = merged;
           setTenants(merged);
+        } else if (deletedIds.size > 0) {
+          setTenants((prev) => {
+            const filtered = prev.filter(
+              (t) => t.id === DEFAULT_TENANT.id || t.id === 'tenant-apex-main' || !deletedIds.has(t.id)
+            );
+            const persisted = persistTenantsLocal(filtered);
+            tenantsRef.current = persisted;
+            return persisted;
+          });
         }
+        try {
+          sessionStorage.setItem(TENANTS_CACHE_KEY, String(Date.now()));
+        } catch {}
       })
       .catch(() => {});
   }, []);
@@ -1651,10 +1660,46 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Helper to sync all collections for any tenantId from Firebase RTDB (respecting flushMeta & deleted tombstones)
-  const syncTenantCollectionsFromFirebase = async (targetTenantId: string): Promise<void> => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const savedAuth = localStorage.getItem(STORAGE_KEY_PREFIX + 'is_authenticated');
+      return savedAuth === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Tracks the last timestamp when static/master reference data was fetched per tenant in this session
+  const lastStaticSyncTimestampRef = useRef<Record<string, number>>({});
+  const STATIC_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute cooldown to avoid redundant re-downloads on page refreshes
+
+  // Helper to sync static/master collections (or all collections on forceRefresh) for any tenantId from Firebase RTDB
+  // NOTE: Operational collections are already synced by their live onValue listeners (which deliver an immediate initial snapshot),
+  // so we do NOT also run get() on operational collections during normal mount/switch — cutting initial downloads by 50%!
+  const syncTenantCollectionsFromFirebase = async (
+    targetTenantId: string,
+    options?: { forceFullRefresh?: boolean }
+  ): Promise<void> => {
     if (!targetTenantId || isFlushingRef.current) return;
     if (targetTenantId !== DEFAULT_TENANT.id && getDeletedTenantIds().has(targetTenantId)) return;
+
+    const forceFullRefresh = options?.forceFullRefresh === true;
+    const now = Date.now();
+    const lastSyncMs = lastStaticSyncTimestampRef.current[targetTenantId] || 0;
+    let sessionSyncMs = 0;
+    try {
+      sessionSyncMs = Number(sessionStorage.getItem(`apex_static_sync_ts_${targetTenantId}`) || '0');
+    } catch {}
+    const effectiveLastSync = Math.max(lastSyncMs, sessionSyncMs);
+
+    // If static data was already fetched within the 5-minute TTL and local state is populated, skip redundant get() calls unless forced
+    const hasLocalCatalog =
+      loadTenantData<Site[]>(targetTenantId, 'sites', []).length > 0 &&
+      loadTenantData<User[]>(targetTenantId, 'users', []).length > 0;
+    if (!forceFullRefresh && now - effectiveLastSync < STATIC_CACHE_TTL_MS && hasLocalCatalog) {
+      hydratedTenantsRef.current.add(targetTenantId);
+      return;
+    }
 
     const seq = ++hydrationSeqRef.current;
     isHydratingTenantRef.current = true;
@@ -1770,35 +1815,49 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
       };
 
-      await Promise.allSettled([
+      // Static / Master / Heavy Base64 Reference Collections fetched via one-time get()
+      const tasks: Promise<void>[] = [
         syncUsersTask,
         syncSitesTask,
         syncConfigTask,
         syncCollection<Item>('items', setItems),
-        syncCollection<Team>('teams', setTeams),
-        syncCollection<MainStockEntry>('mainStockEntries', setMainStockEntries),
-        syncCollection<StockTransferRequest>('stockRequests', setStockRequests),
-        syncCollection<TeamIssue>('teamIssues', setTeamIssues),
-        syncCollection<TeamReturn>('teamReturns', setTeamReturns),
-        syncCollection<Project>('projects', setProjects),
         syncCollection<ProjectType>('projectTypes', setProjectTypes),
-        syncCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages),
-        syncCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests),
-        syncCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues),
-        syncCollection<BranchReturn>('branchReturns', setBranchReturns),
-        syncCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations),
         syncCollection<Supplier>('suppliers', setSuppliers),
         syncCollection<Client>('clients', setClients),
-        syncCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders),
-        syncCollection<SupplierReturn>('supplierReturns', setSupplierReturns),
         syncCollection<AuditLogEntry>('auditLogs', setAuditLogs),
-        syncCollection<StockBackup>('backups', setBackups),
         syncCollection<LetterheadTemplate>('letterheadTemplates', setLetterheadTemplates),
         syncCollection<DigitalSignature>('digitalSignatures', setDigitalSignatures),
-      ]);
+      ];
+
+      // Only download heavy full-workspace backups or operational collections via get() when explicitly forced (e.g. Manual Cloud Sync button)
+      if (forceFullRefresh) {
+        tasks.push(
+          syncCollection<Team>('teams', setTeams),
+          syncCollection<MainStockEntry>('mainStockEntries', setMainStockEntries),
+          syncCollection<StockTransferRequest>('stockRequests', setStockRequests),
+          syncCollection<TeamIssue>('teamIssues', setTeamIssues),
+          syncCollection<TeamReturn>('teamReturns', setTeamReturns),
+          syncCollection<Project>('projects', setProjects),
+          syncCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages),
+          syncCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests),
+          syncCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues),
+          syncCollection<BranchReturn>('branchReturns', setBranchReturns),
+          syncCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations),
+          syncCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders),
+          syncCollection<SupplierReturn>('supplierReturns', setSupplierReturns),
+          syncCollection<StockBackup>('backups', setBackups)
+        );
+      }
+
+      await Promise.allSettled(tasks);
 
       if (currentTenantIdRef.current === targetTenantId) {
         hydratedTenantsRef.current.add(targetTenantId);
+        const finishedMs = Date.now();
+        lastStaticSyncTimestampRef.current[targetTenantId] = finishedMs;
+        try {
+          sessionStorage.setItem(`apex_static_sync_ts_${targetTenantId}`, String(finishedMs));
+        } catch {}
       }
     } finally {
       if (hydrationSeqRef.current === seq) {
@@ -1807,13 +1866,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Realtime Cloud Data Sync for current active tenant (multi-device / Vercel deployment support)
+  // Realtime Cloud Data Sync for current active tenant (ONLY attached when authenticated and scoped strictly to activeTenantId)
   useEffect(() => {
-    if (!activeTenantId) return;
+    if (!activeTenantId || !isAuthenticated) return;
 
+    // 1. One-time get() fetch for Master/Static/Heavy Reference collections (with 5-min session cache)
     syncTenantCollectionsFromFirebase(activeTenantId);
 
-    // Realtime listener for tenant deletedRecordIds so permanent deletions propagate across all tabs/devices immediately
+    // 2. Live onValue listeners ONLY for high-frequency active operational workflows & deletion/flush barriers
     const unsubDeletedRecords = subscribeToFirebaseTenantData<string[] | Record<string, any>>(
       activeTenantId,
       'deletedRecordIds',
@@ -1845,7 +1905,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     );
 
-    // Realtime listener for tenant flushMeta so other open browser tabs/devices clear immediately on flush
     const unsubFlushMeta = subscribeToFirebaseTenantData<FlushMeta>(
       activeTenantId,
       'flushMeta',
@@ -1861,87 +1920,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     );
 
-    // Realtime listener for tenant users
-    const unsubUsers = subscribeToFirebaseTenantData<User[]>(
-      activeTenantId,
-      'users',
-      (remoteUsers) => {
-        if (
-          remoteUsers &&
-          Array.isArray(remoteUsers) &&
-          remoteUsers.length > 0 &&
-          currentTenantIdRef.current === activeTenantId &&
-          !isFlushingRef.current
-        ) {
-          runWithRemoteGuard(() => {
-            setUsers((prev) => {
-              const cleanPrev = filterPostFlushRecords(activeTenantId, 'users', prev);
-              const cleanRemote = filterPostFlushRecords(activeTenantId, 'users', remoteUsers);
-              const baseList = hydratedTenantsRef.current.has(activeTenantId)
-                ? cleanRemote
-                : mergeListsById(cleanPrev, cleanRemote);
-              const merged = sanitizeTenantUsers(activeTenantId, baseList, tenantsRef.current);
-              saveTenantDataLocalOnly(activeTenantId, 'users', merged);
-              return merged;
-            });
-          });
-        }
-      }
-    );
-
-    // Realtime listener for tenant sites
-    const unsubSites = subscribeToFirebaseTenantData<Site[]>(
-      activeTenantId,
-      'sites',
-      (remoteSites) => {
-        if (
-          remoteSites &&
-          Array.isArray(remoteSites) &&
-          remoteSites.length > 0 &&
-          currentTenantIdRef.current === activeTenantId &&
-          !isFlushingRef.current
-        ) {
-          runWithRemoteGuard(() => {
-            setSites((prev) => {
-              const cleanPrev = filterPostFlushRecords(activeTenantId, 'sites', prev);
-              const cleanRemote = filterPostFlushRecords(activeTenantId, 'sites', remoteSites);
-              const baseList = hydratedTenantsRef.current.has(activeTenantId)
-                ? cleanRemote
-                : mergeListsById(cleanPrev, cleanRemote);
-              const finalSites = sanitizeTenantSites(activeTenantId, baseList, tenantsRef.current);
-              saveTenantDataLocalOnly(activeTenantId, 'sites', finalSites);
-              return finalSites;
-            });
-          });
-        }
-      }
-    );
-
-    // Realtime listener for tenant config
-    const unsubConfig = subscribeToFirebaseTenantData<SystemConfig>(
-      activeTenantId,
-      'config',
-      (remoteConfig) => {
-        if (
-          remoteConfig &&
-          typeof remoteConfig === 'object' &&
-          remoteConfig.companyName &&
-          currentTenantIdRef.current === activeTenantId &&
-          !isFlushingRef.current
-        ) {
-          runWithRemoteGuard(() => {
-            setConfig((prev) => {
-              const merged = { ...prev, ...remoteConfig };
-              saveTenantDataLocalOnly(activeTenantId, 'config', merged);
-              return merged;
-            });
-          });
-        }
-      }
-    );
-
-    // Helper for subscribing to any tenant collection in real time
-    const subscribeCollection = <T extends { id: string; updatedAt?: string }>(
+    // Helper for subscribing to active operational tenant collections in real time
+    const subscribeOperationalCollection = <T extends { id: string; updatedAt?: string }>(
       key: string,
       setter: React.Dispatch<React.SetStateAction<T[]>>
     ) => {
@@ -1967,35 +1947,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     };
 
-    const unsubItems = subscribeCollection<Item>('items', setItems);
-    const unsubTeams = subscribeCollection<Team>('teams', setTeams);
-    const unsubProjects = subscribeCollection<Project>('projects', setProjects);
-    const unsubProjectTypes = subscribeCollection<ProjectType>('projectTypes', setProjectTypes);
-    const unsubMainEntries = subscribeCollection<MainStockEntry>('mainStockEntries', setMainStockEntries);
-    const unsubStockRequests = subscribeCollection<StockTransferRequest>('stockRequests', setStockRequests);
-    const unsubTeamIssues = subscribeCollection<TeamIssue>('teamIssues', setTeamIssues);
-    const unsubTeamReturns = subscribeCollection<TeamReturn>('teamReturns', setTeamReturns);
-    const unsubProjectUsages = subscribeCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages);
-    const unsubCrossRequests = subscribeCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests);
-    const unsubClientFreeIssues = subscribeCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues);
-    const unsubBranchReturns = subscribeCollection<BranchReturn>('branchReturns', setBranchReturns);
-    const unsubRestorations = subscribeCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations);
-    const unsubSuppliers = subscribeCollection<Supplier>('suppliers', setSuppliers);
-    const unsubClients = subscribeCollection<Client>('clients', setClients);
-    const unsubPOs = subscribeCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders);
-    const unsubSupplierReturns = subscribeCollection<SupplierReturn>('supplierReturns', setSupplierReturns);
-    const unsubAuditLogs = subscribeCollection<AuditLogEntry>('auditLogs', setAuditLogs);
+    const unsubTeams = subscribeOperationalCollection<Team>('teams', setTeams);
+    const unsubProjects = subscribeOperationalCollection<Project>('projects', setProjects);
+    const unsubMainEntries = subscribeOperationalCollection<MainStockEntry>('mainStockEntries', setMainStockEntries);
+    const unsubStockRequests = subscribeOperationalCollection<StockTransferRequest>('stockRequests', setStockRequests);
+    const unsubTeamIssues = subscribeOperationalCollection<TeamIssue>('teamIssues', setTeamIssues);
+    const unsubTeamReturns = subscribeOperationalCollection<TeamReturn>('teamReturns', setTeamReturns);
+    const unsubProjectUsages = subscribeOperationalCollection<ProjectMaterialUsage>('projectUsages', setProjectUsages);
+    const unsubCrossRequests = subscribeOperationalCollection<CrossProjectOverrideRequest>('crossProjectRequests', setCrossProjectRequests);
+    const unsubClientFreeIssues = subscribeOperationalCollection<ClientFreeIssueEntry>('clientFreeIssues', setClientFreeIssues);
+    const unsubBranchReturns = subscribeOperationalCollection<BranchReturn>('branchReturns', setBranchReturns);
+    const unsubRestorations = subscribeOperationalCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations);
+    const unsubPOs = subscribeOperationalCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders);
+    const unsubSupplierReturns = subscribeOperationalCollection<SupplierReturn>('supplierReturns', setSupplierReturns);
 
     return () => {
       if (unsubDeletedRecords) unsubDeletedRecords();
       if (unsubFlushMeta) unsubFlushMeta();
-      if (unsubUsers) unsubUsers();
-      if (unsubSites) unsubSites();
-      if (unsubConfig) unsubConfig();
-      if (unsubItems) unsubItems();
       if (unsubTeams) unsubTeams();
       if (unsubProjects) unsubProjects();
-      if (unsubProjectTypes) unsubProjectTypes();
       if (unsubMainEntries) unsubMainEntries();
       if (unsubStockRequests) unsubStockRequests();
       if (unsubTeamIssues) unsubTeamIssues();
@@ -2005,13 +1975,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (unsubClientFreeIssues) unsubClientFreeIssues();
       if (unsubBranchReturns) unsubBranchReturns();
       if (unsubRestorations) unsubRestorations();
-      if (unsubSuppliers) unsubSuppliers();
-      if (unsubClients) unsubClients();
       if (unsubPOs) unsubPOs();
       if (unsubSupplierReturns) unsubSupplierReturns();
-      if (unsubAuditLogs) unsubAuditLogs();
     };
-  }, [activeTenantId]);
+  }, [activeTenantId, isAuthenticated]);
 
   // Auto-check and promote queued subscriptions when current plan period expires
   useEffect(() => {
@@ -2101,24 +2068,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (isFlushingRef.current) return;
     const targetTenantId = currentTenantIdRef.current;
     if (!targetTenantId || loadedTenantIdRef.current !== targetTenantId) return;
-
-    // While hydrating a tenant or applying an incoming Firebase listener update, do not echo writes back to Firebase
-    if (isHydratingTenantRef.current || isApplyingRemoteRef.current) {
-      if (Array.isArray(data) && data.length === 0) return;
-      saveTenantDataLocalOnly(targetTenantId, key, data);
+    if ((isHydratingTenantRef.current || isApplyingRemoteRef.current) && Array.isArray(data) && data.length === 0) {
       return;
     }
-
     saveTenantDataLocalOnly(targetTenantId, key, data);
-
-    // Only write to Firebase from automatic useEffects AFTER the tenant has completed Firebase hydration,
-    // and never overwrite remote Firebase collections with an empty array [] from a passive state effect
-    if (hydratedTenantsRef.current.has(targetTenantId)) {
-      if (Array.isArray(data) && data.length === 0) {
-        return;
-      }
-      writeTenantDataToFirebase(targetTenantId, key, data).catch(() => {});
-    }
   };
 
   // State variables for current active tenant
@@ -2291,15 +2244,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setViewAsUserId(null);
   };
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      const savedAuth = localStorage.getItem(STORAGE_KEY_PREFIX + 'is_authenticated');
-      return savedAuth === 'true';
-    } catch {
-      return false;
-    }
-  });
-
   // Switch memory state when tenant changes
   const loadTenantStateIntoMemory = (tenantId: string) => {
     isHydratingTenantRef.current = true;
@@ -2408,7 +2352,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setCurrentUser(activeUser);
     }
 
-    syncTenantCollectionsFromFirebase(tenantId);
+    if (isAuthenticated) {
+      syncTenantCollectionsFromFirebase(tenantId);
+    }
   };
 
   const getWorkspaceLoginUrl = (slugOrTenantId?: string): string => {
@@ -2463,7 +2409,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (u) => !u.isDeleted && (u.username.trim().toLowerCase() === termLower || u.fullName.trim().toLowerCase() === termLower)
       );
 
-      // Always verify/fetch from Firebase RTDB so newly created users or updated passwords/sites are never missed
+      // Verify/fetch from Firebase RTDB for the target tenant so newly created users or updated passwords/sites are never missed
       const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
       if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
         const cleanRemote = sanitizeTenantUsers(
@@ -2507,12 +2453,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
 
-      // If a specific workspace was designated, check all tenants matching that slug/id first
+      // If a specific workspace was designated, check ONLY tenants matching that slug/id first (Strict Per-Tenant Isolation)
       if (matchingTenants.length > 0) {
-        // Also refresh cloud tenants if there might be a newer workspace with the same slug
-        await refreshTenantsFromCloud();
-        matchingTenants = findMatchingTenantsBySlug(allTenants, explicitSlug!);
-
         const slugCandidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
         for (const t of matchingTenants) {
           const u = await findUserInTenant(t, term);
@@ -2520,6 +2462,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const isMaster = t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
             const expected = isMaster ? 'sasith@123' : (u.password || 'password123').trim();
             slugCandidates.push({ tenant: t, user: u, expectedPass: expected });
+          }
+        }
+
+        if (slugCandidates.length === 0) {
+          // Only refresh cloud tenants if not found locally in the matched workspace
+          await refreshTenantsFromCloud();
+          matchingTenants = findMatchingTenantsBySlug(allTenants, explicitSlug!);
+          for (const t of matchingTenants) {
+            const u = await findUserInTenant(t, term);
+            if (u) {
+              const isMaster = t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
+              const expected = isMaster ? 'sasith@123' : (u.password || 'password123').trim();
+              slugCandidates.push({ tenant: t, user: u, expectedPass: expected });
+            }
           }
         }
 
@@ -2532,76 +2488,82 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           matchedTenant = chosen.tenant;
           matchedUser = chosen.user;
         } else {
-          // Fallback: if the user wasn't found in the slug-matched tenant, check all other active tenants
-          // (in case the admin created the user in another workspace or Master workspace)
+          return {
+            success: false,
+            message: `User account "${usernameOrUser}" not found in ${matchingTenants[0].companyName} workspace.`,
+          };
+        }
+      } else {
+        // No explicit workspace code: Check the CURRENT active tenant first before scanning other tenants!
+        const activeTenObj = allTenants.find((t) => t.id === currentTenantIdRef.current) || DEFAULT_TENANT;
+        const activeFound = await findUserInTenant(activeTenObj, term);
+        if (activeFound) {
+          const isMaster = activeTenObj.id === DEFAULT_TENANT.id && (activeFound.username === 'admin' || activeFound.id === 'usr-admin-1');
+          const expected = isMaster ? 'sasith@123' : (activeFound.password || 'password123').trim();
+          if (!inputPass || inputPass === expected) {
+            matchedTenant = activeTenObj;
+            matchedUser = activeFound;
+          }
+        }
+
+        // Only if the user was NOT found (or password didn't match) in the current active tenant, search remaining tenants
+        if (!matchedUser || !matchedTenant) {
+          await refreshTenantsFromCloud();
+          const candidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
+          if (activeFound) {
+            const isMaster = activeTenObj.id === DEFAULT_TENANT.id && (activeFound.username === 'admin' || activeFound.id === 'usr-admin-1');
+            const expected = isMaster ? 'sasith@123' : (activeFound.password || 'password123').trim();
+            candidates.push({ tenant: activeTenObj, user: activeFound, expectedPass: expected });
+          }
+
           for (const t of allTenants) {
-            if (matchingTenants.some((m) => m.id === t.id)) continue;
-            const u = await findUserInTenant(t, term);
-            if (u) {
-              matchedTenant = t;
-              matchedUser = u;
-              break;
+            if (t.id === activeTenObj.id) continue;
+            const found = await findUserInTenant(t, term);
+            if (found) {
+              const isMaster = t.id === DEFAULT_TENANT.id && (found.username === 'admin' || found.id === 'usr-admin-1');
+              const expected = isMaster ? 'sasith@123' : (found.password || 'password123').trim();
+              candidates.push({ tenant: t, user: found, expectedPass: expected });
             }
           }
 
-          if (!matchedUser || !matchedTenant) {
-            return {
-              success: false,
-              message: `User account "${usernameOrUser}" not found in ${matchingTenants[0].companyName} workspace.`,
-            };
+          if (candidates.length === 0) {
+            return { success: false, message: 'User account not found. Please verify your username.' };
           }
-        }
-      } else {
-        // No explicit workspace code: search across all tenants (refreshing from cloud if needed)
-        await refreshTenantsFromCloud();
-        const candidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
 
-        for (const t of allTenants) {
-          const found = await findUserInTenant(t, term);
-          if (found) {
-            const isMaster = t.id === DEFAULT_TENANT.id && (found.username === 'admin' || found.id === 'usr-admin-1');
-            const expected = isMaster ? 'sasith@123' : (found.password || 'password123').trim();
-            candidates.push({ tenant: t, user: found, expectedPass: expected });
-          }
-        }
-
-        if (candidates.length === 0) {
-          return { success: false, message: 'User account not found. Please verify your username.' };
-        }
-
-        if (candidates.length === 1) {
-          matchedTenant = candidates[0].tenant;
-          matchedUser = candidates[0].user;
-        } else {
-          const passwordMatched = inputPass
-            ? candidates.filter((c) => c.expectedPass === inputPass)
-            : [];
-
-          if (passwordMatched.length === 1) {
-            matchedTenant = passwordMatched[0].tenant;
-            matchedUser = passwordMatched[0].user;
-          } else if (passwordMatched.length > 1) {
-            const matchedCompanies = passwordMatched.map((c) => `"${c.tenant.companyName}" (${c.tenant.slug})`).join(', ');
-            return {
-              success: false,
-              message: `The username "${usernameOrUser}" with this password exists in multiple companies (${matchedCompanies}). Please choose your company workspace below or specify your workspace code:`,
-              collisionCompanies: passwordMatched.map((c) => ({
-                id: c.tenant.id,
-                name: c.tenant.companyName,
-                slug: c.tenant.slug,
-              })),
-            };
+          if (candidates.length === 1) {
+            matchedTenant = candidates[0].tenant;
+            matchedUser = candidates[0].user;
           } else {
-            const currentTenantCandidate = candidates.find((c) => c.tenant.id === currentTenantIdRef.current);
-            if (currentTenantCandidate) {
-              matchedTenant = currentTenantCandidate.tenant;
-              matchedUser = currentTenantCandidate.user;
-            } else {
-              const companyNames = candidates.map((c) => c.tenant.companyName).join(', ');
+            const passwordMatched = inputPass
+              ? candidates.filter((c) => c.expectedPass === inputPass)
+              : [];
+
+            if (passwordMatched.length === 1) {
+              matchedTenant = passwordMatched[0].tenant;
+              matchedUser = passwordMatched[0].user;
+            } else if (passwordMatched.length > 1) {
+              const matchedCompanies = passwordMatched.map((c) => `"${c.tenant.companyName}" (${c.tenant.slug})`).join(', ');
               return {
                 success: false,
-                message: `Invalid password for "${usernameOrUser}". (Matching accounts exist in: ${companyNames}. If this is for another company, enter your Company Workspace Code or use your direct company login link).`,
+                message: `The username "${usernameOrUser}" with this password exists in multiple companies (${matchedCompanies}). Please choose your company workspace below or specify your workspace code:`,
+                collisionCompanies: passwordMatched.map((c) => ({
+                  id: c.tenant.id,
+                  name: c.tenant.companyName,
+                  slug: c.tenant.slug,
+                })),
               };
+            } else {
+              const currentTenantCandidate = candidates.find((c) => c.tenant.id === currentTenantIdRef.current);
+              if (currentTenantCandidate) {
+                matchedTenant = currentTenantCandidate.tenant;
+                matchedUser = currentTenantCandidate.user;
+              } else {
+                const companyNames = candidates.map((c) => c.tenant.companyName).join(', ');
+                return {
+                  success: false,
+                  message: `Invalid password for "${usernameOrUser}". (Matching accounts exist in: ${companyNames}. If this is for another company, enter your Company Workspace Code or use your direct company login link).`,
+                };
+              }
             }
           }
         }
@@ -2667,11 +2629,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     loadTenantStateIntoMemory(matchedTenant.id);
     setCurrentUser(matchedUser);
+    // Setting isAuthenticated to true automatically triggers the useEffect([activeTenantId, isAuthenticated]) hook
+    // which runs syncTenantCollectionsFromFirebase(matchedTenant.id) once and attaches the active tenant's operational listeners
     setIsAuthenticated(true);
-
-    // Ensure all remote collections (sites, users, items, teams, projects, stock, etc.) are synced from Firebase
-    await syncTenantCollectionsFromFirebase(matchedTenant.id);
-    setCurrentUser(matchedUser);
 
     return { success: true, message: `Welcome back, ${matchedUser.fullName} (${matchedTenant.companyName})!` };
   };
@@ -3162,959 +3122,125 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Firebase Realtime Database Live State
   const [firebaseConnected, setFirebaseConnected] = useState<boolean>(true);
   const [isFirebaseSyncing, setIsFirebaseSyncing] = useState<boolean>(false);
-  const isIncomingFirebaseItems = useRef<boolean>(false);
-  const isIncomingFirebaseRequests = useRef<boolean>(false);
-  const isIncomingFirebaseEntries = useRef<boolean>(false);
-  const isIncomingFirebaseSites = useRef<boolean>(false);
-  const isIncomingFirebaseTeams = useRef<boolean>(false);
-  const isIncomingFirebaseUsers = useRef<boolean>(false);
-  const isIncomingFirebaseIssues = useRef<boolean>(false);
-  const isIncomingFirebaseReturns = useRef<boolean>(false);
-  const isIncomingFirebaseProjects = useRef<boolean>(false);
-  const isIncomingFirebaseProjectUsages = useRef<boolean>(false);
-  const isIncomingFirebaseBranchReturns = useRef<boolean>(false);
-  const isIncomingFirebaseBackups = useRef<boolean>(false);
-  const isIncomingFirebaseAudit = useRef<boolean>(false);
-  const isIncomingFirebaseConfig = useRef<boolean>(false);
-  const isIncomingFirebaseLetterheadTemplates = useRef<boolean>(false);
-  const isIncomingFirebaseDigitalSignatures = useRef<boolean>(false);
-  const isIncomingFirebaseSuppliers = useRef<boolean>(false);
-  const isIncomingFirebasePurchaseOrders = useRef<boolean>(false);
-  const isIncomingFirebaseSupplierReturns = useRef<boolean>(false);
-  const isInitializedFromFirebase = useRef<boolean>(false);
 
-  // Guards to prevent newly mounted empty clients from overwriting Firebase with []
-  const hasLoadedItemsFromFirebase = useRef<boolean>(false);
-  const hasLoadedRequestsFromFirebase = useRef<boolean>(false);
-  const hasLoadedEntriesFromFirebase = useRef<boolean>(false);
-  const hasLoadedSitesFromFirebase = useRef<boolean>(false);
-  const hasLoadedTeamsFromFirebase = useRef<boolean>(false);
-  const hasLoadedUsersFromFirebase = useRef<boolean>(false);
-  const hasLoadedIssuesFromFirebase = useRef<boolean>(false);
-  const hasLoadedReturnsFromFirebase = useRef<boolean>(false);
-  const hasLoadedProjectsFromFirebase = useRef<boolean>(false);
-  const hasLoadedProjectUsagesFromFirebase = useRef<boolean>(false);
-  const hasLoadedBranchReturnsFromFirebase = useRef<boolean>(false);
-  const hasLoadedBackupsFromFirebase = useRef<boolean>(false);
-  const hasLoadedAuditFromFirebase = useRef<boolean>(false);
-  const hasLoadedConfigFromFirebase = useRef<boolean>(false);
-  const hasLoadedTemplatesFromFirebase = useRef<boolean>(false);
-  const hasLoadedSignaturesFromFirebase = useRef<boolean>(false);
-  const hasLoadedSuppliersFromFirebase = useRef<boolean>(false);
-  const hasLoadedPurchaseOrdersFromFirebase = useRef<boolean>(false);
-  const hasLoadedSupplierReturnsFromFirebase = useRef<boolean>(false);
-
-  // Fallback timer: After 2.5s, enable writes even if remote was empty or network slow
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      hasLoadedItemsFromFirebase.current = true;
-      hasLoadedRequestsFromFirebase.current = true;
-      hasLoadedEntriesFromFirebase.current = true;
-      hasLoadedSitesFromFirebase.current = true;
-      hasLoadedTeamsFromFirebase.current = true;
-      hasLoadedUsersFromFirebase.current = true;
-      hasLoadedIssuesFromFirebase.current = true;
-      hasLoadedReturnsFromFirebase.current = true;
-      hasLoadedProjectsFromFirebase.current = true;
-      hasLoadedProjectUsagesFromFirebase.current = true;
-      hasLoadedBranchReturnsFromFirebase.current = true;
-      hasLoadedBackupsFromFirebase.current = true;
-      hasLoadedAuditFromFirebase.current = true;
-      hasLoadedConfigFromFirebase.current = true;
-      hasLoadedTemplatesFromFirebase.current = true;
-      hasLoadedSignaturesFromFirebase.current = true;
-      hasLoadedSuppliersFromFirebase.current = true;
-      hasLoadedPurchaseOrdersFromFirebase.current = true;
-      hasLoadedSupplierReturnsFromFirebase.current = true;
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Subscribe to Firebase Realtime Database
-  useEffect(() => {
-    let unsubItems: (() => void) | undefined;
-    let unsubRequests: (() => void) | undefined;
-    let unsubEntries: (() => void) | undefined;
-    let unsubSites: (() => void) | undefined;
-    let unsubTeams: (() => void) | undefined;
-    let unsubUsers: (() => void) | undefined;
-    let unsubIssues: (() => void) | undefined;
-    let unsubReturns: (() => void) | undefined;
-    let unsubProjects: (() => void) | undefined;
-    let unsubProjectUsages: (() => void) | undefined;
-    let unsubBranchReturns: (() => void) | undefined;
-    let unsubBackups: (() => void) | undefined;
-    let unsubAudit: (() => void) | undefined;
-    let unsubConfig: (() => void) | undefined;
-    let unsubTemplates: (() => void) | undefined;
-    let unsubSignatures: (() => void) | undefined;
-    let unsubSuppliers: (() => void) | undefined;
-    let unsubPurchaseOrders: (() => void) | undefined;
-    let unsubSupplierReturns: (() => void) | undefined;
-    let unsubTenants: (() => void) | undefined;
-    let unsubDeletedTenants: (() => void) | undefined;
-    let unsubRootFlushMeta: (() => void) | undefined;
-
-    const isMasterActive =
-      activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
-
-    try {
-      unsubDeletedTenants = subscribeToFirebaseDeletedTenants(
-        (remoteDeletedMap) => {
-          setFirebaseConnected(true);
-          const deletedIds = mergeRemoteDeletedTenantIds(remoteDeletedMap);
-          if (deletedIds.size > 0) {
-            setTenants((prev) => {
-              const filtered = prev.filter(
-                (t) => t.id === DEFAULT_TENANT.id || t.id === 'tenant-apex-main' || !deletedIds.has(t.id)
-              );
-              if (filtered.length !== prev.length) {
-                const persisted = persistTenantsLocal(filtered);
-                tenantsRef.current = persisted;
-                return persisted;
-              }
-              return prev;
-            });
-
-            if (
-              currentTenantIdRef.current !== DEFAULT_TENANT.id &&
-              currentTenantIdRef.current !== 'tenant-apex-main' &&
-              deletedIds.has(currentTenantIdRef.current)
-            ) {
-              setCurrentTenantId(DEFAULT_TENANT.id);
-              currentTenantIdRef.current = DEFAULT_TENANT.id;
-              try {
-                localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', DEFAULT_TENANT.id);
-              } catch {}
-              loadTenantStateIntoMemory(DEFAULT_TENANT.id);
-            }
-          }
-        },
-        (err) => console.warn('Firebase deleted tenants sync notice:', err)
-      );
-
-      unsubTenants = subscribeToFirebaseTenants(
-        (remoteTenants) => {
-          setFirebaseConnected(true);
-          if (remoteTenants && remoteTenants.length > 0) {
-            const deletedIds = getDeletedTenantIds();
-            let hadDeletedInRemote = false;
-
-            setTenants((prev) => {
-              const map = new Map<string, Tenant>();
-              prev.forEach((t) => {
-                if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) {
-                  map.set(t.id, t);
-                }
-              });
-              remoteTenants.forEach((t) => {
-                if (!t || !t.id) return;
-                if (t.id === DEFAULT_TENANT.id || t.id === 'tenant-apex-main') {
-                  map.set(DEFAULT_TENANT.id, {
-                    ...t,
-                    id: DEFAULT_TENANT.id,
-                    companyName: 'Apex Developer',
-                    slug: 'apex-developer',
-                    contactEmail: 'support@apexstox.com',
-                  });
-                } else if (deletedIds.has(t.id)) {
-                  hadDeletedInRemote = true;
-                } else {
-                  map.set(t.id, t);
-                }
-              });
-
-              const combined = persistTenantsLocal(Array.from(map.values()));
-              tenantsRef.current = combined;
-              if (hadDeletedInRemote) {
-                writeTenantsToFirebase(combined).catch(() => {});
-              }
-              return combined;
-            });
-          }
-        },
-        (err) => console.warn('Firebase tenants sync notice:', err)
-      );
-
-      // Strict Tenant Isolation: Only attach root-level Master Workspace listeners when the Master Tenant is active.
-      // Regular company tenants ONLY subscribe to their own isolated `tenantsData/${activeTenantId}/*` paths.
-      if (isMasterActive) {
-        unsubRootFlushMeta = subscribeToFirebaseFlushMeta((remoteMeta) => {
-          if (remoteMeta && typeof remoteMeta.flushedAtMs === 'number') {
-            const isMaster =
-              currentTenantIdRef.current === DEFAULT_TENANT.id ||
-              currentTenantIdRef.current === 'tenant-apex-main';
-            if (isMaster) {
-              applyRemoteFlushBarrier(DEFAULT_TENANT.id, remoteMeta);
-            } else {
-              saveTenantFlushMetaLocal(DEFAULT_TENANT.id, remoteMeta);
-            }
-          }
-        });
-
-        unsubItems = subscribeToFirebaseItems(
-          (remoteItems) => {
-            setFirebaseConnected(true);
-            hasLoadedItemsFromFirebase.current = true;
-            if (isFlushingRef.current) return;
-            const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteItems && remoteItems.length > 0) {
-            const hasOldDemo = remoteItems.some(
-              (i) => i.itemCode === 'CBL-CU-400' || i.itemCode === 'ST-BAR-16' || i.id === 'item-1'
-            );
-            if (hasOldDemo) {
-              writeItemsToFirebase([]).catch(() => {});
-              setItems([]);
-              saveToStorage('items', []);
-            } else {
-              const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'items', remoteItems);
-              if (cleanRemote.length < remoteItems.length) {
-                writeItemsToFirebase(cleanRemote).catch(() => {});
-              }
-              isIncomingFirebaseItems.current = true;
-              setItems((prev) => {
-                const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'items', prev);
-                const merged = mergeListsById(cleanPrev, cleanRemote);
-                saveToStorage('items', merged);
-                return merged;
-              });
-              setTimeout(() => {
-                isIncomingFirebaseItems.current = false;
-              }, 120);
-            }
-          }
-          isInitializedFromFirebase.current = true;
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedItemsFromFirebase.current = true;
-        }
-      );
-
-      unsubRequests = subscribeToFirebaseStockRequests(
-        (remoteRequests) => {
-          setFirebaseConnected(true);
-          hasLoadedRequestsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteRequests && remoteRequests.length > 0) {
-            const hasOldDemo = remoteRequests.some((r) => r.id === 'sr-1' || r.requestNoteNumber === 'RN-2026-0041');
-            if (hasOldDemo) {
-              writeStockRequestsToFirebase([]).catch(() => {});
-              setStockRequests([]);
-              saveToStorage('stockRequests', []);
-            } else {
-              const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'stockRequests', remoteRequests);
-              if (cleanRemote.length < remoteRequests.length) {
-                writeStockRequestsToFirebase(cleanRemote).catch(() => {});
-              }
-              isIncomingFirebaseRequests.current = true;
-              setStockRequests((prev) => {
-                const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'stockRequests', prev);
-                const merged = mergeListsById(cleanPrev, cleanRemote);
-                saveToStorage('stockRequests', merged);
-                return merged;
-              });
-              setTimeout(() => {
-                isIncomingFirebaseRequests.current = false;
-              }, 120);
-            }
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedRequestsFromFirebase.current = true;
-        }
-      );
-
-      unsubEntries = subscribeToFirebaseMainStockEntries(
-        (remoteEntries) => {
-          setFirebaseConnected(true);
-          hasLoadedEntriesFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteEntries && remoteEntries.length > 0) {
-            const hasOldDemo = remoteEntries.some((e) => e.id === 'mse-1' || e.referenceNo === 'PO-2026-8812');
-            if (hasOldDemo) {
-              writeMainStockEntriesToFirebase([]).catch(() => {});
-              setMainStockEntries([]);
-              saveToStorage('mainStockEntries', []);
-            } else {
-              const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'mainStockEntries', remoteEntries);
-              if (cleanRemote.length < remoteEntries.length) {
-                writeMainStockEntriesToFirebase(cleanRemote).catch(() => {});
-              }
-              isIncomingFirebaseEntries.current = true;
-              setMainStockEntries((prev) => {
-                const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'mainStockEntries', prev);
-                const merged = mergeListsById(cleanPrev, cleanRemote);
-                saveToStorage('mainStockEntries', merged);
-                return merged;
-              });
-              setTimeout(() => {
-                isIncomingFirebaseEntries.current = false;
-              }, 120);
-            }
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedEntriesFromFirebase.current = true;
-        }
-      );
-
-      unsubSites = subscribeToFirebaseSites(
-        (remoteSites) => {
-          setFirebaseConnected(true);
-          hasLoadedSitesFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteSites && remoteSites.length > 0) {
-            const finalSites = sanitizeTenantSites(DEFAULT_TENANT.id, remoteSites, tenantsRef.current);
-            isIncomingFirebaseSites.current = true;
-            runWithRemoteGuard(() => {
-              setSites(finalSites);
-              saveTenantDataLocalOnly(DEFAULT_TENANT.id, 'sites', finalSites);
-            });
-            setTimeout(() => {
-              isIncomingFirebaseSites.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedSitesFromFirebase.current = true;
-        }
-      );
-
-      unsubTeams = subscribeToFirebaseTeams(
-        (remoteTeams) => {
-          setFirebaseConnected(true);
-          hasLoadedTeamsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteTeams && remoteTeams.length > 0) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'teams', remoteTeams);
-            if (cleanRemote.length < remoteTeams.length) {
-              writeTeamsToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseTeams.current = true;
-            runWithRemoteGuard(() => {
-              setTeams(cleanRemote);
-              saveTenantDataLocalOnly(DEFAULT_TENANT.id, 'teams', cleanRemote);
-            });
-            setTimeout(() => {
-              isIncomingFirebaseTeams.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedTeamsFromFirebase.current = true;
-        }
-      );
-
-      unsubUsers = subscribeToFirebaseUsers(
-        (remoteUsers) => {
-          setFirebaseConnected(true);
-          hasLoadedUsersFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          if (remoteUsers && remoteUsers.length > 0) {
-            const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-            if (isMaster) {
-              const filteredRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'users', remoteUsers);
-              const cleanApex = sanitizeAndRecoverApexUsers(filteredRemote);
-              if (filteredRemote.length < remoteUsers.length) {
-                writeUsersToFirebase(cleanApex).catch(() => {});
-              }
-              isIncomingFirebaseUsers.current = true;
-              runWithRemoteGuard(() => {
-                setUsers(cleanApex);
-                saveTenantDataLocalOnly(DEFAULT_TENANT.id, 'users', cleanApex);
-              });
-              setTimeout(() => {
-                isIncomingFirebaseUsers.current = false;
-              }, 120);
-            }
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedUsersFromFirebase.current = true;
-        }
-      );
-
-      unsubIssues = subscribeToFirebaseTeamIssues(
-        (remoteIssues) => {
-          setFirebaseConnected(true);
-          hasLoadedIssuesFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteIssues && remoteIssues.length > 0) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamIssues', remoteIssues);
-            if (cleanRemote.length < remoteIssues.length) {
-              writeTeamIssuesToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseIssues.current = true;
-            setTeamIssues((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamIssues', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('teamIssues', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseIssues.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedIssuesFromFirebase.current = true;
-        }
-      );
-
-      unsubReturns = subscribeToFirebaseTeamReturns(
-        (remoteReturns) => {
-          setFirebaseConnected(true);
-          hasLoadedReturnsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteReturns && remoteReturns.length > 0) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamReturns', remoteReturns);
-            if (cleanRemote.length < remoteReturns.length) {
-              writeTeamReturnsToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseReturns.current = true;
-            setTeamReturns((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'teamReturns', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('teamReturns', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseReturns.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedReturnsFromFirebase.current = true;
-        }
-      );
-
-      unsubProjects = subscribeToFirebaseProjects(
-        (remoteProjects) => {
-          setFirebaseConnected(true);
-          hasLoadedProjectsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteProjects && remoteProjects.length > 0) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'projects', remoteProjects);
-            if (cleanRemote.length < remoteProjects.length) {
-              writeProjectsToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseProjects.current = true;
-            setProjects((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'projects', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('projects', merged);
-              if (merged.length > cleanRemote.length) {
-                writeProjectsToFirebase(merged).catch(() => {});
-              }
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseProjects.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedProjectsFromFirebase.current = true;
-        }
-      );
-
-      unsubProjectUsages = subscribeToFirebaseProjectUsages(
-        (remoteUsages) => {
-          setFirebaseConnected(true);
-          hasLoadedProjectUsagesFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteUsages) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'projectUsages', remoteUsages);
-            if (cleanRemote.length < remoteUsages.length) {
-              writeProjectUsagesToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseProjectUsages.current = true;
-            setProjectUsages((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'projectUsages', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('projectUsages', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseProjectUsages.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedProjectUsagesFromFirebase.current = true;
-        }
-      );
-
-      unsubBranchReturns = subscribeToFirebaseBranchReturns(
-        (remoteBranchReturns) => {
-          setFirebaseConnected(true);
-          hasLoadedBranchReturnsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteBranchReturns) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'branchReturns', remoteBranchReturns);
-            if (cleanRemote.length < remoteBranchReturns.length) {
-              writeBranchReturnsToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseBranchReturns.current = true;
-            setBranchReturns((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'branchReturns', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('branchReturns', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseBranchReturns.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedBranchReturnsFromFirebase.current = true;
-        }
-      );
-
-      unsubBackups = subscribeToFirebaseBackups(
-        (remoteBackups) => {
-          setFirebaseConnected(true);
-          hasLoadedBackupsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteBackups) {
-            isIncomingFirebaseBackups.current = true;
-            setBackups((prev) => {
-              const merged = mergeListsById(prev, remoteBackups);
-              saveToStorage('backups', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseBackups.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedBackupsFromFirebase.current = true;
-        }
-      );
-
-      unsubAudit = subscribeToFirebaseAuditLogs(
-        (remoteAudit) => {
-          setFirebaseConnected(true);
-          hasLoadedAuditFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteAudit) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'auditLogs', remoteAudit);
-            isIncomingFirebaseAudit.current = true;
-            setAuditLogs(cleanRemote);
-            saveToStorage('auditLogs', cleanRemote);
-            setTimeout(() => {
-              isIncomingFirebaseAudit.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedAuditFromFirebase.current = true;
-        }
-      );
-
-      unsubConfig = subscribeToFirebaseConfig(
-        (remoteConfig) => {
-          setFirebaseConnected(true);
-          hasLoadedConfigFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteConfig && remoteConfig.companyName) {
-            const finalConfig = {
-              ...remoteConfig,
-              companyName: 'Apex Developer',
-              systemName: 'Apex Stock & Site Management System',
-            };
-            isIncomingFirebaseConfig.current = true;
-            setConfig(finalConfig);
-            saveToStorage('config', finalConfig);
-            setTimeout(() => {
-              isIncomingFirebaseConfig.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedConfigFromFirebase.current = true;
-        }
-      );
-
-      unsubTemplates = subscribeToFirebaseLetterheadTemplates(
-        (remoteTemplates) => {
-          setFirebaseConnected(true);
-          hasLoadedTemplatesFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteTemplates && remoteTemplates.length > 0) {
-            isIncomingFirebaseLetterheadTemplates.current = true;
-            setLetterheadTemplates(remoteTemplates);
-            saveToStorage('letterheadTemplates', remoteTemplates);
-            setTimeout(() => {
-              isIncomingFirebaseLetterheadTemplates.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedTemplatesFromFirebase.current = true;
-        }
-      );
-
-      unsubSignatures = subscribeToFirebaseDigitalSignatures(
-        (remoteSignatures) => {
-          setFirebaseConnected(true);
-          hasLoadedSignaturesFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteSignatures && remoteSignatures.length > 0) {
-            isIncomingFirebaseDigitalSignatures.current = true;
-            setDigitalSignatures(remoteSignatures);
-            saveToStorage('digitalSignatures', remoteSignatures);
-            setTimeout(() => {
-              isIncomingFirebaseDigitalSignatures.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedSignaturesFromFirebase.current = true;
-        }
-      );
-
-      unsubSuppliers = subscribeToFirebaseSuppliers(
-        (remoteSuppliers) => {
-          setFirebaseConnected(true);
-          hasLoadedSuppliersFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteSuppliers) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'suppliers', remoteSuppliers);
-            if (cleanRemote.length < remoteSuppliers.length) {
-              writeSuppliersToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseSuppliers.current = true;
-            setSuppliers((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'suppliers', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('suppliers', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseSuppliers.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedSuppliersFromFirebase.current = true;
-        }
-      );
-
-      unsubPurchaseOrders = subscribeToFirebasePurchaseOrders(
-        (remoteOrders) => {
-          setFirebaseConnected(true);
-          hasLoadedPurchaseOrdersFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteOrders) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'purchaseOrders', remoteOrders);
-            if (cleanRemote.length < remoteOrders.length) {
-              writePurchaseOrdersToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebasePurchaseOrders.current = true;
-            setPurchaseOrders((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'purchaseOrders', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('purchaseOrders', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebasePurchaseOrders.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedPurchaseOrdersFromFirebase.current = true;
-        }
-      );
-
-      unsubSupplierReturns = subscribeToFirebaseSupplierReturns(
-        (remoteReturns) => {
-          setFirebaseConnected(true);
-          hasLoadedSupplierReturnsFromFirebase.current = true;
-          if (isFlushingRef.current) return;
-          const isMaster = currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main';
-          if (!isMaster) return;
-          if (remoteReturns) {
-            const cleanRemote = filterPostFlushRecords(DEFAULT_TENANT.id, 'supplierReturns', remoteReturns);
-            if (cleanRemote.length < remoteReturns.length) {
-              writeSupplierReturnsToFirebase(cleanRemote).catch(() => {});
-            }
-            isIncomingFirebaseSupplierReturns.current = true;
-            setSupplierReturns((prev) => {
-              const cleanPrev = filterPostFlushRecords(DEFAULT_TENANT.id, 'supplierReturns', prev);
-              const merged = mergeListsById(cleanPrev, cleanRemote);
-              saveToStorage('supplierReturns', merged);
-              return merged;
-            });
-            setTimeout(() => {
-              isIncomingFirebaseSupplierReturns.current = false;
-            }, 120);
-          }
-        },
-        () => {
-          setFirebaseConnected(false);
-          hasLoadedSupplierReturnsFromFirebase.current = true;
-        }
-      );
-      }
-    } catch (err) {
-      console.warn('Firebase Realtime Database subscription notice:', err);
-    }
-
-    return () => {
-      if (unsubRootFlushMeta) unsubRootFlushMeta();
-      if (unsubItems) unsubItems();
-      if (unsubRequests) unsubRequests();
-      if (unsubEntries) unsubEntries();
-      if (unsubSites) unsubSites();
-      if (unsubTeams) unsubTeams();
-      if (unsubUsers) unsubUsers();
-      if (unsubIssues) unsubIssues();
-      if (unsubReturns) unsubReturns();
-      if (unsubProjects) unsubProjects();
-      if (unsubProjectUsages) unsubProjectUsages();
-      if (unsubBranchReturns) unsubBranchReturns();
-      if (unsubBackups) unsubBackups();
-      if (unsubAudit) unsubAudit();
-      if (unsubConfig) unsubConfig();
-      if (unsubTemplates) unsubTemplates();
-      if (unsubSignatures) unsubSignatures();
-      if (unsubSuppliers) unsubSuppliers();
-      if (unsubPurchaseOrders) unsubPurchaseOrders();
-      if (unsubSupplierReturns) unsubSupplierReturns();
-      if (unsubTenants) unsubTenants();
-      if (unsubDeletedTenants) unsubDeletedTenants();
-    };
-  }, [activeTenantId]);
-
-  // Write changes to Firebase when modified locally (saveToStorage writes to tenantsData/{tenantId}/{key} for EVERY tenant; root Firebase writes only run for Master tenant and skip during atomic flush)
   const isMasterWorkspaceActive = () =>
     !isFlushingRef.current &&
     (currentTenantIdRef.current === DEFAULT_TENANT.id || currentTenantIdRef.current === 'tenant-apex-main');
 
-  useEffect(() => {
-    saveToStorage('items', items);
-    if (!isIncomingFirebaseItems.current && hasLoadedItemsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeItemsToFirebase(items).catch((err) => console.warn('Sync items to Firebase error:', err));
+  // Local storage synchronization on React state updates
+  // NOTE: Explicit CRUD / workflow actions already call saveTenantData(tenantId, key, next) -> writeTenantDataToFirebase,
+  // so passive useEffects persist locally without triggering duplicate full-collection echo writes or root node writes.
+  const persistStateLocally = <T,>(key: string, data: T) => {
+    if (isFlushingRef.current) return;
+    const targetTenantId = currentTenantIdRef.current;
+    if (!targetTenantId || loadedTenantIdRef.current !== targetTenantId) return;
+    if ((isHydratingTenantRef.current || isApplyingRemoteRef.current) && Array.isArray(data) && data.length === 0) {
+      return;
     }
+    saveTenantDataLocalOnly(targetTenantId, key, data);
+  };
+
+  useEffect(() => {
+    persistStateLocally('items', items);
   }, [items]);
 
   useEffect(() => {
-    saveToStorage('stockRequests', stockRequests);
-    if (!isIncomingFirebaseRequests.current && hasLoadedRequestsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeStockRequestsToFirebase(stockRequests).catch((err) => console.warn('Sync stockRequests to Firebase error:', err));
-    }
+    persistStateLocally('stockRequests', stockRequests);
   }, [stockRequests]);
 
   useEffect(() => {
-    saveToStorage('mainStockEntries', mainStockEntries);
-    if (!isIncomingFirebaseEntries.current && hasLoadedEntriesFromFirebase.current && isMasterWorkspaceActive()) {
-      writeMainStockEntriesToFirebase(mainStockEntries).catch((err) => console.warn('Sync mainStockEntries to Firebase error:', err));
-    }
+    persistStateLocally('mainStockEntries', mainStockEntries);
   }, [mainStockEntries]);
 
   useEffect(() => {
-    saveToStorage('sites', sites);
-    if (!isIncomingFirebaseSites.current && hasLoadedSitesFromFirebase.current && isMasterWorkspaceActive()) {
-      writeSitesToFirebase(sites).catch((err) => console.warn('Sync sites to Firebase error:', err));
-    }
+    persistStateLocally('sites', sites);
   }, [sites]);
 
   useEffect(() => {
-    saveToStorage('teams', teams);
-    if (!isIncomingFirebaseTeams.current && hasLoadedTeamsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeTeamsToFirebase(teams).catch((err) => console.warn('Sync teams to Firebase error:', err));
-    }
+    persistStateLocally('teams', teams);
   }, [teams]);
 
   useEffect(() => {
-    saveToStorage('users', users);
-    if (!isIncomingFirebaseUsers.current && hasLoadedUsersFromFirebase.current && isMasterWorkspaceActive()) {
-      const cleanUsers = users.filter((u) => !isForeignUser(u));
-      writeUsersToFirebase(cleanUsers).catch((err) => console.warn('Sync users to Firebase error:', err));
-    }
+    persistStateLocally('users', users);
   }, [users]);
 
   useEffect(() => {
-    saveToStorage('teamIssues', teamIssues);
-    if (!isIncomingFirebaseIssues.current && hasLoadedIssuesFromFirebase.current && isMasterWorkspaceActive()) {
-      writeTeamIssuesToFirebase(teamIssues).catch((err) => console.warn('Sync teamIssues to Firebase error:', err));
-    }
+    persistStateLocally('teamIssues', teamIssues);
   }, [teamIssues]);
 
   useEffect(() => {
-    saveToStorage('teamReturns', teamReturns);
-    if (!isIncomingFirebaseReturns.current && hasLoadedReturnsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeTeamReturnsToFirebase(teamReturns).catch((err) => console.warn('Sync teamReturns to Firebase error:', err));
-    }
+    persistStateLocally('teamReturns', teamReturns);
   }, [teamReturns]);
 
   useEffect(() => {
-    saveToStorage('projects', projects);
-    if (!isIncomingFirebaseProjects.current && hasLoadedProjectsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeProjectsToFirebase(projects).catch((err) => console.warn('Sync projects to Firebase error:', err));
-    }
+    persistStateLocally('projects', projects);
   }, [projects]);
 
   useEffect(() => {
-    saveToStorage('projectTypes', projectTypes);
+    persistStateLocally('projectTypes', projectTypes);
   }, [projectTypes]);
 
   useEffect(() => {
-    saveToStorage('projectUsages', projectUsages);
-    if (!isIncomingFirebaseProjectUsages.current && hasLoadedProjectUsagesFromFirebase.current && isMasterWorkspaceActive()) {
-      writeProjectUsagesToFirebase(projectUsages).catch((err) => console.warn('Sync projectUsages to Firebase error:', err));
-    }
+    persistStateLocally('projectUsages', projectUsages);
   }, [projectUsages]);
 
   useEffect(() => {
-    saveToStorage('clientFreeIssues', clientFreeIssues);
+    persistStateLocally('clientFreeIssues', clientFreeIssues);
   }, [clientFreeIssues]);
 
   useEffect(() => {
-    saveToStorage('clients', clients);
+    persistStateLocally('clients', clients);
   }, [clients]);
 
   useEffect(() => {
-    saveToStorage('branchReturns', branchReturns);
-    if (!isIncomingFirebaseBranchReturns.current && hasLoadedBranchReturnsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeBranchReturnsToFirebase(branchReturns).catch((err) => console.warn('Sync branchReturns to Firebase error:', err));
-    }
+    persistStateLocally('branchReturns', branchReturns);
   }, [branchReturns]);
 
   useEffect(() => {
-    saveToStorage('damagedRestorations', damagedRestorations);
+    persistStateLocally('damagedRestorations', damagedRestorations);
   }, [damagedRestorations]);
 
   useEffect(() => {
-    saveToStorage('backups', backups);
-    if (!isIncomingFirebaseBackups.current && hasLoadedBackupsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeBackupsToFirebase(backups).catch((err) => console.warn('Sync backups to Firebase error:', err));
-    }
+    persistStateLocally('backups', backups);
   }, [backups]);
 
   useEffect(() => {
-    saveToStorage('auditLogs', auditLogs);
-    if (!isIncomingFirebaseAudit.current && hasLoadedAuditFromFirebase.current && isMasterWorkspaceActive()) {
-      writeAuditLogsToFirebase(auditLogs).catch((err) => console.warn('Sync auditLogs to Firebase error:', err));
-    }
+    persistStateLocally('auditLogs', auditLogs);
   }, [auditLogs]);
 
   useEffect(() => {
-    saveToStorage('config', config);
-    if (!isIncomingFirebaseConfig.current && hasLoadedConfigFromFirebase.current && isMasterWorkspaceActive()) {
-      writeConfigToFirebase(config).catch((err) => console.warn('Sync config to Firebase error:', err));
-    }
+    persistStateLocally('config', config);
   }, [config]);
 
   useEffect(() => {
-    saveToStorage('letterheadTemplates', letterheadTemplates);
-    if (!isIncomingFirebaseLetterheadTemplates.current && hasLoadedTemplatesFromFirebase.current && isMasterWorkspaceActive()) {
-      writeLetterheadTemplatesToFirebase(letterheadTemplates).catch((err) =>
-        console.warn('Sync letterheadTemplates to Firebase error:', err)
-      );
-    }
+    persistStateLocally('letterheadTemplates', letterheadTemplates);
   }, [letterheadTemplates]);
 
   useEffect(() => {
-    saveToStorage('digitalSignatures', digitalSignatures);
-    if (!isIncomingFirebaseDigitalSignatures.current && hasLoadedSignaturesFromFirebase.current && isMasterWorkspaceActive()) {
-      writeDigitalSignaturesToFirebase(digitalSignatures).catch((err) =>
-        console.warn('Sync digitalSignatures to Firebase error:', err)
-      );
-    }
+    persistStateLocally('digitalSignatures', digitalSignatures);
   }, [digitalSignatures]);
 
   useEffect(() => {
-    saveToStorage('suppliers', suppliers);
-    if (!isIncomingFirebaseSuppliers.current && hasLoadedSuppliersFromFirebase.current && isMasterWorkspaceActive()) {
-      writeSuppliersToFirebase(suppliers).catch((err) =>
-        console.warn('Sync suppliers to Firebase error:', err)
-      );
-    }
+    persistStateLocally('suppliers', suppliers);
   }, [suppliers]);
 
   useEffect(() => {
-    saveToStorage('purchaseOrders', purchaseOrders);
-    if (!isIncomingFirebasePurchaseOrders.current && hasLoadedPurchaseOrdersFromFirebase.current && isMasterWorkspaceActive()) {
-      writePurchaseOrdersToFirebase(purchaseOrders).catch((err) =>
-        console.warn('Sync purchaseOrders to Firebase error:', err)
-      );
-    }
+    persistStateLocally('purchaseOrders', purchaseOrders);
   }, [purchaseOrders]);
 
   useEffect(() => {
-    saveToStorage('supplierReturns', supplierReturns);
-    if (!isIncomingFirebaseSupplierReturns.current && hasLoadedSupplierReturnsFromFirebase.current && isMasterWorkspaceActive()) {
-      writeSupplierReturnsToFirebase(supplierReturns).catch((err) =>
-        console.warn('Sync supplierReturns to Firebase error:', err)
-      );
-    }
+    persistStateLocally('supplierReturns', supplierReturns);
   }, [supplierReturns]);
 
   useEffect(() => {
-    saveToStorage('activeTemplateId', activeTemplateId);
+    persistStateLocally('activeTemplateId', activeTemplateId);
   }, [activeTemplateId]);
 
   const syncWithFirebaseNow = async () => {
     setIsFirebaseSyncing(true);
     try {
       const targetId = currentTenantIdRef.current || activeTenantId;
-      await syncTenantCollectionsFromFirebase(targetId);
+      await syncTenantCollectionsFromFirebase(targetId, { forceFullRefresh: true });
 
       await Promise.all([
         writeTenantDataToFirebase(targetId, 'items', items),
@@ -4143,29 +3269,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         writeTenantDataToFirebase(targetId, 'supplierReturns', supplierReturns),
       ]);
 
-      if (isMasterWorkspaceActive()) {
-        await Promise.all([
-          writeItemsToFirebase(items),
-          writeStockRequestsToFirebase(stockRequests),
-          writeMainStockEntriesToFirebase(mainStockEntries),
-          writeSitesToFirebase(sites),
-          writeTeamsToFirebase(teams),
-          writeUsersToFirebase(users.filter((u) => !isForeignUser(u))),
-          writeTeamIssuesToFirebase(teamIssues),
-          writeTeamReturnsToFirebase(teamReturns),
-          writeProjectsToFirebase(projects),
-          writeProjectUsagesToFirebase(projectUsages),
-          writeBranchReturnsToFirebase(branchReturns),
-          writeBackupsToFirebase(backups),
-          writeAuditLogsToFirebase(auditLogs),
-          writeConfigToFirebase(config),
-          writeLetterheadTemplatesToFirebase(letterheadTemplates),
-          writeDigitalSignaturesToFirebase(digitalSignatures),
-          writeSuppliersToFirebase(suppliers),
-          writePurchaseOrdersToFirebase(purchaseOrders),
-          writeSupplierReturnsToFirebase(supplierReturns),
-        ]);
-      }
       setFirebaseConnected(true);
     } catch (err) {
       console.error('Manual Firebase sync error:', err);
