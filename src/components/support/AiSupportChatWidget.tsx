@@ -42,6 +42,14 @@ const QUICK_PROMPTS: QuickPrompt[] = [
     targetTab: 'project-usage',
   },
   {
+    id: 'team-site-transfer-stock-to-return',
+    labelEn: '👷‍♂️ Team Site Transfer & "Stock to Return - [Site]"?',
+    labelSi: '👷‍♂️ Team Site Transfer සහ "Stock to Return - [Site]" වැඩ කරන්නේ කොහොමද?',
+    promptEn: 'How do Field Team Site Transfers (Temporary Assigned vs. Permanent with Ref: Previous Site) and Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]") work?',
+    promptSi: 'Team එකක් වෙන Site එකකට Transfer කිරීම (Temporary vs Permanent Ref: Old Site) සහ Team In-Hand Stock වල පරණ Site එකට භාර නොදුන් බඩු "Stock to Return - [Site Name]" යටතේ වෙනම පෙන්වීම වැඩ කරන්නේ කොහොමද?',
+    targetTab: 'team-stock',
+  },
+  {
     id: 'item-lifecycle-summary',
     labelEn: '📋 Item Lifecycle & Forward Summary?',
     labelSi: '📋 Item Select කළාම Summary බලන්නේ කොහොමද?',
@@ -115,18 +123,18 @@ const QUICK_PROMPTS: QuickPrompt[] = [
   },
   {
     id: 'returns',
-    labelEn: '🔄 How to return unused stock?',
-    labelSi: '🔄 ඉතිරි බඩු Return කරන්නේ කොහොමද?',
-    promptEn: 'How do we return unused materials from a Team to a Branch or back to Main Stock?',
-    promptSi: 'Team එකක ඉතිරි වුණු බඩු ආපසු Branch එකට හෝ Main Stock එකට Return කරන්නේ කොහොමද?',
+    labelEn: '🔄 Multi-Item Team & Branch Returns?',
+    labelSi: '🔄 Items ගොඩක් එක සැරේ Return කරන්නේ කොහොමද?',
+    promptEn: 'How do we add multiple items at once and return them together in Team Returns (RV) and Branch Returns (BRM)?',
+    promptSi: 'Team Returns සහ Branch Returns දෙකේම Items ගණනාවක් එකතු කරලා එක සැරේ Return කරන්නේ කොහොමද?',
     targetTab: 'returns',
   },
   {
     id: 'setup',
-    labelEn: '⚙️ How to register Items, Sites & Teams?',
-    labelSi: '⚙️ Items, Sites සහ Teams ලියාපදිංචි කරන්නේ කොහොමද?',
-    promptEn: 'How do I register new Items, Branch Yards, Field Teams, and Users in Master Registrations?',
-    promptSi: 'Master Registrations හරහා අලුත් Items, Branches, Teams සහ Users ලියාපදිංචි කරන්නේ කොහොමද?',
+    labelEn: '⚙️ Items (<200KB Photo), Sites & Teams?',
+    labelSi: '⚙️ Items (200KB Photo), Sites සහ Teams ලියාපදිංචිය?',
+    promptEn: 'How do I register new Items with <200KB auto-compressed photos ("Print with Image"), Branch Yards, Field Teams, and Users in Master Registrations?',
+    promptSi: 'Master Registrations හරහා 200KB ට අඩු Photo සහිතව Items ("Print with Image"), Branches, Teams සහ Users ලියාපදිංචි කරන්නේ කොහොමද?',
     targetTab: 'registrations',
   },
   {
@@ -166,8 +174,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Telecom New Connection (NC 6-Field Registration & 3-Step Team-Locked Daily Progress), Central & Site Branch Item Lifecycle Summaries (Printable A4/PDF), ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports, Major/Sub-Projects, Client FOC, Main Stock (GRN), Branch Transfers, Team Issues, and Admin Password Delete Protection**.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Telecom New Connection (NC කරුණු 6ක Register කිරීම සහ 1-2-3 Team-Locked Daily Progress), Central සහ Site Branch Stock හි Item Lifecycle Summary (Printable A4/PDF), ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports, Main/Sub-Projects, Client FOC, Main Stock (GRN) සහ Admin Password Delete ආරක්ෂාව** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Field Team Site Transfers ("Temporary Assigned to - [New Site]" vs. Permanent "(Ref: [Old Site])"), Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]"), Multi-Item Batch Returns in Team Returns (RV) & Branch Returns (BRM), Optional Item Photos (<200KB Auto-Compression & "Print with Image"), Telecom New Connection (NC 6-Field & 3-Step Team-Locked Daily Progress), Central & Site Branch Item Lifecycle Summaries, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports, and Assigned-Site Client FOC**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Field Team Site Transfers ("Temporary Assigned to - [New Site]" සහ Permanent "(Ref: [Old Site])"), Site අනුව වෙන් කළ Team In-Hand Stock ("Stock to Return - [Site Name]"), Team Returns සහ Branch Returns දෙකේම Items ගණනාවක් එකවර Return කිරීම, 200KB ට අඩු Item Photos සහ "Print with Image", Telecom New Connection (NC කරුණු 6 සහ 1-2-3 Daily Progress), Item Lifecycle Summary, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports සහ Client FOC** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 

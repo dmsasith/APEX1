@@ -130,6 +130,72 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `**Project & New Section Registry -> New Section Registry** වෙත ගොස් **"+ Create New Section"** ක්ලික් කර Format එක ලෙස **"Telecom New Connection (NC)"** තෝරන්න (නැතිනම් උඩින්ම මතු වන **"+ Restore Telecom New Connection (NC)"** බටන් එක ඔබන්න).`,
   },
   {
+    id: 'field-team-site-transfer-and-site-separated-stock',
+    suggestedTab: 'team-stock',
+    keywords: [
+      'team transfer',
+      'transfer team',
+      'temporary assigned',
+      'permanent',
+      'ref:',
+      'previous site',
+      'stock to return',
+      'assigned sites',
+      'team history',
+      'site transfer',
+      'maru',
+      'hitapu site',
+      'bara nodipu',
+    ],
+    phrases: [
+      'transfer team',
+      'team transfer',
+      'temporary assigned to',
+      'stock to return',
+      'team inhand stock',
+      'team in-hand stock',
+      'promote to permanent',
+      'assigned sites history',
+      'transfer karapu team',
+      'hitapu site ekata',
+      'bara nodipu badu',
+      'team eka wena site ekakata',
+    ],
+    answerEn: () =>
+      `**Field Team Site Transfer Workflow (Temporary vs. Permanent with "Ref:") & Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]"):**\n\n` +
+      `**1. Transferring a Field Team to a New Site ("Temporary Assigned to - [New Site]"):**\n` +
+      `• In **Master Registrations -> Field Teams** or **Team In-Hand Stock**, click **Transfer / Site History** on any team.\n` +
+      `• Whether the team still has unreturned stock on their current site OR has zero stock, the transfer initially places the team in a **Temporary** state labeled:\n` +
+      `  **"Temporary Assigned to - [New Site Name]"**\n` +
+      `• **If Previous-Site Stock Is Pending:** Once all pending stock from the previous site is returned/cleared, the system automatically promotes the assignment on the new site to **Permanent** and updates the team display name with a permanent prior-site reference:\n` +
+      `  **"[Team Name] (Ref: [Previous Site Name])"**\n` +
+      `• **If Zero Stock Was Held on Previous Site:** **Branch Admin** or **System Admin** can click **Confirm / Promote to Permanent** right inside the Team Transfer & Details modal to promote the assignment to **Permanent** with **(Ref: [Previous Site Name])**.\n\n` +
+      `**2. Site-Separated Team In-Hand Stock ("Stock to Return - [Previous Site Name]"):**\n` +
+      `• In **Team In-Hand Stock**, the system **NEVER combines or sums** a transferred team's materials across different sites:\n` +
+      `  - **Amber Section — "Stock to Return - [Previous Site Name]":** Lists unreturned materials/tools still owed to a previous site. These items **must be returned to that specific previous site** and **cannot be used** for projects on the new site.\n` +
+      `  - **Emerald Section — "[Current Site Name] — Active Site Stock":** Lists materials issued at the team's current assigned site.\n\n` +
+      `**3. Strict Active-Site Material Usage Rule:**\n` +
+      `• In **Material Usage / Daily Progress Entry**, a team can **ONLY consume stock issued under their current project's Site Branch**. Any unreturned stock from an older site (**Stock to Return - [Site Name]**) is strictly excluded from usage on the new site.\n\n` +
+      `**4. Complete Assigned Sites History View:**\n` +
+      `• Open any team's **Transfer / Site History** modal to inspect all past and current assigned sites, showing **Temporary** vs. **Permanent**, **Reference Site (Ref:)**, assignment dates, and live **Stock Cleared / Stock Pending** status.`,
+    answerSi: () =>
+      `**Field Team Site Transfer ක්‍රියාවලිය (Temporary vs. Permanent "Ref:") සහ Site අනුව වෙන් කළ Team In-Hand Stock ("Stock to Return - [Site Name]"):**\n\n` +
+      `**1. Team එකක් වෙනත් Site එකකට Transfer කිරීම ("Temporary Assigned to - [New Site]"):**\n` +
+      `• **Master Registrations -> Teams** හෝ **Team In-Hand Stock** හි ඕනෑම Team එකක **"Transfer / Site History"** බටන් එක ක්ලික් කරන්න.\n` +
+      `• කලින් Site එකේ භාර නොදුන් බඩු තිබුණත් නැතත්, මුලින්ම අලුත් Site එකට මාරු කළ විට එම Team එක පෙන්වන්නේ:\n` +
+      `  **"Temporary Assigned to - [New Site Name]"** ලෙසයි.\n` +
+      `• **කලින් Site එකේ බඩු Clear වූ පසු (හෝ බඩු නොගත් Team එකක් නම් Branch/System Admin විසින් Confirm කළ පසු):** එම Team එක අලුත් Site එකේ **Permanent** තත්ත්වයට පත් වන අතර කලින් සිටි Site එකේ නම සමඟ:\n` +
+      `  **"[Team Name] (Ref: [Previous Site Name])"** ලෙස පැහැදිලිව පෙන්වයි.\n\n` +
+      `**2. Team In-Hand Stock බැලීමේදී Site අනුව බඩු වෙන් කර පෙන්වීම (ඔක්කොම බඩු එකතුව පෙන්වන්නේ නැත):**\n` +
+      `• Transfer කරපු Team එකක In-Hand Stock බැලීමේදී පරණ Site එකේ බඩු සහ අලුත් Site එකේ බඩු **කිසිවිටෙක එකට එකතු කර (Combine කර) පෙන්වන්නේ නැත**:\n` +
+      `  - **"Stock to Return - [කලින් හිටපු Site එකේ නම]" (Amber Section):** කලින් හිටපු Site එකට භාර නොදුන් බඩු තොගය අදාළ පරණ Site එකේ නම යටතේ වෙනමම පෙන්වයි. එම බඩු අදාළ පරණ Site එකටම Return කළ යුතුය.\n` +
+      `  - **"[අලුතින් ගිය Site එකේ නම] — Active Site Stock" (Emerald Section):** අලුතින් ගිය Site එකෙන් නිකුත් කළ බඩු එම අලුත් Site එකේ නම යටතේ වෙනම පෙන්වයි.\n\n` +
+      `**3. අලුත් Site එකේ වැඩවලට භාවිතා කළ හැක්කේ එම Site එකේ බඩු පමණි:**\n` +
+      `• **Material Usage / Daily Progress Entry** හිදී එම Team එකට අලුත් Site එකේ වැඩවලට පාවිච්චි කළ හැක්කේ **එම අලුත් Site එකෙන් ගත් බඩු පමණි**. කලින් Site එකේ ඉතිරි බඩු (**Stock to Return - [Site Name]**) අලුත් Site එකේ Projects වලට පාවිච්චි කරන්න දෙන්නේ නැත.\n\n` +
+      `**4. Team Details — Complete Assigned Sites History:**\n` +
+      `• Team එකේ **"Transfer / Site History"** විවෘත කළ විට එම Team එක මුල සිට වැඩ කළ සියලුම Sites, ඒවා **Temporary** ද **Permanent** ද යන්න, **Ref Site** නම, දිනයන් සහ බඩු Clear ද යන්න සම්පූර්ණයෙන් බලාගත හැක.`,
+  },
+  {
     id: 'item-lifecycle-traceability-summary',
     suggestedTab: 'main-stock',
     keywords: [
@@ -540,50 +606,58 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'team ekata issue',
     ],
     answerEn: (ctx) =>
-      `**How to Issue Materials to Field Teams & Track Team In-Hand Custody:**\n\n` +
+      `**How to Issue Materials to Field Teams & Track Site-Separated Team In-Hand Custody:**\n\n` +
       `1. **Check Branch Inventory:** Ensure the required items have available stock (> 0) in **Site Branch Stock**.\n` +
       `2. **Open Issue to Teams:** Click **Issue to Teams** in the left sidebar.\n` +
       `3. **Select Branch & Team:** Choose the **Branch Yard** and the **Field Team** receiving the items.\n` +
-      `4. **Select Items & Print Gate Pass:** Pick the items and quantities, click **Issue Material to Team**, and print the official **Gate Pass / Issue Voucher**.\n` +
-      `5. **Team In-Hand Stock:** Open **Team In-Hand Stock** to monitor the live balance held by each team (*Total Issued − Used in Projects − Returned to Branch*).${
+      `4. **Select Items & Print Gate Pass:** Pick the items and quantities, click **Issue Material to Team**, and print the official **Gate Pass / Issue Voucher** (with optional **"Print with Image"** thumbnail toggle).\n` +
+      `5. **Site-Separated Team In-Hand Stock:** Open **Team In-Hand Stock** to monitor the live balance held by each team. For transferred teams, stock is **never summed across sites**: unreturned items from a previous site appear separately under **"Stock to Return - [Previous Site Name]"** (and cannot be used on the new site), while current-site items appear under **"[Current Site Name] — Active Site Stock"**.${
         ctx.activeTeamsCount ? `\n\n📌 *Currently **${ctx.activeTeamsCount} active field team(s)** are registered.*` : ''
       }`,
     answerSi: (ctx) =>
-      `**Branch එකේ සිට Field Team එකකට බඩු නිකුත් කිරීම (Issue to Teams) සහ Team In-Hand බැලීම:**\n\n` +
+      `**Branch එකේ සිට Field Team එකකට බඩු නිකුත් කිරීම (Issue to Teams) සහ Site අනුව වෙන් කළ Team In-Hand බැලීම:**\n\n` +
       `1. පළමුව අදාළ Branch එකේ (**Site Branch Stock**) නිකුත් කිරීමට අවශ්‍ය බඩු තොගය තිබිය යුතුය.\n` +
       `2. වම් පස මෙනුවෙන් **"Issue to Teams"** තෝරන්න.\n` +
       `3. බඩු නිකුත් කරන **Branch Yard එක** සහ **Field Team එක** තෝරා, Items සහ ප්‍රමාණයන් ඇතුළත් කර **"Issue Material to Team"** ක්ලික් කරන්න.\n` +
-      `4. **Team In-Hand Stock:** එක් එක් Team එක අතේ දැනට ඉතිරිව පවතින බඩු තොගය **"Team In-Hand Stock"** පිටුවෙන් සජීවීව බලාගත හැක.${
+      `4. **Site අනුව වෙන් වූ Team In-Hand Stock:** **"Team In-Hand Stock"** පිටුවේදී Transfer කරපු Team වල බඩු ඔක්කොම එකට එකතු කර පෙන්වන්නේ නැත. කලින් හිටපු Site එකට භාර නොදුන් බඩු **"Stock to Return - [පරණ Site නම]"** යටතේ වෙනමත්, අලුතින් ගිය Site එකේ බඩු එම අලුත් Site එකේ නම යටතේත් වෙන වෙනම පෙන්වයි.${
         ctx.activeTeamsCount ? `\n\n📌 *දැනට සක්‍රීය Teams **${ctx.activeTeamsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
   },
   {
     id: 'returns',
     suggestedTab: 'returns',
-    keywords: ['return', 'unused', 'damaged', 'surplus', 'hand back', 'branch return', 'team return', 'ithiri'],
+    keywords: ['return', 'unused', 'damaged', 'surplus', 'hand back', 'branch return', 'team return', 'ithiri', 'multiple items', 'batch return', 'eka sare'],
     phrases: [
       'return unused stock',
       'team returns',
       'branch returns',
       'return materials',
       'badu return karanne',
+      'multiple items return',
+      'godak item add karala',
+      'eka sare return',
     ],
     answerEn: () =>
-      `**How to Return Unused or Damaged Stock (Team Returns & Branch Returns):**\n\n` +
-      `• **Option A — Team Returns to Branch Yard (Team Returns):**\n` +
+      `**How to Return Multiple Items at Once in Team Returns (RV) & Branch Returns (BRM):**\n\n` +
+      `• **Option A — Multi-Item Team Returns to Branch Yard ("Team Returns"):**\n` +
       `  1. Open **Team Returns** from the sidebar.\n` +
-      `  2. Select the **Field Team** and receiving **Branch Yard**.\n` +
-      `  3. Enter the returned quantity and condition (**Good** restores usable Site Branch Stock; **Damaged** logs into the Damaged Stock ledger).\n\n` +
-      `• **Option B — Branch Return to Central Main Warehouse (Branch Returns):**\n` +
-      `  1. Open **Branch Returns** from the sidebar.\n` +
-      `  2. Select your **Branch Yard**, pick the surplus items and quantities to send back to the Central Main Warehouse (HQ), and submit.`,
+      `  2. Select the **Receiving Site Branch** and the **Field Team** (for transferred teams, selecting the previous site loads their **"Stock to Return - [Previous Site Name]"** items; selecting their current site loads their active site stock).\n` +
+      `  3. Click **+ Add Item** to add as many item rows as needed (or click **+ Add All Held** to load all held items at once, or scan barcodes).\n` +
+      `  4. For each row, enter the **Quantity to Return** (or click **Max**) and select its **Condition** (**Good** restores usable Site Branch Stock; **Damaged** logs into the Damaged Stock ledger).\n` +
+      `  5. Click **Process Return** — all items are returned together in one submission under a single shared **Return Voucher (RV-2026-XXXX)** which you can print (with optional **Print with Image**).\n\n` +
+      `• **Option B — Multi-Item Branch Return to Central Main Warehouse ("Branch Returns"):**\n` +
+      `  1. Open **Branch Returns** from the sidebar and select your **Returning Site Branch**.\n` +
+      `  2. Click **+ Add Item**, click **+ Add All Available**, or click any item card in the right-hand inventory panel to add multiple items to your return list.\n` +
+      `  3. Set the quantity and condition (**Good** or **Damaged**) for each row and submit to generate a single multi-item **Branch Return Voucher (BRM-2026-XXXX)**.`,
     answerSi: () =>
-      `**ඉතිරි වූ හෝ හානි වූ බඩු නැවත ගබඩාවට Return කරන ආකාරය:**\n\n` +
-      `• **1. Team එකක සිට Branch එකට Return කිරීම ("Team Returns"):**\n` +
-      `  - වම් පස මෙනුවෙන් **"Team Returns"** වෙත ගොස් අදාළ Team එක තෝරන්න.\n` +
-      `  - ඉතිරි වූ බඩු ප්‍රමාණය සහ තත්ත්වය (**Good** හෝ **Damaged**) තෝරා Save කරන්න.\n\n` +
-      `• **2. Branch එකක සිට ප්‍රධාන ගබඩාවට (Main Stock) Return කිරීම ("Branch Returns"):**\n` +
-      `  - වම් පස මෙනුවෙන් **"Branch Returns"** වෙත ගොස් Branch එකේ ඉතිරි බඩු නැවත ප්‍රධාන ගබඩාව (HQ) වෙත යැවිය හැක.`,
+      `**Team Returns සහ Branch Returns දෙකේම භාණ්ඩ ගණනාවක් එකතු කර එක සැරේ Return කරන ආකාරය (Multi-Item Batch Returns):**\n\n` +
+      `• **1. Team එකක සිට Branch එකට භාණ්ඩ කිහිපයක් එකවර Return කිරීම ("Team Returns"):**\n` +
+      `  - වම් පස මෙනුවෙන් **"Team Returns"** වෙත ගොස් අදාළ **Receiving Site Branch** එක සහ **Field Team** එක තෝරන්න (Transfer කළ Team එකක් නම් පරණ Site එක තේරූ විට එම පරණ Site එකට අදාළ **"Stock to Return - [Site Name]"** බඩු ලැයිස්තුව පෙන්වයි).\n` +
+      `  - එක වරකට එක Item එකක් පමණක් නොව, **"+ Add Item"** බටන් එකෙන් අවශ්‍ය තරම් Items පේළි ගණනාවක් එකතු කරන්න (නැතිනම් **"+ Add All Held"** එබීමෙන් Team එක අතේ ඇති සියලුම බඩු එකවර ලැයිස්තුවට ගත හැක).\n` +
+      `  - එක් එක් Item එකට අදාළ ප්‍රමාණය (**Max** බටන් එකෙන් සම්පූර්ණ ගණනම ගත හැක) සහ තත්ත්වය (**Good** හෝ **Damaged**) තෝරා Submit කරන්න. එම සියලුම භාණ්ඩ තනි **Return Voucher (RV)** එකකින් එක සැරේ Return වී Print කරගත හැක.\n\n` +
+      `• **2. Branch එකක සිට ප්‍රධාන ගබඩාවට (Main Stock) භාණ්ඩ කිහිපයක් එකවර Return කිරීම ("Branch Returns"):**\n` +
+      `  - වම් පස මෙනුවෙන් **"Branch Returns"** වෙත ගොස් Branch එක තෝරන්න.\n` +
+      `  - **"+ Add Item"** හෝ **"+ Add All Available"** මගින් (හෝ දකුණු පස ඇති භාණ්ඩ ලැයිස්තුව මත ක්ලික් කිරීමෙන්) Items ගණනාවක් එකවර එකතු කර තනි **BRM Return Voucher** එකකින් ප්‍රධාන ගබඩාව (HQ) වෙත එක සැරේ යැවිය හැක.`,
   },
   {
     id: 'procurement-po',
@@ -633,26 +707,26 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'foc waradila',
     ],
     answerEn: () =>
-      `**How to Manage Client Free Stock (FOC) — Locked Site Branch & Admin Voucher Correction:**\n\n` +
+      `**How to Manage Client Free Stock (FOC) — Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Correction:**\n\n` +
       `1. Open **Client Free Stock (FOC)** from the left sidebar and click **+ Log Client Free Stock**.\n` +
       `2. Choose **🏢 Under Main Project** or **📄 Individual Project** and select the project:\n` +
       `   • **Receiving Storage Yard (Inbound):** Defaults to **Main Central Warehouse (Central Yard)** because physical client materials enter Central Main Stock first.\n` +
       `   • **Allocated Site Branch (Auto-Locked):** Selecting the project automatically links and **locks** the **Allocated Site Branch** to that project's registered branch so FOC materials can never be accidentally issued to the wrong site branch.\n` +
-      `3. **Admin FOC Voucher Correction / Reassignment:** If a shipment was mistakenly logged under the wrong project, Admins can click **Edit** on that FOC voucher directly inside **Client Free Stock (FOC)** and select the correct Target Project (automatically updating the locked Site Branch & balances with Audit Trail history).\n` +
-      `4. **Branch Requisition & Usage:** Only the allocated Site Branch sees that project in **Stock Requisitions -> 2. Client Free Stock for Assigned Project Request**, and Sub-Project usage automatically deducts from the Parent Main Project's FOC pool.`,
+      `3. **Assigned-Site Isolated FOC Summary:** When you click **Summary** on any FOC item/project inside **Client Free Stock (FOC)**, the lifecycle breakdown is strictly isolated to that **Assigned Site Branch** — showing only the site distribution, field teams, and project consumption belonging to that assigned site.\n` +
+      `4. **Admin FOC Voucher Correction / Reassignment:** If a shipment was mistakenly logged under the wrong project, Admins can click **Edit** on that FOC voucher directly inside **Client Free Stock (FOC)** and select the correct Target Project.`,
     answerSi: () =>
-      `**Client Free Stock (FOC) — Auto-Locked Site Branch සහ Admin මගින් වැරදි වවුචර් නිවැරදි කිරීම:**\n\n` +
+      `**Client Free Stock (FOC) — Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීම:**\n\n` +
       `1. වම් පස මෙනුවෙන් **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
       `2. **Target Project Mode** (**🏢 Under Main Project** හෝ **📄 Individual Project**) තෝරා අදාළ Project එක තෝරන්න:\n` +
       `   • **Receiving Storage Yard (Inbound):** බඩු මුලින්ම ලැබෙන්නේ ප්‍රධාන ගබඩාවට බැවින් **"Main Central Warehouse (Central Yard)"** Default ලෙස පවතී.\n` +
-      `   • **Allocated Site Branch (Auto-Locked):** Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එක ස්වයංක්‍රීයව Link වී **Lock** වේ (වෙනස් කළ නොහැක). එමගින් වැරදි ශාඛාවකට FOC බඩු නිකුත් වීම සම්පූර්ණයෙන් වළක්වයි.\n` +
-      `3. **වැරදි FOC වවුචර Admin විසින් නිවැරදි කිරීම:** යම් හෙයකින් FOC තොගයක් වැරදි Project එකකට ලොග් වී ඇත්නම්, Admin හට **Client Free Stock** තුළදීම එම වවුචරය **Edit** කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.\n` +
-      `4. **ශාඛාවට Request කිරීම සහ භාවිතය:** අදාළ Site Branch එකට පමණක් Stock Requisitions 2 වන ටැබ් එකෙන් මෙම බඩු Request කළ හැකි අතර Sub-Projects වලට Usage දැමූ විට Main Project FOC තොගයෙන් ඉබේම අඩු වේ.`,
+      `   • **Allocated Site Branch (Auto-Locked):** Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එක ස්වයංක්‍රීයව Link වී **Lock** වේ.\n` +
+      `3. **අදාළ Assigned Site එකට පමණක් වෙන් වූ FOC Summary:** Client Free Stock තුළ ඕනෑම භාණ්ඩයක **Summary** බැලීමේදී එම FOC තොගය අදාළ Assigned Site එකේ විස්තර, එම Site එකේ Teams වලට බෙදුණු ප්‍රමාණ සහ එම Site එකේ භාවිතයන් පමණක් වෙනම පෙන්වයි.\n` +
+      `4. **වැරදි FOC වවුචර Admin විසින් නිවැරදි කිරීම:** යම් හෙයකින් FOC තොගයක් වැරදි Project එකකට ලොග් වී ඇත්නම්, Admin හට **Client Free Stock** තුළදීම එම වවුචරය **Edit** කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.`,
   },
   {
     id: 'items-barcodes-machinery',
     suggestedTab: 'items',
-    keywords: ['barcode', 'qr', 'scanner', 'usb scanner', 'camera scan', 'machinery', 'plant', 'equipment', 'excel import', 'item catalog', 'scan now'],
+    keywords: ['barcode', 'qr', 'scanner', 'usb scanner', 'camera scan', 'machinery', 'plant', 'equipment', 'excel import', 'item catalog', 'scan now', 'image', 'photo', '200kb', 'print with image'],
     phrases: [
       'item catalog',
       'plant & equipment',
@@ -660,18 +734,23 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'barcode scanner',
       'import items excel',
       'scan now',
+      'item image',
+      'print with image',
+      '200kb',
     ],
     answerEn: (ctx) =>
-      `**Item Catalog, Plant & Equipment, Excel Import & Single-Shot Barcode Scanning ("Scan Now"):**\n\n` +
+      `**Item Catalog, Auto-Compressed Item Photos (<200KB), "Print with Image" & Single-Shot Barcode Scanning:**\n\n` +
       `• **Item Catalog & Plant/Equipment:** Open **Item Catalog** for all items or **Plant & Equipment** specifically for machinery and tools (auto-numbered starting from **ITM-0001** / **MCH-0001**).\n` +
+      `• **Optional Item Image Upload (<200KB Auto-Compression) & "Print with Image":** When creating or editing an item, you can optionally upload an **Item Photo**. The system automatically resizes and compresses the image to **under 200KB** so the database stays fast. When printing any voucher or report, you can check **"Print with Image"** in the print toolbar to include item photos on the printed document.\n` +
       `• **Excel Bulk Import / Export:** Import items from Excel/CSV using **Sync (Add + Update)**, **Append Only**, or **Replace** modes.\n` +
-      `• **Single-Shot Barcode Scanner ("Scan Now"):** When scanning with a **Mobile Camera** or **USB / Wireless Barcode Gun** (including **Live Inventory Barcode Lookup** on the top header), the scanner detects once, immediately stops and hides the live camera feed so it never scans repeatedly, and displays a **"Scan Now"** button to turn the scanner back on for the next item.\n\n` +
+      `• **Single-Shot Barcode Scanner ("Scan Now"):** When scanning with a **Mobile Camera** or **USB / Wireless Barcode Gun**, the scanner detects once, immediately stops and hides the live camera feed, and displays a **"Scan Now"** button to turn the scanner back on for the next item.\n\n` +
       `📌 *Current Catalog:* **${ctx.activeItemsCount ?? 0}** active items (**${ctx.lowStockItemsCount ?? 0}** low-stock alerts).`,
     answerSi: (ctx) =>
-      `**Item Catalog, Plant & Equipment, Excel Import සහ Single-Shot Barcode Scanner ("Scan Now"):**\n\n` +
+      `**Item Catalog, 200KB ට අඩු Item Image Upload ("Print with Image"), Excel Import සහ Single-Shot Barcode Scanner:**\n\n` +
       `• **Item Catalog & Plant/Equipment:** සියලුම භාණ්ඩ **"Item Catalog"** මගින්ද, යන්ත්‍රෝපකරණ සහ Tools **"Plant & Equipment"** මගින්ද (0001 සිට අංකනය වන සේ) කළමනාකරණය කළ හැක.\n` +
+      `• **200KB ට අඩුවෙන් Auto-Compress වන Item Image සහ "Print with Image":** Items ඇතුළත් කිරීමේදී අවශ්‍ය නම් භාණ්ඩයේ Photo එකක් Upload කළ හැකි අතර පද්ධතිය මගින් එය ස්වයංක්‍රීයව **200KB ට අඩු** ප්‍රමාණයකට Compress කරයි. ඕනෑම වවුචරයක් Print කිරීමේදී **"Print with Image"** Tick කිරීමෙන් රූපය සමඟ Print කරගත හැක.\n` +
       `• **Excel Import / Export:** Excel ගොනුවක් මගින් භාණ්ඩ සිය ගණනක් එකවර පද්ධතියට ඇතුළත් කළ හැක.\n` +
-      `• **Single-Shot Barcode Scanner ("Scan Now"):** Mobile Camera එකෙන් හෝ USB Barcode Gun එකෙන් Scan කරන විට එක වරක් Detect වූ සැණින් Scanner එක ස්වයංක්‍රීයව නතර වී Camera Screen එක ඉවත් වේ (එක දිගට නොනවතී Scan වීම වළක්වයි). නැවත ඊළඟ භාණ්ඩය Scan කිරීමට එතැනම යටින් ඇති **"Scan Now"** බටන් එක ඔබන්න.\n\n` +
+      `• **Single-Shot Barcode Scanner ("Scan Now"):** Mobile Camera එකෙන් හෝ USB Barcode Gun එකෙන් Scan කරන විට එක වරක් Detect වූ සැණින් Scanner එක ස්වයංක්‍රීයව නතර වී Camera Screen එක ඉවත් වේ. නැවත ඊළඟ භාණ්ඩය Scan කිරීමට **"Scan Now"** බටන් එක ඔබන්න.\n\n` +
       `📌 *දැනට පද්ධතියේ:* සක්‍රීය Items **${ctx.activeItemsCount ?? 0}**ක් ඇත.`,
   },
   {
@@ -951,15 +1030,15 @@ export function resolveSmartSystemSupportAnswer(
       suggestedTab: ctx.currentTab || 'dashboard',
       reply:
         `**Apex Stock & Site Management System — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
-        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ සියලුම කොටස්:\n` +
-        `1. **Master Registrations:** Items, Branches (Sites), Field Teams (සහ Team Members), Suppliers, Clients සහ Users ලියාපදිංචි කිරීම.\n` +
-        `2. **Main Central Stock & Supplier Orders (PO):** ප්‍රධාන ගබඩාවට GRN දැමීම, Purchase Orders, Supplier Returns (Debit Notes) සහ Damaged Stock කළමනාකරණය.\n` +
-        `3. **Client Free Stock (FOC):** සේවාදායකයින් නොමිලේ ලබාදෙන බඩු Auto-Locked Site Branch සමඟ කළමනාකරණය සහ Admin මගින් වැරදි වවුචර් නිවැරදි කිරීම.\n` +
-        `4. **Stock Requisitions & Site Branch Stock:** ප්‍රධාන ගබඩාවෙන් Branch වලට බඩු ඉල්ලුම් කිරීම (Normal vs Client FOC), Approve & Dispatch කිරීම සහ Branch තොග පාලනය.\n` +
-        `5. **Issue to Teams & Team In-Hand Stock:** Branch එකෙන් Team වලට බඩු නිකුත් කිරීම (Gate Pass) සහ Team අතේ ඇති බඩු (Used + Wastage) පරීක්ෂාව.\n` +
-        `6. **Project & New Section Registry:** අලුත් Project Sections සෑදීම (**+ New Section Registry**), **Material Templates (BOM)** සකස් කිරීම සහ Mandatory Site Branch සමඟ Projects ලියාපදිංචි කිරීම.\n` +
-        `7. **Material Usage / Daily Progress Entry:** Section-filtered Projects, User-Site Branch Lock, **Qty Used + Wastage Qty** ඇතුළත් කිරීම සහ **Full Report for This Site (Project)** (Team Subtotals + Grand Total) ලබාගැනීම.\n` +
-        `8. **Document Templates (ISO 9001:2015 Formats, Signers & Digital Signatures):** Auto Tenant Header, Signers (Prepared/Approved/Reviewed), Digital Signatures (ඇඳීම හෝ Upload කිරීම), PDF/Image Format Upload සහ Isolated Single-Click A4 Print.\n\n` +
+        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන කොටස්:\n` +
+        `1. **Master Registrations & Item Photos (<200KB):** Items (200KB ට අඩුවෙන් Auto-Compress වන Photo සහ "Print with Image" සමඟ), Branches (Sites), Field Teams, Suppliers, Clients සහ Users ලියාපදිංචි කිරීම.\n` +
+        `2. **Field Team Site Transfer & Site-Separated In-Hand Stock:** Team එකක් වෙනත් Site එකකට මාරු කිරීමේදී **"Temporary Assigned to - [New Site]"** -> බඩු Clear වූ පසු Permanent **"[Team Name] (Ref: [Previous Site])"** ලෙස පෙන්වීම, සහ **Team In-Hand Stock** හි පරණ Site එකේ බඩු **"Stock to Return - [Site Name]"** යටතේත් අලුත් Site එකේ බඩු වෙනමත් එකතු නොකර පෙන්වීම.\n` +
+        `3. **Main Central Stock & Supplier Orders (PO):** ප්‍රධාන ගබඩාවට GRN දැමීම, Purchase Orders, Supplier Returns (Debit Notes) සහ Damaged Stock කළමනාකරණය.\n` +
+        `4. **Client Free Stock (FOC):** Auto-Locked Site Branch, අදාළ Assigned Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin මගින් වැරදි වවුචර් නිවැරදි කිරීම.\n` +
+        `5. **Stock Requisitions & Site Branch Stock:** ප්‍රධාන ගබඩාවෙන් Branch වලට බඩු ඉල්ලුම් කිරීම (Normal vs Client FOC), Approve & Dispatch කිරීම සහ Branch තොග පාලනය.\n` +
+        `6. **Material Usage / Daily Progress Entry:** අලුත් Site එකේ වැඩවලට එම Site එකේ බඩු පමණක් භාවිතා කිරීමට ඉඩ දීම, Telecom NC 1-2-3 පියවර, **Qty Used + Wastage Qty** සහ **Full Report for This Site (Project)**.\n` +
+        `7. **Multi-Item Team Returns (RV) & Branch Returns (BRM):** ස්ථාන දෙකේදීම **"+ Add Item"** හෝ **"+ Add All"** මගින් භාණ්ඩ ගණනාවක් එකතු කර එක සැරේ තනි වවුචරයකින් Return කිරීම.\n` +
+        `8. **Document Templates (ISO 9001:2015 Formats, Signers & Digital Signatures):** Auto Tenant Header, Signers, Digital Signatures සහ Isolated Single-Click A4 Print.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
   }
@@ -969,14 +1048,14 @@ export function resolveSmartSystemSupportAnswer(
     reply:
       `**Apex Stock & Site Management System — Complete Feature Guide:**\n\n` +
       `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules available in the system:\n` +
-      `1. **Master Registrations:** Register Items (Materials & Machinery), Branches, Field Teams & Crew Members, Suppliers, Clients, and Users.\n` +
-      `2. **Main Central Stock & Supplier Orders (PO):** Record GRNs, manage Purchase Orders, Supplier Returns (RTV), Debit Notes, and Damaged Stock restoration.\n` +
-      `3. **Client Free Stock (FOC):** Track client-supplied free materials with Auto-Locked Site Branch allocation & Admin FOC voucher reassignment.\n` +
-      `4. **Stock Requisitions & Site Branch Stock:** Request stock from HQ (Normal vs. Branch-Exclusive FOC), Approve & Dispatch, and Confirm Receipt.\n` +
-      `5. **Issue to Teams & Team In-Hand Stock:** Issue materials to Field Teams with Gate Passes and monitor live Installed & Wastage balances.\n` +
-      `6. **Project & New Section Registry:** Create Project Sections (**+ New Section Registry**), configure **Material Templates (BOM)**, and register Main, Sub & Individual Projects.\n` +
-      `7. **Material Usage / Daily Progress Entry:** Section-filtered project dropdowns, User-Site Branch Lock, **Qty Used + Wastage Qty** entry, and **Full Report for This Site (Project)** (Team Subtotals + Full Grand Total).\n` +
-      `8. **Document Templates (ISO 9001:2015 Format Settings, Auto Tenant Header, Signers & Digital Signatures):** Configure ISO formats, upload PDF/Image layouts, manage Signer designations, draw/upload Digital Signatures, and use Isolated Single-Click A4 Printing.\n\n` +
+      `1. **Master Registrations & Item Photos (<200KB):** Register Items (with optional <200KB auto-compressed photos & "Print with Image"), Branches, Field Teams & Crew Members, Suppliers, Clients, and Users.\n` +
+      `2. **Field Team Site Transfer & Site-Separated In-Hand Stock:** Transfer teams with **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** tracking, Complete Assigned Sites History, and strict separation of **"Stock to Return - [Previous Site Name]"** vs. Active Site Stock.\n` +
+      `3. **Main Central Stock & Supplier Orders (PO):** Record GRNs, manage Purchase Orders, Supplier Returns (RTV), Debit Notes, and Damaged Stock restoration.\n` +
+      `4. **Client Free Stock (FOC):** Track client-supplied free materials with Auto-Locked Site Branch allocation, Assigned-Site Isolated FOC Summary & Admin FOC voucher reassignment.\n` +
+      `5. **Stock Requisitions & Site Branch Stock:** Request stock from HQ (Normal vs. Branch-Exclusive FOC), Approve & Dispatch, and Confirm Receipt.\n` +
+      `6. **Material Usage / Daily Progress Entry:** Active-site-only team stock consumption enforcement, Telecom NC 3-step workflow, **Qty Used + Wastage Qty** entry, and **Full Report for This Site (Project)**.\n` +
+      `7. **Multi-Item Team Returns (RV) & Branch Returns (BRM):** Add multiple items at once (**+ Add Item** / **+ Add All Held or Available**) and return them in a single batch voucher.\n` +
+      `8. **Document Templates (ISO 9001:2015 Format Settings, Signers & Digital Signatures):** Configure ISO formats, Signer designations, Digital Signatures, and Isolated Single-Click A4 Printing.\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

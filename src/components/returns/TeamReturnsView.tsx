@@ -11,6 +11,7 @@ import {
   Trash2,
   Lock,
   ScanLine,
+  Plus,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -45,7 +46,7 @@ export const TeamReturnsView: React.FC = () => {
     getTeamInHandStock,
     getTeamSiteInHandStock,
     getSiteItemStock,
-    returnStockFromTeam,
+    returnMultipleStockFromTeam,
     clearTeamReturns,
     deleteTeamReturn,
     config,
@@ -105,9 +106,7 @@ export const TeamReturnsView: React.FC = () => {
 
   const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
   const [returnedBy, setReturnedBy] = useState('');
-  const [condition, setCondition] = useState<ReturnCondition>('Good / Restock');
   const [reason, setReason] = useState('');
-  const [returnQty, setReturnQty] = useState<number | ''>('');
   const [errorMsg, setErrorMsg] = useState('');
 
   // Strictly get in-hand stock for selectedTeamId at selectedSiteId (never mix across sites)
@@ -122,15 +121,67 @@ export const TeamReturnsView: React.FC = () => {
     (b) => b.siteId !== selectedSiteId && b.totalUnitsHeld > 0
   );
 
-  const [selectedItemId, setSelectedItemId] = useState<string>(eligibleItems[0]?.itemId || '');
+  // Multi-item return rows state
+  const [returnRows, setReturnRows] = useState<
+    Array<{ itemId: string; quantity: number | ''; condition: ReturnCondition }>
+  >([
+    {
+      itemId: eligibleItems[0]?.itemId || '',
+      quantity: '',
+      condition: 'Good / Restock',
+    },
+  ]);
 
   useEffect(() => {
-    if (eligibleItems.length > 0 && !eligibleItems.some((i) => i.itemId === selectedItemId)) {
-      setSelectedItemId(eligibleItems[0].itemId);
-    } else if (eligibleItems.length === 0 && selectedItemId !== '') {
-      setSelectedItemId('');
+    setReturnRows((prev) => {
+      if (eligibleItems.length === 0) {
+        return [{ itemId: '', quantity: '' as const, condition: 'Good / Restock' }];
+      }
+      const updated = prev.map((r) => {
+        if (r.itemId && eligibleItems.some((e) => e.itemId === r.itemId)) {
+          return r;
+        }
+        return { ...r, itemId: eligibleItems[0].itemId, quantity: '' as const };
+      });
+      return updated.length > 0
+        ? updated
+        : [{ itemId: eligibleItems[0].itemId, quantity: '' as const, condition: 'Good / Restock' }];
+    });
+  }, [selectedSiteId, selectedTeamId, eligibleItems.length]);
+
+  const handleAddOrIncrementScannedItem = (matchedItemId: string, itemCode: string, itemName: string) => {
+    const held = eligibleItems.find((e) => e.itemId === matchedItemId);
+    if (!held) {
+      if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+      setErrorMsg(`Item [${itemCode}] ${itemName} has 0 in-hand balance for the selected team at ${selectedSiteName}.`);
+      return;
     }
-  }, [selectedSiteId, selectedTeamId, eligibleItems, selectedItemId]);
+    if (config.barcodeBeepEnabled !== false) playScanBeep(true);
+    setReturnRows((prev) => {
+      const existingIdx = prev.findIndex((r) => r.itemId === matchedItemId);
+      if (existingIdx >= 0) {
+        return prev.map((r, i) =>
+          i === existingIdx
+            ? {
+                ...r,
+                quantity:
+                  typeof r.quantity === 'number'
+                    ? Math.min(r.quantity + 1, held.currentInHand)
+                    : 1,
+              }
+            : r
+        );
+      }
+      const emptyIdx = prev.findIndex((r) => !r.itemId || r.quantity === '');
+      if (emptyIdx >= 0) {
+        return prev.map((r, i) =>
+          i === emptyIdx ? { ...r, itemId: matchedItemId, quantity: 1 } : r
+        );
+      }
+      return [...prev, { itemId: matchedItemId, quantity: 1, condition: 'Good / Restock' }];
+    });
+    setSuccessToast(`Scanned & added for return: [${itemCode}] ${itemName}`);
+  };
 
   useUsbBarcodeScanner({
     enabled: !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
@@ -140,16 +191,7 @@ export const TeamReturnsView: React.FC = () => {
     onScan: (raw) => {
       const matched = matchItemByScannedCode(activeItems, raw);
       if (matched) {
-        const held = eligibleItems.find((e) => e.itemId === matched.id);
-        if (held) {
-          if (config.barcodeBeepEnabled !== false) playScanBeep(true);
-          setSelectedItemId(matched.id);
-          setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, held.currentInHand) : 1));
-          setSuccessToast(`Scanned & selected for return: [${matched.itemCode}] ${matched.itemName}`);
-        } else {
-          if (config.barcodeBeepEnabled !== false) playScanBeep(false);
-          setErrorMsg(`Item [${matched.itemCode}] ${matched.itemName} has 0 in-hand balance for the selected team.`);
-        }
+        handleAddOrIncrementScannedItem(matched.id, matched.itemCode, matched.itemName);
       } else {
         if (config.barcodeBeepEnabled !== false) playScanBeep(false);
         setErrorMsg(`No catalog item matched scanned barcode "${raw}".`);
@@ -162,64 +204,144 @@ export const TeamReturnsView: React.FC = () => {
     setSelectedTeamId(newTeamId);
     const summary = getTeamSiteInHandStock(newTeamId, forSiteId);
     const firstEligible = summary.items.find((i) => i.currentInHand > 0);
-    setSelectedItemId(firstEligible?.itemId || '');
+    setReturnRows([
+      {
+        itemId: firstEligible?.itemId || '',
+        quantity: '',
+        condition: 'Good / Restock',
+      },
+    ]);
     const t = activeTeams.find((x) => x.id === newTeamId) || teams.find((x) => x.id === newTeamId);
     if (t) setReturnedBy(t.teamLeaderName);
   };
 
-  const currentSelectedItemInHand = eligibleItems.find((i) => i.itemId === selectedItemId);
+  const handleAddReturnRow = () => {
+    const usedIds = new Set(returnRows.map((r) => r.itemId));
+    const nextEligible = eligibleItems.find((e) => !usedIds.has(e.itemId)) || eligibleItems[0];
+    setReturnRows((prev) => [
+      ...prev,
+      {
+        itemId: nextEligible?.itemId || '',
+        quantity: '',
+        condition: 'Good / Restock',
+      },
+    ]);
+  };
 
-  // Check whether selected item was officially documented and transferred from the Main Central Warehouse
-  const currentItemSiteStock = selectedSiteId && selectedItemId
-    ? getSiteItemStock(selectedSiteId, selectedItemId)
-    : null;
-  const isDocumentedFromMainYard = currentItemSiteStock ? currentItemSiteStock.received > 0 : false;
+  const handleLoadAllHeldItems = () => {
+    if (eligibleItems.length === 0) return;
+    setReturnRows(
+      eligibleItems.map((e) => ({
+        itemId: e.itemId,
+        quantity: e.currentInHand,
+        condition: 'Good / Restock',
+      }))
+    );
+    setErrorMsg('');
+  };
+
+  const handleUpdateReturnRow = (
+    index: number,
+    field: 'itemId' | 'quantity' | 'condition',
+    value: string | number
+  ) => {
+    setReturnRows((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== index) return row;
+        if (field === 'itemId') {
+          return { ...row, itemId: String(value), quantity: '' };
+        }
+        if (field === 'condition') {
+          return { ...row, condition: value as ReturnCondition };
+        }
+        return { ...row, quantity: value === '' ? '' : Number(value) };
+      })
+    );
+  };
+
+  const handleRemoveReturnRow = (index: number) => {
+    setReturnRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== index)));
+  };
 
   const handleProcessReturn = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
     if (!selectedTeamId) {
-      setErrorMsg('Please select a team.');
+      setErrorMsg('Please select a returning field team.');
       return;
     }
-    if (!selectedItemId || !currentSelectedItemInHand) {
-      setErrorMsg('Please select an item currently held in-hand by the team.');
+
+    const activeRows = returnRows.filter((r) => r.itemId && Number(r.quantity) > 0);
+    if (activeRows.length === 0) {
+      setErrorMsg('Please select at least one item and enter a return quantity greater than zero.');
       return;
     }
-    // Main Yard documentation validation check
-    if (!isDocumentedFromMainYard) {
-      setErrorMsg(
-        `Cannot Return: Stock has not been documented or transferred from the Main Central Warehouse to this site branch (Received from Main Yard = 0). Under company inventory policy, items cannot be returned unless officially documented and transferred from Main Yard first.`
-      );
-      return;
+
+    // Validate Main Yard transfer documentation & maximum in-hand balance per item
+    const totalsByItem = new Map<string, number>();
+    for (let i = 0; i < returnRows.length; i++) {
+      const r = returnRows[i];
+      if (!r.itemId) {
+        setErrorMsg(`Row #${i + 1}: Please select an item to return.`);
+        return;
+      }
+      if (!r.quantity || Number(r.quantity) <= 0) {
+        const itm = eligibleItems.find((x) => x.itemId === r.itemId);
+        setErrorMsg(`Row #${i + 1} (${itm?.itemName || 'Item'}): Please enter a return quantity greater than zero.`);
+        return;
+      }
+      const st = getSiteItemStock(selectedSiteId, r.itemId);
+      if (st.received <= 0) {
+        const itm = eligibleItems.find((x) => x.itemId === r.itemId);
+        setErrorMsg(
+          `Cannot Return "${itm?.itemName || r.itemId}": Stock has not been documented or transferred from the Main Central Warehouse to ${selectedSiteName} (Received from Main Yard = 0).`
+        );
+        return;
+      }
+      totalsByItem.set(r.itemId, (totalsByItem.get(r.itemId) || 0) + Number(r.quantity));
     }
-    if (!returnQty || Number(returnQty) <= 0) {
-      setErrorMsg('Please enter a return quantity greater than zero.');
-      return;
-    }
-    if (Number(returnQty) > currentSelectedItemInHand.currentInHand) {
-      setErrorMsg(
-        `Return quantity (${returnQty}) cannot exceed team in-hand active balance (${currentSelectedItemInHand.currentInHand}).`
-      );
-      return;
+
+    for (const [itmId, totalQty] of totalsByItem.entries()) {
+      const held = eligibleItems.find((x) => x.itemId === itmId);
+      const maxHeld = held?.currentInHand || 0;
+      if (totalQty > maxHeld) {
+        setErrorMsg(
+          `Return quantity (${totalQty} ${held?.unit || 'units'}) for "${held?.itemName || itmId}" cannot exceed team's active in-hand balance at ${selectedSiteName} (${maxHeld} ${held?.unit || 'units'}).`
+        );
+        return;
+      }
     }
 
     try {
-      const newReturn = returnStockFromTeam({
+      const createdReturns = returnMultipleStockFromTeam({
         siteId: selectedSiteId,
         teamId: selectedTeamId,
-        itemId: selectedItemId,
-        quantity: Number(returnQty),
-        condition,
+        returnedBy,
         reason: reason.trim() || 'Work completed, remaining balance returned to site branch.',
+        items: activeRows.map((r) => ({
+          itemId: r.itemId,
+          quantity: Number(r.quantity),
+          condition: r.condition,
+        })),
       });
 
-      setSuccessToast(`Return Voucher ${newReturn.returnVoucherNumber} generated! Team balance adjusted.`);
-      setSelectedReturnForPrint(newReturn);
+      if (createdReturns.length > 0) {
+        const firstVoucher = createdReturns[0];
+        setSuccessToast(
+          `Return Voucher ${firstVoucher.returnVoucherNumber} generated for ${createdReturns.length} item(s)! Team balance adjusted.`
+        );
+        setSelectedReturnForPrint(firstVoucher);
+      }
 
       // Reset fields
-      setReturnQty('');
+      setReturnRows([
+        {
+          itemId: eligibleItems[0]?.itemId || '',
+          quantity: '',
+          condition: 'Good / Restock',
+        },
+      ]);
       setReason('');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to process return.');
@@ -361,112 +483,182 @@ export const TeamReturnsView: React.FC = () => {
               </div>
             </div>
 
-            {/* In-Hand Items Selector for Selected Team */}
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Select Item to Return (Only items held by team) *
-                </label>
-                {config.barcodeEnabled !== false && (
-                  <button
-                    type="button"
-                    onClick={() => setScannerOpen(true)}
-                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <ScanLine className="w-3.5 h-3.5" />
-                    <span>Scan Barcode</span>
-                  </button>
-                )}
+            {/* Multi-Item In-Hand Selector for Selected Team */}
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800">
+                    Items to Return ({returnRows.length} item{returnRows.length === 1 ? '' : 's'}) *
+                  </label>
+                  <p className="text-[10px] text-slate-500">
+                    Add multiple items to return them all together on a single Return Voucher.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {eligibleItems.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleAddReturnRow}
+                        className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Add Item</span>
+                      </button>
+                      {eligibleItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={handleLoadAllHeldItems}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Populate all items currently held by this team at this site"
+                        >
+                          <span>+ Add All Held ({eligibleItems.length})</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {config.barcodeEnabled !== false && (
+                    <button
+                      type="button"
+                      onClick={() => setScannerOpen(true)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <ScanLine className="w-3.5 h-3.5" />
+                      <span>Scan Barcode</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
               {eligibleItems.length === 0 ? (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500 italic">
-                  This field team currently has 0 items in-hand to return.
+                  This field team currently has 0 items in-hand under <strong>{selectedSiteName}</strong> to return.
                 </div>
               ) : (
-                <select
-                  value={selectedItemId}
-                  onChange={(e) => setSelectedItemId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
-                  required
-                >
-                  {eligibleItems.map((item) => {
-                    const st = getSiteItemStock(selectedSiteId, item.itemId);
-                    const isDoc = st.received > 0;
+                <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
+                  {returnRows.map((row, idx) => {
+                    const rowItemInHand = eligibleItems.find((i) => i.itemId === row.itemId);
+                    const rowSiteStock =
+                      selectedSiteId && row.itemId ? getSiteItemStock(selectedSiteId, row.itemId) : null;
+                    const isRowDoc = rowSiteStock ? rowSiteStock.received > 0 : false;
+                    const maxBalance = rowItemInHand?.currentInHand || 0;
+
                     return (
-                      <option key={item.itemId} value={item.itemId}>
-                        [{item.itemCode}] {item.itemName} — In-Hand: {item.currentInHand} {item.unit} {isDoc ? `✓ (Yard Transferred: ${st.received})` : '⚠️ (No Main Yard Transfer - Blocked)'}
-                      </option>
+                      <div
+                        key={idx}
+                        className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-800">
+                            Return Item #{idx + 1}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {rowItemInHand && (
+                              <span className="text-[11px] font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                In-Hand: {formatNumber(maxBalance)} {rowItemInHand.unit}
+                              </span>
+                            )}
+                            {returnRows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveReturnRow(idx)}
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Remove Item Row"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <select
+                            value={row.itemId}
+                            onChange={(e) => handleUpdateReturnRow(idx, 'itemId', e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-semibold"
+                            required
+                          >
+                            {eligibleItems.map((item) => {
+                              const st = getSiteItemStock(selectedSiteId, item.itemId);
+                              const isDoc = st.received > 0;
+                              return (
+                                <option key={item.itemId} value={item.itemId}>
+                                  [{item.itemCode}] {item.itemName} — In-Hand: {item.currentInHand} {item.unit}{' '}
+                                  {isDoc
+                                    ? `✓ (Yard Transferred: ${st.received})`
+                                    : '⚠️ (No Main Yard Transfer - Blocked)'}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                          <div className="sm:col-span-5">
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[11px] font-semibold text-slate-700">
+                                Return Qty *
+                              </label>
+                              {maxBalance > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateReturnRow(idx, 'quantity', maxBalance)}
+                                  className="text-[10px] font-extrabold text-purple-700 hover:underline cursor-pointer"
+                                >
+                                  Max ({maxBalance})
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              min="0.01"
+                              max={maxBalance || 99999}
+                              step="any"
+                              placeholder={`Max ${maxBalance}`}
+                              value={row.quantity}
+                              onChange={(e) =>
+                                handleUpdateReturnRow(
+                                  idx,
+                                  'quantity',
+                                  e.target.value === '' ? '' : Number(e.target.value)
+                                )
+                              }
+                              className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                              required
+                              disabled={!isRowDoc}
+                            />
+                          </div>
+
+                          <div className="sm:col-span-7">
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Material Condition *
+                            </label>
+                            <select
+                              value={row.condition}
+                              onChange={(e) => handleUpdateReturnRow(idx, 'condition', e.target.value)}
+                              className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium"
+                            >
+                              <option value="Good / Restock">Good / Restock (Restore to Site Stock)</option>
+                              <option value="Damaged / Scrap">Damaged / Scrap (Log to Damaged)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {!isRowDoc && (
+                          <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-800 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            <span>
+                              Return blocked for this item: 0 units documented from Main Central Warehouse to{' '}
+                              {selectedSiteName}.
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
-                </select>
-              )}
-            </div>
-
-            {currentSelectedItemInHand && (
-              <div className="space-y-2">
-                <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-lg text-xs text-purple-900 flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-slate-900">{currentSelectedItemInHand.itemName}</span>
-                    <div className="text-[11px] text-purple-800 mt-0.5">
-                      Team active custody: <strong className="font-mono text-slate-900">{currentSelectedItemInHand.currentInHand} {currentSelectedItemInHand.unit}</strong>
-                    </div>
-                  </div>
-                  <Package className="w-5 h-5 text-purple-600 shrink-0" />
                 </div>
-
-                {/* Main Yard Documented Stock Verification Status */}
-                {isDocumentedFromMainYard ? (
-                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold text-emerald-900">Main Yard Documentation Verified</span>
-                      <p className="text-[11px] text-emerald-700 mt-0.5">
-                        Documented transfer received: <strong>{currentItemSiteStock?.received} {currentSelectedItemInHand.unit}</strong> from Main Central Warehouse. Return to Site Branch yard is authorized.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg text-xs text-rose-900 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold text-rose-900">Return Blocked: No Main Yard Transfer Documentation</span>
-                      <p className="text-[11px] text-rose-700 mt-1 leading-relaxed">
-                        This item has <strong>0 units</strong> documented or issued from the Main Central Warehouse to this site branch. Under warehouse policy, items cannot be returned unless officially documented and transferred from the Main Yard.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Return Quantity *</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={currentSelectedItemInHand?.currentInHand || 99999}
-                  step="any"
-                  placeholder="0"
-                  value={returnQty}
-                  onChange={(e) => setReturnQty(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                  required
-                  disabled={eligibleItems.length === 0 || !isDocumentedFromMainYard}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Material Condition *</label>
-                <select
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value as ReturnCondition)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                >
-                  <option value="Good / Restock">Good / Restock (Added back to site inventory)</option>
-                  <option value="Damaged / Scrap">Damaged / Scrap (Not added to available site stock)</option>
-                </select>
-              </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -495,15 +687,18 @@ export const TeamReturnsView: React.FC = () => {
 
             <button
               type="submit"
-              disabled={eligibleItems.length === 0 || !isDocumentedFromMainYard}
-              className={`w-full py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs ${
-                eligibleItems.length === 0 || !isDocumentedFromMainYard
+              disabled={eligibleItems.length === 0}
+              className={`w-full py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer ${
+                eligibleItems.length === 0
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-purple-800 hover:bg-purple-900 text-white'
               }`}
             >
               <RotateCcw className="w-4 h-4" />
-              <span>{isDocumentedFromMainYard ? 'Record Return & Generate Return Voucher' : 'Return Blocked (Undocumented from Main Yard)'}</span>
+              <span>
+                Record Return ({returnRows.filter((r) => r.itemId && Number(r.quantity) > 0).length || returnRows.length}{' '}
+                Item{returnRows.length === 1 ? '' : 's'}) &amp; Generate Return Voucher
+              </span>
             </button>
           </form>
         </div>
@@ -794,7 +989,22 @@ export const TeamReturnsView: React.FC = () => {
       {/* Printable Modal */}
       {selectedReturnForPrint && (
         <PrintableDocumentModal
-          document={{ type: 'RETURN_VOUCHER', data: selectedReturnForPrint }}
+          document={{
+            type: 'RETURN_VOUCHER',
+            data: {
+              ...selectedReturnForPrint,
+              batchItems:
+                selectedReturnForPrint.batchItems && selectedReturnForPrint.batchItems.length > 0
+                  ? selectedReturnForPrint.batchItems
+                  : teamReturns
+                      .filter((r) => r.returnVoucherNumber === selectedReturnForPrint.returnVoucherNumber)
+                      .map((r) => ({
+                        itemId: r.itemId,
+                        quantity: r.quantity,
+                        condition: r.condition,
+                      })),
+            },
+          }}
           onClose={() => setSelectedReturnForPrint(null)}
         />
       )}
@@ -816,16 +1026,9 @@ export const TeamReturnsView: React.FC = () => {
         mode="select"
         siteId={selectedSiteId}
         title="Scan Barcode for Team Material Return"
-        subtitle="Scan via USB Gun or Mobile Camera to select an item held by the field team"
+        subtitle="Scan via USB Gun or Mobile Camera to add an item held by the field team"
         onSelectItem={(item) => {
-          const held = eligibleItems.find((e) => e.itemId === item.id);
-          if (held) {
-            setSelectedItemId(item.id);
-            setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, held.currentInHand) : 1));
-            setSuccessToast(`Scanned & selected for return: [${item.itemCode}] ${item.itemName}`);
-          } else {
-            setErrorMsg(`Item [${item.itemCode}] ${item.itemName} has 0 in-hand balance for the selected team.`);
-          }
+          handleAddOrIncrementScannedItem(item.id, item.itemCode, item.itemName);
         }}
       />
     </div>

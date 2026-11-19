@@ -82,14 +82,14 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Click "Start 7-Day Free Trial" and enter your Company Name, Admin Username, and Password. All system codes, Item Codes (ITM-0001, MCH-0001), Barcodes (APX-0001), Project IDs (PRJ-2026-0001, MAJ-2026-0001), and Voucher Reference Numbers (PO, GRN, RN, DN, IN, PU, RV, BRM) automatically start from 0001 and increment sequentially.',
       },
       {
-        stepTitle: '2. Register Materials, Heavy Machinery & Single-Shot Barcode Scanning ("Scan Now")',
+        stepTitle: '2. Register Materials, Heavy Machinery, Auto-Compressed Item Photos (<200KB) & Single-Shot Barcode Scanning',
         detail:
-          'Open "Master Registrations -> Item Catalog" to add Consumable Materials and Returnable Machinery/Tools or bulk import via Excel/CSV. When scanning barcodes via Mobile Camera or USB/Wireless Barcode Gun (including Live Inventory Barcode Lookup), the scanner detects once, automatically stops and hides the camera view to prevent continuous duplicate scans, and provides a "Scan Now" button to re-activate the scanner for the next item.',
+          'Open "Master Registrations -> Item Catalog" to add Consumable Materials and Returnable Machinery/Tools or bulk import via Excel/CSV. You can optionally attach an Item Photo when adding or editing any item — the system automatically resizes and compresses the image to under 200KB for fast cloud loading, and every printable voucher/report includes a "Print with Image" checkbox to optionally print item thumbnails. When scanning barcodes via Mobile Camera or USB/Wireless Barcode Gun, the scanner detects once, automatically stops and hides the camera view to prevent continuous duplicate scans, and provides a "Scan Now" button to re-activate the scanner.',
       },
       {
-        stepTitle: '3. Register Field Teams with Auto-Calculated Crew Size & Usage Protection',
+        stepTitle: '3. Register Field Teams, Auto Crew Size & Conflict-Free Site Transfer Workflow (Temporary vs. Permanent with Ref)',
         detail:
-          'In "Master Registrations -> Teams", enter the Team Leader name (Crew Size automatically starts at 1). Each time you add a Team Member with their NIC/ID number, Crew Size automatically increments (1 Leader + N Members). Duplicate team names are blocked across active and Recycle Bin teams - and if a deleted team name is entered, you can restore and update the existing team in 1 click so past Material Usage history stays 100% unified.',
+          'In "Master Registrations -> Teams", enter the Team Leader name (Crew Size automatically starts at 1 and increments with each Member added). When transferring an existing Field Team to a new Site Branch via "Transfer / Site History", the system checks unreturned stock on their previous site and assigns them as "Temporary Assigned to - [New Site Name]" first. Once previous-site stock is cleared (or confirmed by Branch/System Admin when zero stock was held), the assignment promotes to "Permanent" and displays the team with a permanent prior-site reference: "[Team Name] (Ref: [Previous Site Name])", while preserving a Complete Assigned Sites History ledger (Temporary vs. Permanent, dates, and stock clearance state).',
       },
       {
         stepTitle: '4. Create Staff Logins (Single Site, Multi-Site, HQ) & Auto Email Verification',
@@ -99,8 +99,8 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     ],
     keyOutputs: [
       'Sequential 0001-Based Codes, IDs & Document References',
-      'Single-Shot Camera & USB Gun Barcode Scanner with "Scan Now" Button',
-      'Auto-Calculated Crew Size (1 Leader + N Members) & Usage Protection',
+      'Optional Item Photo Upload (<200KB Auto-Compression) & "Print with Image" Toggle',
+      'Team Site Transfer: "Temporary Assigned to - [New Site]" -> Permanent "(Ref: [Old Site])" & Full Site History',
       'Single-Site & Multi-Site Branch Locks + Auto Email Verification (apexstox.com)',
     ],
   },
@@ -130,9 +130,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'For defective or excess vendor deliveries, create an official Return to Vendor (RTV) / Debit Note with outward Gate Pass and credit claim tracking. For site-damaged items, inspect and restore repaired units back into Main Stock via the Damaged Stock ledger.',
       },
       {
-        stepTitle: '4. Record Client Free Materials (FOC) — Locked Site Branch & Admin Voucher Correction',
+        stepTitle: '4. Record Client Free Materials (FOC) — Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Correction',
         detail:
-          'Open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" or "Individual Project". Physical FOC materials default to "Main Central Warehouse (Central Yard)" as inbound storage, while selecting the Target Project automatically detects and LOCKS the "Allocated Site Branch" so stock cannot be accidentally issued to the wrong site. If a shipment was logged under the wrong project, Admins can edit and reassign the FOC voucher directly inside Client Free Stock with full audit logging.',
+          'Open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" or "Individual Project". Physical FOC materials default to "Main Central Warehouse (Central Yard)" as inbound storage, while selecting the Target Project automatically detects and LOCKS the "Allocated Site Branch" so stock cannot be accidentally issued to the wrong site. Furthermore, the Client FOC Lifecycle & Summary view is strictly isolated to the Assigned Site Branch — showing only teams, distributions, and project usage belonging to that specific site. If a shipment was logged under the wrong project, Admins can edit and reassign the FOC voucher directly inside Client Free Stock.',
       },
       {
         stepTitle: '5. Central Stock Item Selection — Full End-to-End Lifecycle Summary & Printable A4 Report',
@@ -143,7 +143,7 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     keyOutputs: [
       'Printable Purchase Orders (PO) & Multi-Item Batch GRN Vouchers',
       'Return to Vendor (RTV) Debit Notes & Outward Gate Passes',
-      'Client FOC Locked Site Branch Allocation & Admin Voucher Reassignment',
+      'Client FOC Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Reassignment',
       'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (Printable A4 / PDF)',
     ],
   },
@@ -173,15 +173,15 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'In "Site Branch Stock (Site Inventories)", click any item row (or its "Forward Summary" button) to expand the Site Branch Forward Traceability Summary underneath that item. It shows everything that happened to that item at and forward from the selected Site Branch: transfers received from HQ/FOC, quantities issued to each Field Team at that site, quantities used and wasted on site projects, Site Yard In-Hand, and Site Teams In-Hand — with "Print A4 Summary" and "Download PDF" buttons.',
       },
       {
-        stepTitle: '4. Daily Issuance to Field Crews (IN / Gate Pass) & Live Team In-Hand Custody',
+        stepTitle: '4. Daily Issuance to Field Crews (IN) & Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]")',
         detail:
-          'In "Issue to Teams", HQ or Site Supervisors issue consumable materials and returnable tools to a specific Field Team Leader and print a signable Issue Note (IN) / Gate Pass. Open "Team In-Hand Stock" anytime to audit the exact balance held by each Field Crew Leader and print Team Stock Audit Reports (TSR).',
+          'In "Issue to Teams", HQ or Site Supervisors issue consumable materials and returnable tools to a Field Team Leader and print a signable Issue Note (IN) / Gate Pass. In "Team In-Hand Stock", stock held by transferred teams is NEVER combined across sites: any unreturned balance from a previous site is displayed separately in an amber "Stock to Return - [Previous Site Name]" ledger (must be returned to that site and cannot be consumed at the new site), while materials issued at their new site appear separately under "[New Site Name] — Active Site Stock".',
       },
     ],
     keyOutputs: [
       '2-Tab Stock Requisitions: Normal Stock vs. Branch-Exclusive Client FOC',
       'Site Branch Stock Item Selection -> Forward Traceability Summary (Printable A4 / PDF)',
-      'Auto Low-Stock Top Sorting & Live "Site Avl:" + "Main:" Balances in Dropdowns',
+      'Site-Separated Team In-Hand Stock: "Stock to Return - [Old Site]" vs. Active Site Stock (Never Combined)',
       'Printable Numbered Issue Notes (IN), Gate Passes & TSR Audit Reports',
     ],
   },
@@ -206,20 +206,20 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'When "Telecom New Connection" is selected: (a) In Project Registration, standard Main/Sub project fields are replaced by 6 ordered Subscriber Fields at the top: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, and 6. Exchange Area. (b) In "Material Usage / Daily Progress Entry", it switches to a simple 1-2-3 layout: Step 1 (Top) selects Field Team & Exchange Area and LOCKS them until the page is refreshed ("Confirm & Lock Team / Area") so the team\'s entire day of NC lines can be entered back-to-back without re-selecting the team; Step 2 lets you search/select an NC line by Customer Name or NC Number OR click "+ Register New Connection" right there to register all 6 fields on the spot; Step 3 records Material Usage and keeps Step 1 locked after submission.',
       },
       {
-        stepTitle: '3. Log Installed Qty + "Wastage Qty", Section Filtering & Auto Main Pool / In-Hand Deduction',
+        stepTitle: '3. Log Installed Qty + "Wastage Qty", Active-Site-Only Stock Enforcement & Auto Main Pool Deduction',
         detail:
-          'In "Material Usage / Daily Progress Entry" and Voucher Edit modals, enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Picking a section in Step 1 filters project lists to ONLY that section, and if a project belongs to a different site branch than your account, usage safely locks. Total Deduct (Used + Wastage) is validated live against Team In-Hand stock and auto-deducts from Parent Main Project FOC pools.',
+          'In "Material Usage / Daily Progress Entry" and Voucher Edit modals, enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Teams can ONLY consume materials issued under the project\'s own Site Branch — unreturned stock from a previous site ("Stock to Return - [Previous Site Name]") is automatically excluded and blocked from usage on the new site. Total Deduct (Used + Wastage) is validated live against the team\'s active-site In-Hand balance and auto-deducts from Parent Main Project FOC pools.',
       },
       {
-        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)", Reconciliation & Returns (RV / BRM)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)" & Multi-Item Batch Returns (RV / BRM)',
         detail:
-          'Open "Usage Vouchers History" and select a project to unlock "Full Report for This Site (Project)" showing: (Part 1) Separate Team-by-Team consumption & Wastage with Team Subtotals, and (Part 2) Full Site Consolidated Grand Total (Print/PDF or Excel CSV). Unused surplus or tools are returned via "Team Returns" (RV) or "Branch Returns" (BRM).',
+          'Open "Usage Vouchers History" and select a project to unlock "Full Report for This Site (Project)" showing: (Part 1) Separate Team-by-Team consumption & Wastage with Team Subtotals, and (Part 2) Full Site Consolidated Grand Total (Print/PDF or Excel CSV). In both "Team Returns" (RV) and "Branch Returns" (BRM), you can add multiple items at once ("+ Add Item" or "+ Add All Held / Available"), set per-item quantities and conditions (Good / Damaged), and return the entire batch together on a single shared Return Voucher.',
       },
     ],
     keyOutputs: [
       'Telecom New Connection (NC): 6-Field Registration & 3-Step Daily Progress (Team & Area Locked Until Refresh)',
-      'Section Creation Format Selector (Standard vs. NC Format) + 1-Click NC Section Restore',
-      'Installed Qty + Wastage Qty Entry, Section Filter & User-Site Branch Access Lock',
+      'Active-Site-Only Team Stock Usage Enforcement (Blocks Old-Site Stock from New-Site Usage)',
+      'Multi-Item Batch Returns in Both Team Returns (RV) & Branch Returns (BRM) on a Single Voucher',
       'Full Report for This Site (Project): Team Subtotals + Full Grand Total (PDF/CSV)',
     ],
   },
@@ -319,14 +319,14 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Start 7-Day Free Trial" බටන් එක ක්ලික් කර ඔබේ ආයතනයේ ගිණුම අරඹන්න. පද්ධතියේ සියලුම Item Codes (ITM-0001, MCH-0001), Barcodes (APX-0001), Project IDs (PRJ-2026-0001, MAJ-2026-0001) සහ සියලුම වවුචර් අංක (PO, GRN, RN, DN, IN, PU, RV, BRM) ඉබේම 0001 සිට පිළිවෙළට (Sequential) ජනනය වේ.',
       },
       {
-        stepTitle: '2. භාණ්ඩ ලියාපදිංචිය, Excel Import සහ Single-Shot Barcode Scanner ("Scan Now" බටන් එක සමඟ)',
+        stepTitle: '2. භාණ්ඩ ලියාපදිංචිය, 200KB ට අඩු Item Image Upload ("Print with Image") සහ Single-Shot Barcode Scanner',
         detail:
-          '"Master Registrations -> Item Catalog" හරහා අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ඇතුළත් කරන්න හෝ Excel මගින් Import කරන්න. Mobile Camera එකෙන් හෝ USB Barcode Gun එකෙන් Scan කිරීමේදී (Live Inventory Barcode Lookup ඇතුළුව) එක වරක් Barcode එක Detect වූ සැණින් නොනවතී Scan වීම වැළැක්වීම සඳහා Camera Screen එක ස්වයංක්‍රීයව ඉවත් වී භාණ්ඩයේ Live Stock විස්තර පෙන්වයි. ඊළඟ භාණ්ඩය Scan කිරීමට එතැනම යටින් ඇති "Scan Now" බටන් එක ඔබා නැවත Scanner එක On කරගත හැක.',
+          '"Master Registrations -> Item Catalog" හරහා අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ඇතුළත් කරන්න හෝ Excel මගින් Import කරන්න. භාණ්ඩයක් Add/Edit කිරීමේදී අවශ්‍ය නම් භාණ්ඩයේ ඡායාරූපයක් (Item Photo) එක් කළ හැකි අතර පද්ධතිය මගින් එය ස්වයංක්‍රීයව 200KB ට අඩු ප්‍රමාණයකට (Auto-Compress) සකසා ගබඩා කරයි. ඕනෑම වවුචරයක් Print කිරීමේදී "Print with Image" තේරීම මගින් භාණ්ඩයේ රූපය සමඟ හෝ රූපය රහිතව Print කළ හැක. Barcode Scan කිරීමේදී එක වරක් Detect වූ සැණින් Camera එක ඉබේම නතර වන අතර ඊළඟ භාණ්ඩය සඳහා "Scan Now" බටන් එක භාවිත කළ හැක.',
       },
       {
-        stepTitle: '3. වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය, Auto Crew Size සහ Usage දත්ත ආරක්ෂාව',
+        stepTitle: '3. වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය සහ Site Transfer ක්‍රියාවලිය (Temporary vs. Permanent with Ref)',
         detail:
-          '"Master Registrations -> Teams" තුළදී Team Leader ගේ නම දැමූ විට Crew Size එක ස්වයංක්‍රීයව 1 ලෙස ගණනය වේ. සාමාජිකයින් (Members) ජාතික හැඳුනුම්පත් අංකය (NIC/ID) සමඟ එකතු කරන විට Crew Size එක ඉබේම (1 Leader + සාමාජික ගණන ලෙස) වැඩි වේ. Material Usage දත්ත ආරක්ෂා කිරීම සඳහා එකම නමින් Teams දෙකක් සෑදීම වළක්වා ඇත.',
+          '"Master Registrations -> Teams" තුළදී Team Leader සහ සාමාජිකයින් (Members) ඇතුළත් කරන විට Crew Size එක ඉබේම ගණනය වේ. දැනට Site එකක සිටින Team එකක් වෙනත් Site එකකට මාරු කිරීමේදී ("Transfer / Site History"): පරණ Site එකේ භාර නොදුන් බඩු (Unreturned Stock) තිබේ නම් හෝ මුලින්ම මාරු කරන විට අලුත් Site එකේ "Temporary Assigned to - [New Site Name]" ලෙස පෙන්වයි. පරණ Site එකේ බඩු සියල්ල භාරදී Clear වූ පසු (හෝ බඩු නොගත් Team එකක් නම් Branch/System Admin විසින් Confirm කළ පසු) එය "Permanent" තත්ත්වයට පත් වී කලින් සිටි Site එකේ නම සමඟ "[Team Name] (Ref: [Previous Site Name])" ලෙස සටහන් වේ. Team Details තුළ එම Team එක වැඩ කළ සියලුම Sites (Temporary / Permanent, දිනයන් සහ Stock Clearance තත්ත්වය) වෙනම පෙන්වයි.',
       },
       {
         stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Staff Logins), ශාඛා බලතල සහ Auto Email Verification',
@@ -336,8 +336,8 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     ],
     keyOutputs: [
       '0001 සිට පිළිවෙළට යන Item Codes, Project IDs සහ Voucher References',
-      'Detect වූ විට ඉබේම නතර වන Camera / USB Gun Scanner සහ "Scan Now" බටන් එක',
-      'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් සාමාජික සංඛ්‍යාව (Auto Crew Size)',
+      '200KB ට අඩුවෙන් Auto-Compress වන Item Image Upload සහ "Print with Image" පහසුකම',
+      'Team Site Transfer: "Temporary Assigned to - [New Site]" -> Permanent "(Ref: [Old Site])" සහ සම්පූර්ණ Site History',
       'ශාඛා මට්ටමින් සීමා කළ හැකි ගිණුම් සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
     ],
   },
@@ -367,9 +367,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'ප්‍රමිතියෙන් තොර හෝ වැඩිපුර ලැබුණු භාණ්ඩ ආපසු සැපයුම්කරු වෙත යැවීමේදී "Return to Vendor (RTV) / Debit Note" සහ Gate Pass පත්‍රිකා නිකුත් කරන්න. වැඩබිම්වලදී හානි වූ භාණ්ඩ අලුත්වැඩියා කර නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිත කරන්න.',
       },
       {
-        stepTitle: '4. Client Free Stock (FOC) — Auto-Locked Site Branch සහ Admin මගින් වැරදි වවුචර් නිවැරදි කිරීම',
+        stepTitle: '4. Client Free Stock (FOC) — Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීම',
         detail:
-          '"Client Free Stock" හි "+ Log Client Free Stock" ෆෝම් එක දැන් ඉතා පිළිවෙළට සකසා ඇත. Receiving Storage Yard ලෙස "Main Central Warehouse" Default පවතින අතර, Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට ස්වයංක්‍රීයව Link වී Lock වේ (වෙනත් ශාඛාවකට වෙනස් කළ නොහැක). යම් හෙයකින් FOC තොගයක් වැරදි Project එකකට ඇතුළත් වී ඇත්නම්, Admin හට Client Free Stock තුළදීම එම වවුචරය Edit කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.',
+          '"Client Free Stock" හි "+ Log Client Free Stock" තුළ Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට ස්වයංක්‍රීයව Link වී Lock වේ. එමෙන්ම Client FOC Summary බැලීමේදී එම FOC තොගය අදාළ Assigned Site එකේ විස්තර, එම Site එකේ Teams වලට නිකුත් කිරීම් සහ භාවිතයන් පමණක් වෙනම පැහැදිලිව පෙන්වයි. වැරදි Project එකකට FOC වවුචරයක් වැටී ඇත්නම් Admin හට එය Edit කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.',
       },
       {
         stepTitle: '5. Central Stock හි Item එකක් Select කළ විට පෙන්වන සම්පූර්ණ Item Lifecycle Summary සහ Printable වාර්තාව',
@@ -380,7 +380,7 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     keyOutputs: [
       'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Multi-Item GRN වවුචර්',
       'Return to Vendor (RTV) Debit Notes සහ Outward Gate Pass පත්‍රිකා',
-      'Client FOC Auto-Locked Site Branch සහ Admin මගින් FOC වවුචර් නිවැරදි කිරීම',
+      'Client FOC Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීම',
       'Central Stock Item Summary — PO/Manual ලැබීම්, Site/Team බෙදීම්, Used/Wasted සහ Printable A4/PDF',
     ],
   },
@@ -410,15 +410,15 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Site Branch Stock (Site Inventories)" තුළ ඕනෑම භාණ්ඩ පේළියක් මත ක්ලික් කළ විට (හෝ "Forward Summary" බටන් එක එබූ විට) එම ශාඛාවට HQ/FOC වලින් ලැබුණු ප්‍රමාණය, එම ශාඛාවෙන් එක් එක් Field Team වලට නිකුත් කළ ප්‍රමාණය, ශාඛාවේ Projects වල Used සහ Wasted වූ ප්‍රමාණයන්, මෙන්ම දැනට පවතින Site Store In-Hand සහ Site Teams In-Hand තොග සාරාංශය එතැනම යටින් දිස්වේ. එයද "Print A4 Summary" හෝ "Download PDF" මගින් මුද්‍රණය කළ හැක.',
       },
       {
-        stepTitle: '4. එදිනෙදා වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Team In-Hand Stock පරීක්ෂාව',
+        stepTitle: '4. වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Site අනුව වෙන් වූ Team In-Hand Stock ("Stock to Return - [Site Name]")',
         detail:
-          '"Issue to Teams" කොටසින් අදාළ වැඩ කණ්ඩායමේ නායකයා (Team Leader) වෙත අමුද්‍රව්‍ය සහ ටූල්ස් නිකුත් කර Issue Note (IN) / Gate Pass මුද්‍රණය කරගන්න. "Team In-Hand Stock" වෙත ගොස් එක් එක් කණ්ඩායම ළඟ දැනට ඉතිරිව ඇති තොග බලා TSR වාර්තාව මුද්‍රණය කළ හැක.',
+          '"Issue to Teams" කොටසින් අදාළ වැඩ කණ්ඩායමේ නායකයා (Team Leader) වෙත අමුද්‍රව්‍ය සහ ටූල්ස් නිකුත් කර Issue Note (IN) මුද්‍රණය කරගන්න. "Team In-Hand Stock" බැලීමේදී Transfer කරපු Team වල බඩු සියල්ල එකට එකතු කර (Combine කර) පෙන්වන්නේ නැත: කලින් සිටි Site එකට භාර නොදුන් බඩු "Stock to Return - [කලින් Site එකේ නම]" යටතේ වෙනමම පෙන්වන අතර, අලුතින් ගිය Site එකෙන් ගත් බඩු එම අලුත් Site එකේ නම යටතේ ("[Current Site Name] — Active Site Stock") වෙනම පෙන්වයි.',
       },
     ],
     keyOutputs: [
       'Normal Stock සහ Branch-Exclusive Client FOC සඳහා වෙන් වූ Requisition ටැබ් 2',
       'Site Branch Stock Item Selection -> Forward Traceability Summary (Printable A4 / PDF)',
-      'ශාඛාවේ Low Stock භාණ්ඩ ලැයිස්තුවේ උඩින්ම පෙන්වීම සහ "Site Avl:" තොග දර්ශකය',
+      'Team In-Hand Stock: "Stock to Return - [පරණ Site නම]" සහ අලුත් Site එකේ බඩු එකතු නොකර වෙන වෙනම පෙන්වීම',
       'Material Description සහිත පැහැදිලි Requisition වගුව, IN සහ TSR වාර්තා',
     ],
   },
@@ -443,20 +443,20 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Telecom New Connection" තෝරාගත් විට: (අ) Project Register කරන තැන සාමාන්‍ය project fields වෙනුවට පිළිවෙළට උඩින්ම කරුණු 6ක් පෙන්වයි: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area. (ආ) Daily Progress ("Material Usage / Daily Progress Entry") පිටුවේදී සංකීර්ණ Main/Sub Project කොටස් ඉවත් වී සරල 1, 2, 3 පියවර පෙන්වයි: පියවර 1 (උඩින්ම): Team & Area Selection — එක වරක් Team එක සහ Area එක තෝරා Confirm කළ පසු (හෝ පළමු NC line එක submit කළ පසු) Page එක Refresh කරන තුරු එම විස්තර වෙනස් නොවී Lock වී පවතී (එම Team එක දවස තුළ කළ සියලුම NC lines එක දිගට ඇතුළත් කිරීමට නැවත නැවත Team තෝරන්න අවශ්‍ය නොවේ). පියවර 2: Select NC Line (Customer Name හෝ NC Number එකෙන් Search කර තේරීමට) හෝ එතැනම ඇති "+ Register New Connection" Tab එකෙන් අලුත් NC line එකක කරුණු 6 ඇතුළත් කර එවෙලේම Register කරගැනීමට. පියවර 3: Material Usage ඇතුළත් කර Submit කිරීම (Submit කළ පසුත් පියවර 1 Lock වී පවතින අතර කෙලින්ම ඊළඟ NC line එක තෝරා දිගටම Usage දැමිය හැක).',
       },
       {
-        stepTitle: '3. Material Usage / Daily Progress Entry හි "Wastage Qty", Section Filter සහ User Site Lock',
+        stepTitle: '3. Daily Progress Entry හි "Wastage Qty" සහ අදාළ Site එකේ බඩු පමණක් භාවිතා කිරීමේ නීතිය (Site-Only Stock Usage)',
         detail:
-          'Material Usage / Daily Progress Entry හි (හා Edit Voucher තුළදී) භාවිතා කළ ප්‍රමාණය (Qty Used) මෙන්ම අපතේ ගිය ප්‍රමාණය ("Wastage Qty") ද ඇතුළත් කළ හැක. Section එක මාරු කළ විට එම Section එකේ Projects පමණක් පෙන්වන අතර, තෝරාගත් Project එක ඔබේ ගිණුමේ Site Branch එකට අයත් නොවේ නම් Usage කොටස ආරක්ෂිතව Lock වේ.',
+          'Material Usage / Daily Progress Entry හි භාවිතා කළ ප්‍රමාණය (Qty Used) මෙන්ම අපතේ ගිය ප්‍රමාණය ("Wastage Qty") ද ඇතුළත් කළ හැක. Team එකකට යම් Site එකක Project එකකට පාවිච්චි කළ හැක්කේ එම Site එකෙන් නිකුත් කළ බඩු පමණි — කලින් හිටපු Site එකක භාර නොදුන් බඩු ("Stock to Return - [Previous Site Name]") අලුත් Site එකේ වැඩවලට පාවිච්චි කිරීමට ඉඩ නොදෙන අතර ඒවා අදාළ පරණ Site එකටම Return කළ යුතුය.',
       },
       {
-        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)" සහ Returns (RV / BRM)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site" සහ භාණ්ඩ ගණනාවක් එකවර ආපසු භාරදීම (Multi-Item Team & Branch Returns)',
         detail:
-          '"Usage Vouchers History" ටැබ් එකෙහි Project එකක් තේරූ විට "Full Report for This Site (Project)" බටන් එක ලැබේ: (Part 1) එක් එක් Team එක වෙන වෙනම භාවිතා කළ හා Wastage කළ ප්‍රමාණ + Team Subtotals, සහ (Part 2) සියලුම Teams වල මුළු එකතුව (Grand Total) — Print/PDF හෝ Excel CSV ලෙස ගත හැක. ඉතිරි අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ "Team Returns" (RV) හෝ "Branch Returns" (BRM) මගින් ආපසු භාරදිය හැක.',
+          '"Usage Vouchers History" හි Project එකක් තේරූ විට "Full Report for This Site (Project)" මගින් Team Subtotals සහ Full Grand Total ලබාගත හැක. ඉතිරි අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ ආපසු භාරදීමේදී "Team Returns" (RV) සහ "Branch Returns" (BRM) යන ස්ථාන දෙකේදීම එක වරකට එක භාණ්ඩයක් පමණක් නොව, "+ Add Item" හෝ "+ Add All Held / Available" මගින් භාණ්ඩ ගණනාවක් එකවර ලැයිස්තුවට එකතු කර තනි Return Voucher එකකින් එක සැරේ Return කළ හැක.',
       },
     ],
     keyOutputs: [
       'Telecom New Connection (NC): කරුණු 6ක Register ආකෘතිය සහ 1-2-3 Daily Progress (Team & Area Lock)',
-      'New Section සෑදීමේදී NC Format තේරීමේ පහසුකම සහ "+ Restore Telecom New Connection (NC)" බටන් එක',
-      'Installed Qty සමඟ Wastage Qty සටහන් කිරීම, Section Filter සහ User Site Branch Lock',
+      'අලුත් Site එකේ වැඩවලට එම Site එකේ බඩු පමණක් භාවිතා කිරීමට සීමා කිරීම (පරණ Site බඩු වෙනම Return කළ යුතුය)',
+      'Team Returns (RV) සහ Branch Returns (BRM) දෙකේම Items ගණනාවක් එකතු කර එක සැරේ Return කිරීමේ පහසුකම',
       '"Full Report for This Site (Project)" — Team Subtotals + Full Grand Total (PDF/CSV)',
     ],
   },
@@ -633,23 +633,26 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
       'Single-Shot Camera & USB Gun Barcode Scanner with Auto-Hide & "Scan Now" Button',
       'Supplier Purchase Orders (PO) & Multi-Item Atomic GRN Vouchers',
       'Return to Vendor (RTV) Official Debit Notes & Outward Gate Passes',
-      'Client Free Stock (FOC) Auto-Locked Site Branch + Admin Voucher Correction / Reassignment',
+      'Client Free Stock (FOC) Auto-Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Voucher Correction',
+      'Optional Item Image Upload (Auto-Compressed <200KB) & "Print with Image" Option on Vouchers/Reports',
       'Excel / CSV Bulk Import, Multi-Sheet Export & Low-Stock Alerts',
     ],
   },
   {
-    group: 'Field Operations, Telecom NC Workflow, Daily Progress & Full Site Reports',
+    group: 'Field Operations, Team Site Transfers, Telecom NC Workflow & Batch Returns',
     items: [
+      'Field Team Site Transfer Workflow: "Temporary Assigned to - [New Site]" -> Permanent "[Team Name] (Ref: [Previous Site])" & Complete Assigned Sites History',
+      'Site-Separated Team In-Hand Stock: Unreturned Old-Site Stock Shown Separately Under "Stock to Return - [Site Name]" (Never Combined with New Site Stock)',
+      'Strict Active-Site Material Usage: Teams Can Only Consume Stock Issued at the Current Site for Current Site Projects',
+      'Multi-Item Batch Returns in Both Team Returns (RV) & Branch Returns (BRM) ("+ Add Item" / "+ Add All Held or Available" on One Voucher)',
       'Telecom New Connection (NC) 6-Field Registration: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area',
       'Telecom New Connection (NC) 3-Step Daily Progress: Step 1 Team & Area (Locked Until Refresh) -> Step 2 Search NC Line or "+ Register New Connection" -> Step 3 Material Usage',
       'New Section Registry Format Selector (Standard vs. NC Format) & 1-Click "+ Restore Telecom New Connection (NC)" Button',
       '2-Tab Stock Requisitions (RN): Normal Stock vs. Branch-Exclusive Client FOC Request',
       'Auto Low-Stock Priority Top Sorting & Live "Site Avl:" + "Main:" Balances in Requisitions',
-      'Section-Filtered Project Lists & User-Site Branch Lock in Material Usage / Daily Progress Entry',
       'Installed Qty + Wastage Qty Tracking with Live (Used + Wastage) Team In-Hand Validation',
       'Usage Vouchers History -> "Full Report for This Site (Project)" (Team Subtotals + Grand Total)',
       'Auto-Calculated Field Crew Size (1 Leader + N Members) & Usage Protection',
-      'Shared Main Project Client FOC Pool, Sub-Project Auto-Deduction & Returns (PU/RV/BRM)',
     ],
   },
   {
@@ -677,23 +680,24 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
       'Detect වූ සැණින් නතර වී Camera ඉවත් වන Single-Shot Scanner සහ "Scan Now" බටන් එක',
       'නිල Purchase Orders (PO) සහ Multi-Item GRN ප්‍රධාන ගබඩාවට එකවර භාරගැනීම',
       'සැපයුම්කරු වෙත ආපසු යැවීමේ (RTV) Debit Notes සහ Outward Gate Pass',
-      'Client FOC Auto-Locked Site Branch සහ Admin හට වැරදි FOC වවුචර් නිවැරදි කිරීමේ පහසුකම',
+      'Client FOC Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීමේ පහසුකම',
+      '200KB ට අඩුවෙන් Auto-Compress වන Item Image Upload සහ වවුචර් Print කිරීමේදී "Print with Image" තේරීම',
       'Excel / CSV Bulk Import, Multi-Sheet Export සහ අවම තොග අනතුරු ඇඟවීම්',
     ],
   },
   {
-    group: 'වැඩබිම් මෙහෙයුම්, Telecom NC, Wastage සහ Full Site Reports (Daily Progress Entry)',
+    group: 'වැඩබිම් මෙහෙයුම්, Team Site Transfers, Telecom NC සහ Multi-Item Returns',
     items: [
+      'Team Site Transfer ක්‍රියාවලිය: "Temporary Assigned to - [New Site]" -> බඩු Clear වූ පසු Permanent "[Team Name] (Ref: [Previous Site])" සහ සම්පූර්ණ Assigned Sites History',
+      'Site අනුව වෙන් වූ Team In-Hand Stock: කලින් Site එකේ භාර නොදුන් බඩු "Stock to Return - [Site Name]" යටතේත්, අලුත් Site එකේ බඩු අලුත් Site නම යටතේත් එකතු නොකර වෙන වෙනම පෙන්වීම',
+      'අලුත් Site එකේ වැඩවලට එම Site එකෙන් නිකුත් කළ බඩු පමණක් භාවිතා කිරීමට ඉඩ දීම (පරණ Site එකේ බඩු අලුත් Site එකට භාවිතා කළ නොහැක)',
+      'Team Returns (RV) සහ Branch Returns (BRM) දෙකේම Items ගණනාවක් එකතු කර ("+ Add Item" / "+ Add All") එක සැරේ තනි වවුචරයකින් Return කිරීමේ පහසුකම',
       'Telecom New Connection (NC) කරුණු 6ක ලියාපදිංචිය: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area',
       'Telecom New Connection (NC) 1-2-3 Daily Progress: පියවර 1 Team & Area (Refresh කරන තුරු Lock වේ) -> පියවර 2 Select NC Line හෝ "+ Register New Connection" -> පියවර 3 Material Usage',
       'New Section සෑදීමේදී NC Format තේරීමේ පහසුකම සහ මැකුණොත් "+ Restore Telecom New Connection (NC)" බටන් එක',
       'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock සහ Branch-Exclusive Client FOC Request)',
-      'ශාඛාවේ Low Stock භාණ්ඩ ලැයිස්තුවේ උඩින්ම පෙරී පෙන්වීම සහ "Site Avl:" / "Main:" තොග දර්ශකය',
-      'Section එකට අනුව Projects Filter වීම සහ අනවසර Site Lock ආරක්ෂාව',
       'Material Usage / Daily Progress Entry හි Installed Qty සමඟ Wastage Qty (අපතේ යාම්) සටහන් කිරීම',
       'Usage History හි "Full Report for This Site (Project)" (Team Subtotals + Full Grand Total + PDF/CSV)',
-      'ස්වයංක්‍රීයව ගණනය වන කණ්ඩායම් ප්‍රමාණය (Auto Crew Size: 1 Leader + N Members)',
-      'Sub-Project Usage මගින් Main Project FOC අඩු වීම සහ ආපසු භාරදීමේ වවුචර් (PU / RV / BRM)',
     ],
   },
   {

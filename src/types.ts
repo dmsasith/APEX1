@@ -403,6 +403,11 @@ export interface TeamReturn {
   quantity: number;
   condition: ReturnCondition;
   reason: string;
+  batchItems?: Array<{
+    itemId: string;
+    quantity: number;
+    condition: ReturnCondition;
+  }>;
 }
 
 export type AuditAction = 
@@ -628,6 +633,11 @@ export interface BranchReturn {
   returnDate: string;
   receivedAtMainBy?: string;
   isDeleted?: boolean;
+  batchItems?: Array<{
+    itemId: string;
+    quantity: number;
+    condition: ReturnCondition;
+  }>;
 }
 
 export interface DamagedStockRestoration {

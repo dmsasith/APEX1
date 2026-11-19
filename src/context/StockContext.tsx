@@ -54,6 +54,7 @@ import {
   getUserAssignedSiteIds,
   TeamSiteAssignmentHistoryRecord,
   TeamSiteStockBreakdown,
+  ReturnCondition,
 } from '../types';
 import { DEFAULT_SECTION_FORMATS, deriveCompanyMonogram } from '../utils/formatAnalyzerUtils';
 import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
@@ -354,6 +355,13 @@ interface StockContextType {
   returnStockFromTeam: (
     data: Omit<TeamReturn, 'id' | 'returnVoucherNumber' | 'returnDate' | 'returnedBy'>
   ) => TeamReturn;
+  returnMultipleStockFromTeam: (data: {
+    siteId: string;
+    teamId: string;
+    returnedBy?: string;
+    reason: string;
+    items: Array<{ itemId: string; quantity: number; condition: ReturnCondition }>;
+  }) => TeamReturn[];
 
   // Project Types / Sections & Templates
   addProjectType: (data: Omit<ProjectType, 'id' | 'createdAt' | 'isDeleted'>) => ProjectType;
@@ -441,6 +449,14 @@ interface StockContextType {
   returnStockFromBranchToMain: (
     data: Omit<BranchReturn, 'id' | 'branchReturnNumber' | 'returnDate' | 'returnedBy'>
   ) => BranchReturn;
+  returnMultipleStockFromBranchToMain: (data: {
+    siteId: string;
+    siteName?: string;
+    fromSiteId?: string;
+    fromSiteName?: string;
+    reason: string;
+    items: Array<{ itemId: string; quantity: number; condition: ReturnCondition }>;
+  }) => BranchReturn[];
   deleteBranchReturn: (id: string) => void;
   clearBranchReturns: () => void;
 
@@ -7788,6 +7804,98 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return newReturn;
   };
 
+  // Multi-Item Batch Return from Team to Site Branch
+  const returnMultipleStockFromTeam = (data: {
+    siteId: string;
+    teamId: string;
+    returnedBy?: string;
+    reason: string;
+    items: Array<{ itemId: string; quantity: number; condition: ReturnCondition }>;
+  }): TeamReturn[] => {
+    const validRows = (data.items || []).filter((r) => r.itemId && Number(r.quantity) > 0);
+    if (validRows.length === 0) {
+      throw new Error('Please add at least one item with a valid return quantity greater than zero.');
+    }
+
+    const siteCustody = computeTeamInHandStock(data.teamId, data.siteId);
+    const targetSiteName = sites.find((s) => s.id === data.siteId)?.name || 'this site';
+
+    // Aggregate quantities per itemId in case the same item appears in multiple rows (e.g., Good + Damaged)
+    const totalsByItem = new Map<string, number>();
+    for (const row of validRows) {
+      const siteStock = getSiteItemStock(data.siteId, row.itemId);
+      const itmObj = items.find((i) => i.id === row.itemId);
+      if (siteStock.received <= 0) {
+        throw new Error(
+          `Return blocked for "${itmObj?.itemName || row.itemId}": Stock has not been documented or transferred from Main Yard to ${targetSiteName}.`
+        );
+      }
+      totalsByItem.set(row.itemId, (totalsByItem.get(row.itemId) || 0) + Number(row.quantity));
+    }
+
+    for (const [itmId, totalQty] of totalsByItem.entries()) {
+      const heldAtThisSite = siteCustody.items.find((i) => i.itemId === itmId)?.currentInHand || 0;
+      if (totalQty > heldAtThisSite) {
+        const itmObj = items.find((i) => i.id === itmId);
+        throw new Error(
+          `Return blocked for "${itmObj?.itemName || itmId}": Requested return quantity (${totalQty} ${itmObj?.unit || 'units'}) exceeds team's active in-hand balance issued under "${targetSiteName}" (${heldAtThisSite} ${itmObj?.unit || 'units'}).`
+        );
+      }
+    }
+
+    const distinctVouchers = new Set(teamReturns.map((r) => r.returnVoucherNumber)).size;
+    const nextNum = Math.max(teamReturns.length, distinctVouchers) + 1;
+    const returnVoucherNumber = `RV-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
+    const nowIso = new Date().toISOString();
+    const returnedByPerson =
+      (data.returnedBy && data.returnedBy.trim()) || currentUser?.fullName || 'Branch Admin';
+    const batchItemsSnapshot = validRows.map((r) => ({
+      itemId: r.itemId,
+      quantity: Number(r.quantity),
+      condition: r.condition,
+    }));
+
+    const createdReturns: TeamReturn[] = validRows.map((row, idx) => ({
+      id: `ret-${Date.now()}-${idx}`,
+      returnVoucherNumber,
+      siteId: data.siteId,
+      teamId: data.teamId,
+      returnedBy: returnedByPerson,
+      returnDate: nowIso,
+      itemId: row.itemId,
+      quantity: Number(row.quantity),
+      condition: row.condition,
+      reason: data.reason,
+      batchItems: batchItemsSnapshot,
+    }));
+
+    setTeamReturns((prev) => {
+      const next = [...createdReturns, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'teamReturns', next);
+      return next;
+    });
+
+    const team = teams.find((t) => t.id === data.teamId);
+    const site = sites.find((s) => s.id === data.siteId);
+    const summaryText = createdReturns
+      .map((r) => {
+        const itm = items.find((i) => i.id === r.itemId);
+        return `${r.quantity} ${itm?.unit || 'units'} of ${itm?.itemCode || r.itemId} (${r.condition})`;
+      })
+      .join(', ');
+
+    addAuditLog(
+      'TEAM_RETURN_LOGGED',
+      returnVoucherNumber,
+      site?.name || 'Site',
+      `Logged batch return (${createdReturns.length} item(s): ${summaryText}) from ${team?.teamName || 'Team'} to ${site?.name || 'Site'}. Reason: ${data.reason}`,
+      items.find((i) => i.id === createdReturns[0]?.itemId)?.itemCode,
+      createdReturns.reduce((acc, r) => acc + r.quantity, 0)
+    );
+
+    return createdReturns;
+  };
+
   // Operational Workflows: Project Material Usages (Custody Deduction)
   const logProjectMaterialUsage = (
     data: Omit<ProjectMaterialUsage, 'id' | 'usageVoucherNumber' | 'loggedBy'>
@@ -8397,6 +8505,92 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       data.quantity
     );
     return newBranchReturn;
+  };
+
+  // Multi-Item Batch Return from Site Branch to Central Main Warehouse
+  const returnMultipleStockFromBranchToMain = (data: {
+    siteId: string;
+    siteName?: string;
+    fromSiteId?: string;
+    fromSiteName?: string;
+    reason: string;
+    items: Array<{ itemId: string; quantity: number; condition: ReturnCondition }>;
+  }): BranchReturn[] => {
+    const sourceSiteId = data.siteId || data.fromSiteId || '';
+    const validRows = (data.items || []).filter((r) => r.itemId && Number(r.quantity) > 0);
+    if (validRows.length === 0) {
+      throw new Error('Please add at least one item with a valid return quantity greater than zero.');
+    }
+
+    const fromSite = sites.find((s) => s.id === sourceSiteId);
+    const siteName = data.siteName || data.fromSiteName || fromSite?.name || 'Site Branch';
+
+    // Aggregate quantities per itemId across rows
+    const totalsByItem = new Map<string, number>();
+    for (const row of validRows) {
+      totalsByItem.set(row.itemId, (totalsByItem.get(row.itemId) || 0) + Number(row.quantity));
+    }
+
+    for (const [itmId, totalQty] of totalsByItem.entries()) {
+      const siteStock = getSiteItemStock(sourceSiteId, itmId);
+      if (siteStock.availableBalance < totalQty) {
+        const itmObj = items.find((i) => i.id === itmId);
+        throw new Error(
+          `Insufficient branch stock for "${itmObj?.itemName || itmId}". Requested: ${totalQty} ${itmObj?.unit || 'units'}, Available at ${siteName}: ${siteStock.availableBalance} ${itmObj?.unit || 'units'}.`
+        );
+      }
+    }
+
+    const distinctNotes = new Set(branchReturns.map((r) => r.branchReturnNumber)).size;
+    const nextNum = Math.max(branchReturns.length, distinctNotes) + 1;
+    const branchReturnNumber = `BRM-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
+    const nowIso = new Date().toISOString();
+    const returnedByPerson = currentUser?.fullName || 'Branch Admin';
+    const batchItemsSnapshot = validRows.map((r) => ({
+      itemId: r.itemId,
+      quantity: Number(r.quantity),
+      condition: r.condition,
+    }));
+
+    const createdBranchReturns: BranchReturn[] = validRows.map((row, idx) => ({
+      id: `br-${Date.now()}-${idx}`,
+      branchReturnNumber,
+      siteId: sourceSiteId,
+      siteName,
+      fromSiteId: sourceSiteId,
+      fromSiteName: siteName,
+      itemId: row.itemId,
+      quantity: Number(row.quantity),
+      condition: row.condition,
+      reason: data.reason,
+      returnedBy: returnedByPerson,
+      returnDate: nowIso,
+      batchItems: batchItemsSnapshot,
+    }));
+
+    setBranchReturns((prev) => {
+      const next = [...createdBranchReturns, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'branchReturns', next);
+      return next;
+    });
+
+    const summaryText = createdBranchReturns
+      .map((r) => {
+        const itm = items.find((i) => i.id === r.itemId);
+        return `${r.quantity} ${itm?.unit || 'units'} of ${itm?.itemCode || r.itemId} (${r.condition})`;
+      })
+      .join(', ');
+
+    addAuditLog(
+      'BRANCH_RETURN_TO_MAIN',
+      branchReturnNumber,
+      siteName,
+      `Transferred batch return (${createdBranchReturns.length} item(s): ${summaryText}) from ${siteName} back to Central Main Yard. Reason: ${data.reason}`,
+      items.find((i) => i.id === createdBranchReturns[0]?.itemId)?.itemCode,
+      createdBranchReturns.reduce((acc, r) => acc + r.quantity, 0)
+    );
+
+    return createdBranchReturns;
   };
 
   const deleteBranchReturn = (id: string) => {
@@ -9735,6 +9929,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         acceptStockRequest,
         issueStockToTeam,
         returnStockFromTeam,
+        returnMultipleStockFromTeam,
         addProjectType,
         updateProjectType,
         deleteProjectType,
@@ -9755,6 +9950,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getClientFreeStockBalance,
         getProjectFreeStockList,
         returnStockFromBranchToMain,
+        returnMultipleStockFromBranchToMain,
         deleteBranchReturn,
         clearBranchReturns,
         damagedRestorations,

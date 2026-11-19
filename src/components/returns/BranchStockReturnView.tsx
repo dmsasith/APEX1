@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Boxes,
   ScanLine,
+  Plus,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -42,7 +43,7 @@ export const BranchStockReturnView: React.FC = () => {
     branchReturns,
     currentUser,
     getSiteItemStock,
-    returnStockFromBranchToMain,
+    returnMultipleStockFromBranchToMain,
     clearBranchReturns,
     deleteBranchReturn,
     config,
@@ -81,9 +82,6 @@ export const BranchStockReturnView: React.FC = () => {
   const initialSiteId = allowedBranchSites[0]?.id || branchSites[0]?.id || activeSites[0]?.id || '';
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
-  const [selectedItemId, setSelectedItemId] = useState<string>('');
-  const [returnQty, setReturnQty] = useState<number | ''>('');
-  const [condition, setCondition] = useState<ReturnCondition>('Good / Restock');
   const [reason, setReason] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -99,10 +97,67 @@ export const BranchStockReturnView: React.FC = () => {
     })
     .filter((entry) => entry.availableBalance > 0);
 
-  // Auto-select first available item if current selection isn't valid
-  const currentSelectedItemEntry = availableStockItems.find((e) => e.item.id === selectedItemId);
-  const activeSelectedItem = currentSelectedItemEntry || availableStockItems[0];
-  const activeItemId = selectedItemId || activeSelectedItem?.item.id || '';
+  // Multi-item return rows state
+  const [returnRows, setReturnRows] = useState<
+    Array<{ itemId: string; quantity: number | ''; condition: ReturnCondition }>
+  >([
+    {
+      itemId: availableStockItems[0]?.item.id || '',
+      quantity: '',
+      condition: 'Good / Restock',
+    },
+  ]);
+
+  React.useEffect(() => {
+    setReturnRows((prev) => {
+      if (availableStockItems.length === 0) {
+        return [{ itemId: '', quantity: '' as const, condition: 'Good / Restock' }];
+      }
+      const updated = prev.map((r) => {
+        if (r.itemId && availableStockItems.some((e) => e.item.id === r.itemId)) {
+          return r;
+        }
+        return { ...r, itemId: availableStockItems[0].item.id, quantity: '' as const };
+      });
+      return updated.length > 0
+        ? updated
+        : [{ itemId: availableStockItems[0].item.id, quantity: '' as const, condition: 'Good / Restock' }];
+    });
+  }, [selectedSiteId, availableStockItems.length]);
+
+  const handleAddOrIncrementBranchItem = (matchedItemId: string, itemCode: string, itemName: string) => {
+    const entry = availableStockItems.find((e) => e.item.id === matchedItemId);
+    if (!entry) {
+      if (config.barcodeBeepEnabled !== false) playScanBeep(false);
+      setErrorMsg(`Item [${itemCode}] ${itemName} has 0 available balance at this branch.`);
+      return;
+    }
+    if (config.barcodeBeepEnabled !== false) playScanBeep(true);
+    setReturnRows((prev) => {
+      const existingIdx = prev.findIndex((r) => r.itemId === matchedItemId);
+      if (existingIdx >= 0) {
+        return prev.map((r, i) =>
+          i === existingIdx
+            ? {
+                ...r,
+                quantity:
+                  typeof r.quantity === 'number'
+                    ? Math.min(r.quantity + 1, entry.availableBalance)
+                    : 1,
+              }
+            : r
+        );
+      }
+      const emptyIdx = prev.findIndex((r) => !r.itemId || r.quantity === '');
+      if (emptyIdx >= 0) {
+        return prev.map((r, i) =>
+          i === emptyIdx ? { ...r, itemId: matchedItemId, quantity: 1 } : r
+        );
+      }
+      return [...prev, { itemId: matchedItemId, quantity: 1, condition: 'Good / Restock' }];
+    });
+    setSuccessToast(`Added for branch return: [${itemCode}] ${itemName}`);
+  };
 
   useUsbBarcodeScanner({
     enabled: !scannerOpen && config.barcodeEnabled !== false && config.usbScannerEnabled !== false,
@@ -112,16 +167,7 @@ export const BranchStockReturnView: React.FC = () => {
     onScan: (raw) => {
       const matched = matchItemByScannedCode(activeItems, raw);
       if (matched) {
-        const entry = availableStockItems.find((e) => e.item.id === matched.id);
-        if (entry) {
-          if (config.barcodeBeepEnabled !== false) playScanBeep(true);
-          setSelectedItemId(matched.id);
-          setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, entry.availableBalance) : 1));
-          setSuccessToast(`Scanned & selected for branch return: [${matched.itemCode}] ${matched.itemName}`);
-        } else {
-          if (config.barcodeBeepEnabled !== false) playScanBeep(false);
-          setErrorMsg(`Item [${matched.itemCode}] ${matched.itemName} has 0 available balance at this branch.`);
-        }
+        handleAddOrIncrementBranchItem(matched.id, matched.itemCode, matched.itemName);
       } else {
         if (config.barcodeBeepEnabled !== false) playScanBeep(false);
         setErrorMsg(`No catalog item matched scanned barcode "${raw}".`);
@@ -131,8 +177,62 @@ export const BranchStockReturnView: React.FC = () => {
 
   const handleSiteChange = (newSiteId: string) => {
     setSelectedSiteId(newSiteId);
-    setSelectedItemId('');
-    setReturnQty('');
+    const nextAvail = activeItems.filter((itm) => getSiteItemStock(newSiteId, itm.id).availableBalance > 0);
+    setReturnRows([
+      {
+        itemId: nextAvail[0]?.id || '',
+        quantity: '',
+        condition: 'Good / Restock',
+      },
+    ]);
+  };
+
+  const handleAddReturnRow = () => {
+    const usedIds = new Set(returnRows.map((r) => r.itemId));
+    const nextAvail = availableStockItems.find((e) => !usedIds.has(e.item.id)) || availableStockItems[0];
+    setReturnRows((prev) => [
+      ...prev,
+      {
+        itemId: nextAvail?.item.id || '',
+        quantity: '',
+        condition: 'Good / Restock',
+      },
+    ]);
+  };
+
+  const handleLoadAllAvailableItems = () => {
+    if (availableStockItems.length === 0) return;
+    setReturnRows(
+      availableStockItems.map((e) => ({
+        itemId: e.item.id,
+        quantity: e.availableBalance,
+        condition: 'Good / Restock',
+      }))
+    );
+    setErrorMsg('');
+  };
+
+  const handleUpdateReturnRow = (
+    index: number,
+    field: 'itemId' | 'quantity' | 'condition',
+    value: string | number
+  ) => {
+    setReturnRows((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== index) return row;
+        if (field === 'itemId') {
+          return { ...row, itemId: String(value), quantity: '' };
+        }
+        if (field === 'condition') {
+          return { ...row, condition: value as ReturnCondition };
+        }
+        return { ...row, quantity: value === '' ? '' : Number(value) };
+      })
+    );
+  };
+
+  const handleRemoveReturnRow = (index: number) => {
+    setReturnRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== index)));
   };
 
   const handleProcessReturn = (e: React.FormEvent) => {
@@ -143,42 +243,71 @@ export const BranchStockReturnView: React.FC = () => {
       setErrorMsg('Please select a source site branch.');
       return;
     }
-    if (!activeItemId || !activeSelectedItem) {
-      setErrorMsg('Please select an item with available branch inventory.');
+
+    const activeRows = returnRows.filter((r) => r.itemId && Number(r.quantity) > 0);
+    if (activeRows.length === 0) {
+      setErrorMsg('Please select at least one item and enter a valid return quantity greater than zero.');
       return;
     }
-    if (!returnQty || Number(returnQty) <= 0) {
-      setErrorMsg('Please enter a valid return quantity greater than zero.');
-      return;
+
+    const totalsByItem = new Map<string, number>();
+    for (let i = 0; i < returnRows.length; i++) {
+      const r = returnRows[i];
+      if (!r.itemId) {
+        setErrorMsg(`Row #${i + 1}: Please select an item with available branch inventory.`);
+        return;
+      }
+      if (!r.quantity || Number(r.quantity) <= 0) {
+        const entry = availableStockItems.find((e) => e.item.id === r.itemId);
+        setErrorMsg(`Row #${i + 1} (${entry?.item.itemName || 'Item'}): Please enter a return quantity greater than zero.`);
+        return;
+      }
+      totalsByItem.set(r.itemId, (totalsByItem.get(r.itemId) || 0) + Number(r.quantity));
     }
-    if (Number(returnQty) > activeSelectedItem.availableBalance) {
-      setErrorMsg(
-        `Return quantity (${returnQty}) exceeds current branch yard stock (${activeSelectedItem.availableBalance} ${activeSelectedItem.item.unit}).`
-      );
-      return;
+
+    for (const [itmId, totalQty] of totalsByItem.entries()) {
+      const entry = availableStockItems.find((e) => e.item.id === itmId);
+      const maxAvail = entry?.availableBalance || 0;
+      if (totalQty > maxAvail) {
+        setErrorMsg(
+          `Return quantity (${totalQty} ${entry?.item.unit || 'units'}) for "${entry?.item.itemName || itmId}" exceeds current branch yard stock (${maxAvail} ${entry?.item.unit || 'units'}).`
+        );
+        return;
+      }
     }
 
     const currentBranch = sites.find((s) => s.id === selectedSiteId);
 
     try {
-      const newBranchReturn = returnStockFromBranchToMain({
+      const createdReturns = returnMultipleStockFromBranchToMain({
         siteId: selectedSiteId,
         siteName: currentBranch?.name || 'Site Branch',
         fromSiteId: selectedSiteId,
         fromSiteName: currentBranch?.name || 'Site Branch',
-        itemId: activeItemId,
-        quantity: Number(returnQty),
-        condition,
         reason: reason.trim() || 'Excess/surplus stock returned to Main Central Warehouse.',
+        items: activeRows.map((r) => ({
+          itemId: r.itemId,
+          quantity: Number(r.quantity),
+          condition: r.condition,
+        })),
       });
 
-      setSuccessToast(
-        `Branch Return Note ${newBranchReturn.branchReturnNumber} generated! Returned to Central Yard.`
-      );
-      setSelectedReturnForPrint(newBranchReturn);
+      if (createdReturns.length > 0) {
+        const firstNote = createdReturns[0];
+        setSuccessToast(
+          `Branch Return Note ${firstNote.branchReturnNumber} generated for ${createdReturns.length} item(s)! Returned to Central Yard.`
+        );
+        setSelectedReturnForPrint(firstNote);
+      }
 
       // Reset fields
-      setReturnQty('');
+      setReturnRows([
+        {
+          itemId: availableStockItems[0]?.item.id || '',
+          quantity: '',
+          condition: 'Good / Restock',
+        },
+      ]);
       setReason('');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to return stock to Central Warehouse.');
@@ -274,7 +403,7 @@ export const BranchStockReturnView: React.FC = () => {
           )}
 
           <form onSubmit={handleProcessReturn} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               {/* Site Branch Selection: Central Admin can select any branch; Branch user locked to their own */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -305,88 +434,170 @@ export const BranchStockReturnView: React.FC = () => {
                     : 'Branch users can only return items from their assigned branch.'}
                 </p>
               </div>
+            </div>
 
-              {/* Item Selection (ONLY ITEMS WITH AVAILABLE STOCK > 0) */}
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Item to Return (Available Stock Only) *
+            {/* Multi-Item Selection List (ONLY ITEMS WITH AVAILABLE STOCK > 0) */}
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800">
+                    Items to Return to Central Main Yard ({returnRows.length} item{returnRows.length === 1 ? '' : 's'}) *
                   </label>
+                  <p className="text-[10px] text-slate-500">
+                    Add multiple items to return them all together on a single Branch Return Note.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {availableStockItems.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleAddReturnRow}
+                        className="px-2.5 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Add Item</span>
+                      </button>
+                      {availableStockItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={handleLoadAllAvailableItems}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Populate all items currently available at this branch"
+                        >
+                          <span>+ Add All Available ({availableStockItems.length})</span>
+                        </button>
+                      )}
+                    </>
+                  )}
                   {config.barcodeEnabled !== false && (
                     <button
                       type="button"
                       onClick={() => setScannerOpen(true)}
-                      className="px-2.5 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
                     >
                       <ScanLine className="w-3 h-3" />
                       <span>Scan Barcode</span>
                     </button>
                   )}
                 </div>
-                <select
-                  value={activeItemId}
-                  onChange={(e) => {
-                    setSelectedItemId(e.target.value);
-                    setReturnQty('');
-                  }}
-                  className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                >
-                  {availableStockItems.length === 0 ? (
-                    <option value="">No Items with Stock &gt; 0 in this Branch</option>
-                  ) : (
-                    availableStockItems.map(({ item, availableBalance }) => (
-                      <option key={item.id} value={item.id}>
-                        [{item.itemCode}] {item.itemName} — In Stock: {availableBalance} {item.unit}
-                      </option>
-                    ))
-                  )}
-                </select>
-                {availableStockItems.length === 0 && (
-                  <p className="text-[11px] text-amber-600 mt-1 font-medium">
-                    This branch yard currently has 0 available items in stock to return.
-                  </p>
-                )}
               </div>
 
-              {/* Return Quantity */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Return Quantity *
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="1"
-                    max={activeSelectedItem?.availableBalance || 1}
-                    value={returnQty}
-                    onChange={(e) => setReturnQty(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder={`Max: ${activeSelectedItem?.availableBalance || 0}`}
-                    className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                  {activeSelectedItem && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                      {activeSelectedItem.item.unit}
-                    </span>
-                  )}
+              {availableStockItems.length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium">
+                  This branch yard currently has 0 available items in stock to return.
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
+                  {returnRows.map((row, idx) => {
+                    const rowEntry = availableStockItems.find((e) => e.item.id === row.itemId);
+                    const maxAvail = rowEntry?.availableBalance || 0;
 
-              {/* Return Condition */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Item Condition *
-                </label>
-                <select
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value as ReturnCondition)}
-                  className="w-full text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="Good / Restock">Good / Restock (Added back to Central Available Stock)</option>
-                  <option value="Damaged / Scrap">Damaged / Scrap (Requires Central Quarantine/Scrap)</option>
-                </select>
-              </div>
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-800">
+                            Return Item #{idx + 1}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {rowEntry && (
+                              <span className="text-[11px] font-mono font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
+                                Available: {formatNumber(maxAvail)} {rowEntry.item.unit}
+                              </span>
+                            )}
+                            {returnRows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveReturnRow(idx)}
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Remove Item Row"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <select
+                            value={row.itemId}
+                            onChange={(e) => handleUpdateReturnRow(idx, 'itemId', e.target.value)}
+                            className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            required
+                          >
+                            {availableStockItems.map(({ item, availableBalance }) => (
+                              <option key={item.id} value={item.id}>
+                                [{item.itemCode}] {item.itemName} — In Stock: {availableBalance} {item.unit}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                          <div className="sm:col-span-5">
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[11px] font-semibold text-slate-700">
+                                Return Quantity *
+                              </label>
+                              {maxAvail > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateReturnRow(idx, 'quantity', maxAvail)}
+                                  className="text-[10px] font-extrabold text-indigo-700 hover:underline cursor-pointer"
+                                >
+                                  Max ({maxAvail})
+                                </button>
+                              )}
+                            </div>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min="0.01"
+                                max={maxAvail || 1}
+                                step="any"
+                                value={row.quantity}
+                                onChange={(e) =>
+                                  handleUpdateReturnRow(
+                                    idx,
+                                    'quantity',
+                                    e.target.value === '' ? '' : Number(e.target.value)
+                                  )
+                                }
+                                placeholder={`Max: ${maxAvail}`}
+                                className="w-full text-xs font-mono font-bold px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                required
+                              />
+                              {rowEntry && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
+                                  {rowEntry.item.unit}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="sm:col-span-7">
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Item Condition *
+                            </label>
+                            <select
+                              value={row.condition}
+                              onChange={(e) => handleUpdateReturnRow(idx, 'condition', e.target.value)}
+                              className="w-full text-xs font-medium px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="Good / Restock">Good / Restock (Restore to Central Stock)</option>
+                              <option value="Damaged / Scrap">Damaged / Scrap (Central Quarantine/Scrap)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Reason / Notes */}
@@ -408,10 +619,13 @@ export const BranchStockReturnView: React.FC = () => {
               <button
                 type="submit"
                 disabled={availableStockItems.length === 0}
-                className="px-5 py-2.5 bg-indigo-700 text-white rounded-lg text-xs font-bold hover:bg-indigo-800 transition-colors shadow-xs flex items-center gap-2 disabled:opacity-50"
+                className="px-5 py-2.5 bg-indigo-700 text-white rounded-lg text-xs font-bold hover:bg-indigo-800 transition-colors shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
-                Process Return to Main Yard & Print Note
+                <span>
+                  Process Return ({returnRows.filter((r) => r.itemId && Number(r.quantity) > 0).length || returnRows.length}{' '}
+                  Item{returnRows.length === 1 ? '' : 's'}) to Main Yard &amp; Print Note
+                </span>
               </button>
             </div>
           </form>
@@ -424,7 +638,7 @@ export const BranchStockReturnView: React.FC = () => {
             {currentBranchObj?.name || 'Branch'} Available Yard Inventory
           </h2>
           <p className="text-[11px] text-slate-500 mb-3">
-            Only items with positive branch balance are eligible for return to Central Main Yard.
+            Click any item below to add it to the return list. Only items with positive branch balance are eligible.
           </p>
 
           <div className="flex-1 overflow-y-auto max-h-[360px] space-y-2 pr-1">
@@ -434,14 +648,11 @@ export const BranchStockReturnView: React.FC = () => {
               </div>
             ) : (
               availableStockItems.map(({ item, availableBalance }) => {
-                const isSelected = item.id === activeItemId;
+                const isSelected = returnRows.some((r) => r.itemId === item.id);
                 return (
                   <div
                     key={item.id}
-                    onClick={() => {
-                      setSelectedItemId(item.id);
-                      setReturnQty('');
-                    }}
+                    onClick={() => handleAddOrIncrementBranchItem(item.id, item.itemCode, item.itemName)}
                     className={`p-2.5 border rounded-lg cursor-pointer transition-colors flex items-center justify-between ${
                       isSelected
                         ? 'border-indigo-500 bg-indigo-50/50'
@@ -458,7 +669,9 @@ export const BranchStockReturnView: React.FC = () => {
                       <div className="text-xs font-black text-indigo-700">
                         {formatNumber(availableBalance)} {item.unit}
                       </div>
-                      <div className="text-[10px] text-slate-400">Available</div>
+                      <div className="text-[10px] text-slate-400">
+                        {isSelected ? '✓ Added to Return' : '+ Click to Add'}
+                      </div>
                     </div>
                   </div>
                 );
@@ -640,16 +853,22 @@ export const BranchStockReturnView: React.FC = () => {
           recipientLabel="Receiving Yard"
           recipientName="Main Central Warehouse"
           recipientSubDetails={`Returned from: ${selectedReturnForPrint.siteName || selectedReturnForPrint.fromSiteName} | Processed by: ${selectedReturnForPrint.returnedBy}`}
-          notes={`Return Condition: ${selectedReturnForPrint.condition} | Reason: ${selectedReturnForPrint.reason}`}
-          items={[
-            {
-              itemCode: items.find((i) => i.id === selectedReturnForPrint.itemId)?.itemCode || 'CODE',
-              itemName: items.find((i) => i.id === selectedReturnForPrint.itemId)?.itemName || 'Material Item',
-              category: items.find((i) => i.id === selectedReturnForPrint.itemId)?.category || 'Telecom Equipment',
-              quantity: selectedReturnForPrint.quantity,
-              unit: items.find((i) => i.id === selectedReturnForPrint.itemId)?.unit || 'Nos',
-            },
-          ]}
+          notes={`Reason: ${selectedReturnForPrint.reason}`}
+          items={(selectedReturnForPrint.batchItems && selectedReturnForPrint.batchItems.length > 0
+            ? selectedReturnForPrint.batchItems
+            : branchReturns
+                .filter((r) => r.branchReturnNumber === selectedReturnForPrint.branchReturnNumber && !r.isDeleted)
+                .map((r) => ({ itemId: r.itemId, quantity: r.quantity, condition: r.condition }))
+          ).map((row) => {
+            const itm = items.find((i) => i.id === row.itemId);
+            return {
+              itemCode: itm?.itemCode || 'CODE',
+              itemName: `${itm?.itemName || 'Material Item'} (${row.condition})`,
+              category: itm?.category || 'Telecom Equipment',
+              quantity: row.quantity,
+              unit: itm?.unit || 'Nos',
+            };
+          })}
         />
       )}
 
@@ -670,16 +889,9 @@ export const BranchStockReturnView: React.FC = () => {
         mode="select"
         siteId={selectedSiteId}
         title="Scan Barcode for Branch Stock Return"
-        subtitle="Scan via USB Gun or Mobile Camera to select an item from branch inventory"
+        subtitle="Scan via USB Gun or Mobile Camera to add an item from branch inventory"
         onSelectItem={(item) => {
-          const entry = availableStockItems.find((e) => e.item.id === item.id);
-          if (entry) {
-            setSelectedItemId(item.id);
-            setReturnQty((prev) => (typeof prev === 'number' ? Math.min(prev + 1, entry.availableBalance) : 1));
-            setSuccessToast(`Scanned & selected for branch return: [${item.itemCode}] ${item.itemName}`);
-          } else {
-            setErrorMsg(`Item [${item.itemCode}] ${item.itemName} has 0 available balance at this branch.`);
-          }
+          handleAddOrIncrementBranchItem(item.id, item.itemCode, item.itemName);
         }}
       />
     </div>

@@ -679,33 +679,42 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                 </thead>
                 <tbody className="divide-y divide-black text-black bg-white/90">
                   {(() => {
-                    const itm = items.find((i) => i.id === ret.itemId);
-                    return (
-                      <tr className="h-6">
-                        <td className="py-1 px-1.5 text-center font-mono border-r border-black">1</td>
-                        <td className="py-1 px-2 text-left border-r border-black font-medium">
-                          <div className="flex items-center gap-2">
-                            {printWithImage && itm?.imageUrl && (
-                              <img
-                                src={itm.imageUrl}
-                                alt={itm.itemName}
-                                className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
-                              />
-                            )}
-                            <div>
-                              <span className="font-mono font-bold mr-1.5">{itm?.itemCode || 'CODE'}</span>
-                              <span>{itm?.itemName || 'Material Item'}</span>
+                    const rowsToRender =
+                      ret.batchItems && ret.batchItems.length > 0
+                        ? ret.batchItems
+                        : [{ itemId: ret.itemId, quantity: ret.quantity, condition: ret.condition }];
+
+                    return rowsToRender.map((row, idx) => {
+                      const itm = items.find((i) => i.id === row.itemId);
+                      return (
+                        <tr key={`${row.itemId}-${idx}`} className="h-6">
+                          <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                          <td className="py-1 px-2 text-left border-r border-black font-medium">
+                            <div className="flex items-center gap-2">
+                              {printWithImage && itm?.imageUrl && (
+                                <img
+                                  src={itm.imageUrl}
+                                  alt={itm.itemName}
+                                  className="w-8 h-8 object-cover rounded border border-slate-400 shrink-0 bg-white"
+                                />
+                              )}
+                              <div>
+                                <span className="font-mono font-bold mr-1.5">{itm?.itemCode || 'CODE'}</span>
+                                <span>{itm?.itemName || 'Material Item'}</span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit || 'Nos'}</td>
-                        <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
-                          {formatNumber(ret.quantity)}
-                        </td>
-                        <td className="py-1 px-1.5 text-center text-[10px] font-semibold border-r border-black">{ret.condition}</td>
-                        <td className="py-1 px-2 text-left text-slate-600 text-[10px]">{ret.reason}</td>
-                      </tr>
-                    );
+                          </td>
+                          <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit || 'Nos'}</td>
+                          <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
+                            {formatNumber(row.quantity)}
+                          </td>
+                          <td className="py-1 px-1.5 text-center text-[10px] font-semibold border-r border-black">
+                            {row.condition}
+                          </td>
+                          <td className="py-1 px-2 text-left text-slate-600 text-[10px]">{ret.reason}</td>
+                        </tr>
+                      );
+                    });
                   })()}
                 </tbody>
               </table>

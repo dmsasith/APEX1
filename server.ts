@@ -46,20 +46,25 @@ LANGUAGE RULES:
 
 COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
 1. **Master Registrations ("Master Registrations" -> Items, Sites/Branches, Field Teams, Suppliers, Clients, Users)**:
-   - **Items ("Item Catalog" & "Plant & Equipment")**: Register Materials (consumables) or Machinery (Plant & Equipment) with Item Code, Barcode, Unit, Unit Price, Low Stock Threshold, and optional Project Reservation ("Reserved for Project"). Supports Excel Import (Sync, Append, Replace), Excel Export, Barcode Sticker printing, USB HID Barcode Scanner, and Mobile Camera Barcode Scanner.
+   - **Items ("Item Catalog" & "Plant & Equipment") + Optional Item Photo (<200KB Auto-Compression) & "Print with Image"**: Register Materials (consumables) or Machinery (Plant & Equipment) with Item Code, Barcode, Unit, Unit Price, Low Stock Threshold, optional Project Reservation, and optional **Item Photo** (automatically resized and compressed to **under 200KB**). When printing any voucher or report, users can toggle the **"Print with Image"** checkbox in the print toolbar to include item thumbnail images. Supports Excel Import (Sync, Append, Replace), Excel Export, Barcode Sticker printing, USB HID Barcode Scanner, and Mobile Camera Barcode Scanner ("Scan Now").
    - **Sites / Branches**: Register Central Main Warehouse (HQ) and Operational Branch Yards, link a designated Branch Supervisor user, and assign system users.
-   - **Field Teams**: Register field work squads with Team Name, Team Leader Name & NIC/ID, Assigned Site Base, Contact Phone, and individual **Team Members** (Full Name, NIC/ID Number, Role/Skill, Phone). Crew Size is auto-calculated (1 Leader + Team Members).
+   - **Field Teams & Conflict-Free Site Transfer Workflow ("Temporary Assigned to - [New Site]" vs. Permanent "(Ref: [Previous Site])")**:
+     1) Register field work squads with Team Name, Team Leader Name & NIC/ID, Assigned Site Base, Contact Phone, and individual **Team Members** (Crew Size auto-calculates as 1 Leader + N Members).
+     2) **Transferring a Team ("Transfer / Site History")**: When transferring a team to a new Site Branch, whether they still have unreturned stock on their current site or zero stock, the assignment starts in a **Temporary** state displayed as **"Temporary Assigned to - [New Site Name]"**.
+     3) **Promotion to Permanent with Prior-Site Reference**: Once previous-site stock is returned/cleared (or when Branch Admin / System Admin clicks **"Confirm / Promote to Permanent"** for a team that had zero stock on the old site), the assignment promotes to **Permanent** and updates the displayed team name with a prior-site reference: **"[Team Name] (Ref: [Previous Site Name])"**.
+     4) **Complete Assigned Sites History**: Inside **Transfer / Site History**, users can view all past and current assigned sites for that team, showing **Temporary** vs. **Permanent**, **Reference Site (Ref:)**, assignment dates, and **Stock Cleared / Stock Pending** status.
    - **Suppliers & Clients**: Register Suppliers (for Purchase Orders & Debit Notes) and Clients/Principals (for Projects & Client Free Issue Stock).
    - **User Management ("User Management")**: Create logins with Username, Password, Full Name, Role ("Super Admin Central", "All Site Branch Admin", "Branch Admin", "Branch System User"), and single or multi-branch assignment.
 
 2. **Main Central Stock ("Main Central Stock"), Supplier Orders ("Supplier Orders (PO)"), & Client Free Stock ("Client Free Stock (FOC)")**:
    - **Main Central Stock & Item Lifecycle Summary**: Add stock via **"+ Add Stock (GRN)"** (Purchase or Manual Entry), perform **Direct Transfer to Site**, or manage the **Damaged Stock Ledger & Restoration**. Clicking any item row (or **"Summary"**) in **Main Central Stock** opens a complete **End-to-End Material Lifecycle & Custody Summary** right below the item (showing PO/GRN/Manual/FOC inbound sources, Site Branch distribution & Site In-Hand, Field Team distribution & Team In-Hand, Project Used/Wastage, Central Stock In-Hand, and **"Print A4 Summary"** / **"Download PDF"**).
    - **Supplier Orders (PO)**: Create Purchase Orders, receive Full or Partial batch GRNs against POs into Main Stock, close PO remainders, create **Supplier Returns (RTV)** for defective goods, dispatch with Gate Pass & vehicle details, print official **Debit Notes**, and record supplier settlements (Replacement, Credit Note, Refund).
-   - **Client Free Stock (FOC) — "Under Main Project" vs. "Individual Project", Locked Branch & Admin Correction**:
+   - **Client Free Stock (FOC) — "Under Main Project" vs. "Individual Project", Locked Branch, Assigned-Site Isolated FOC Summary & Admin Correction**:
      1) Open **"Client Free Stock (FOC)"** and click **"+ Log Client Free Stock"**.
      2) Choose Target Project Mode: **"🏢 Under Main Project"** or **"📄 Individual Project"**. Physical deliveries default to **"Main Central Warehouse (Central Yard)"**, while selecting a project automatically detects and **LOCKS** the **"Allocated Site Branch"** to that project's registered branch so stock cannot be mis-issued to another site.
-     3) **Admin FOC Voucher Correction**: If a shipment was logged under the wrong project, Admins can edit that FOC voucher directly inside **Client Free Stock (FOC)** and reassign it to the correct Target Project (automatically updating the locked branch and Audit Trail).
-     4) When FOC stock is received **"Under Main Project"**, Sub-Project usage automatically deducts from the Parent Main Project's pool while **"Project Free Stock Balances"** shows both the Main Project net balance and **"Sub-Projects Individual Usage Breakdown"**.
+     3) **Assigned-Site Isolated FOC Summary**: Expanding the FOC Summary inside **Client Free Stock (FOC)** strictly isolates the summary to that project's **Assigned Site Branch** (showing only the site distribution, field teams, and project consumption belonging to that assigned site).
+     4) **Admin FOC Voucher Correction**: If a shipment was logged under the wrong project, Admins can edit that FOC voucher directly inside **Client Free Stock (FOC)** and reassign it to the correct Target Project.
+     5) When FOC stock is received **"Under Main Project"**, Sub-Project usage automatically deducts from the Parent Main Project's pool while **"Project Free Stock Balances"** shows both the Main Project net balance and **"Sub-Projects Individual Usage Breakdown"**.
 
 3. **Stock Requisitions ("Stock Requisitions") & Site Branch Stock ("Site Branch Stock")**:
    - **How a Branch gets items from Main Stock**:
@@ -68,9 +73,12 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
      3) Branch Admin / Supervisor clicks **"Confirm Receipt (GRN)"** to add the items into their **"Site Branch Stock"**.
    - **Site Branch Stock Item Forward Traceability Summary**: Clicking any item row (or **"Forward Summary"**) in **Site Branch Stock** expands a **Forward Traceability Summary** underneath that item showing HQ/FOC transfers received at that branch, quantities issued to each Field Team at that branch, Project Used/Wasted, Site Store In-Hand, and Site Teams In-Hand — with **"Print A4 Summary"** and **"Download PDF"**.
 
-4. **Issue to Field Teams ("Issue to Teams"), Team In-Hand ("Team In-Hand Stock"), & Branch Directory ("Branch Staff & Teams")**:
+4. **Issue to Field Teams ("Issue to Teams"), Site-Separated Team In-Hand ("Team In-Hand Stock"), & Branch Directory ("Branch Staff & Teams")**:
    - **Issue to Teams**: Select Branch Yard and Field Team -> pick items from available Site Branch Stock -> click **"Issue Material to Team"** and print the **Gate Pass / Issue Voucher**.
-   - **Team In-Hand Stock**: Live dashboard showing materials currently in each team's custody (Issued minus Used/Wasted in Projects minus Returned to Branch).
+   - **Site-Separated Team In-Hand Stock ("Stock to Return - [Previous Site Name]")**:
+     In **"Team In-Hand Stock"**, stock held by transferred teams is **NEVER combined or summed across sites**:
+     • Any unreturned balance from a previous site is displayed separately in an amber section titled **"Stock to Return - [Previous Site Name]"** — those items must be returned to that previous site and cannot be used on the new site.
+     • Stock issued at the team's new site is displayed separately under **"[Current Site Name] — Active Site Stock"**.
    - **Branch Staff & Teams**: Organizational directory showing every branch, supervisor, system staff, field teams, and verified team members with NIC numbers. Supports **Export Members (Excel)** and **Print Directory Report**.
 
 5. **Project & New Section Registry ("Project & New Section Registry") — Major/Main, Sub, Individual Projects, Telecom New Connection (NC) 6-Field Format & Section Templates (BOM)**:
@@ -84,6 +92,7 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
      3) On any section card, click **"Configure Material Template"** to add standard BOM items and **Suggested Qty**.
 
 6. **Material Usage / Daily Progress Entry ("Material Usage / Daily Progress Entry")**:
+   - **Strict Active-Site-Only Stock Usage Rule**: A team can **ONLY consume materials issued under the project's own Site Branch**. Unreturned stock from a previous site (**"Stock to Return - [Previous Site Name]"**) is strictly excluded and blocked from usage on the new site.
    - **Telecom New Connection (NC) — Simple 1, 2, 3 Step Workflow with Team & Area Lock**:
      When **"Telecom New Connection"** is selected as the Section, complex Main/Sub-Project steps are hidden and replaced by **Steps 1, 2, 3**:
      1) **Step 1 — Team & Area Selection (Top-Most & Locked Until Refresh)**: Select Site Branch, Field Team, and Exchange/Working Area at the top and click **"Confirm & Lock Team / Area"** (or submit the first line). Step 1 **locks until the page is refreshed**, allowing the user to enter all NC lines completed by that team during the day continuously without re-selecting the team/area every time.
@@ -92,18 +101,18 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
    - **Standard Project Sections — Section Filtering, Branch Lock, Wastage Qty & Full Site Report**:
      1) Picking a **Project Section** in Step 1 strictly filters Step 2 dropdowns to ONLY show projects registered under that section, and auto-loads the section's **Default Material Template (BOM)**.
      2) If the selected project belongs to a different **Site Branch** than the logged-in user's assigned site, Step 4 safely **locks**.
-     3) Record both **Qty Used (Installed)** and **Wastage Qty** per material line (validates \`Used + Wastage <= Team In-Hand\` and auto-deducts Sub-Project usage from the Parent Main Project's FOC pool).
+     3) Record both **Qty Used (Installed)** and **Wastage Qty** per material line (validates \`Used + Wastage <= Active-Site Team In-Hand\` and auto-deducts Sub-Project usage from the Parent Main Project's FOC pool).
      4) In **Usage Vouchers History**, select any project and click **"Full Report for This Site (Project)"** to view/print/export **Part 1 (Team-by-Team Breakdown & Subtotals)** and **Part 2 (Full Site Consolidated Grand Total)**.
 
-7. **Team Returns ("Team Returns") & Branch Returns ("Branch Returns")**:
-   - **Team Returns**: Return unused or recovered items from a Field Team to their Site Branch Stock (**Good** condition restores usable branch stock; **Damaged** logs to Damaged Stock).
-   - **Branch Returns**: Return surplus stock from a Site Branch Yard back to the Central Main Warehouse (HQ).
+7. **Multi-Item Batch Returns in Team Returns ("Team Returns") & Branch Returns ("Branch Returns")**:
+   - **Team Returns (RV)**: Select the **Receiving Site Branch** and **Field Team**, then add **multiple items at once** using **"+ Add Item"**, **"+ Add All Held"**, or barcode scan. Set per-item quantity (**Max** button available) and condition (**Good** restores usable branch stock; **Damaged** logs to Damaged Stock) and submit all items together on a single shared **Return Voucher (RV-2026-XXXX)**.
+   - **Branch Returns (BRM)**: Select your **Returning Site Branch**, add **multiple items at once** using **"+ Add Item"**, **"+ Add All Available"**, or clicking cards in the right-hand inventory list, set per-item quantity and condition (**Good** or **Damaged**), and return the entire batch to Central Main Warehouse (HQ) on a single **BRM Return Voucher (BRM-2026-XXXX)**.
 
 8. **Document Templates ("Document Templates"), Admin Password Delete Protection & Enterprise Controls**:
    - **Document Templates (3 Tabs)**:
      • **Tab 1 ("1. Section Formats")**: ISO 9001:2015 Controlled Formats (**FORMAT-01** to **FORMAT-04**) with auto-populated Tenant Company Header, optional **PDF/Image Format Upload (limited to max 1MB file size)**, 1-click Format-01/02 unification, and Live A4 Studio settings.
      • **Tab 2 ("2. Auto Tenant Header & Signers")**: Company Logo & **ISO Signer Names, Designations & Department Matrix** (**Prepared & Checked By**, **Authorized & Approved By**, **Reviewed By**).
-     • **Tab 3 ("3. Digital Signatures")**: Draw on the interactive signature pad or upload a PNG/JPG signature image; auto-matches signers on vouchers and supports isolated single-click A4 printing.
+     • **Tab 3 ("3. Digital Signatures")**: Draw on the interactive signature pad or upload a PNG/JPG signature image; auto-matches signers on vouchers and supports isolated single-click A4 printing (with **"Print with Image"** option).
    - **Mandatory Admin Password Verification for Any Deletion**: Deleting any record or transaction across the entire system requires entering the **Admin Password** in the confirmation modal (never deletes on a simple click).
    - **Audit Trail & Recycle Bin**: Filterable chronological history with isolated A4 Print & CSV export; restore or permanently delete soft-deleted records.
    - **Automatic Email Verification & Support**: Clicking **"Send Verification Email"** sends a Firebase link from **apexstox.com**; clicking the email link verifies the account automatically. Official domain: **apexstox.com** | Support email: **support@apexstox.com**.
@@ -178,6 +187,16 @@ function detectSuggestedModule(text: string): string | undefined {
     return 'templates';
   }
   if (
+    lower.includes('stock to return') ||
+    lower.includes('temporary assigned') ||
+    lower.includes('team transfer') ||
+    lower.includes('transfer team') ||
+    lower.includes('team in-hand') ||
+    lower.includes('team inhand')
+  ) {
+    return 'team-stock';
+  }
+  if (
     lower.includes('section registry') ||
     lower.includes('project section') ||
     lower.includes('material template') ||
@@ -214,11 +233,10 @@ function detectSuggestedModule(text: string): string | undefined {
   if (lower.includes('team return')) return 'returns';
   if (lower.includes('branch return')) return 'branch-returns';
   if (lower.includes('user') || lower.includes('login') || lower.includes('password') || lower.includes('role')) return 'manage-users';
-  if (lower.includes('team in-hand')) return 'team-stock';
   if (lower.includes('team')) return 'teams';
   if (lower.includes('site') || lower.includes('branch')) return 'site-stock';
   if (lower.includes('recycle') || lower.includes('delete')) return 'recycle-bin';
-  if (lower.includes('item') || lower.includes('barcode') || lower.includes('excel')) return 'items';
+  if (lower.includes('item') || lower.includes('barcode') || lower.includes('excel') || lower.includes('print with image')) return 'items';
   return undefined;
 }
 
