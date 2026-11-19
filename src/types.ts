@@ -475,27 +475,73 @@ export interface ProjectTypeTemplateItem {
   suggestedQty?: number;
 }
 
+export type SectionIndustryPreset =
+  | 'telecom_nc'
+  | 'water_project'
+  | 'electric_project'
+  | 'solar_project'
+  | 'standard';
+
+export interface SectionCustomFieldDef {
+  id: string;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  fieldType?: 'text' | 'number' | 'select';
+  options?: string[];
+}
+
+export interface SectionCoreFieldLabels {
+  primaryIdLabel: string;
+  primaryIdPlaceholder: string;
+  serialNoLabel: string;
+  serialNoPlaceholder: string;
+  customerNameLabel: string;
+  customerNamePlaceholder: string;
+  addressLabel: string;
+  addressPlaceholder: string;
+  mobileLabel: string;
+  areaLabel: string;
+  areaPlaceholder: string;
+  bannerTitle?: string;
+  bannerSubtitle?: string;
+  badgeLabel?: string;
+}
+
 export interface ProjectType {
   id: string;
-  name: string; // e.g. "Telecom New Connection", "Telecom Cable Development"
-  code?: string; // e.g. "TNC", "TCD"
+  name: string; // e.g. "Telecom New Connection", "Water Supply & Connection Project", "Electrical Power & Service Connection", "Solar PV & Renewable Energy Project"
+  code?: string; // e.g. "TNC", "WTR", "ELC", "SLR"
   description?: string;
   color?: string; // 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'teal' | 'indigo'
   workflowMode?: 'standard' | 'new_connection'; // Explicit workflow format selector when registering/editing a section
+  industryPreset?: SectionIndustryPreset;
+  coreFieldLabels?: SectionCoreFieldLabels;
+  customFields?: SectionCustomFieldDef[];
   templateItems: ProjectTypeTemplateItem[];
   createdAt: string;
   isDeleted?: boolean;
 }
 
 export function isTelecomNewConnectionSection(
-  section?: Pick<ProjectType, 'id' | 'name' | 'code' | 'workflowMode'> | null,
+  section?: Pick<ProjectType, 'id' | 'name' | 'code' | 'workflowMode' | 'industryPreset'> | null,
   sectionNameFallback?: string
 ): boolean {
   if (section?.workflowMode === 'new_connection') return true;
   if (section?.workflowMode === 'standard') return false;
+  if (
+    section?.industryPreset === 'telecom_nc' ||
+    section?.industryPreset === 'water_project' ||
+    section?.industryPreset === 'electric_project' ||
+    section?.industryPreset === 'solar_project'
+  ) {
+    return true;
+  }
   if (section?.id === 'pt-tnc') return true;
   const code = (section?.code || '').trim().toUpperCase();
-  if (code === 'TNC' || code === 'NC' || code === 'FTTH-NC') return true;
+  if (code === 'TNC' || code === 'NC' || code === 'FTTH-NC' || code === 'WTR' || code === 'ELC' || code === 'SLR') {
+    return true;
+  }
   const name = (section?.name || sectionNameFallback || '').trim().toLowerCase();
   if (name.includes('new connection') || name === 'telecom new connection') return true;
   return false;
@@ -516,11 +562,12 @@ export interface Project {
   customerName?: string;
   customerPhone?: string;
   siteIdentifier?: string; // Physical Site ID, Connection ID, Work Order No
-  // Telecom New Connection (NC) specific fields
-  ncNumber?: string; // Customer FTTH / NC Number
-  ontSerialNo?: string; // ONT Serial No
-  customerAddress?: string; // Customer Address
-  exchangeArea?: string; // Exchange Area
+  // Telecom / Water / Electric / Solar New Connection (NC) specific fields
+  ncNumber?: string; // Customer FTTH / NC / Account / Solar Ref Number
+  ontSerialNo?: string; // ONT / Water Meter / Energy Meter / Solar Inverter Serial No
+  customerAddress?: string; // Customer / Installation Address
+  exchangeArea?: string; // Exchange Area / WSS DMA Zone / Transformer Substation / Grid Scheme
+  customFieldValues?: Record<string, string>; // Keyed by SectionCustomFieldDef.id or label
   projectTypeId?: string; // Link to ProjectType
   projectTypeName?: string; // Display name
   referenceNo: string;
@@ -554,6 +601,7 @@ export interface ProjectMaterialUsage {
   ontSerialNo?: string;
   customerAddress?: string;
   exchangeArea?: string;
+  customFieldValues?: Record<string, string>;
   projectTypeId?: string;
   projectTypeName?: string;
   siteId: string;

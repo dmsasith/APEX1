@@ -29,7 +29,16 @@ import {
   CornerDownRight,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { Project, ProjectScope, ProjectType, ProjectTypeTemplateItem, isTelecomNewConnectionSection } from '../../types';
+import {
+  Project,
+  ProjectScope,
+  ProjectType,
+  ProjectTypeTemplateItem,
+  SectionIndustryPreset,
+  SectionCustomFieldDef,
+  SectionCoreFieldLabels,
+  isTelecomNewConnectionSection,
+} from '../../types';
 import { formatNumber } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
@@ -40,6 +49,12 @@ import {
   matchCountryByDialPrefix,
 } from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
+import {
+  INDUSTRY_SECTION_PRESETS,
+  inferSectionIndustryPreset,
+  getEffectiveSectionCoreLabels,
+  getEffectiveSectionCustomFields,
+} from '../../utils/sectionTemplates';
 
 export const ProjectsManagementView: React.FC = () => {
   const {
@@ -129,7 +144,7 @@ export const ProjectsManagementView: React.FC = () => {
       }).name
   );
   const [siteIdentifier, setSiteIdentifier] = useState('');
-  // Telecom New Connection (NC) 6 specific fields
+  // Connection / Utility 6 core specific fields (Telecom NC, Water, Electric, Solar)
   const [ncNumber, setNcNumber] = useState('');
   const [ontSerialNo, setOntSerialNo] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -138,6 +153,9 @@ export const ProjectsManagementView: React.FC = () => {
   const [referenceNo, setReferenceNo] = useState('');
   const [district, setDistrict] = useState('');
   const [subArea, setSubArea] = useState('');
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  const [inlineNewFieldLabel, setInlineNewFieldLabel] = useState('');
+  const [inlineNewFieldValue, setInlineNewFieldValue] = useState('');
   const [formError, setFormError] = useState('');
 
   const selectedModalSection = useMemo(
@@ -146,6 +164,21 @@ export const ProjectsManagementView: React.FC = () => {
   );
   const isModalNewConnection = useMemo(
     () => isTelecomNewConnectionSection(selectedModalSection, editingProject?.projectTypeName),
+    [selectedModalSection, editingProject?.projectTypeName]
+  );
+  const activeModalCoreLabels = useMemo(
+    () => getEffectiveSectionCoreLabels(selectedModalSection, editingProject?.projectTypeName),
+    [selectedModalSection, editingProject?.projectTypeName]
+  );
+  const activeModalCustomFields = useMemo(
+    () => getEffectiveSectionCustomFields(selectedModalSection, editingProject?.projectTypeName),
+    [selectedModalSection, editingProject?.projectTypeName]
+  );
+  const activeModalPresetMeta = useMemo(
+    () =>
+      INDUSTRY_SECTION_PRESETS[
+        inferSectionIndustryPreset(selectedModalSection, editingProject?.projectTypeName)
+      ],
     [selectedModalSection, editingProject?.projectTypeName]
   );
 
@@ -165,6 +198,17 @@ export const ProjectsManagementView: React.FC = () => {
   const [sectionDescription, setSectionDescription] = useState('');
   const [sectionColor, setSectionColor] = useState('emerald');
   const [sectionWorkflowMode, setSectionWorkflowMode] = useState<'standard' | 'new_connection'>('standard');
+  const [sectionIndustryPreset, setSectionIndustryPreset] = useState<SectionIndustryPreset>('standard');
+  const [sectionCoreLabels, setSectionCoreLabels] = useState<SectionCoreFieldLabels>(
+    INDUSTRY_SECTION_PRESETS.telecom_nc.coreFieldLabels
+  );
+  const [sectionCustomFields, setSectionCustomFields] = useState<SectionCustomFieldDef[]>(
+    INDUSTRY_SECTION_PRESETS.standard.defaultCustomFields
+  );
+  const [newCustomFieldLabel, setNewCustomFieldLabel] = useState('');
+  const [newCustomFieldPlaceholder, setNewCustomFieldPlaceholder] = useState('');
+  const [newCustomFieldRequired, setNewCustomFieldRequired] = useState(false);
+  const [showEditCoreLabelsInSectionModal, setShowEditCoreLabelsInSectionModal] = useState(false);
   const [sectionError, setSectionError] = useState('');
   const [deleteConfirmSection, setDeleteConfirmSection] = useState<ProjectType | null>(null);
 
@@ -226,6 +270,11 @@ export const ProjectsManagementView: React.FC = () => {
     const raw = activeProjects.filter((p) => {
       const q = searchQuery.toLowerCase();
       const resolvedSite = resolveProjectSite(p);
+      const customMatches = p.customFieldValues
+        ? Object.entries(p.customFieldValues).some(
+            ([k, v]) => k.toLowerCase().includes(q) || String(v).toLowerCase().includes(q)
+          )
+        : false;
       const matchesSearch =
         p.projectId.toLowerCase().includes(q) ||
         p.projectName.toLowerCase().includes(q) ||
@@ -242,7 +291,8 @@ export const ProjectsManagementView: React.FC = () => {
         (p.referenceNo && p.referenceNo.toLowerCase().includes(q)) ||
         (p.district && p.district.toLowerCase().includes(q)) ||
         (p.subArea && p.subArea.toLowerCase().includes(q)) ||
-        (resolvedSite.siteName && resolvedSite.siteName.toLowerCase().includes(q));
+        (resolvedSite.siteName && resolvedSite.siteName.toLowerCase().includes(q)) ||
+        customMatches;
 
       const matchesSiteBranch =
         siteBranchFilter === 'all' || resolvedSite.siteId === siteBranchFilter;
@@ -343,6 +393,9 @@ export const ProjectsManagementView: React.FC = () => {
     setEditingProject(null);
     setProjectScope(defaultScope);
     setInitialSubProjects([]);
+    setCustomFieldValues({});
+    setInlineNewFieldLabel('');
+    setInlineNewFieldValue('');
 
     const defaultBranchId =
       siteBranchFilter !== 'all' ? siteBranchFilter : (branchSites[0]?.id || '');
@@ -369,6 +422,7 @@ export const ProjectsManagementView: React.FC = () => {
       setOntSerialNo('');
       setCustomerAddress('');
       setExchangeArea('');
+      setCustomFieldValues(preselectedParent.customFieldValues ? { ...preselectedParent.customFieldValues } : {});
     } else if (defaultScope === 'main') {
       const nextMain = getNextMainProjectSeq();
       setParentProjectId('');
@@ -426,6 +480,7 @@ export const ProjectsManagementView: React.FC = () => {
         if (parentObj.customerName) setCustomerName(parentObj.customerName);
         if (parentObj.district) setDistrict(parentObj.district);
         if (parentObj.referenceNo) setReferenceNo(parentObj.referenceNo);
+        if (parentObj.customFieldValues) setCustomFieldValues({ ...parentObj.customFieldValues });
       }
     }
   };
@@ -450,9 +505,45 @@ export const ProjectsManagementView: React.FC = () => {
     setReferenceNo(p.referenceNo || '');
     setDistrict(p.district || '');
     setSubArea(p.subArea || '');
+    setCustomFieldValues(p.customFieldValues ? { ...p.customFieldValues } : {});
+    setInlineNewFieldLabel('');
+    setInlineNewFieldValue('');
     setInitialSubProjects([]);
     setFormError('');
     setShowAddModal(true);
+  };
+
+  const handleAddInlineCustomFieldToSection = () => {
+    const cleanLabel = inlineNewFieldLabel.trim();
+    if (!cleanLabel) return;
+    if (selectedModalSection) {
+      const currentFields = getEffectiveSectionCustomFields(selectedModalSection, editingProject?.projectTypeName);
+      if (!currentFields.some((f) => f.label.trim().toLowerCase() === cleanLabel.toLowerCase())) {
+        const nextField: SectionCustomFieldDef = {
+          id: `cf-${Date.now()}`,
+          label: cleanLabel,
+          placeholder: inlineNewFieldValue.trim() ? `e.g. ${inlineNewFieldValue.trim()}` : `Enter ${cleanLabel}`,
+          required: false,
+        };
+        updateProjectType(selectedModalSection.id, {
+          customFields: [...currentFields, nextField],
+        });
+      }
+    }
+    if (inlineNewFieldValue.trim()) {
+      setCustomFieldValues((prev) => ({
+        ...prev,
+        [cleanLabel]: inlineNewFieldValue.trim(),
+      }));
+    } else {
+      setCustomFieldValues((prev) => ({
+        ...prev,
+        [cleanLabel]: prev[cleanLabel] || '',
+      }));
+    }
+    setInlineNewFieldLabel('');
+    setInlineNewFieldValue('');
+    showToast(`Added field "${cleanLabel}" to section template.`);
   };
 
   const handleSaveProject = (e: React.FormEvent) => {
@@ -463,10 +554,34 @@ export const ProjectsManagementView: React.FC = () => {
     const pTypeName = selectedTypeObj ? selectedTypeObj.name : '';
     const isNcMode = isTelecomNewConnectionSection(selectedTypeObj, editingProject?.projectTypeName);
     const selectedBranchObj = sites.find((s) => s.id === assignedSiteId) || branchSites[0];
+    const effCoreLabels = getEffectiveSectionCoreLabels(selectedTypeObj, editingProject?.projectTypeName);
+    const effCustomFields = getEffectiveSectionCustomFields(selectedTypeObj, editingProject?.projectTypeName);
+
+    // Build cleaned customFieldValues map (also include any pending inline field if typed)
+    const cleanedCustomValues: Record<string, string> = {};
+    Object.entries(customFieldValues).forEach(([k, v]) => {
+      if (k.trim() && String(v || '').trim()) {
+        cleanedCustomValues[k.trim()] = String(v).trim();
+      }
+    });
+    if (inlineNewFieldLabel.trim() && inlineNewFieldValue.trim()) {
+      cleanedCustomValues[inlineNewFieldLabel.trim()] = inlineNewFieldValue.trim();
+    }
+
+    // Validate required custom fields
+    for (const cf of effCustomFields) {
+      if (cf.required && !cleanedCustomValues[cf.label]?.trim()) {
+        setFormError(`Please enter a value for required field "${cf.label}".`);
+        return;
+      }
+    }
+
+    const finalCustomFieldValues =
+      Object.keys(cleanedCustomValues).length > 0 ? cleanedCustomValues : undefined;
 
     if (isNcMode) {
       if (!ncNumber.trim() || !customerName.trim()) {
-        setFormError('Customer FTTH / NC Number and Customer Name are required for Telecom New Connection.');
+        setFormError(`${effCoreLabels.primaryIdLabel} and ${effCoreLabels.customerNameLabel} are required.`);
         return;
       }
       if (customerPhone.trim()) {
@@ -477,7 +592,7 @@ export const ProjectsManagementView: React.FC = () => {
         if (!mobileCheck.isValid) {
           setFormError(
             mobileCheck.error ||
-              `Customer Mobile No requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
+              `${effCoreLabels.mobileLabel} requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
           );
           return;
         }
@@ -511,8 +626,9 @@ export const ProjectsManagementView: React.FC = () => {
           referenceNo: cleanOnt || referenceNo.trim() || cleanNcNo,
           district: selectedBranchObj?.location || selectedBranchObj?.name || district.trim() || cleanExch || '',
           subArea: cleanExch || subArea.trim(),
+          customFieldValues: finalCustomFieldValues,
         });
-        showToast(`Telecom New Connection "${cleanNcNo} — ${cleanCustName}" updated successfully.`);
+        showToast(`${pTypeName || 'Connection'} "${cleanNcNo} — ${cleanCustName}" updated successfully.`);
       } else {
         addProject({
           projectId: cleanNcNo,
@@ -532,9 +648,10 @@ export const ProjectsManagementView: React.FC = () => {
           referenceNo: cleanOnt || cleanNcNo,
           district: selectedBranchObj?.location || selectedBranchObj?.name || cleanExch || 'General',
           subArea: cleanExch || 'Exchange Area',
+          customFieldValues: finalCustomFieldValues,
           status: 'Active',
         });
-        showToast(`Telecom New Connection "${cleanNcNo} — ${cleanCustName}" registered successfully.`);
+        showToast(`${pTypeName || 'Connection'} "${cleanNcNo} — ${cleanCustName}" registered successfully.`);
       }
 
       setShowAddModal(false);
@@ -607,6 +724,7 @@ export const ProjectsManagementView: React.FC = () => {
         referenceNo: referenceNo.trim(),
         district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
         subArea: subArea.trim(),
+        customFieldValues: finalCustomFieldValues,
       });
 
       // If this is a Main Project, sync the assigned Site Branch to all its child Sub-Projects
@@ -640,6 +758,7 @@ export const ProjectsManagementView: React.FC = () => {
         referenceNo: referenceNo.trim(),
         district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
         subArea: subArea.trim(),
+        customFieldValues: finalCustomFieldValues,
         status: 'Active',
       });
 
@@ -667,6 +786,7 @@ export const ProjectsManagementView: React.FC = () => {
             referenceNo: referenceNo.trim(),
             district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
             subArea: sp.subArea.trim() || subArea.trim(),
+            customFieldValues: finalCustomFieldValues,
             status: 'Active',
           });
         });
@@ -688,35 +808,86 @@ export const ProjectsManagementView: React.FC = () => {
     setShowAddModal(false);
   };
 
-  // Section / Type Handlers
-  const handleOpenAddSectionModal = (presetMode: 'standard' | 'new_connection' = 'standard') => {
-    setEditingSection(null);
-    if (presetMode === 'new_connection') {
-      setSectionName('Telecom New Connection');
-      setSectionCode('TNC');
-      setSectionDescription('For subscriber FTTH / New Connection drop wire, ONT installation, rosette, and fiber termination jobs.');
-      setSectionColor('emerald');
-      setSectionWorkflowMode('new_connection');
-    } else {
-      setSectionName('');
-      setSectionCode(`SEC-${String(activeProjectTypes.length + 1).padStart(4, '0')}`);
-      setSectionDescription('');
-      setSectionColor('emerald');
-      setSectionWorkflowMode('standard');
+  // Apply an international industry section preset inside the Create/Edit Section modal
+  const applySectionIndustryPreset = (
+    presetKey: SectionIndustryPreset,
+    preserveExistingIdentity = false
+  ) => {
+    const preset = INDUSTRY_SECTION_PRESETS[presetKey] || INDUSTRY_SECTION_PRESETS.standard;
+    setSectionIndustryPreset(presetKey);
+    setSectionWorkflowMode(preset.defaultWorkflowMode);
+    setSectionCoreLabels({ ...preset.coreFieldLabels });
+    setSectionCustomFields(preset.defaultCustomFields.map((f) => ({ ...f })));
+    if (!preserveExistingIdentity) {
+      setSectionName(
+        presetKey === 'standard' ? '' : preset.defaultSectionName
+      );
+      setSectionCode(
+        presetKey === 'standard'
+          ? `SEC-${String(activeProjectTypes.length + 1).padStart(4, '0')}`
+          : preset.defaultCode
+      );
+      setSectionDescription(preset.defaultDescription);
+      setSectionColor(preset.defaultColor);
     }
+  };
+
+  // Section / Type Handlers
+  const handleOpenAddSectionModal = (
+    presetMode: SectionIndustryPreset | 'new_connection' = 'standard'
+  ) => {
+    setEditingSection(null);
+    const resolvedPreset: SectionIndustryPreset =
+      presetMode === 'new_connection' ? 'telecom_nc' : presetMode;
+    applySectionIndustryPreset(resolvedPreset, false);
+    setNewCustomFieldLabel('');
+    setNewCustomFieldPlaceholder('');
+    setNewCustomFieldRequired(false);
+    setShowEditCoreLabelsInSectionModal(false);
     setSectionError('');
     setShowSectionModal(true);
   };
 
   const handleOpenEditSectionModal = (pt: ProjectType) => {
     setEditingSection(pt);
+    const inferredPreset = inferSectionIndustryPreset(pt);
     setSectionName(pt.name);
     setSectionCode(pt.code || '');
     setSectionDescription(pt.description || '');
     setSectionColor(pt.color || 'emerald');
+    setSectionIndustryPreset(inferredPreset);
     setSectionWorkflowMode(isTelecomNewConnectionSection(pt) ? 'new_connection' : 'standard');
+    setSectionCoreLabels({ ...getEffectiveSectionCoreLabels(pt) });
+    setSectionCustomFields(getEffectiveSectionCustomFields(pt).map((f) => ({ ...f })));
+    setNewCustomFieldLabel('');
+    setNewCustomFieldPlaceholder('');
+    setNewCustomFieldRequired(false);
+    setShowEditCoreLabelsInSectionModal(false);
     setSectionError('');
     setShowSectionModal(true);
+  };
+
+  const handleAddFieldToSectionModal = () => {
+    const cleanLabel = newCustomFieldLabel.trim();
+    if (!cleanLabel) {
+      setSectionError('Please enter a Field Name / Label before clicking "+ Add Field".');
+      return;
+    }
+    if (sectionCustomFields.some((f) => f.label.trim().toLowerCase() === cleanLabel.toLowerCase())) {
+      setSectionError(`Field "${cleanLabel}" is already in this section's field list.`);
+      return;
+    }
+    setSectionError('');
+    const newField: SectionCustomFieldDef = {
+      id: `cf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      label: cleanLabel,
+      placeholder: newCustomFieldPlaceholder.trim() || `Enter ${cleanLabel}`,
+      required: newCustomFieldRequired,
+    };
+    setSectionCustomFields((prev) => [...prev, newField]);
+    setNewCustomFieldLabel('');
+    setNewCustomFieldPlaceholder('');
+    setNewCustomFieldRequired(false);
   };
 
   const handleSaveSection = (e: React.FormEvent) => {
@@ -728,6 +899,20 @@ export const ProjectsManagementView: React.FC = () => {
       return;
     }
 
+    // If user typed a field name into the "+ Add Field" input box and didn't click "+ Add Field" yet, include it automatically
+    let finalCustomFields = [...sectionCustomFields];
+    if (newCustomFieldLabel.trim()) {
+      const cleanLabel = newCustomFieldLabel.trim();
+      if (!finalCustomFields.some((f) => f.label.trim().toLowerCase() === cleanLabel.toLowerCase())) {
+        finalCustomFields.push({
+          id: `cf-${Date.now()}`,
+          label: cleanLabel,
+          placeholder: newCustomFieldPlaceholder.trim() || `Enter ${cleanLabel}`,
+          required: newCustomFieldRequired,
+        });
+      }
+    }
+
     if (editingSection) {
       updateProjectType(editingSection.id, {
         name: sectionName.trim(),
@@ -735,8 +920,13 @@ export const ProjectsManagementView: React.FC = () => {
         description: sectionDescription.trim() || undefined,
         color: sectionColor,
         workflowMode: sectionWorkflowMode,
+        industryPreset: sectionIndustryPreset,
+        coreFieldLabels: sectionCoreLabels,
+        customFields: finalCustomFields,
       });
-      showToast(`Project Section "${sectionName}" updated successfully.`);
+      showToast(
+        `Project Section "${sectionName}" updated with ${finalCustomFields.length} custom/international field(s).`
+      );
     } else {
       addProjectType({
         name: sectionName.trim(),
@@ -744,9 +934,14 @@ export const ProjectsManagementView: React.FC = () => {
         description: sectionDescription.trim() || undefined,
         color: sectionColor,
         workflowMode: sectionWorkflowMode,
+        industryPreset: sectionIndustryPreset,
+        coreFieldLabels: sectionCoreLabels,
+        customFields: finalCustomFields,
         templateItems: [],
       });
-      showToast(`Project Section "${sectionName}" created successfully.`);
+      showToast(
+        `Project Section "${sectionName}" created with ${finalCustomFields.length} custom/international field(s).`
+      );
     }
 
     setShowSectionModal(false);
@@ -1667,6 +1862,18 @@ export const ProjectsManagementView: React.FC = () => {
                                   Client: <strong>{p.customerName}</strong>
                                 </span>
                               )}
+                              {p.customFieldValues &&
+                                Object.entries(p.customFieldValues).map(([k, v]) =>
+                                  v ? (
+                                    <span
+                                      key={k}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 font-medium border border-indigo-200 text-[10px]"
+                                    >
+                                      <span className="text-indigo-500 font-bold">{k}:</span>
+                                      <span className="font-mono font-bold">{v}</span>
+                                    </span>
+                                  ) : null
+                                )}
                             </div>
 
                             {/* If Main Project has sub-projects, list quick pills */}
@@ -1830,32 +2037,79 @@ export const ProjectsManagementView: React.FC = () => {
       {/* TAB 2: PROJECT SECTIONS & MATERIAL TEMPLATES */}
       {activeTab === 'sections' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">New Section Registry & BOM Material Templates</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Create project sections like <strong>Telecom New Connection</strong> (with 6 Customer FTTH/NC fields & locked Team Daily Progress) or <strong>Standard Project Sections</strong> (Main / Sub / Individual).
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              {!activeProjectTypes.some((pt) => isTelecomNewConnectionSection(pt)) && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenAddSectionModal('new_connection')}
-                  className="px-3.5 py-2 bg-sky-700 hover:bg-sky-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>+ Restore Telecom New Connection (NC)</span>
-                </button>
-              )}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  New Section Registry, International Industry Templates &amp; BOM Material Templates
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Load ready-to-use international industry templates for <strong>Telecom New Connection</strong>, <strong>Water Supply Project</strong>, <strong>Electrical Power Project</strong>, or <strong>Solar PV Project</strong> — and add your own custom fields with <strong>+ Add Field</strong>.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => handleOpenAddSectionModal('standard')}
-                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Create New Section</span>
+                <span>+ Create New Section / Load Template</span>
               </button>
+            </div>
+
+            {/* 1-Click International Section Template Loaders */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                  Quick-Load International Industry Section Templates (Click to Open &amp; Customize with + Add Field):
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {(
+                  [
+                    {
+                      preset: 'telecom_nc' as SectionIndustryPreset,
+                      btnClass: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300',
+                      badge: 'ITU-T / FTTH',
+                    },
+                    {
+                      preset: 'water_project' as SectionIndustryPreset,
+                      btnClass: 'bg-sky-50 hover:bg-sky-100 text-sky-900 border-sky-300',
+                      badge: 'ISO 4064 / AWWA',
+                    },
+                    {
+                      preset: 'electric_project' as SectionIndustryPreset,
+                      btnClass: 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300',
+                      badge: 'IEC 60364 / IEEE',
+                    },
+                    {
+                      preset: 'solar_project' as SectionIndustryPreset,
+                      btnClass: 'bg-purple-50 hover:bg-purple-100 text-purple-950 border-purple-300',
+                      badge: 'IEC 62446 / PV',
+                    },
+                  ] as const
+                ).map((item) => {
+                  const meta = INDUSTRY_SECTION_PRESETS[item.preset];
+                  return (
+                    <button
+                      key={item.preset}
+                      type="button"
+                      onClick={() => handleOpenAddSectionModal(item.preset)}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 shadow-2xs ${item.btnClass}`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-extrabold">{meta.defaultSectionName}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-white/80 text-[9px] font-bold border border-black/10 shrink-0">
+                          {item.badge}
+                        </span>
+                      </div>
+                      <div className="text-[10px] opacity-85 line-clamp-2">
+                        6 Core Fields + {meta.defaultCustomFields.length} International Fields (+ Add Field)
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -1864,6 +2118,9 @@ export const ProjectsManagementView: React.FC = () => {
               const assignedProjects = activeProjects.filter((p) => p.projectTypeId === pt.id);
               const templateCount = (pt.templateItems || []).length;
               const isNcSection = isTelecomNewConnectionSection(pt);
+              const effPresetKey = inferSectionIndustryPreset(pt);
+              const effPresetMeta = INDUSTRY_SECTION_PRESETS[effPresetKey];
+              const effCustomFields = getEffectiveSectionCustomFields(pt);
 
               return (
                 <div
@@ -1883,7 +2140,7 @@ export const ProjectsManagementView: React.FC = () => {
                           type="button"
                           onClick={() => handleOpenEditSectionModal(pt)}
                           className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800"
-                          title="Edit section details & workflow format"
+                          title="Edit section template, custom fields (+ Add Field) & workflow format"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -1898,11 +2155,11 @@ export const ProjectsManagementView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="mb-2.5">
+                    <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
                       {isNcSection ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-sky-50 text-sky-800 border border-sky-200">
                           <Phone className="w-3 h-3 text-sky-600" />
-                          <span>FTTH / NC 6-Field Subscriber Format</span>
+                          <span>{effPresetMeta.shortBadge} • 6-Core + Custom Fields</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
@@ -1910,11 +2167,32 @@ export const ProjectsManagementView: React.FC = () => {
                           <span>Standard Format (Main / Sub / Individual)</span>
                         </span>
                       )}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                        <span>{effCustomFields.length} Extra Field(s)</span>
+                      </span>
                     </div>
 
-                    <p className="text-xs text-slate-500 mb-4 line-clamp-2">
-                      {pt.description || 'Custom telecommunications project work section.'}
+                    <p className="text-xs text-slate-500 mb-3 line-clamp-2">
+                      {pt.description || 'Custom engineering & utility project work section.'}
                     </p>
+
+                    {effCustomFields.length > 0 && (
+                      <div className="mb-3 flex flex-wrap items-center gap-1">
+                        {effCustomFields.slice(0, 4).map((cf) => (
+                          <span
+                            key={cf.id}
+                            className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-medium"
+                          >
+                            {cf.label}
+                          </span>
+                        ))}
+                        {effCustomFields.length > 4 && (
+                          <span className="text-[10px] text-slate-400 font-semibold">
+                            +{effCustomFields.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
                       <div className="flex items-center justify-between">
@@ -1930,7 +2208,15 @@ export const ProjectsManagementView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3">
+                  <div className="mt-4 pt-3 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditSectionModal(pt)}
+                      className="w-full py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-indigo-700" />
+                      <span>Configure Fields / + Add Field ({effCustomFields.length})</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleOpenTemplateModal(pt)}
@@ -2002,16 +2288,30 @@ export const ProjectsManagementView: React.FC = () => {
                     <Layers className="w-4 h-4 text-emerald-700" />
                     <span>Project Section / Type *</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      handleOpenAddSectionModal();
-                    }}
-                    className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                  >
-                    + Add New Section
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {selectedModalSection && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddModal(false);
+                          handleOpenEditSectionModal(selectedModalSection);
+                        }}
+                        className="text-[11px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                      >
+                        Edit Section Fields
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddModal(false);
+                        handleOpenAddSectionModal();
+                      }}
+                      className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                    >
+                      + Add New Section
+                    </button>
+                  </div>
                 </div>
                 <select
                   value={projectTypeId}
@@ -2028,79 +2328,79 @@ export const ProjectsManagementView: React.FC = () => {
               </div>
 
               {isModalNewConnection ? (
-                /* TELECOM NEW CONNECTION (NC) 6-FIELD REGISTRATION FORMAT */
+                /* CONNECTION / UTILITY 6-CORE-FIELD + INTERNATIONAL CUSTOM FIELDS REGISTRATION FORMAT (TELECOM, WATER, ELECTRIC, SOLAR) */
                 <div className="space-y-4">
                   <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl space-y-3.5 shadow-sm">
-                    <div className="border-b border-[#3d6889] pb-2 flex items-center justify-between">
+                    <div className="border-b border-[#3d6889] pb-2 flex items-center justify-between gap-2">
                       <div>
                         <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                           <Phone className="w-4 h-4 text-sky-300" />
-                          <span>Telecom New Connection (NC) Customer Details</span>
+                          <span>{activeModalCoreLabels.bannerTitle}</span>
                         </span>
                         <span className="text-[11px] text-sky-100/85 block mt-0.5">
-                          Enter the 6 subscriber connection fields below in order to register this New Connection line.
+                          {activeModalCoreLabels.bannerSubtitle}
                         </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-400/20 text-sky-200 border border-sky-300/40">
-                        NC Format
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-400/20 text-sky-200 border border-sky-300/40 shrink-0">
+                        {activeModalPresetMeta.shortBadge}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      {/* 1. Customer FTTH / NC Number */}
+                      {/* 1. Primary Connection / Account / Meter ID */}
                       <div>
                         <label className="block text-xs font-bold text-slate-100 mb-1">
-                          1. Customer FTTH / NC Number *
+                          1. {activeModalCoreLabels.primaryIdLabel} *
                         </label>
                         <input
                           type="text"
                           required
                           value={ncNumber}
                           onChange={(e) => setNcNumber(e.target.value.toUpperCase())}
-                          placeholder="e.g. FTTH-NC-00142 / NC-88420"
+                          placeholder={activeModalCoreLabels.primaryIdPlaceholder}
                           className="w-full px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 text-xs font-mono font-bold uppercase focus:ring-2 focus:ring-sky-400 focus:outline-none"
                         />
                       </div>
 
-                      {/* 2. ONT Serial No */}
+                      {/* 2. Equipment / Meter / ONT / Inverter Serial No */}
                       <div>
                         <label className="block text-xs font-bold text-slate-100 mb-1">
-                          2. ONT Serial No
+                          2. {activeModalCoreLabels.serialNoLabel}
                         </label>
                         <input
                           type="text"
                           value={ontSerialNo}
                           onChange={(e) => setOntSerialNo(e.target.value.toUpperCase())}
-                          placeholder="e.g. HWTC-48575443 / ZTEG-9012"
+                          placeholder={activeModalCoreLabels.serialNoPlaceholder}
                           className="w-full px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 text-xs font-mono font-semibold uppercase focus:ring-2 focus:ring-sky-400 focus:outline-none"
                         />
                       </div>
 
-                      {/* 3. Customer Name */}
+                      {/* 3. Customer / Consumer Name */}
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-bold text-slate-100 mb-1">
-                          3. Customer Name *
+                          3. {activeModalCoreLabels.customerNameLabel} *
                         </label>
                         <input
                           type="text"
                           required
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
-                          placeholder="e.g. K. A. Sunil Perera"
+                          placeholder={activeModalCoreLabels.customerNamePlaceholder}
                           className="w-full px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-sky-400 focus:outline-none"
                         />
                       </div>
 
-                      {/* 4. Customer Address */}
+                      {/* 4. Customer / Installation Address */}
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-bold text-slate-100 mb-1">
-                          4. Customer Address
+                          4. {activeModalCoreLabels.addressLabel}
                         </label>
                         <input
                           type="text"
                           value={customerAddress}
                           onChange={(e) => setCustomerAddress(e.target.value)}
-                          placeholder="e.g. No. 45/B, Galle Road, Kalutara North"
+                          placeholder={activeModalCoreLabels.addressPlaceholder}
                           className="w-full px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 text-xs font-medium focus:ring-2 focus:ring-sky-400 focus:outline-none"
                         />
                       </div>
@@ -2115,7 +2415,7 @@ export const ProjectsManagementView: React.FC = () => {
                           <div>
                             <div className="flex items-center justify-between gap-1 mb-1">
                               <label className="block text-xs font-bold text-slate-100">
-                                5. Customer Mobile No
+                                5. {activeModalCoreLabels.mobileLabel}
                               </label>
                               <PhoneCountryBadge
                                 value={customerPhone}
@@ -2195,19 +2495,90 @@ export const ProjectsManagementView: React.FC = () => {
                         );
                       })()}
 
-                      {/* 6. Exchange Area */}
+                      {/* 6. Exchange Area / WSS Zone / Substation / Grid Zone */}
                       <div>
                         <label className="block text-xs font-bold text-slate-100 mb-1">
-                          6. Exchange Area *
+                          6. {activeModalCoreLabels.areaLabel} *
                         </label>
                         <input
                           type="text"
                           required
                           value={exchangeArea}
                           onChange={(e) => setExchangeArea(e.target.value)}
-                          placeholder="e.g. Kalutara (KLL), Maharagama, Kandy"
+                          placeholder={activeModalCoreLabels.areaPlaceholder}
                           className="w-full px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-sky-400 focus:outline-none"
                         />
+                      </div>
+                    </div>
+
+                    {/* International & Custom Section Fields (e.g. Water, Electric, Solar, Telecom extra parameters) */}
+                    <div className="pt-3 border-t border-[#3d6889] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-sky-200">
+                          International Technical &amp; Custom Section Fields ({activeModalCustomFields.length})
+                        </span>
+                      </div>
+                      {activeModalCustomFields.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {activeModalCustomFields.map((cf, idx) => (
+                            <div key={cf.id}>
+                              <label className="block text-xs font-bold text-slate-100 mb-1">
+                                {idx + 7}. {cf.label} {cf.required ? '*' : ''}
+                              </label>
+                              <input
+                                type="text"
+                                required={Boolean(cf.required)}
+                                value={customFieldValues[cf.label] || ''}
+                                onChange={(e) =>
+                                  setCustomFieldValues((prev) => ({
+                                    ...prev,
+                                    [cf.label]: e.target.value,
+                                  }))
+                                }
+                                placeholder={cf.placeholder || `Enter ${cf.label}`}
+                                className="w-full px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 text-xs font-medium focus:ring-2 focus:ring-sky-400 focus:outline-none"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Quick "+ Add Field" directly inside Project Registration */}
+                      <div className="p-2.5 bg-[#1b3143] border border-[#3c6687] rounded-xl space-y-2">
+                        <div className="text-[11px] font-bold text-sky-200 flex items-center gap-1.5">
+                          <Plus className="w-3.5 h-3.5 text-sky-300" />
+                          <span>+ Add Custom Field to This Section Template</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                          <div className="sm:col-span-5">
+                            <input
+                              type="text"
+                              value={inlineNewFieldLabel}
+                              onChange={(e) => setInlineNewFieldLabel(e.target.value)}
+                              placeholder="New Field Name (e.g. Pole No / GPS / Depth)"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white text-slate-900 text-xs font-semibold border border-white/80 focus:outline-none"
+                            />
+                          </div>
+                          <div className="sm:col-span-5">
+                            <input
+                              type="text"
+                              value={inlineNewFieldValue}
+                              onChange={(e) => setInlineNewFieldValue(e.target.value)}
+                              placeholder="Field Value / Example (Optional)"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white text-slate-900 text-xs border border-white/80 focus:outline-none"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <button
+                              type="button"
+                              onClick={handleAddInlineCustomFieldToSection}
+                              className="w-full py-1.5 px-2.5 bg-sky-400 hover:bg-sky-300 text-slate-950 font-extrabold rounded-lg text-xs cursor-pointer transition flex items-center justify-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add Field</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2568,6 +2939,77 @@ export const ProjectsManagementView: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* International & Custom Section Fields for Standard Format Sections */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        Section Technical &amp; Custom Fields ({activeModalCustomFields.length})
+                      </span>
+                    </div>
+                    {activeModalCustomFields.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {activeModalCustomFields.map((cf) => (
+                          <div key={cf.id}>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              {cf.label} {cf.required ? '*' : ''}
+                            </label>
+                            <input
+                              type="text"
+                              required={Boolean(cf.required)}
+                              value={customFieldValues[cf.label] || ''}
+                              onChange={(e) =>
+                                setCustomFieldValues((prev) => ({
+                                  ...prev,
+                                  [cf.label]: e.target.value,
+                                }))
+                              }
+                              placeholder={cf.placeholder || `Enter ${cf.label}`}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Quick "+ Add Field" directly inside Standard Project Modal */}
+                    <div className="p-2.5 bg-white border border-slate-200 rounded-xl space-y-2">
+                      <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>+ Add Custom Field to This Section Template</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                        <div className="sm:col-span-5">
+                          <input
+                            type="text"
+                            value={inlineNewFieldLabel}
+                            onChange={(e) => setInlineNewFieldLabel(e.target.value)}
+                            placeholder="New Field Name (e.g. Trench Depth / Permit No)"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-900 text-xs font-semibold border border-slate-300 focus:outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-5">
+                          <input
+                            type="text"
+                            value={inlineNewFieldValue}
+                            onChange={(e) => setInlineNewFieldValue(e.target.value)}
+                            placeholder="Field Value / Example (Optional)"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-900 text-xs border border-slate-300 focus:outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <button
+                            type="button"
+                            onClick={handleAddInlineCustomFieldToSection}
+                            className="w-full py-1.5 px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs cursor-pointer transition flex items-center justify-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Field</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Optional inline Sub-Project creator when creating a NEW Major / Main Project */}
                   {!editingProject && projectScope === 'main' && (
                     <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2.5">
@@ -2674,7 +3116,7 @@ export const ProjectsManagementView: React.FC = () => {
                   {editingProject
                     ? 'Save Changes'
                     : isModalNewConnection
-                    ? 'Register New Connection (NC)'
+                    ? `Register ${selectedModalSection?.name || 'Connection'}`
                     : projectScope === 'main'
                     ? 'Register Major / Main Project'
                     : projectScope === 'sub'
@@ -2687,21 +3129,23 @@ export const ProjectsManagementView: React.FC = () => {
         </div>
       )}
 
-      {/* CREATE / EDIT PROJECT SECTION MODAL */}
+      {/* CREATE / EDIT PROJECT SECTION MODAL (WITH INTERNATIONAL TEMPLATES & + ADD FIELD BUILDER) */}
       {showSectionModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4 sticky top-0 bg-white z-10">
               <div className="flex items-center gap-2">
                 <Layers className="w-5 h-5 text-emerald-700" />
-                <h3 className="font-semibold text-base text-slate-900">
-                  {editingSection ? 'Edit Project Section' : 'Create Project Section'}
+                <h3 className="font-bold text-base text-slate-900">
+                  {editingSection
+                    ? `Edit Project Section & Fields: ${editingSection.name}`
+                    : 'Create Project Section & Load Industry Template'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowSectionModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-700"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2714,111 +3158,131 @@ export const ProjectsManagementView: React.FC = () => {
             )}
 
             <form onSubmit={handleSaveSection} className="space-y-4">
-              {/* SECTION WORKFLOW FORMAT / TEMPLATE MODE SELECTOR */}
+              {/* STEP 1: INTERNATIONAL INDUSTRY TEMPLATE SELECTOR */}
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  1. Select Section Data Entry & Daily Progress Format *
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSectionWorkflowMode('standard');
-                      if (!editingSection && sectionName === 'Telecom New Connection') {
-                        setSectionName('');
-                        setSectionCode(`SEC-${String(activeProjectTypes.length + 1).padStart(4, '0')}`);
-                        setSectionDescription('');
-                      }
-                    }}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                      sectionWorkflowMode === 'standard'
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-emerald-500/40'
-                        : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
-                    }`}
-                  >
-                    <div className="text-xs font-extrabold flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>Standard Project Format</span>
-                    </div>
-                    <div className={`text-[11px] mt-1 leading-snug ${sectionWorkflowMode === 'standard' ? 'text-slate-300' : 'text-slate-500'}`}>
-                      Main Project, Sub-Project &amp; Individual Project hierarchy (e.g. Cable Development, Maintenance).
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSectionWorkflowMode('new_connection');
-                      if (!editingSection && !sectionName.trim()) {
-                        setSectionName('Telecom New Connection');
-                        setSectionCode('TNC');
-                        setSectionDescription(
-                          'For subscriber FTTH / New Connection drop wire, ONT installation, rosette, and fiber termination jobs.'
-                        );
-                      }
-                    }}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                      sectionWorkflowMode === 'new_connection'
-                        ? 'bg-[#233e54] text-white border-[#3c6687] shadow-xs ring-2 ring-sky-400/50'
-                        : 'bg-white hover:bg-sky-50/60 text-slate-800 border-slate-200'
-                    }`}
-                  >
-                    <div className="text-xs font-extrabold flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-sky-300 shrink-0" />
-                      <span>Telecom New Connection (NC)</span>
-                    </div>
-                    <div className={`text-[11px] mt-1 leading-snug ${sectionWorkflowMode === 'new_connection' ? 'text-sky-100' : 'text-slate-500'}`}>
-                      6 Customer FTTH/NC Fields + 3-Step Daily Progress (Team &amp; Area Lock until refresh).
-                    </div>
-                  </button>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                    1. Load International Industry Template (Auto-Loads Standard Fields) *
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-700">
+                    Click any template to load its international fields
+                  </span>
                 </div>
 
-                {sectionWorkflowMode === 'new_connection' && (
-                  <div className="p-2.5 bg-sky-50 border border-sky-200 rounded-lg text-[11px] text-sky-950 space-y-1">
-                    <div className="font-bold text-sky-900">
-                      ✓ Enabled NC Options for this Section:
-                    </div>
-                    <div>
-                      • <strong>6 Registration Fields:</strong> 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area.
-                    </div>
-                    <div>
-                      • <strong>Daily Progress 3-Step Mode:</strong> Step 1 Team &amp; Area (locks until refresh) → Step 2 Search / Quick-Register NC Line → Step 3 Material Usage.
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {(
+                    ['telecom_nc', 'water_project', 'electric_project', 'solar_project', 'standard'] as SectionIndustryPreset[]
+                  ).map((presetKey) => {
+                    const meta = INDUSTRY_SECTION_PRESETS[presetKey];
+                    const isSelected = sectionIndustryPreset === presetKey;
+                    return (
+                      <button
+                        key={presetKey}
+                        type="button"
+                        onClick={() => applySectionIndustryPreset(presetKey, Boolean(editingSection))}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-[#233e54] text-white border-[#3c6687] shadow-xs ring-2 ring-sky-400/50'
+                            : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                                isSelected
+                                  ? 'bg-sky-400/20 text-sky-200 border border-sky-300/40'
+                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}
+                            >
+                              {meta.shortBadge}
+                            </span>
+                            <span className="text-[9px] font-mono opacity-75">
+                              {meta.standardReference}
+                            </span>
+                          </div>
+                          <div className="text-xs font-extrabold leading-snug">
+                            {meta.defaultSectionName}
+                          </div>
+                        </div>
+                        <div
+                          className={`text-[10px] mt-1.5 leading-snug ${
+                            isSelected ? 'text-sky-100' : 'text-slate-500'
+                          }`}
+                        >
+                          {meta.defaultWorkflowMode === 'new_connection'
+                            ? `6 Core Connection Fields + ${meta.defaultCustomFields.length} International Fields`
+                            : `Main/Sub Project Format + ${meta.defaultCustomFields.length} Engineering Fields`}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Workflow Mode Switcher (Subscriber/Connection 3-Step vs Standard Project Hierarchy) */}
+                <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-slate-700">
+                    Workflow &amp; Daily Progress Entry Mode:
+                  </span>
+                  <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setSectionWorkflowMode('new_connection')}
+                      className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                        sectionWorkflowMode === 'new_connection'
+                          ? 'bg-[#233e54] text-white'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      6-Core Connection &amp; 1-2-3 Daily Progress Lock
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSectionWorkflowMode('standard')}
+                      className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                        sectionWorkflowMode === 'standard'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Main / Sub / Individual Project Hierarchy
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Section Name * (e.g. Telecom New Connection)
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={sectionName}
-                  onChange={(e) => setSectionName(e.target.value)}
-                  placeholder="e.g. Telecom New Connection"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              {/* STEP 2: SECTION IDENTITY */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-6">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Short Code (e.g. TNC)
+                    Section Name * (e.g. Water Supply Project, Solar PV Project)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={sectionName}
+                    onChange={(e) => setSectionName(e.target.value)}
+                    placeholder="e.g. Water Supply & Utility Connection Project"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Short Code
                   </label>
                   <input
                     type="text"
                     value={sectionCode}
                     onChange={(e) => setSectionCode(e.target.value.toUpperCase())}
-                    placeholder="e.g. TNC"
+                    placeholder="e.g. WSP"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none uppercase"
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-3">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Badge Theme Color
+                    Theme Color
                   </label>
                   <select
                     value={sectionColor}
@@ -2844,12 +3308,254 @@ export const ProjectsManagementView: React.FC = () => {
                   rows={2}
                   value={sectionDescription}
                   onChange={(e) => setSectionDescription(e.target.value)}
-                  placeholder="e.g. For subscriber drop wire, rosette, and fiber termination jobs..."
+                  placeholder="Describe the international standard scope and installation workflow for this section..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+              {/* STEP 3: 6 CORE CONNECTION FIELDS PREVIEW & CUSTOMIZER (WHEN IN CONNECTION MODE) */}
+              {sectionWorkflowMode === 'new_connection' && (
+                <div className="p-3.5 bg-sky-50/80 border border-sky-200 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-extrabold text-sky-950 uppercase tracking-wider">
+                        2. Core 6 Connection / Subscriber Fields (Auto-Loaded for Template)
+                      </span>
+                      <p className="text-[11px] text-sky-800">
+                        Just like Customer No, Address, and ONT Serial in Telecom New Connection, these 6 core fields load automatically for this section:
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowEditCoreLabelsInSectionModal((prev) => !prev)}
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-sky-100 text-sky-900 border border-sky-300 text-[11px] font-bold cursor-pointer shrink-0"
+                    >
+                      {showEditCoreLabelsInSectionModal ? 'Hide Label Editor' : 'Customize 6 Labels'}
+                    </button>
+                  </div>
+
+                  {!showEditCoreLabelsInSectionModal ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                      <div className="p-2 bg-white rounded-lg border border-sky-200">
+                        <span className="text-slate-400 font-bold block text-[10px]">Field 1 (Primary ID *)</span>
+                        <span className="font-bold text-slate-900">{sectionCoreLabels.primaryIdLabel}</span>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-sky-200">
+                        <span className="text-slate-400 font-bold block text-[10px]">Field 2 (Device / Meter S/N)</span>
+                        <span className="font-bold text-slate-900">{sectionCoreLabels.serialNoLabel}</span>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-sky-200">
+                        <span className="text-slate-400 font-bold block text-[10px]">Field 3 (Customer Name *)</span>
+                        <span className="font-bold text-slate-900">{sectionCoreLabels.customerNameLabel}</span>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-sky-200">
+                        <span className="text-slate-400 font-bold block text-[10px]">Field 4 (Address)</span>
+                        <span className="font-bold text-slate-900">{sectionCoreLabels.addressLabel}</span>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-sky-200">
+                        <span className="text-slate-400 font-bold block text-[10px]">Field 5 (Mobile / Tel)</span>
+                        <span className="font-bold text-slate-900">{sectionCoreLabels.mobileLabel}</span>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-sky-200">
+                        <span className="text-slate-400 font-bold block text-[10px]">Field 6 (Zone / Area *)</span>
+                        <span className="font-bold text-slate-900">{sectionCoreLabels.areaLabel}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                      <div>
+                        <label className="block text-[10px] font-bold text-sky-900 mb-0.5">1. Primary Account / Connection No Label *</label>
+                        <input
+                          type="text"
+                          value={sectionCoreLabels.primaryIdLabel}
+                          onChange={(e) => setSectionCoreLabels({ ...sectionCoreLabels, primaryIdLabel: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-sky-300 rounded-lg text-xs font-semibold bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-sky-900 mb-0.5">2. Meter / ONT / Inverter Serial Label</label>
+                        <input
+                          type="text"
+                          value={sectionCoreLabels.serialNoLabel}
+                          onChange={(e) => setSectionCoreLabels({ ...sectionCoreLabels, serialNoLabel: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-sky-300 rounded-lg text-xs font-semibold bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-sky-900 mb-0.5">3. Customer / Consumer Name Label *</label>
+                        <input
+                          type="text"
+                          value={sectionCoreLabels.customerNameLabel}
+                          onChange={(e) => setSectionCoreLabels({ ...sectionCoreLabels, customerNameLabel: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-sky-300 rounded-lg text-xs font-semibold bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-sky-900 mb-0.5">4. Premises / Service Address Label</label>
+                        <input
+                          type="text"
+                          value={sectionCoreLabels.addressLabel}
+                          onChange={(e) => setSectionCoreLabels({ ...sectionCoreLabels, addressLabel: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-sky-300 rounded-lg text-xs font-semibold bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-sky-900 mb-0.5">5. Mobile / Contact Phone Label</label>
+                        <input
+                          type="text"
+                          value={sectionCoreLabels.mobileLabel}
+                          onChange={(e) => setSectionCoreLabels({ ...sectionCoreLabels, mobileLabel: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-sky-300 rounded-lg text-xs font-semibold bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-sky-900 mb-0.5">6. Exchange / WSS Zone / Substation Label *</label>
+                        <input
+                          type="text"
+                          value={sectionCoreLabels.areaLabel}
+                          onChange={(e) => setSectionCoreLabels({ ...sectionCoreLabels, areaLabel: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-sky-300 rounded-lg text-xs font-semibold bg-white"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STEP 4: INTERNATIONAL TECHNICAL FIELDS & "+ ADD FIELD" DYNAMIC FIELD BUILDER */}
+              <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-extrabold text-indigo-950 uppercase tracking-wider">
+                      3. International Technical Fields &amp; + Add Field Builder ({sectionCustomFields.length} Fields)
+                    </span>
+                    <p className="text-[11px] text-indigo-800">
+                      These fields automatically appear whenever registering a project or logging daily progress under this section. Add any new field below:
+                    </p>
+                  </div>
+                </div>
+
+                {/* Existing Fields List */}
+                {sectionCustomFields.length === 0 ? (
+                  <div className="p-3 bg-white rounded-lg border border-indigo-200 text-xs text-slate-500 text-center">
+                    No additional custom fields configured yet. Use <strong>+ Add Field</strong> below or click an international template above.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {sectionCustomFields.map((cf, idx) => (
+                      <div
+                        key={cf.id}
+                        className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-lg border border-indigo-200 shadow-2xs"
+                      >
+                        <div className="col-span-5">
+                          <input
+                            type="text"
+                            value={cf.label}
+                            onChange={(e) => {
+                              const next = [...sectionCustomFields];
+                              next[idx] = { ...next[idx], label: e.target.value };
+                              setSectionCustomFields(next);
+                            }}
+                            placeholder="Field Label *"
+                            className="w-full px-2.5 py-1 border border-slate-300 rounded text-xs font-bold text-slate-900"
+                          />
+                        </div>
+                        <div className="col-span-5">
+                          <input
+                            type="text"
+                            value={cf.placeholder}
+                            onChange={(e) => {
+                              const next = [...sectionCustomFields];
+                              next[idx] = { ...next[idx], placeholder: e.target.value };
+                              setSectionCustomFields(next);
+                            }}
+                            placeholder="Example / Placeholder"
+                            className="w-full px-2.5 py-1 border border-slate-300 rounded text-xs text-slate-700"
+                          />
+                        </div>
+                        <div className="col-span-1 flex items-center justify-center">
+                          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer" title="Mark field as required">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(cf.required)}
+                              onChange={(e) => {
+                                const next = [...sectionCustomFields];
+                                next[idx] = { ...next[idx], required: e.target.checked };
+                                setSectionCustomFields(next);
+                              }}
+                              className="rounded border-slate-300"
+                            />
+                            <span>Req</span>
+                          </label>
+                        </div>
+                        <div className="col-span-1 text-right">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSectionCustomFields(sectionCustomFields.filter((_, i) => i !== idx))
+                            }
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
+                            title="Remove field"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* + Add Field Input Bar */}
+                <div className="p-3 bg-white border-2 border-indigo-300 rounded-xl space-y-2">
+                  <div className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-indigo-600" />
+                    <span>+ Add New Custom Field to This Section</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                    <div className="sm:col-span-5">
+                      <input
+                        type="text"
+                        value={newCustomFieldLabel}
+                        onChange={(e) => setNewCustomFieldLabel(e.target.value)}
+                        placeholder="Field Name (e.g. Pipe Pressure Bar, Inverter kW, Pole No)"
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                      />
+                    </div>
+                    <div className="sm:col-span-4">
+                      <input
+                        type="text"
+                        value={newCustomFieldPlaceholder}
+                        onChange={(e) => setNewCustomFieldPlaceholder(e.target.value)}
+                        placeholder="Example / Unit hint (e.g. e.g. 4.2 Bar / PN16)"
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs text-slate-700 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                      />
+                    </div>
+                    <div className="sm:col-span-1 flex items-center justify-center">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newCustomFieldRequired}
+                          onChange={(e) => setNewCustomFieldRequired(e.target.checked)}
+                          className="rounded border-slate-300"
+                        />
+                        <span>Req</span>
+                      </label>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <button
+                        type="button"
+                        onClick={handleAddFieldToSectionModal}
+                        className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs cursor-pointer transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Field</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 sticky bottom-0 bg-white z-10">
                 <button
                   type="button"
                   onClick={() => setShowSectionModal(false)}
@@ -2861,7 +3567,7 @@ export const ProjectsManagementView: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer transition-colors"
                 >
-                  {editingSection ? 'Save Section' : 'Create Section'}
+                  {editingSection ? 'Save Section & Fields' : 'Create Section & Load Template'}
                 </button>
               </div>
             </form>

@@ -327,6 +327,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       inflowCin7: '✕ Manual adjustment only',
       legacyErp: '◐ Complex scrap module',
     },
+    {
+      category: 'warehouse',
+      categoryLabel: 'Warehouse, PO & FOC',
+      feature: 'Optional Item Photo Upload (<200KB Auto-Compression) & "Print with Image" Option',
+      detail: 'Attach item photos that automatically resize & compress under 200KB for fast cloud loading, choose "Print with Image" on any voucher/report, and view Two-Line Item Code + Name dropdowns in POs & Requisitions.',
+      isSpecialHighlight: true,
+      apex: '✓ <200KB Auto-Compress + "Print with Image"',
+      sortly: '◐ Photos supported (No voucher print toggle)',
+      zoho: '◐ Basic item image',
+      inflowCin7: '◐ Basic item image',
+      legacyErp: '✕ Text-only item masters',
+    },
 
     // 3. SITE TRANSFERS, FIELD CREW CUSTODY & BARCODE SCANNING
     {
@@ -379,6 +391,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'field',
       categoryLabel: 'Site & Field Crews',
+      feature: 'Field Team Site Transfer Workflow ("Temporary Assigned" -> Permanent "Ref: Old Site")',
+      detail: 'Transferring a team to a new site marks them "Temporary Assigned to - [New Site]" until old-site stock is cleared (or Admin-confirmed), then promotes to Permanent "[Team Name] (Ref: [Old Site])" with full Assigned Sites History.',
+      isSpecialHighlight: true,
+      apex: '✓ Temp -> Permanent + "Ref: Old Site" History',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '✕ Not Available',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'Site-Separated Team In-Hand Stock ("Stock to Return - [Old Site]" vs. Active Site)',
+      detail: 'Never mixes a transferred team’s stock across sites: unreturned old-site items appear under "Stock to Return - [Previous Site]" (blocked from new-site usage), while new-site stock is listed under the new site name.',
+      isSpecialHighlight: true,
+      apex: '✓ Strict Site-Wise Stock Isolation',
+      sortly: '✕ Not Available',
+      zoho: '✕ Not Available',
+      inflowCin7: '✕ Not Available',
+      legacyErp: '✕ Not Available',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: 'Multi-Item Batch Returns in Both Team Returns (RV) & Branch Returns (BRM)',
+      detail: 'Add multiple items at once ("+ Add Item" / "+ Add All Held or Available"), set Good or Damaged condition per row, and return the entire batch on a single shared Return Voucher.',
+      isSpecialHighlight: true,
+      apex: '✓ Multi-Item Batch RV & BRM Vouchers',
+      sortly: '✕ Single item move only',
+      zoho: '✕ Customer sales returns only',
+      inflowCin7: '✕ Customer sales returns only',
+      legacyErp: '◐ Complex movement journal',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
       feature: 'Consumable Materials vs. Returnable Heavy Machinery & Tools Fleet',
       detail: 'Dedicated Plant & Equipment Fleet view to track excavators, generators, fusion splicers, and testing meters separately from consumable materials.',
       apex: '✓ Materials + Plant/Machinery Fleet',
@@ -390,9 +438,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'field',
       categoryLabel: 'Site & Field Crews',
-      feature: 'Auto-Calculated Crew Size (1 Leader + N NIC Members) & Usage History Protection',
-      detail: 'Crew size auto-calculates as NIC-verified members are added; blocks duplicate team names and restores deleted teams in 1 click so past usage stays unified.',
-      apex: '✓ Auto Crew Size + NIC Roster + History Guard',
+      feature: 'Auto Crew Size (1 Leader + N NIC Members) & Team Name Lock After Stock Issue',
+      detail: 'Crew size auto-calculates as NIC-verified members are added; locks Team Name against renaming once stock has been issued to protect historical vouchers, and supports Admin Password team deletion.',
+      apex: '✓ Auto Crew Size + Name Lock after Issue',
       sortly: '✕ No crew directory',
       zoho: '✕ No crew directory',
       inflowCin7: '✕ No crew directory',
@@ -411,10 +459,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       legacyErp: '◐ Requires paid mobile scanner license',
     },
 
-    // 4. PROJECTS, TELECOM NEW CONNECTION (NC) & WASTAGE ACCOUNTING
+    // 4. PROJECTS, INTERNATIONAL SECTION TEMPLATES (TELECOM, WATER, ELECTRIC, SOLAR) & WASTAGE ACCOUNTING
     {
       category: 'projects',
-      categoryLabel: 'Projects & Telecom NC',
+      categoryLabel: 'Projects & Industry Templates',
       feature: '3-Tier Project Hierarchy (Major/Main Umbrella, Sub-Projects & Individual)',
       detail: 'Receive bulk Client FOC under a Major Project; logging usage on any linked Sub-Project automatically deducts from the parent Main Project FOC pool.',
       isSpecialHighlight: true,
@@ -426,11 +474,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Telecom NC',
-      feature: 'Telecom New Connection (NC / FTTH) 6-Field Subscriber Registration',
-      detail: 'Selecting Telecom New Connection automatically switches to the 6 subscriber fields in order: 1. FTTH/NC No, 2. ONT Serial No, 3. Customer Name, 4. Address, 5. Mobile, 6. Exchange Area.',
+      categoryLabel: 'Projects & Industry Templates',
+      feature: 'International Industry Section Templates (Telecom, Water, Electric & Solar PV)',
+      detail: '1-click auto-load of international standard fields for Telecom New Connection (ITU-T G.984), Water Supply (ISO 4064 / AWWA), Electrical Power (IEC 60364), Solar PV & Net-Metering (IEC 62446) & Standard EPC.',
       isSpecialHighlight: true,
-      apex: '✓ Purpose-Built 6-Field FTTH / NC Mode',
+      apex: '✓ Telecom, Water, Electric & Solar Presets',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -438,11 +486,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Telecom NC',
-      feature: 'Telecom NC 3-Step Daily Progress with Session-Locked Team & Area',
-      detail: 'Step 1 (Team & Area) sits at the top and LOCKS until page refresh so supervisors can log all daily NC lines for a team back-to-back, search/register NC lines in Step 2, and log usage in Step 3.',
+      categoryLabel: 'Projects & Industry Templates',
+      feature: '"+ Add Field" Dynamic Custom Section Field Builder & Core Label Customizer',
+      detail: 'Customize the 6 Core Connection Field labels and click "+ Add Field" when creating/editing a section (or inline during Project Registration) to add unlimited custom technical fields.',
       isSpecialHighlight: true,
-      apex: '✓ 1-2-3 NC Flow + Team/Area Session Lock',
+      apex: '✓ Unlimited "+ Add Field" Custom Builder',
+      sortly: '◐ Limited custom fields on higher plans',
+      zoho: '◐ Generic SKU fields only',
+      inflowCin7: '◐ Generic custom fields',
+      legacyErp: '✕ Requires database schema consultant',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & Industry Templates',
+      feature: '3-Step Connection Daily Progress with Session-Locked Team & Area',
+      detail: 'For Telecom, Water, Electric & Solar connection sections, Step 1 (Team & Area) sits at the top and LOCKS until page refresh so supervisors can log 20+ daily connections back-to-back.',
+      isSpecialHighlight: true,
+      apex: '✓ 1-2-3 Connection Flow + Team/Area Lock',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -450,10 +510,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Telecom NC',
-      feature: 'Custom Project Section Registry, BOM Templates & 1-Click NC Section Restore',
-      detail: 'Create custom sections (Standard or NC Format), attach Default Material Templates (BOM) that auto-fill daily progress, and restore the NC section in 1 click if ever deleted.',
-      apex: '✓ Custom Sections + Auto BOM + 1-Click Restore',
+      categoryLabel: 'Projects & Industry Templates',
+      feature: 'Custom Project Section Registry, BOM Templates & 1-Click Template Restore',
+      detail: 'Create custom sections, attach Default Material Templates (BOM) that auto-fill daily progress, and quick-load or restore Telecom, Water, Electric, or Solar templates in 1 click.',
+      apex: '✓ Custom Sections + Auto BOM + 1-Click Load',
       sortly: '✕ Not Available',
       zoho: '✕ Manufacturing BOM only (Not field sections)',
       inflowCin7: '✕ Assembly BOM only',
@@ -587,16 +647,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
   const microFeaturesSpotlight = [
     {
-      title: 'Admin Password Gate on Every Delete',
-      desc: 'No staff member can accidentally delete a record with a casual click—every deletion prompts for the Admin Password first.',
+      title: 'Telecom, Water, Electric & Solar Templates + "+ Add Field"',
+      desc: '1-click load International Industry Section Templates (ITU-T, ISO 4064, IEC 60364, IEC 62446) and add unlimited custom fields via "+ Add Field".',
+    },
+    {
+      title: 'Team Site Transfer ("Temp" -> Permanent "Ref: Old Site")',
+      desc: 'Transfers start as "Temporary Assigned to - [New Site]" and promote to Permanent "[Team] (Ref: [Old Site])" once prior-site stock is cleared.',
+    },
+    {
+      title: 'Site-Separated In-Hand ("Stock to Return - [Site]")',
+      desc: 'Never sums transferred team stock across sites—old-site items stay under "Stock to Return - [Old Site]" and cannot be consumed on new-site projects.',
+    },
+    {
+      title: 'Multi-Item Batch Team (RV) & Branch Returns (BRM)',
+      desc: 'Add multiple items at once ("+ Add Item" / "+ Add All Held") with Good/Damaged conditions and return the entire batch on a single shared voucher.',
+    },
+    {
+      title: '<200KB Auto-Compressed Item Photos & "Print with Image"',
+      desc: 'Attach optional item photos (auto-compressed under 200KB), toggle "Print with Image" on any voucher, and see Item Code + Name in all dropdowns.',
     },
     {
       title: '1-Click Item Lifecycle & Forward Summary',
       desc: 'Click any item in Central Stock or Site Branch Stock to see every PO, site transfer, team issue, project usage, and wastage in one printable A4 view.',
     },
     {
-      title: 'Telecom NC 6-Field & Team-Locked Progress',
-      desc: 'Locks Field Team & Exchange Area until page refresh so supervisors can enter 20+ daily FTTH/NC subscriber lines without re-selecting the team.',
+      title: '3-Step Connection Progress with Session-Locked Team',
+      desc: 'Locks Field Team & Working Area until page refresh so supervisors can enter 20+ daily Telecom/Water/Electric/Solar connections without re-selecting the team.',
     },
     {
       title: 'Auto Low-Stock Top Sorting in Requisitions',
@@ -611,28 +687,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       desc: 'Selecting a project when receiving Client Free Stock automatically locks the Allocated Site Branch so FOC materials never leak to another branch.',
     },
     {
-      title: 'Installed Qty + Wastage Qty Dual Check',
-      desc: 'Validates (Used + Wastage <= Team In-Hand) in real time and updates Team Wastage columns, Reconciliation, and PU vouchers automatically.',
-    },
-    {
-      title: 'Custom PDF/Image Stationery (Max 1MB)',
-      desc: 'Upload your own company letterhead PDF or Image into 4 ISO 9001:2015 format slots, draw digital signatures on screen, and print isolated A4 vouchers.',
-    },
-    {
-      title: 'Country-Aware Phone Digit Validation',
-      desc: 'Automatically detects your registered company country (e.g., Sri Lanka 10 local / 9 subscriber digits) and prevents invalid phone numbers.',
-    },
-    {
-      title: 'Auto Crew Size (1 Leader + N NIC Members)',
-      desc: 'Automatically calculates crew size as NIC-verified members are added and protects historical usage if a deleted team is restored.',
+      title: 'Team Name Lock After Stock Issue & Admin Delete Gate',
+      desc: 'Locks Team Name against renaming once stock is issued to protect historical vouchers, and requires Admin Password verification on every delete action.',
     },
     {
       title: 'Full Site Report (Team Subtotals + Grand Total)',
       desc: 'Generates a 2-part A4 PDF & Excel report showing each team’s individual subtotal followed by the consolidated site grand total.',
-    },
-    {
-      title: '0001 Sequential Numbering & Offline Viewer',
-      desc: 'Every Item, Project, PO, GRN, RN, IN & PU starts cleanly from 0001—plus a built-in Offline JSON Backup Viewer to inspect snapshots anytime.',
     },
   ];
 
@@ -1680,13 +1740,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
                   <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#e8ac6e] tracking-wide mb-2.5">
                     <Crown className="w-4 h-4 text-[#dc9750] fill-[#dc9750]" />
-                    <span>Global Market &amp; Feature-by-Feature Comparison (34 Built-In Capabilities)</span>
+                    <span>Global Market &amp; Feature-by-Feature Comparison ({comparisonRows.length} Built-In Capabilities)</span>
                   </div>
                   <h3 className="text-2xl sm:text-4xl lg:text-[40px] font-black text-white tracking-tight leading-tight text-balance">
                     Why Pay <span className="text-rose-400 line-through decoration-2">$150 to $400+/Month</span> for Generic Retail Inventory Apps That Still Lack Field Site Control?
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-200 mt-3 leading-relaxed max-w-3xl mx-auto font-medium">
-                    Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH rollouts, client free-issue stock (FOC), or field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today.{' '}
+                    Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH / water / electrical / solar projects, client free-issue stock (FOC), or site-separated field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today.{' '}
                     <strong className="text-[#f0c08d]">
                       Apex Stock gives you 100% of these specialized field &amp; warehouse features for one flat ${pricingMetrics.monthlyPriceFormatted}/mo (${pricingMetrics.annualPriceClean}/year).
                     </strong>
@@ -1711,7 +1771,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-[#1e2640]/20 text-[11px] font-bold text-[#1e2640] space-y-1">
                       <div>✓ Unlimited Users &amp; Sites</div>
-                      <div>✓ All 34 Field &amp; ERP Modules</div>
+                      <div>✓ All {comparisonRows.length} Field &amp; ERP Modules</div>
                       <div>✓ $0 Setup · {pricingMetrics.trialDays}-Day Free Trial</div>
                     </div>
                   </div>
@@ -1729,7 +1789,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
                       <div>✕ Extra fees for users &amp; items</div>
                       <div>✕ No Crew In-Hand or Client FOC</div>
-                      <div>✕ No Telecom NC or Wastage ledger</div>
+                      <div>✕ No Industry Templates or Wastage</div>
                     </div>
                   </div>
 
@@ -1785,14 +1845,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </div>
                 </div>
 
-                {/* Interactive Category Filter Buttons for the 34-Feature Matrix */}
+                {/* Interactive Category Filter Buttons for the Feature Matrix */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/15">
                   <div className="text-left">
                     <h4 className="text-sm sm:text-base font-black text-white">
-                      Complete 34-Point Feature &amp; Micro-Capability Comparison
+                      Complete {comparisonRows.length}-Point Feature &amp; Micro-Capability Comparison
                     </h4>
                     <p className="text-[11px] text-slate-300">
-                      Filter by operational area or inspect all 34 large and small specialized features side-by-side:
+                      Filter by operational area or inspect all {comparisonRows.length} large and small specialized features side-by-side:
                     </p>
                   </div>
 
@@ -1802,7 +1862,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       { id: 'pricing', label: 'Pricing & Scale' },
                       { id: 'warehouse', label: 'Warehouse, PO & FOC' },
                       { id: 'field', label: 'Site & Field Crews' },
-                      { id: 'projects', label: 'Projects & Telecom NC' },
+                      { id: 'projects', label: 'Projects & Industry Templates' },
                       { id: 'security', label: 'ISO Formats & Security' },
                     ].map((tab) => (
                       <button

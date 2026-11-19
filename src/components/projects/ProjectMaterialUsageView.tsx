@@ -68,6 +68,10 @@ import {
 } from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 import { getTemporaryAssignmentBadgeLabel } from '../../utils/teamAssignmentUtils';
+import {
+  getEffectiveSectionCoreLabels,
+  getEffectiveSectionCustomFields,
+} from '../../utils/sectionTemplates';
 
 interface ItemEntryRow {
   itemId: string;
@@ -188,8 +192,17 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [selectedSectionId, setSelectedSectionId] = useState<string>(activeProjectTypes[0]?.id || '');
   const targetSection = activeProjectTypes.find((pt) => pt.id === selectedSectionId);
   const isNewConnectionSection = isTelecomNewConnectionSection(targetSection);
+  const activeSectionCoreLabels = React.useMemo(
+    () => getEffectiveSectionCoreLabels(targetSection),
+    [targetSection]
+  );
+  const activeSectionCustomFields = React.useMemo(
+    () => getEffectiveSectionCustomFields(targetSection),
+    [targetSection]
+  );
+  const [entryCustomFieldValues, setEntryCustomFieldValues] = useState<Record<string, string>>({});
 
-  // Telecom New Connection (NC) Daily Progress Session Lock & 6-Field States
+  // Telecom New Connection / Utility Connection Daily Progress Session Lock & 6-Field States
   const [isNcTeamAreaLocked, setIsNcTeamAreaLocked] = useState<boolean>(false);
   const [ncSessionArea, setNcSessionArea] = useState<string>(
     () => sites.find((s) => s.id === initialSiteId)?.location || sites.find((s) => s.id === initialSiteId)?.name || ''
@@ -544,11 +557,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
     if (tObj) setSupervisorName(tObj.teamLeaderName);
   };
 
-  // Quick-register a New Connection (NC) directly inside Step 2 and select it for Step 3 material usage
+  // Quick-register a New Connection (NC / Water / Electric / Solar) directly inside Step 2 and select it for Step 3 material usage
   const handleQuickRegisterNcLine = () => {
     setErrorMsg('');
     if (!ncEntryNumber.trim() || !ncEntryCustomerName.trim()) {
-      setErrorMsg('Please enter both Customer FTTH / NC Number and Customer Name.');
+      setErrorMsg(
+        `Please enter both ${activeSectionCoreLabels.primaryIdLabel} and ${activeSectionCoreLabels.customerNameLabel}.`
+      );
       return;
     }
     if (ncEntryCustomerMobile.trim()) {
@@ -559,11 +574,26 @@ export const ProjectMaterialUsageView: React.FC = () => {
       if (!mobileCheck.isValid) {
         setErrorMsg(
           mobileCheck.error ||
-            `Customer Mobile No requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
+            `${activeSectionCoreLabels.mobileLabel} requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
         );
         return;
       }
     }
+    for (const cf of activeSectionCustomFields) {
+      if (cf.required && !entryCustomFieldValues[cf.label]?.trim()) {
+        setErrorMsg(`Please enter a value for required field "${cf.label}".`);
+        return;
+      }
+    }
+    const cleanedCustomValues: Record<string, string> = {};
+    Object.entries(entryCustomFieldValues).forEach(([k, v]) => {
+      if (k.trim() && String(v || '').trim()) {
+        cleanedCustomValues[k.trim()] = String(v).trim();
+      }
+    });
+    const finalCustomValues =
+      Object.keys(cleanedCustomValues).length > 0 ? cleanedCustomValues : undefined;
+
     const cleanNcNo = ncEntryNumber.trim().toUpperCase();
     const cleanCustName = ncEntryCustomerName.trim();
     const cleanOnt = ncEntryOntSerial.trim().toUpperCase();
@@ -591,6 +621,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
       referenceNo: cleanOnt || cleanNcNo,
       district: selectedSiteObj?.location || selectedSiteObj?.name || cleanExch || 'General',
       subArea: cleanExch || 'Exchange Area',
+      customFieldValues: finalCustomValues,
       status: 'Active',
     });
 
@@ -608,8 +639,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
     setNcEntryCustomerAddress('');
     setNcEntryCustomerMobile('');
     setNcEntryExchangeArea('');
+    setEntryCustomFieldValues({});
     setSuccessToast(
-      `New Connection [${cleanNcNo}] ${cleanCustName} registered & selected! Enter consumed materials in Step 3 below.`
+      `[${cleanNcNo}] ${cleanCustName} registered & selected! Enter consumed materials in Step 3 below.`
     );
   };
 
@@ -685,10 +717,30 @@ export const ProjectMaterialUsageView: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
 
+    const cleanedCustomValues: Record<string, string> = {};
+    Object.entries(entryCustomFieldValues).forEach(([k, v]) => {
+      if (k.trim() && String(v || '').trim()) {
+        cleanedCustomValues[k.trim()] = String(v).trim();
+      }
+    });
+    const finalCustomValues =
+      Object.keys(cleanedCustomValues).length > 0 ? cleanedCustomValues : undefined;
+
+    if (projectEntryMode === 'new') {
+      for (const cf of activeSectionCustomFields) {
+        if (cf.required && !cleanedCustomValues[cf.label]?.trim()) {
+          setErrorMsg(`Please enter a value for required field "${cf.label}" in Step 2.`);
+          return;
+        }
+      }
+    }
+
     if (isNewConnectionSection) {
       if (projectEntryMode === 'new') {
         if (!ncEntryNumber.trim() || !ncEntryCustomerName.trim()) {
-          setErrorMsg('Please enter Customer FTTH / NC Number and Customer Name in Step 2.');
+          setErrorMsg(
+            `Please enter ${activeSectionCoreLabels.primaryIdLabel} and ${activeSectionCoreLabels.customerNameLabel} in Step 2.`
+          );
           return;
         }
         if (ncEntryCustomerMobile.trim()) {
@@ -699,14 +751,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
           if (!mobileCheck.isValid) {
             setErrorMsg(
               mobileCheck.error ||
-                `Customer Mobile No requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
+                `${activeSectionCoreLabels.mobileLabel} requires ${mobileCheck.expectedTotalDigits} digits for ${mobileCheck.country.name} (${mobileCheck.country.dialCode}).`
             );
             return;
           }
         }
       } else {
         if (!selectedProjectId) {
-          setErrorMsg('Please select an NC Line in Step 2 or click "+ Register New Connection".');
+          setErrorMsg('Please select a connection in Step 2 or click "+ Register New Connection".');
           return;
         }
       }
@@ -865,6 +917,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
             referenceNo: cleanOnt || cleanNcNo,
             district: selectedSiteObj?.location || selectedSiteObj?.name || cleanExch || 'General',
             subArea: cleanExch || 'Exchange Area',
+            customFieldValues: finalCustomValues,
             status: 'Active',
           });
 
@@ -919,6 +972,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
               parentMainObj?.district ||
               (selectedSiteObj?.location || selectedSiteObj?.name || 'General'),
             subArea: entrySubArea.trim() || 'Field Site',
+            customFieldValues: finalCustomValues,
             status: 'Active',
           });
 
@@ -987,6 +1041,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
         exchangeArea: finalExchangeArea || undefined,
         projectTypeId: selectedSectionId,
         projectTypeName: activeSec?.name,
+        customFieldValues: finalCustomValues || targetProject?.customFieldValues || undefined,
         siteId: selectedSiteId,
         teamId: selectedTeamId,
         teamName: targetTeam?.teamName || 'Field Team',
@@ -996,7 +1051,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
         workDetails:
           workDetails.trim() ||
           (isNewConnectionSection
-            ? `NC Line [${finalNcNumber || finalSiteIdentifier}] — ${finalProjectName}${finalOntSerialNo ? ` (ONT: ${finalOntSerialNo})` : ''}`
+            ? `[${finalNcNumber || finalSiteIdentifier}] — ${finalProjectName}${finalOntSerialNo ? ` (${activeSectionCoreLabels.serialNoLabel}: ${finalOntSerialNo})` : ''}`
             : `Installed materials on project ${finalProjectName}`),
         items: validRows,
       });
@@ -1017,7 +1072,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
       setAdminCrossProjectOverride(false);
 
-      // Lock Step 1 (Team & Area) when in Telecom New Connection mode so the user can continuously enter the next NC lines without re-selecting Team/Area!
+      // Lock Step 1 (Team & Area) when in Connection mode so the user can continuously enter the next connections without re-selecting Team/Area!
       if (isNewConnectionSection) {
         setIsNcTeamAreaLocked(true);
       }
@@ -1025,13 +1080,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
       if (projectEntryMode === 'new') {
         setSuccessToast(
           isNewConnectionSection
-            ? `Voucher ${newUsage.usageVoucherNumber} logged for NC [${finalNcNumber}] ${finalProjectName}! Team & Area remain locked — select or register the next NC Line.`
+            ? `Voucher ${newUsage.usageVoucherNumber} logged for [${finalNcNumber}] ${finalProjectName}! Team & Area remain locked — select or register the next connection.`
             : `Material usage voucher ${newUsage.usageVoucherNumber} logged! Project "${finalProjectName}" has been added to the Project Master List.`
         );
       } else {
         setSuccessToast(
           isNewConnectionSection
-            ? `Voucher ${newUsage.usageVoucherNumber} logged for NC [${finalNcNumber || finalSiteIdentifier}] ${finalProjectName}! Team & Area remain locked — select the next NC Line.`
+            ? `Voucher ${newUsage.usageVoucherNumber} logged for [${finalNcNumber || finalSiteIdentifier}] ${finalProjectName}! Team & Area remain locked — select the next connection.`
             : `Material usage voucher ${newUsage.usageVoucherNumber} logged for project "${finalProjectName}". Stock deducted from ${targetTeam?.teamName}.`
         );
       }
@@ -1045,6 +1100,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
       setEntryCustomerPhone('');
       setEntrySiteId('');
       setNcEntryNumber('');
+      setEntryCustomFieldValues({});
       setNcEntryOntSerial('');
       setNcEntryCustomerName('');
       setNcEntryCustomerAddress('');
@@ -1973,20 +2029,20 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* STEP 2 (NC): SELECT NC LINE OR REGISTER NEW CONNECTION */}
+                  {/* STEP 2 (NC / WATER / ELECTRIC / SOLAR): SELECT CONNECTION OR REGISTER NEW CONNECTION */}
                   <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3d6889] pb-2.5">
                       <div>
                         <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                           <FolderPlus className="w-4 h-4 text-sky-300" />
-                          <span>2. Select NC Line or Register New Connection</span>
+                          <span>2. {activeSectionCoreLabels.bannerTitle}</span>
                         </span>
                         <span className="text-[11px] text-sky-100/85 block mt-0.5">
-                          Search and select an existing NC Line by Customer Name or FTTH / NC Number, or register a new connection right here.
+                          Search and select an existing connection by {activeSectionCoreLabels.customerNameLabel} or {activeSectionCoreLabels.primaryIdLabel}, or register a new connection right here.
                         </span>
                       </div>
 
-                      {/* Tab Switcher: Select NC Line vs Register New Connection */}
+                      {/* Tab Switcher: Select Connection vs Register New Connection */}
                       <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-[11px] font-semibold self-start sm:self-auto shadow-xs">
                         <button
                           type="button"
@@ -1997,7 +2053,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                           }`}
                         >
-                          Select NC Line ({ filteredNcLines.length })
+                          Select Connection ({filteredNcLines.length})
                         </button>
                         <button
                           type="button"
@@ -2020,10 +2076,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
                     {projectEntryMode === 'existing' ? (
                       <div className="space-y-3 pt-1">
-                        {/* Search by Customer Name or NC Number */}
+                        {/* Search by Customer Name or Primary ID */}
                         <div>
                           <label className="block text-xs font-bold text-slate-100 mb-1">
-                            Search NC Line by Customer Name or FTTH / NC Number
+                            Search by {activeSectionCoreLabels.customerNameLabel} or {activeSectionCoreLabels.primaryIdLabel}
                           </label>
                           <div className="relative">
                             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -2049,7 +2105,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                   }
                                 }
                               }}
-                              placeholder="Type FTTH / NC Number, Customer Name, ONT Serial, or Mobile No..."
+                              placeholder={`Type ${activeSectionCoreLabels.primaryIdLabel}, ${activeSectionCoreLabels.customerNameLabel}, ${activeSectionCoreLabels.serialNoLabel}, or Mobile No...`}
                               className="w-full pl-9 pr-8 py-2 text-xs font-semibold border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
                             />
                             {ncSearchQuery && (
@@ -2064,10 +2120,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Select NC Line Dropdown */}
+                        {/* Select Registered Connection Dropdown */}
                         <div>
                           <label className="block text-xs font-bold text-slate-100 mb-1">
-                            Select Registered NC Line *
+                            Select Registered Connection / Account *
                           </label>
                           <select
                             value={selectedProjectId}
@@ -2077,14 +2133,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           >
                             {filteredNcLines.length === 0 ? (
                               <option value="">
-                                No matching NC lines found — Click &quot;+ Register New Connection&quot; tab to add
+                                No matching connections found — Click &quot;+ Register New Connection&quot; tab to add
                               </option>
                             ) : (
                               filteredNcLines.map((p) => {
                                 const ncNo = p.ncNumber || p.siteIdentifier || p.projectId;
                                 const cust = p.customerName || p.projectName;
                                 const exch = p.exchangeArea || p.subArea || '';
-                                const ont = p.ontSerialNo ? ` · ONT: ${p.ontSerialNo}` : '';
+                                const ont = p.ontSerialNo ? ` · S/N: ${p.ontSerialNo}` : '';
                                 return (
                                   <option key={p.id} value={p.id}>
                                     [{ncNo}] {cust}{ont}{exch ? ` — (${exch})` : ''}
@@ -2095,100 +2151,121 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           </select>
                         </div>
 
-                        {/* Selected NC Line Summary Banner */}
+                        {/* Selected Connection Summary Banner */}
                         {targetProject && (
                           <div className="p-3 bg-white border border-slate-200 rounded-xl text-[11px] text-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-2 shadow-xs">
                             <div>
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">FTTH / NC Number</span>
+                              <span className="text-slate-400 font-bold uppercase text-[10px] block">
+                                {activeSectionCoreLabels.primaryIdLabel}
+                              </span>
                               <span className="font-mono font-extrabold text-slate-900">
                                 {targetProject.ncNumber || targetProject.siteIdentifier || targetProject.projectId}
                               </span>
                             </div>
                             <div>
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">ONT Serial No</span>
+                              <span className="text-slate-400 font-bold uppercase text-[10px] block">
+                                {activeSectionCoreLabels.serialNoLabel}
+                              </span>
                               <span className="font-mono font-bold text-teal-800">
                                 {targetProject.ontSerialNo || targetProject.referenceNo || '—'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">Customer Name</span>
+                              <span className="text-slate-400 font-bold uppercase text-[10px] block">
+                                {activeSectionCoreLabels.customerNameLabel}
+                              </span>
                               <span className="font-bold text-slate-900">
                                 {targetProject.customerName || targetProject.projectName}
                               </span>
                             </div>
                             <div className="sm:col-span-2">
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">Customer Address</span>
+                              <span className="text-slate-400 font-bold uppercase text-[10px] block">
+                                {activeSectionCoreLabels.addressLabel}
+                              </span>
                               <span className="font-medium text-slate-800">
                                 {targetProject.customerAddress || '—'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">Mobile & Exchange Area</span>
+                              <span className="text-slate-400 font-bold uppercase text-[10px] block">
+                                {activeSectionCoreLabels.mobileLabel} &amp; {activeSectionCoreLabels.areaLabel}
+                              </span>
                               <span className="font-semibold text-slate-900">
                                 {targetProject.customerPhone || 'N/A'} · {targetProject.exchangeArea || targetProject.subArea || '—'}
                               </span>
                             </div>
+                            {targetProject.customFieldValues &&
+                              Object.entries(targetProject.customFieldValues).map(([k, v]) =>
+                                v ? (
+                                  <div key={k}>
+                                    <span className="text-indigo-500 font-bold uppercase text-[10px] block">
+                                      {k}
+                                    </span>
+                                    <span className="font-mono font-bold text-slate-900">{v}</span>
+                                  </div>
+                                ) : null
+                              )}
                           </div>
                         )}
                       </div>
                     ) : (
-                      /* REGISTER NEW CONNECTION (6 FIELDS IN EXACT ORDER) */
+                      /* REGISTER NEW CONNECTION (6 CORE FIELDS + INTERNATIONAL CUSTOM FIELDS) */
                       <div className="space-y-3 pt-1">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* 1. Customer FTTH / NC Number */}
+                          {/* 1. Primary Connection / Account / Meter ID */}
                           <div>
                             <label className="block text-xs font-bold text-slate-100 mb-1">
-                              1. Customer FTTH / NC Number *
+                              1. {activeSectionCoreLabels.primaryIdLabel} *
                             </label>
                             <input
                               type="text"
                               value={ncEntryNumber}
                               onChange={(e) => setNcEntryNumber(e.target.value.toUpperCase())}
-                              placeholder="e.g. FTTH-NC-00142 / NC-88420"
+                              placeholder={activeSectionCoreLabels.primaryIdPlaceholder}
                               className="w-full px-3 py-2 text-xs font-mono font-bold uppercase border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
                               required={projectEntryMode === 'new'}
                             />
                           </div>
 
-                          {/* 2. ONT Serial No */}
+                          {/* 2. Equipment / Meter / ONT / Inverter Serial No */}
                           <div>
                             <label className="block text-xs font-bold text-slate-100 mb-1">
-                              2. ONT Serial No
+                              2. {activeSectionCoreLabels.serialNoLabel}
                             </label>
                             <input
                               type="text"
                               value={ncEntryOntSerial}
                               onChange={(e) => setNcEntryOntSerial(e.target.value.toUpperCase())}
-                              placeholder="e.g. HWTC-48575443 / ZTEG-9012"
+                              placeholder={activeSectionCoreLabels.serialNoPlaceholder}
                               className="w-full px-3 py-2 text-xs font-mono font-semibold uppercase border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
                             />
                           </div>
 
-                          {/* 3. Customer Name */}
+                          {/* 3. Customer / Consumer Name */}
                           <div className="sm:col-span-2">
                             <label className="block text-xs font-bold text-slate-100 mb-1">
-                              3. Customer Name *
+                              3. {activeSectionCoreLabels.customerNameLabel} *
                             </label>
                             <input
                               type="text"
                               value={ncEntryCustomerName}
                               onChange={(e) => setNcEntryCustomerName(e.target.value)}
-                              placeholder="e.g. K. A. Sunil Perera"
+                              placeholder={activeSectionCoreLabels.customerNamePlaceholder}
                               className="w-full px-3 py-2 text-xs font-semibold border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
                               required={projectEntryMode === 'new'}
                             />
                           </div>
 
-                          {/* 4. Customer Address */}
+                          {/* 4. Customer / Installation Address */}
                           <div className="sm:col-span-2">
                             <label className="block text-xs font-bold text-slate-100 mb-1">
-                              4. Customer Address
+                              4. {activeSectionCoreLabels.addressLabel}
                             </label>
                             <input
                               type="text"
                               value={ncEntryCustomerAddress}
                               onChange={(e) => setNcEntryCustomerAddress(e.target.value)}
-                              placeholder="e.g. No. 45/B, Galle Road, Kalutara North"
+                              placeholder={activeSectionCoreLabels.addressPlaceholder}
                               className="w-full px-3 py-2 text-xs font-medium border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
                             />
                           </div>
@@ -2203,7 +2280,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               <div>
                                 <div className="flex items-center justify-between gap-1 mb-1">
                                   <label className="block text-xs font-bold text-slate-100">
-                                    5. Customer Mobile No
+                                    5. {activeSectionCoreLabels.mobileLabel}
                                   </label>
                                   <PhoneCountryBadge
                                     value={ncEntryCustomerMobile}
@@ -2283,20 +2360,51 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             );
                           })()}
 
-                          {/* 6. Exchange Area */}
+                          {/* 6. Exchange Area / WSS Zone / Substation / Grid Zone */}
                           <div>
                             <label className="block text-xs font-bold text-slate-100 mb-1">
-                              6. Exchange Area *
+                              6. {activeSectionCoreLabels.areaLabel} *
                             </label>
                             <input
                               type="text"
                               value={ncEntryExchangeArea}
                               onChange={(e) => setNcEntryExchangeArea(e.target.value)}
-                              placeholder={ncSessionArea || 'e.g. Kalutara (KLL), Maharagama'}
+                              placeholder={ncSessionArea || activeSectionCoreLabels.areaPlaceholder}
                               className="w-full px-3 py-2 text-xs font-semibold border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
                             />
                           </div>
                         </div>
+
+                        {/* International Technical & Custom Fields for this Section */}
+                        {activeSectionCustomFields.length > 0 && (
+                          <div className="pt-2.5 border-t border-[#3d6889] space-y-2">
+                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-sky-200 block">
+                              International Technical &amp; Custom Section Fields ({activeSectionCustomFields.length})
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {activeSectionCustomFields.map((cf, idx) => (
+                                <div key={cf.id}>
+                                  <label className="block text-xs font-bold text-slate-100 mb-1">
+                                    {idx + 7}. {cf.label} {cf.required ? '*' : ''}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required={Boolean(cf.required && projectEntryMode === 'new')}
+                                    value={entryCustomFieldValues[cf.label] || ''}
+                                    onChange={(e) =>
+                                      setEntryCustomFieldValues((prev) => ({
+                                        ...prev,
+                                        [cf.label]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={cf.placeholder || `Enter ${cf.label}`}
+                                    className="w-full px-3 py-2 text-xs font-medium border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex items-center justify-end pt-1">
                           <button
@@ -2305,7 +2413,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             className="px-4 py-2 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Register Connection & Select Line</span>
+                            <span>Register Connection &amp; Select Line</span>
                           </button>
                         </div>
                       </div>

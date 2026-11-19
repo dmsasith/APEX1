@@ -8042,10 +8042,26 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       exchangeArea: data.exchangeArea || proj?.exchangeArea || undefined,
       projectTypeId: data.projectTypeId || proj?.projectTypeId || '',
       projectTypeName: data.projectTypeName || proj?.projectTypeName || '',
+      customFieldValues:
+        data.customFieldValues && Object.keys(data.customFieldValues).length > 0
+          ? data.customFieldValues
+          : proj?.customFieldValues || undefined,
       supervisorOrLeader: leaderName,
       supervisorOrLeaderName: leaderName,
       loggedBy: currentUser?.fullName || 'Field Supervisor',
     };
+    if (
+      proj &&
+      data.customFieldValues &&
+      Object.keys(data.customFieldValues).length > 0
+    ) {
+      updateProject(proj.id, {
+        customFieldValues: {
+          ...(proj.customFieldValues || {}),
+          ...data.customFieldValues,
+        },
+      });
+    }
     setProjectUsages((prev) => {
       const next = [newUsage, ...prev];
       saveTenantData(currentTenantIdRef.current, 'projectUsages', next);

@@ -87,9 +87,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Open "Master Registrations -> Item Catalog" to add Consumable Materials and Returnable Machinery/Tools or bulk import via Excel/CSV. You can optionally attach an Item Photo when adding or editing any item — the system automatically resizes and compresses the image to under 200KB for fast cloud loading, and every printable voucher/report includes a "Print with Image" checkbox to optionally print item thumbnails. When scanning barcodes via Mobile Camera or USB/Wireless Barcode Gun, the scanner detects once, automatically stops and hides the camera view to prevent continuous duplicate scans, and provides a "Scan Now" button to re-activate the scanner.',
       },
       {
-        stepTitle: '3. Register Field Teams, Auto Crew Size & Conflict-Free Site Transfer Workflow (Temporary vs. Permanent with Ref)',
+        stepTitle: '3. Register Field Teams, Auto Crew Size, Team Name Lock & Conflict-Free Site Transfer Workflow (Temporary vs. Permanent with Ref)',
         detail:
-          'In "Master Registrations -> Teams", enter the Team Leader name (Crew Size automatically starts at 1 and increments with each Member added). When transferring an existing Field Team to a new Site Branch via "Transfer / Site History", the system checks unreturned stock on their previous site and assigns them as "Temporary Assigned to - [New Site Name]" first. Once previous-site stock is cleared (or confirmed by Branch/System Admin when zero stock was held), the assignment promotes to "Permanent" and displays the team with a permanent prior-site reference: "[Team Name] (Ref: [Previous Site Name])", while preserving a Complete Assigned Sites History ledger (Temporary vs. Permanent, dates, and stock clearance state).',
+          'In "Master Registrations -> Teams", enter the Team Leader name (Crew Size automatically starts at 1 and increments with each Member added). To protect historical vouchers and audit integrity, once a team has received any stock item, its Team Name is automatically locked against renaming (while leader/member details remain editable). When transferring a Field Team to a new Site Branch via "Transfer / Site History", the system checks unreturned stock on their previous site and assigns them as "Temporary Assigned to - [New Site Name]" first. Once previous-site stock is cleared (or confirmed by Branch/System Admin when zero stock was held), the assignment promotes to "Permanent" and displays the team with a permanent prior-site reference: "[Team Name] (Ref: [Previous Site Name])", while preserving a Complete Assigned Sites History ledger.',
       },
       {
         stepTitle: '4. Create Staff Logins (Single Site, Multi-Site, HQ) & Auto Email Verification',
@@ -98,9 +98,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Sequential 0001-Based Codes, IDs & Document References',
+      'Sequential 0001-Based Codes, IDs & Two-Line Item Code + Name Dropdowns',
       'Optional Item Photo Upload (<200KB Auto-Compression) & "Print with Image" Toggle',
-      'Team Site Transfer: "Temporary Assigned to - [New Site]" -> Permanent "(Ref: [Old Site])" & Full Site History',
+      'Team Site Transfer ("Temporary Assigned" -> Permanent "Ref: Old Site") & Team Name Lock After Stock Issue',
       'Single-Site & Multi-Site Branch Locks + Auto Email Verification (apexstox.com)',
     ],
   },
@@ -189,21 +189,21 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     id: 'ch-04',
     number: 'Chapter 04',
     category: 'projects',
-    categoryLabel: 'Projects, Telecom NC, Usage, Wastage & Full Site Reports',
-    title: 'Project Registry, Telecom New Connection (NC 6-Field & 3-Step Locked Team Workflow), Wastage Qty & Full Site Reports',
+    categoryLabel: 'Projects, International Templates (Telecom/Water/Electric/Solar), "+ Add Field" & Full Reports',
+    title: 'Project Registry, International Section Templates (Telecom, Water, Electric, Solar), "+ Add Field" Custom Builder & Full Site Reports',
     summary:
-      'Register Major/Main, Sub, and Individual Projects or Telecom New Connection (NC) 6-Field subscriber lines; record daily consumption with a 3-step Team-Locked NC workflow or standard 4-step project workflow; and generate consolidated Full Site Reports.',
+      'Load ready-made International Industry Section Templates (Telecom FTTH, Water Supply, Electrical Power, Solar PV, or Standard EPC), add unlimited custom fields with "+ Add Field", record daily consumption with a 3-step Team-Locked workflow, and generate Full Site Reports.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Register Projects ("Assigned Site Branch *") & Create / Restore Section Formats (Standard vs. NC)',
+        stepTitle: '1. International Industry Section Templates (Telecom, Water, Electric, Solar) & "+ Add Field" Custom Field Builder',
         detail:
-          'In "Project & New Section Registry", register Major / Main Projects, Sub-Projects, or Individual Projects under their Project Section and mandatory "Assigned Site Branch *". When creating a new section in "New Section Registry & Material Templates -> + Create New Section", choose either "Standard Project Format" (Main / Sub / Individual) or "Telecom New Connection (NC)" format. If the New Connection section is ever deleted, click "+ Restore Telecom New Connection (NC)" to recreate it with all NC options in 1 click.',
+          'In "Project & New Section Registry -> New Section Registry & Material Templates", click "+ Add New Section" (or use the 1-click Quick-Load Template buttons) to load international standard templates for: (1) Telecom New Connection (ITU-T G.984 / FTTH), (2) Water Supply & Utility Project (ISO 4064 / AWWA — Water Account No, Meter Serial, Pipe DN/PN, Pressure Bar, Ferrule Size), (3) Electrical Power Connection (IEC 60364 — Service Order No, Energy Meter kWh, Phase/Voltage, kVA Demand, Earth Resistance Ω), (4) Solar PV & Net-Metering (IEC 62446 — Net-Metering Ref, Inverter Serial, kWp DC/kW AC, PV Panels, BESS kWh, Bi-Directional Meter), or (5) Standard EPC Project. You can customize all 6 Core Field Labels and click "+ Add Field" to add unlimited custom technical fields (or add fields on the fly inside the Register Project modal).',
       },
       {
-        stepTitle: '2. Telecom New Connection (NC) — 6-Field Subscriber Registration & 3-Step Locked Team Daily Progress',
+        stepTitle: '2. 6-Core + Custom Field Registration & 3-Step Session-Locked Team Daily Progress (Telecom, Water, Electric & Solar)',
         detail:
-          'When "Telecom New Connection" is selected: (a) In Project Registration, standard Main/Sub project fields are replaced by 6 ordered Subscriber Fields at the top: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, and 6. Exchange Area. (b) In "Material Usage / Daily Progress Entry", it switches to a simple 1-2-3 layout: Step 1 (Top) selects Field Team & Exchange Area and LOCKS them until the page is refreshed ("Confirm & Lock Team / Area") so the team\'s entire day of NC lines can be entered back-to-back without re-selecting the team; Step 2 lets you search/select an NC line by Customer Name or NC Number OR click "+ Register New Connection" right there to register all 6 fields on the spot; Step 3 records Material Usage and keeps Step 1 locked after submission.',
+          'When any Connection/Utility Section (Telecom, Water, Electric, or Solar) is selected: (a) In Project Registration, the form automatically loads that template\'s 6 tailored Core Fields at the top plus all configured International & Custom Fields. (b) In "Material Usage / Daily Progress Entry", it switches to a streamlined 1-2-3 layout: Step 1 (Top) selects Field Team & Working Area and LOCKS them until the page is refreshed ("Confirm & Lock Team / Area") so the team\'s entire day of connections can be entered back-to-back without re-selecting the team; Step 2 lets you search/select a connection or click "+ Register New Connection" right there to fill the 6 Core Fields + Custom Fields on the spot; Step 3 records Material Usage and keeps Step 1 locked after submission.',
       },
       {
         stepTitle: '3. Log Installed Qty + "Wastage Qty", Active-Site-Only Stock Enforcement & Auto Main Pool Deduction',
@@ -217,9 +217,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Telecom New Connection (NC): 6-Field Registration & 3-Step Daily Progress (Team & Area Locked Until Refresh)',
-      'Active-Site-Only Team Stock Usage Enforcement (Blocks Old-Site Stock from New-Site Usage)',
-      'Multi-Item Batch Returns in Both Team Returns (RV) & Branch Returns (BRM) on a Single Voucher',
+      'International Section Templates (Telecom FTTH, Water Supply, Electrical Power, Solar PV) + "+ Add Field" Builder',
+      '6-Core + Custom Field Registration & 3-Step Daily Progress (Team & Area Locked Until Refresh)',
+      'Active-Site-Only Team Stock Usage Enforcement & Multi-Item Batch Returns (RV / BRM)',
       'Full Report for This Site (Project): Team Subtotals + Full Grand Total (PDF/CSV)',
     ],
   },
@@ -324,9 +324,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Master Registrations -> Item Catalog" හරහා අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ඇතුළත් කරන්න හෝ Excel මගින් Import කරන්න. භාණ්ඩයක් Add/Edit කිරීමේදී අවශ්‍ය නම් භාණ්ඩයේ ඡායාරූපයක් (Item Photo) එක් කළ හැකි අතර පද්ධතිය මගින් එය ස්වයංක්‍රීයව 200KB ට අඩු ප්‍රමාණයකට (Auto-Compress) සකසා ගබඩා කරයි. ඕනෑම වවුචරයක් Print කිරීමේදී "Print with Image" තේරීම මගින් භාණ්ඩයේ රූපය සමඟ හෝ රූපය රහිතව Print කළ හැක. Barcode Scan කිරීමේදී එක වරක් Detect වූ සැණින් Camera එක ඉබේම නතර වන අතර ඊළඟ භාණ්ඩය සඳහා "Scan Now" බටන් එක භාවිත කළ හැක.',
       },
       {
-        stepTitle: '3. වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය සහ Site Transfer ක්‍රියාවලිය (Temporary vs. Permanent with Ref)',
+        stepTitle: '3. වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය, Team Name ආරක්ෂාව සහ Site Transfer ක්‍රියාවලිය (Temporary vs. Permanent with Ref)',
         detail:
-          '"Master Registrations -> Teams" තුළදී Team Leader සහ සාමාජිකයින් (Members) ඇතුළත් කරන විට Crew Size එක ඉබේම ගණනය වේ. දැනට Site එකක සිටින Team එකක් වෙනත් Site එකකට මාරු කිරීමේදී ("Transfer / Site History"): පරණ Site එකේ භාර නොදුන් බඩු (Unreturned Stock) තිබේ නම් හෝ මුලින්ම මාරු කරන විට අලුත් Site එකේ "Temporary Assigned to - [New Site Name]" ලෙස පෙන්වයි. පරණ Site එකේ බඩු සියල්ල භාරදී Clear වූ පසු (හෝ බඩු නොගත් Team එකක් නම් Branch/System Admin විසින් Confirm කළ පසු) එය "Permanent" තත්ත්වයට පත් වී කලින් සිටි Site එකේ නම සමඟ "[Team Name] (Ref: [Previous Site Name])" ලෙස සටහන් වේ. Team Details තුළ එම Team එක වැඩ කළ සියලුම Sites (Temporary / Permanent, දිනයන් සහ Stock Clearance තත්ත්වය) වෙනම පෙන්වයි.',
+          '"Master Registrations -> Teams" තුළදී Team Leader සහ සාමාජිකයින් (Members) ඇතුළත් කරන විට Crew Size එක ඉබේම ගණනය වේ. එක භාණ්ඩයක් හෝ ලබාගෙන ඇති (Stock Issued) Team එකක නම (Team Name) වෙනස් කළ නොහැකි ලෙස Lock වන අතර එමගින් පැරණි වවුචර් සහ ගිණුම් වාර්තා ආරක්ෂා වේ. දැනට Site එකක සිටින Team එකක් වෙනත් Site එකකට මාරු කිරීමේදී ("Transfer / Site History"): පරණ Site එකේ භාර නොදුන් බඩු තිබුණත් නැතත් මුලින්ම අලුත් Site එකේ "Temporary Assigned to - [New Site Name]" ලෙස පෙන්වයි. පරණ Site එකේ බඩු Clear වූ පසු (හෝ බඩු නොගත් Team එකක් නම් Branch/System Admin විසින් Confirm කළ පසු) එය "Permanent" තත්ත්වයට පත් වී කලින් සිටි Site එකේ නම සමඟ "[Team Name] (Ref: [Previous Site Name])" ලෙස සටහන් වේ.',
       },
       {
         stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Staff Logins), ශාඛා බලතල සහ Auto Email Verification',
@@ -335,9 +335,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      '0001 සිට පිළිවෙළට යන Item Codes, Project IDs සහ Voucher References',
+      '0001 සිට පිළිවෙළට යන Item Codes සහ Dropdown වල Item Code + Item Name එකට පෙන්වීම',
       '200KB ට අඩුවෙන් Auto-Compress වන Item Image Upload සහ "Print with Image" පහසුකම',
-      'Team Site Transfer: "Temporary Assigned to - [New Site]" -> Permanent "(Ref: [Old Site])" සහ සම්පූර්ණ Site History',
+      'Team Site Transfer ("Temporary Assigned" -> Permanent "Ref: Old Site") සහ බඩු ගත් Team Name Lock කිරීම',
       'ශාඛා මට්ටමින් සීමා කළ හැකි ගිණුම් සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
     ],
   },
@@ -426,21 +426,21 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     id: 'ch-04',
     number: '04 වන පරිච්ඡේදය',
     category: 'projects',
-    categoryLabel: 'ව්‍යාපෘති, Telecom NC, Daily Progress Entry, Wastage සහ Full Site Reports',
-    title: 'Project Registry, Telecom New Connection (NC කරුණු 6 සහ පියවර 1-2-3 Team Lock), Wastage සහ Full Site වාර්තා',
+    categoryLabel: 'ව්‍යාපෘති, International Section Templates (Telecom/Water/Electric/Solar), "+ Add Field" සහ Full Reports',
+    title: 'Project Registry, International Section Templates (Telecom, Water, Electric, Solar), "+ Add Field" සහ Full Site වාර්තා',
     summary:
-      'අනිවාර්ය Site Branch සමඟ ව්‍යාපෘති ලියාපදිංචිය, Telecom New Connection (NC) සඳහා කරුණු 6ක ලියාපදිංචිය හා Team/Area Lock සහිත සරල 1-2-3 Daily Progress ක්‍රමවේදය, Wastage Qty සහ Full Site Report ලබාගැනීම.',
+      'Telecom New Connection මෙන්ම Water Project, Electrical Power Project සහ Solar PV Project සඳහා ජාත්‍යන්තර ප්‍රමිතියේ (International Standard) Section Templates එක ක්ලික් එකකින් Load කරගැනීම, "+ Add Field" හරහා අලුත් Fields කැමති ගණනක් එකතු කිරීම, 1-2-3 Daily Progress සහ Full Site Report ලබාගැනීම.',
     icon: FolderKanban,
     steps: [
       {
-        stepTitle: '1. Project Registry ("Assigned Site Branch *") සහ New Section Format තේරීම / නැවත ගැනීම (Restore NC)',
+        stepTitle: '1. International Section Templates (Telecom, Water, Electric, Solar) සහ "+ Add Field" මගින් අලුත් Fields එකතු කිරීම',
         detail:
-          '"Project & New Section Registry" හි Major / Main, Sub-Project, හෝ Individual Project ලියාපදිංචි කිරීමේදී Project Section සහ අනිවාර්ය "Assigned Site Branch *" තෝරන්න. "New Section Registry & Material Templates -> + Create New Section" තුළදී Section එක සාමාන්‍ය "Standard Project Format" ද නැතිනම් "Telecom New Connection (NC)" Format එකද යන්න තෝරාගත හැක. යම් හෙයකින් New Connection section එක මැකුණොත් උඩින්ම ඇති "+ Restore Telecom New Connection (NC)" බටන් එකෙන් ඒ සියලුම NC Options සහිතව නැවත ලබාගත හැක.',
+          '"Project & New Section Registry -> New Section Registry & Material Templates" හි "+ Add New Section" (හෝ Quick-Load බටන්) මගින් පහත International Templates එක ක්ලික් එකකින් Load කරගත හැක: (1) Telecom New Connection (ITU-T G.984 / FTTH — NC No, ONT Serial, FDP/Splitter Port, Optical Power dBm), (2) Water Supply Project (ISO 4064 / AWWA — Water Account No, Water Meter Serial, Pipe Diameter DN/PN, Pressure Bar, Ferrule/Saddle Size), (3) Electrical Power Project (IEC 60364 — Consumer Account No, Energy Meter Serial kWh, Phase/Voltage, Contract Demand kVA, Earth Resistance Ω), (4) Solar PV & Net-Metering Project (IEC 62446 — Solar Project/Net-Metering Ref, Inverter Serial, System Capacity kWp DC/kW AC, PV Module & Panel Count, Battery BESS kWh), හෝ (5) Standard EPC Project. එමෙන්ම "+ Add Field" බටන් එක මගින් ඔබට අවශ්‍ය ඕනෑම අලුත් Field එකක් (හෝ Project Register කරන තැනදීම "+ Add Custom Field") එකතු කරගත හැක.',
       },
       {
-        stepTitle: '2. Telecom New Connection (NC) — කරුණු 6ක Register කිරීම සහ පියවර 1, 2, 3 Daily Progress (Team & Area Lock සමඟ)',
+        stepTitle: '2. Core Fields 6 + Custom Fields ලියාපදිංචිය සහ පියවර 1, 2, 3 Daily Progress (Team & Area Lock සමඟ)',
         detail:
-          '"Telecom New Connection" තෝරාගත් විට: (අ) Project Register කරන තැන සාමාන්‍ය project fields වෙනුවට පිළිවෙළට උඩින්ම කරුණු 6ක් පෙන්වයි: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area. (ආ) Daily Progress ("Material Usage / Daily Progress Entry") පිටුවේදී සංකීර්ණ Main/Sub Project කොටස් ඉවත් වී සරල 1, 2, 3 පියවර පෙන්වයි: පියවර 1 (උඩින්ම): Team & Area Selection — එක වරක් Team එක සහ Area එක තෝරා Confirm කළ පසු (හෝ පළමු NC line එක submit කළ පසු) Page එක Refresh කරන තුරු එම විස්තර වෙනස් නොවී Lock වී පවතී (එම Team එක දවස තුළ කළ සියලුම NC lines එක දිගට ඇතුළත් කිරීමට නැවත නැවත Team තෝරන්න අවශ්‍ය නොවේ). පියවර 2: Select NC Line (Customer Name හෝ NC Number එකෙන් Search කර තේරීමට) හෝ එතැනම ඇති "+ Register New Connection" Tab එකෙන් අලුත් NC line එකක කරුණු 6 ඇතුළත් කර එවෙලේම Register කරගැනීමට. පියවර 3: Material Usage ඇතුළත් කර Submit කිරීම (Submit කළ පසුත් පියවර 1 Lock වී පවතින අතර කෙලින්ම ඊළඟ NC line එක තෝරා දිගටම Usage දැමිය හැක).',
+          'Telecom, Water, Electric හෝ Solar වැනි Connection Section එකක් තෝරාගත් විට: (අ) Project Register කරන තැන එම Section එකට අදාළ ප්‍රධාන කරුණු 6 (Core 6 Fields) සහ ඔබ එකතු කළ International / Custom Fields සියල්ල ස්වයංක්‍රීයව පෙන්වයි. (ආ) Daily Progress ("Material Usage / Daily Progress Entry") පිටුවේදී සරල 1, 2, 3 පියවර පෙන්වයි: පියවර 1 (උඩින්ම): Team & Area Selection — එක වරක් Team එක සහ Area එක තෝරා Confirm කළ පසු Page එක Refresh කරන තුරු එම විස්තර Lock වී පවතී. පියවර 2: Select Connection හෝ එතැනම ඇති "+ Register New Connection" Tab එකෙන් අදාළ Section එකේ Core Fields 6 සහ Custom Fields එවෙලේම ඇතුළත් කර Register කරගැනීමට. පියවර 3: Material Usage ඇතුළත් කර Submit කිරීම.',
       },
       {
         stepTitle: '3. Daily Progress Entry හි "Wastage Qty" සහ අදාළ Site එකේ බඩු පමණක් භාවිතා කිරීමේ නීතිය (Site-Only Stock Usage)',
@@ -454,9 +454,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Telecom New Connection (NC): කරුණු 6ක Register ආකෘතිය සහ 1-2-3 Daily Progress (Team & Area Lock)',
-      'අලුත් Site එකේ වැඩවලට එම Site එකේ බඩු පමණක් භාවිතා කිරීමට සීමා කිරීම (පරණ Site බඩු වෙනම Return කළ යුතුය)',
-      'Team Returns (RV) සහ Branch Returns (BRM) දෙකේම Items ගණනාවක් එකතු කර එක සැරේ Return කිරීමේ පහසුකම',
+      'International Section Templates (Telecom, Water, Electric, Solar) + "+ Add Field" Custom Field Builder',
+      'Core 6 + Custom Fields Register ආකෘතිය සහ 1-2-3 Daily Progress (Team & Area Lock)',
+      'අලුත් Site එකේ වැඩවලට එම Site එකේ බඩු පමණක් භාවිතා කිරීම සහ Multi-Item Team/Branch Returns',
       '"Full Report for This Site (Project)" — Team Subtotals + Full Grand Total (PDF/CSV)',
     ],
   },
@@ -639,20 +639,20 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'Field Operations, Team Site Transfers, Telecom NC Workflow & Batch Returns',
+    group: 'Field Operations, International Section Templates (Telecom/Water/Electric/Solar) & Batch Returns',
     items: [
+      'International Industry Section Templates: 1-Click Auto-Load for Telecom New Connection (ITU-T G.984), Water Supply Project (ISO 4064 / AWWA), Electrical Power Project (IEC 60364), Solar PV & Net-Metering (IEC 62446) & Standard EPC Project',
+      '"+ Add Field" Dynamic Custom Field Builder: Customize 6 Core Field Labels & Add Unlimited Custom Technical Fields per Section (or Inline During Project Registration)',
       'Field Team Site Transfer Workflow: "Temporary Assigned to - [New Site]" -> Permanent "[Team Name] (Ref: [Previous Site])" & Complete Assigned Sites History',
       'Site-Separated Team In-Hand Stock: Unreturned Old-Site Stock Shown Separately Under "Stock to Return - [Site Name]" (Never Combined with New Site Stock)',
       'Strict Active-Site Material Usage: Teams Can Only Consume Stock Issued at the Current Site for Current Site Projects',
+      'Team Name Integrity Lock: Teams That Have Received Any Stock Cannot Be Renamed, Protecting Historical Voucher & In-Hand Audit Accuracy',
       'Multi-Item Batch Returns in Both Team Returns (RV) & Branch Returns (BRM) ("+ Add Item" / "+ Add All Held or Available" on One Voucher)',
-      'Telecom New Connection (NC) 6-Field Registration: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area',
-      'Telecom New Connection (NC) 3-Step Daily Progress: Step 1 Team & Area (Locked Until Refresh) -> Step 2 Search NC Line or "+ Register New Connection" -> Step 3 Material Usage',
-      'New Section Registry Format Selector (Standard vs. NC Format) & 1-Click "+ Restore Telecom New Connection (NC)" Button',
-      '2-Tab Stock Requisitions (RN): Normal Stock vs. Branch-Exclusive Client FOC Request',
+      '3-Step Connection Daily Progress (Telecom, Water, Electric, Solar): Step 1 Team & Area (Locked Until Refresh) -> Step 2 Search or "+ Register New Connection" -> Step 3 Material Usage',
+      '2-Tab Stock Requisitions (RN): Normal Stock vs. Branch-Exclusive Client FOC Request with Two-Line Item Code + Material Name Dropdowns',
       'Auto Low-Stock Priority Top Sorting & Live "Site Avl:" + "Main:" Balances in Requisitions',
       'Installed Qty + Wastage Qty Tracking with Live (Used + Wastage) Team In-Hand Validation',
       'Usage Vouchers History -> "Full Report for This Site (Project)" (Team Subtotals + Grand Total)',
-      'Auto-Calculated Field Crew Size (1 Leader + N Members) & Usage Protection',
     ],
   },
   {
@@ -675,7 +675,7 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
     items: [
       'Central Stock Item Summary: ඕනෑම Item එකක් Select කළ විට PO/Manual/FOC ලැබීම්, Site හා Team බෙදීම්, Used/Wasted සහ Central/Site/Team In-Hand පෙන්වන Printable A4/PDF සාරාංශය',
       'Site Branch Stock Forward Summary: ශාඛා ගබඩාවේ Item එකක් Select කළ විට HQ ලැබීම්, ශාඛාවේ Teams වලට නිකුත් කිරීම්, Used/Wasted සහ In-Hand පෙන්වන Printable A4/PDF සාරාංශය',
-      '0001 සිට පිළිවෙළට ජනනය වන Item Codes, Project IDs සහ Voucher References',
+      '0001 සිට පිළිවෙළට ජනනය වන Item Codes, Project IDs සහ PO/Site Request Dropdown වල Item Code එක යටින් Item Name පැහැදිලිව පෙන්වීම',
       'ප්‍රධාන ගබඩාව (Central HQ) සහ සීමාවකින් තොර ප්‍රාදේශීය ශාඛා ගබඩා (Site Yards)',
       'Detect වූ සැණින් නතර වී Camera ඉවත් වන Single-Shot Scanner සහ "Scan Now" බටන් එක',
       'නිල Purchase Orders (PO) සහ Multi-Item GRN ප්‍රධාන ගබඩාවට එකවර භාරගැනීම',
@@ -686,15 +686,15 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'වැඩබිම් මෙහෙයුම්, Team Site Transfers, Telecom NC සහ Multi-Item Returns',
+    group: 'වැඩබිම් මෙහෙයුම්, International Templates (Telecom/Water/Electric/Solar), Team Transfers සහ Multi-Item Returns',
     items: [
+      'International Industry Section Templates: Telecom New Connection (ITU-T G.984), Water Supply Project (ISO 4064), Electrical Power Project (IEC 60364), Solar PV Project (IEC 62446) සහ Standard EPC සඳහා සූදානම් කළ ජාත්‍යන්තර Templates',
+      '"+ Add Field" Custom Field Builder: Section එකක් සෑදීමේදී හෝ Edit කිරීමේදී Core Fields 6 වෙනස් කිරීමට සහ අලුත් Custom Fields කැමති ගණනක් එකතු කිරීමට ඇති පහසුකම',
       'Team Site Transfer ක්‍රියාවලිය: "Temporary Assigned to - [New Site]" -> බඩු Clear වූ පසු Permanent "[Team Name] (Ref: [Previous Site])" සහ සම්පූර්ණ Assigned Sites History',
       'Site අනුව වෙන් වූ Team In-Hand Stock: කලින් Site එකේ භාර නොදුන් බඩු "Stock to Return - [Site Name]" යටතේත්, අලුත් Site එකේ බඩු අලුත් Site නම යටතේත් එකතු නොකර වෙන වෙනම පෙන්වීම',
-      'අලුත් Site එකේ වැඩවලට එම Site එකෙන් නිකුත් කළ බඩු පමණක් භාවිතා කිරීමට ඉඩ දීම (පරණ Site එකේ බඩු අලුත් Site එකට භාවිතා කළ නොහැක)',
+      'අලුත් Site එකේ වැඩවලට එම Site එකෙන් නිකුත් කළ බඩු පමණක් භාවිතා කිරීමට ඉඩ දීම සහ බඩු ලබාගෙන ඇති Team වල නම (Team Name) වෙනස් කළ නොහැකි ලෙස ආරක්ෂා කිරීම',
       'Team Returns (RV) සහ Branch Returns (BRM) දෙකේම Items ගණනාවක් එකතු කර ("+ Add Item" / "+ Add All") එක සැරේ තනි වවුචරයකින් Return කිරීමේ පහසුකම',
-      'Telecom New Connection (NC) කරුණු 6ක ලියාපදිංචිය: 1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area',
-      'Telecom New Connection (NC) 1-2-3 Daily Progress: පියවර 1 Team & Area (Refresh කරන තුරු Lock වේ) -> පියවර 2 Select NC Line හෝ "+ Register New Connection" -> පියවර 3 Material Usage',
-      'New Section සෑදීමේදී NC Format තේරීමේ පහසුකම සහ මැකුණොත් "+ Restore Telecom New Connection (NC)" බටන් එක',
+      'Connection Sections (Telecom, Water, Electric, Solar) 1-2-3 Daily Progress: පියවර 1 Team & Area (Refresh කරන තුරු Lock වේ) -> පියවර 2 Select හෝ "+ Register New Connection" -> පියවර 3 Material Usage',
       'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock සහ Branch-Exclusive Client FOC Request)',
       'Material Usage / Daily Progress Entry හි Installed Qty සමඟ Wastage Qty (අපතේ යාම්) සටහන් කිරීම',
       'Usage History හි "Full Report for This Site (Project)" (Team Subtotals + Full Grand Total + PDF/CSV)',

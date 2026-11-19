@@ -35,18 +35,18 @@ interface QuickPrompt {
 const QUICK_PROMPTS: QuickPrompt[] = [
   {
     id: 'telecom-new-connection-nc',
-    labelEn: '📞 Telecom New Connection (NC) Workflow?',
-    labelSi: '📞 Telecom New Connection (NC) වැඩ කරන්නේ කොහොමද?',
-    promptEn: 'How does the Telecom New Connection (NC) section work for 6-field registration, 3-step Daily Progress with Team & Area lock, and restoring the NC section if deleted?',
-    promptSi: 'Telecom New Connection (NC) section එකේ කරුණු 6ක Register කිරීම, පියවර 1-2-3 Daily Progress (Team & Area Lock සමඟ) සහ මැකුණොත් නැවත ගන්නේ කොහොමද?',
-    targetTab: 'project-usage',
+    labelEn: '🌐 Telecom, Water, Electric & Solar Templates + "+ Add Field"?',
+    labelSi: '🌐 Telecom, Water, Electric, Solar Templates සහ "+ Add Field"?',
+    promptEn: 'How do the International Section Templates (Telecom New Connection, Water Project, Electrical Power, Solar PV) and the "+ Add Field" custom field builder work for registration and 3-step Daily Progress?',
+    promptSi: 'Telecom New Connection, Water Project, Electric, Solar Project සඳහා International Section Templates load කරලා "+ Add Field" මගින් අලුත් fields දාලා Register සහ 1-2-3 Daily Progress කරන්නේ කොහොමද?',
+    targetTab: 'projects',
   },
   {
     id: 'team-site-transfer-stock-to-return',
-    labelEn: '👷‍♂️ Team Site Transfer & "Stock to Return - [Site]"?',
-    labelSi: '👷‍♂️ Team Site Transfer සහ "Stock to Return - [Site]" වැඩ කරන්නේ කොහොමද?',
-    promptEn: 'How do Field Team Site Transfers (Temporary Assigned vs. Permanent with Ref: Previous Site) and Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]") work?',
-    promptSi: 'Team එකක් වෙන Site එකකට Transfer කිරීම (Temporary vs Permanent Ref: Old Site) සහ Team In-Hand Stock වල පරණ Site එකට භාර නොදුන් බඩු "Stock to Return - [Site Name]" යටතේ වෙනම පෙන්වීම වැඩ කරන්නේ කොහොමද?',
+    labelEn: '👷‍♂️ Team Site Transfer, "Stock to Return" & Name Lock?',
+    labelSi: '👷‍♂️ Team Site Transfer, "Stock to Return" සහ Name Lock?',
+    promptEn: 'How do Field Team Site Transfers (Temporary Assigned vs. Permanent with Ref: Previous Site), Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]"), and Team Name locking after stock issue work?',
+    promptSi: 'Team එකක් වෙන Site එකකට Transfer කිරීම (Temporary vs Permanent Ref: Old Site), Team In-Hand Stock වල "Stock to Return - [Site Name]" වෙනම පෙන්වීම සහ බඩු ගත් Team Name වෙනස් කිරීම Lock වීම වැඩ කරන්නේ කොහොමද?',
     targetTab: 'team-stock',
   },
   {
@@ -75,10 +75,10 @@ const QUICK_PROMPTS: QuickPrompt[] = [
   },
   {
     id: 'project-sections-templates',
-    labelEn: '🧩 How to create Project Sections & Templates?',
-    labelSi: '🧩 අලුත් Project Sections සහ Templates හදන්නේ කොහොමද?',
-    promptEn: 'How do I create a new Project Section in New Section Registry and configure its Default Material Template (BOM)?',
-    promptSi: 'Project & New Section Registry එකේ අලුත් Project Section එකක් හදලා ඒකට Material Template (BOM) එකක් හදන්නේ කොහොමද?',
+    labelEn: '🧩 New Section Templates & "+ Add Field" Builder?',
+    labelSi: '🧩 අලුත් Project Sections, "+ Add Field" සහ BOM Templates?',
+    promptEn: 'How do I create a new Project Section using International Industry Templates (Telecom, Water, Electric, Solar), add custom fields with "+ Add Field", and configure its Default Material Template (BOM)?',
+    promptSi: 'Project & New Section Registry එකේ International Templates (Telecom, Water, Electric, Solar) තෝරලා, "+ Add Field" වලින් අලුත් Fields දාලා, Material Template (BOM) එකක් හදන්නේ කොහොමද?',
     targetTab: 'projects',
   },
   {
@@ -174,8 +174,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **Field Team Site Transfers ("Temporary Assigned to - [New Site]" vs. Permanent "(Ref: [Old Site])"), Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]"), Multi-Item Batch Returns in Team Returns (RV) & Branch Returns (BRM), Optional Item Photos (<200KB Auto-Compression & "Print with Image"), Telecom New Connection (NC 6-Field & 3-Step Team-Locked Daily Progress), Central & Site Branch Item Lifecycle Summaries, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports, and Assigned-Site Client FOC**.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **Field Team Site Transfers ("Temporary Assigned to - [New Site]" සහ Permanent "(Ref: [Old Site])"), Site අනුව වෙන් කළ Team In-Hand Stock ("Stock to Return - [Site Name]"), Team Returns සහ Branch Returns දෙකේම Items ගණනාවක් එකවර Return කිරීම, 200KB ට අඩු Item Photos සහ "Print with Image", Telecom New Connection (NC කරුණු 6 සහ 1-2-3 Daily Progress), Item Lifecycle Summary, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports සහ Client FOC** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **International Industry Section Templates (Telecom New Connection, Water Project, Electrical Power & Solar PV) + "+ Add Field" Custom Field Builder, Field Team Site Transfers ("Temporary Assigned to - [New Site]" vs. Permanent "(Ref: [Old Site])"), Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]"), Team Name Lock After Stock Issue, Multi-Item Batch Returns in Team Returns (RV) & Branch Returns (BRM), Optional Item Photos (<200KB Auto-Compression & "Print with Image"), Central & Site Branch Item Lifecycle Summaries, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports, and Assigned-Site Client FOC**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **International Section Templates (Telecom New Connection, Water Project, Electrical Power සහ Solar PV) + "+ Add Field" මගින් අලුත් Fields එකතු කිරීම, Field Team Site Transfers ("Temporary Assigned to - [New Site]" සහ Permanent "(Ref: [Old Site])"), Site අනුව වෙන් කළ Team In-Hand Stock ("Stock to Return - [Site Name]"), බඩු ගත් Team Name වෙනස් කිරීම Lock කිරීම, Team Returns සහ Branch Returns දෙකේම Items ගණනාවක් එකවර Return කිරීම, 200KB ට අඩු Item Photos සහ "Print with Image", Item Lifecycle Summary, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports සහ Client FOC** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 
