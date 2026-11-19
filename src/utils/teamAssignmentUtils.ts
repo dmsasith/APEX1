@@ -15,15 +15,76 @@ export function extractBaseTeamName(teamName: string, existingBaseName?: string)
 }
 
 /**
- * Formats the permanent team name with previous site reference:
- * e.g. `[Team Name] (Ref: [Previous Site Name])`
+ * Resolves the Team's Initial Base Site (Home Base where the team was originally registered).
+ * Checks explicit `team.initialSiteId`, then the earliest record in `siteAssignmentHistory`,
+ * then falls back to `team.previousSiteId` or `team.assignedSiteId`.
+ */
+export function getTeamInitialBaseSite(
+  team: Team,
+  sites: Site[]
+): { siteId: string; siteName: string } {
+  if (team.initialSiteId) {
+    const matched = sites.find((s) => s.id === team.initialSiteId);
+    return {
+      siteId: team.initialSiteId,
+      siteName: matched?.name || team.initialSiteName || 'Initial Base Site',
+    };
+  }
+
+  if (Array.isArray(team.siteAssignmentHistory) && team.siteAssignmentHistory.length > 0) {
+    const rootEntry =
+      team.siteAssignmentHistory.find((h) => !h.previousSiteId) ||
+      team.siteAssignmentHistory[0];
+    if (rootEntry && rootEntry.siteId) {
+      const matched = sites.find((s) => s.id === rootEntry.siteId);
+      return {
+        siteId: rootEntry.siteId,
+        siteName: matched?.name || rootEntry.siteName || 'Initial Base Site',
+      };
+    }
+  }
+
+  if (team.previousSiteId) {
+    const matched = sites.find((s) => s.id === team.previousSiteId);
+    return {
+      siteId: team.previousSiteId,
+      siteName: matched?.name || team.previousSiteName || 'Initial Base Site',
+    };
+  }
+
+  const currentMatched = sites.find((s) => s.id === team.assignedSiteId);
+  return {
+    siteId: team.assignedSiteId,
+    siteName: currentMatched?.name || 'Initial Base Site',
+  };
+}
+
+/**
+ * Returns true if the team is currently assigned to a visiting / non-initial site
+ * (i.e. away from its Initial Base Site).
+ */
+export function isTeamAwayFromInitialBase(team: Team, sites: Site[]): boolean {
+  const initialBase = getTeamInitialBaseSite(team, sites);
+  return Boolean(
+    initialBase.siteId &&
+      team.assignedSiteId &&
+      team.assignedSiteId !== initialBase.siteId
+  );
+}
+
+/**
+ * Formats the permanent team name with previous site reference when at a transferred site,
+ * OR returns the clean base name when the team is at its Initial Base Site:
+ * - At Initial Base Site: `[Base Team Name]` (NEVER appends `(Ref: ...)` at home base!)
+ * - At Visiting/Transferred Site: `[Base Team Name] (Ref: [Previous Site Name])`
  */
 export function formatPermanentTransferredTeamName(
   baseName: string,
-  previousSiteName?: string
+  previousSiteName?: string,
+  isAtInitialBase: boolean = false
 ): string {
   const cleanBase = extractBaseTeamName(baseName);
-  if (!previousSiteName || !previousSiteName.trim()) {
+  if (isAtInitialBase || !previousSiteName || !previousSiteName.trim()) {
     return cleanBase;
   }
   return `${cleanBase} (Ref: ${previousSiteName.trim()})`;
@@ -58,6 +119,7 @@ export function getTeamCompleteAssignmentHistory(
 ): TeamSiteAssignmentHistoryRecord[] {
   const currentSite = sites.find((s) => s.id === team.assignedSiteId);
   const currentSiteName = currentSite?.name || 'Assigned Site';
+  const initialBase = getTeamInitialBaseSite(team, sites);
   const existingHistory = Array.isArray(team.siteAssignmentHistory)
     ? [...team.siteAssignmentHistory]
     : [];
@@ -81,7 +143,7 @@ export function getTeamCompleteAssignmentHistory(
         stockCleared: pendingPrev <= 0,
         assignedAt: team.createdAt,
         endedAt: team.temporaryAssignedAt || team.permanentConfirmedAt || team.createdAt,
-        notes: `Previously registered base site (${prevName})`,
+        notes: `Initial Base Site registration (${prevName})`,
       });
     }
 
@@ -89,6 +151,7 @@ export function getTeamCompleteAssignmentHistory(
       team.assignedSiteId && getSitePendingUnits
         ? getSitePendingUnits(team.id, team.assignedSiteId)
         : 0;
+    const isAtHome = team.assignedSiteId === initialBase.siteId;
 
     records.push({
       id: `hist-curr-${team.id}`,
@@ -96,8 +159,9 @@ export function getTeamCompleteAssignmentHistory(
       siteName: currentSiteName,
       assignmentType: team.assignmentStatus === 'Temporary' ? 'Temporary' : 'Permanent',
       status: 'Active',
-      previousSiteId: team.previousSiteId,
-      previousSiteName: team.previousSiteName,
+      previousSiteId: isAtHome && team.assignmentStatus !== 'Temporary' ? undefined : team.previousSiteId,
+      previousSiteName: isAtHome && team.assignmentStatus !== 'Temporary' ? undefined : team.previousSiteName,
+      isReturnedToInitialBase: isAtHome && records.length > 0,
       pendingStockUnitsAtTransfer: currentPending,
       stockCleared:
         team.pendingClearanceSiteId && getSitePendingUnits
@@ -111,6 +175,8 @@ export function getTeamCompleteAssignmentHistory(
           ? `Temporary Assigned to - ${currentSiteName}${
               team.previousSiteName ? ` (Transferred from ${team.previousSiteName})` : ''
             }`
+          : isAtHome && records.length > 0
+          ? `Returned to Initial Base Site (${currentSiteName}) — Original team name restored`
           : team.previousSiteName
           ? `Permanent assignment confirmed (Ref: ${team.previousSiteName})`
           : 'Initial permanent site registration',
@@ -120,13 +186,17 @@ export function getTeamCompleteAssignmentHistory(
   }
 
   // Enrich live stock clearance status on existing history records
-  return existingHistory.map((rec) => {
+  return existingHistory.map((rec, index) => {
     const liveSite = sites.find((s) => s.id === rec.siteId);
     const pendingUnits =
       rec.siteId && getSitePendingUnits ? getSitePendingUnits(team.id, rec.siteId) : 0;
+    const isReturnedHome =
+      rec.isReturnedToInitialBase ||
+      (index > 0 && rec.siteId === initialBase.siteId);
     return {
       ...rec,
       siteName: liveSite?.name || rec.siteName || 'Site Branch',
+      isReturnedToInitialBase: isReturnedHome,
       stockCleared: pendingUnits <= 0,
     };
   });

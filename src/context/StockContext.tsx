@@ -61,6 +61,7 @@ import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeU
 import {
   extractBaseTeamName,
   formatPermanentTransferredTeamName,
+  getTeamInitialBaseSite,
 } from '../utils/teamAssignmentUtils';
 import {
   INITIAL_CONFIG,
@@ -286,6 +287,18 @@ interface StockContextType {
     message: string;
     pendingStockUnitsOnPrevSite: number;
     assignmentStatus: 'Temporary' | 'Permanent';
+  };
+  returnTeamToInitialSite: (
+    teamId: string,
+    notes?: string,
+    forceImmediatePermanent?: boolean
+  ) => {
+    success: boolean;
+    message: string;
+    pendingStockUnitsOnVisitingSites: number;
+    assignmentStatus: 'Temporary' | 'Permanent';
+    initialSiteId: string;
+    initialSiteName: string;
   };
   promoteTeamAssignmentToPermanent: (
     teamId: string,
@@ -4831,6 +4844,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const newTeam: Team = {
       ...teamData,
       baseTeamName: cleanBaseName,
+      initialSiteId: teamData.initialSiteId || teamData.assignedSiteId,
+      initialSiteName: teamData.initialSiteName || initialSiteName,
       assignmentStatus: teamData.assignmentStatus || 'Permanent',
       siteAssignmentHistory:
         teamData.siteAssignmentHistory && teamData.siteAssignmentHistory.length > 0
@@ -5224,14 +5239,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Compute site-specific or total in-hand stock for a team
   const computeTeamSiteInHandUnits = useCallback(
     (teamId: string, targetSiteId?: string): number => {
+      const teamObj = teams.find((t) => t.id === teamId);
+      const fallbackSiteId = teamObj?.previousSiteId || teamObj?.assignedSiteId;
+
       const issuesForTeam = teamIssues.filter(
-        (iss) => iss.teamId === teamId && (!targetSiteId || iss.siteId === targetSiteId)
+        (iss) =>
+          iss.teamId === teamId &&
+          (!targetSiteId || (iss.siteId || fallbackSiteId) === targetSiteId)
       );
       const returnsForTeam = teamReturns.filter(
-        (ret) => ret.teamId === teamId && (!targetSiteId || ret.siteId === targetSiteId)
+        (ret) =>
+          ret.teamId === teamId &&
+          (!targetSiteId || (ret.siteId || fallbackSiteId) === targetSiteId)
       );
       const usagesForTeam = projectUsages.filter(
-        (pu) => pu.teamId === teamId && !pu.isDeleted && (!targetSiteId || pu.siteId === targetSiteId)
+        (pu) =>
+          pu.teamId === teamId &&
+          !pu.isDeleted &&
+          (!targetSiteId || (pu.siteId || fallbackSiteId) === targetSiteId)
       );
 
       const itemTotals = new Map<string, { issued: number; returned: number; used: number; wasted: number }>();
@@ -5265,7 +5290,48 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
       return held;
     },
-    [teamIssues, teamReturns, projectUsages]
+    [teamIssues, teamReturns, projectUsages, teams]
+  );
+
+  // Find any non-initial visiting sites where this team still holds unreturned stock
+  const getTeamUnclearedVisitingSites = useCallback(
+    (
+      team: Team,
+      excludeSiteId?: string
+    ): Array<{ siteId: string; siteName: string; pendingUnits: number }> => {
+      const initialBase = getTeamInitialBaseSite(team, sites);
+      const candidateSiteIds = new Set<string>();
+      if (team.assignedSiteId) candidateSiteIds.add(team.assignedSiteId);
+      if (team.previousSiteId) candidateSiteIds.add(team.previousSiteId);
+      if (team.pendingClearanceSiteId) candidateSiteIds.add(team.pendingClearanceSiteId);
+      if (Array.isArray(team.siteAssignmentHistory)) {
+        team.siteAssignmentHistory.forEach((h) => {
+          if (h.siteId) candidateSiteIds.add(h.siteId);
+        });
+      }
+      teamIssues.forEach((iss) => {
+        if (iss.teamId === team.id && iss.siteId) {
+          candidateSiteIds.add(iss.siteId);
+        }
+      });
+
+      const results: Array<{ siteId: string; siteName: string; pendingUnits: number }> = [];
+      candidateSiteIds.forEach((sid) => {
+        // Never treat Initial Base Site stock or the target site itself as "visiting site stock pending clearance" when returning home
+        if (excludeSiteId && sid === excludeSiteId) return;
+        const units = computeTeamSiteInHandUnits(team.id, sid);
+        if (units > 0) {
+          const siteObj = sites.find((s) => s.id === sid);
+          results.push({
+            siteId: sid,
+            siteName: siteObj?.name || (sid === initialBase.siteId ? initialBase.siteName : 'Prior Site'),
+            pendingUnits: units,
+          });
+        }
+      });
+      return results;
+    },
+    [sites, teamIssues, computeTeamSiteInHandUnits]
   );
 
   const transferTeamToSite = (
@@ -5288,6 +5354,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
     }
 
+    const initialBase = getTeamInitialBaseSite(team, sites);
+
+    // If targetSiteId IS the team's Initial Base Site, route through returnTeamToInitialSite so clean home-base restoration & stock rules apply!
+    if (targetSiteId === initialBase.siteId) {
+      const homeRes = returnTeamToInitialSite(teamId, notes);
+      return {
+        success: homeRes.success,
+        message: homeRes.message,
+        pendingStockUnitsOnPrevSite: homeRes.pendingStockUnitsOnVisitingSites,
+        assignmentStatus: homeRes.assignmentStatus,
+      };
+    }
+
     if (team.assignedSiteId === targetSiteId) {
       return {
         success: false,
@@ -5305,10 +5384,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nextSiteName = nextSite?.name || 'New Site';
     const nowIso = new Date().toISOString();
 
-    // Check unreturned / pending stock on current site (or overall if legacy records lack siteId)
-    const siteSpecificPending = computeTeamSiteInHandUnits(teamId, prevSiteId);
-    const totalPending = computeTeamSiteInHandUnits(teamId);
-    const pendingUnitsOnPrevSite = siteSpecificPending > 0 ? siteSpecificPending : totalPending;
+    // Check unreturned / pending stock on the departing site specifically (never falsely attribute another site's stock to prevSiteId!)
+    const pendingOnDepartingSite = computeTeamSiteInHandUnits(teamId, prevSiteId);
+    // Also check if an earlier site still had pending clearance
+    const otherUnclearedSites = getTeamUnclearedVisitingSites(team, targetSiteId).filter(
+      (s) => s.siteId !== prevSiteId
+    );
+    const primaryUnclearedSite =
+      pendingOnDepartingSite > 0
+        ? { siteId: prevSiteId, siteName: prevSiteName, pendingUnits: pendingOnDepartingSite }
+        : otherUnclearedSites[0] || null;
+
+    const pendingUnitsOnPrevSite = primaryUnclearedSite ? primaryUnclearedSite.pendingUnits : 0;
+    const pendingClearanceSiteId = primaryUnclearedSite?.siteId;
+    const pendingClearanceSiteName = primaryUnclearedSite?.siteName;
     const cleanBase = extractBaseTeamName(team.teamName, team.baseTeamName);
 
     // Build updated assignment history
@@ -5320,7 +5409,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                   ...h,
                   status: 'Completed / Transferred' as const,
                   endedAt: nowIso,
-                  stockCleared: pendingUnitsOnPrevSite <= 0,
+                  stockCleared: pendingOnDepartingSite <= 0,
                 }
               : h
           )
@@ -5331,8 +5420,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               siteName: prevSiteName,
               assignmentType: team.assignmentStatus || 'Permanent',
               status: 'Completed / Transferred',
-              pendingStockUnitsAtTransfer: pendingUnitsOnPrevSite,
-              stockCleared: pendingUnitsOnPrevSite <= 0,
+              pendingStockUnitsAtTransfer: pendingOnDepartingSite,
+              stockCleared: pendingOnDepartingSite <= 0,
               assignedAt: team.createdAt,
               endedAt: nowIso,
               notes: `Prior assignment at ${prevSiteName}`,
@@ -5354,19 +5443,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       notes:
         notes?.trim() ||
         (pendingUnitsOnPrevSite > 0
-          ? `Temporary Assigned to - ${nextSiteName} (${pendingUnitsOnPrevSite} unit(s) pending clearance at ${prevSiteName})`
+          ? `Temporary Assigned to - ${nextSiteName} (${pendingUnitsOnPrevSite} unit(s) pending clearance at ${pendingClearanceSiteName})`
           : `Temporary Assigned to - ${nextSiteName} (0 pending stock at ${prevSiteName} — ready for permanent confirmation)`),
     };
 
     const transferUpdates: Partial<Team> = {
       baseTeamName: cleanBase,
       teamName: cleanBase, // While temporary, display base name + "Temporary Assigned to - [New Site Name]" badge
+      initialSiteId: team.initialSiteId || initialBase.siteId,
+      initialSiteName: team.initialSiteName || initialBase.siteName,
       assignedSiteId: targetSiteId,
       assignmentStatus: 'Temporary',
       previousSiteId: prevSiteId,
       previousSiteName: prevSiteName,
-      pendingClearanceSiteId: pendingUnitsOnPrevSite > 0 ? prevSiteId : undefined,
-      pendingClearanceSiteName: pendingUnitsOnPrevSite > 0 ? prevSiteName : undefined,
+      pendingClearanceSiteId,
+      pendingClearanceSiteName,
       temporaryAssignedAt: nowIso,
       updatedAt: nowIso,
       siteAssignmentHistory: [...existingHistory, newHistoryEntry],
@@ -5384,21 +5475,209 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const msg =
       pendingUnitsOnPrevSite > 0
-        ? `Team "${cleanBase}" transferred as Temporary Assigned to - ${nextSiteName}. (${pendingUnitsOnPrevSite} unit(s) still pending clearance at ${prevSiteName}; will auto-promote to Permanent with Ref: ${prevSiteName} once cleared).`
+        ? `Team "${cleanBase}" transferred as Temporary Assigned to - ${nextSiteName}. (${pendingUnitsOnPrevSite} unit(s) still pending clearance at ${pendingClearanceSiteName}; will auto-promote to Permanent with Ref: ${prevSiteName} once cleared).`
         : `Team "${cleanBase}" transferred as Temporary Assigned to - ${nextSiteName} (No pending stock at ${prevSiteName}). Branch Admin or System Admin can now confirm Permanent assignment (Ref: ${prevSiteName}).`;
 
-    addAuditLog(
-      'MASTER_TEAM_UPDATED',
-      cleanBase,
-      nextSiteName,
-      msg
-    );
+    addAuditLog('MASTER_TEAM_UPDATED', cleanBase, nextSiteName, msg);
 
     return {
       success: true,
       message: msg,
       pendingStockUnitsOnPrevSite: pendingUnitsOnPrevSite,
       assignmentStatus: 'Temporary',
+    };
+  };
+
+  /**
+   * Returns a transferred team back to its Initial Base Site (Home Base).
+   * - Can be triggered by the Temporary/Visiting Site Manager or Central/Branch Admin.
+   * - Restores the team's clean original base name (`cleanBase`, NO `(Ref: ...)` suffix!) when permanent at Initial Base.
+   * - If the team has 0 unreturned stock on non-initial visiting sites (or `forceImmediatePermanent` is true),
+   *   immediately restores the team as `Permanent` at its Initial Base Site.
+   * - If the team still holds unreturned stock at the temporary/visiting site(s), moves the team back to Initial Base
+   *   in `Temporary` status with `pendingClearanceSiteId` pointing to the exact visiting site that holds unreturned stock,
+   *   and auto-promotes to `Permanent` with clean base name as soon as that visiting site stock is returned!
+   */
+  const returnTeamToInitialSite = (
+    teamId: string,
+    notes?: string,
+    forceImmediatePermanent: boolean = false
+  ): {
+    success: boolean;
+    message: string;
+    pendingStockUnitsOnVisitingSites: number;
+    assignmentStatus: 'Temporary' | 'Permanent';
+    initialSiteId: string;
+    initialSiteName: string;
+  } => {
+    const team = teams.find((t) => t.id === teamId);
+    if (!team) {
+      return {
+        success: false,
+        message: 'Selected team was not found.',
+        pendingStockUnitsOnVisitingSites: 0,
+        assignmentStatus: 'Permanent',
+        initialSiteId: '',
+        initialSiteName: '',
+      };
+    }
+
+    const initialBase = getTeamInitialBaseSite(team, sites);
+    const initialSiteId = initialBase.siteId;
+    const initialSiteName = initialBase.siteName;
+    const cleanBase = extractBaseTeamName(team.teamName, team.baseTeamName);
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const nowIso = new Date().toISOString();
+
+    const departingSiteId = team.assignedSiteId;
+    const departingSite = sites.find((s) => s.id === departingSiteId);
+    const departingSiteName = departingSite?.name || 'Temporary Site';
+    const pendingOnDepartingSite =
+      departingSiteId !== initialSiteId ? computeTeamSiteInHandUnits(teamId, departingSiteId) : 0;
+
+    // Check all non-initial visiting sites where the team might still hold unreturned stock
+    const unclearedVisitingSites = getTeamUnclearedVisitingSites(team, initialSiteId);
+    // Prioritize the departing temporary site if it has stock, otherwise any other uncleared visiting site
+    const primaryVisitingUncleared =
+      unclearedVisitingSites.find((s) => s.siteId === departingSiteId) ||
+      unclearedVisitingSites[0] ||
+      null;
+    const totalPendingOnVisitingSites = unclearedVisitingSites.reduce(
+      (sum, s) => sum + s.pendingUnits,
+      0
+    );
+
+    const canRestoreImmediatelyAsPermanent =
+      totalPendingOnVisitingSites <= 0 || forceImmediatePermanent;
+    const nextStatus: 'Permanent' | 'Temporary' = canRestoreImmediatelyAsPermanent
+      ? 'Permanent'
+      : 'Temporary';
+
+    // Close out the departing site's active history entry (or update existing active entry if already at initialSiteId)
+    const baseHistory: TeamSiteAssignmentHistoryRecord[] =
+      team.siteAssignmentHistory && team.siteAssignmentHistory.length > 0
+        ? team.siteAssignmentHistory.map((h) => {
+            if (h.status === 'Active' && h.siteId !== initialSiteId) {
+              return {
+                ...h,
+                status: 'Completed / Transferred' as const,
+                endedAt: nowIso,
+                stockCleared: pendingOnDepartingSite <= 0,
+              };
+            }
+            return h;
+          })
+        : [
+            {
+              id: `tsh-init-${Date.now()}`,
+              siteId: initialSiteId,
+              siteName: initialSiteName,
+              assignmentType: 'Permanent',
+              status: 'Completed / Transferred',
+              pendingStockUnitsAtTransfer: 0,
+              stockCleared: true,
+              assignedAt: team.createdAt,
+              endedAt: team.temporaryAssignedAt || nowIso,
+              notes: `Initial Base registration at ${initialSiteName}`,
+            },
+          ];
+
+    let finalHistory: TeamSiteAssignmentHistoryRecord[];
+    if (departingSiteId === initialSiteId) {
+      // Team was already transferred back to Initial Base (e.g. via regular transfer earlier) and is now being restored/cleaned
+      finalHistory = baseHistory.map((h) =>
+        h.status === 'Active' && h.siteId === initialSiteId
+          ? {
+              ...h,
+              assignmentType: nextStatus,
+              isReturnedToInitialBase: true,
+              previousSiteId: nextStatus === 'Permanent' ? undefined : h.previousSiteId,
+              previousSiteName: nextStatus === 'Permanent' ? undefined : h.previousSiteName,
+              stockCleared: canRestoreImmediatelyAsPermanent,
+              stockClearedAt: canRestoreImmediatelyAsPermanent ? nowIso : h.stockClearedAt,
+              promotedToPermanentAt: canRestoreImmediatelyAsPermanent ? nowIso : h.promotedToPermanentAt,
+              promotedBy: canRestoreImmediatelyAsPermanent
+                ? currentUser?.fullName || 'Branch Admin'
+                : h.promotedBy,
+              notes:
+                notes?.trim() ||
+                (canRestoreImmediatelyAsPermanent
+                  ? `Returned to Initial Base (${initialSiteName}) — Permanent status & original team name "${cleanBase}" restored`
+                  : `Returned to Initial Base (${initialSiteName}) — ${primaryVisitingUncleared?.pendingUnits || 0} unit(s) pending return at visiting site ${primaryVisitingUncleared?.siteName || ''}`),
+            }
+          : h
+      );
+    } else {
+      const returnEntry: TeamSiteAssignmentHistoryRecord = {
+        id: `tsh-ret-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        siteId: initialSiteId,
+        siteName: initialSiteName,
+        assignmentType: nextStatus,
+        status: 'Active',
+        previousSiteId: nextStatus === 'Permanent' ? undefined : departingSiteId,
+        previousSiteName: nextStatus === 'Permanent' ? undefined : departingSiteName,
+        isReturnedToInitialBase: true,
+        pendingStockUnitsAtTransfer: totalPendingOnVisitingSites,
+        stockCleared: canRestoreImmediatelyAsPermanent,
+        stockClearedAt: canRestoreImmediatelyAsPermanent ? nowIso : undefined,
+        assignedAt: nowIso,
+        assignedBy: currentUser?.fullName || 'Site Manager',
+        promotedToPermanentAt: canRestoreImmediatelyAsPermanent ? nowIso : undefined,
+        promotedBy: canRestoreImmediatelyAsPermanent
+          ? currentUser?.fullName || 'Site Manager'
+          : undefined,
+        notes:
+          notes?.trim() ||
+          (canRestoreImmediatelyAsPermanent
+            ? `Returned from ${departingSiteName} to Initial Base (${initialSiteName}) — All visiting site stock cleared; restored as Permanent "${cleanBase}"`
+            : `Returned from ${departingSiteName} to Initial Base (${initialSiteName}) — ${primaryVisitingUncleared?.pendingUnits || totalPendingOnVisitingSites} unit(s) pending clearance at ${primaryVisitingUncleared?.siteName || departingSiteName}`),
+      };
+      finalHistory = [...baseHistory, returnEntry];
+    }
+
+    const updates: Partial<Team> = {
+      baseTeamName: cleanBase,
+      teamName: cleanBase, // Always restore clean base name at Initial Base (no Ref suffix!)
+      initialSiteId,
+      initialSiteName,
+      assignedSiteId: initialSiteId,
+      assignmentStatus: nextStatus,
+      // When restored to Permanent at Initial Base, clear previousSiteId & previousSiteName so no (Ref: ...) badge/suffix is shown!
+      previousSiteId: nextStatus === 'Permanent' ? undefined : departingSiteId !== initialSiteId ? departingSiteId : team.previousSiteId,
+      previousSiteName: nextStatus === 'Permanent' ? undefined : departingSiteId !== initialSiteId ? departingSiteName : team.previousSiteName,
+      pendingClearanceSiteId: canRestoreImmediatelyAsPermanent ? undefined : primaryVisitingUncleared?.siteId,
+      pendingClearanceSiteName: canRestoreImmediatelyAsPermanent ? undefined : primaryVisitingUncleared?.siteName,
+      permanentConfirmedAt: canRestoreImmediatelyAsPermanent ? nowIso : team.permanentConfirmedAt,
+      permanentConfirmedBy: canRestoreImmediatelyAsPermanent
+        ? currentUser?.fullName || 'Site Manager'
+        : team.permanentConfirmedBy,
+      updatedAt: nowIso,
+      siteAssignmentHistory: finalHistory,
+    };
+
+    setTeams((prev) => {
+      const updated = prev.map((t) => (t.id === teamId ? { ...t, ...updates } : t));
+      saveTenantData(activeTenantId, 'teams', updated);
+      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+      if (isMaster) {
+        writeTeamsToFirebase(updated).catch(console.warn);
+      }
+      return updated;
+    });
+
+    const msg = canRestoreImmediatelyAsPermanent
+      ? `Team "${cleanBase}" returned to Initial Base Site (${initialSiteName}) and restored to PERMANENT status with its original name "${cleanBase}".`
+      : `Team "${cleanBase}" returned to Initial Base Site (${initialSiteName}) as Temporary (${primaryVisitingUncleared?.pendingUnits || totalPendingOnVisitingSites} unit(s) still held under "Stock to Return - ${primaryVisitingUncleared?.siteName || departingSiteName}"). Once cleared, it will automatically restore to Permanent "${cleanBase}" without any Ref suffix.`;
+
+    addAuditLog('MASTER_TEAM_UPDATED', cleanBase, initialSiteName, msg);
+
+    return {
+      success: true,
+      message: msg,
+      pendingStockUnitsOnVisitingSites: canRestoreImmediatelyAsPermanent ? 0 : totalPendingOnVisitingSites,
+      assignmentStatus: nextStatus,
+      initialSiteId,
+      initialSiteName,
     };
   };
 
@@ -5414,6 +5693,26 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: false, message: 'Team not found.' };
     }
 
+    const initialBase = getTeamInitialBaseSite(team, sites);
+    const isAtInitialBase = team.assignedSiteId === initialBase.siteId;
+
+    // If the team is currently at its Initial Base Site, use returnTeamToInitialSite logic so it restores cleanBase without (Ref: ...)
+    if (isAtInitialBase) {
+      const unclearedVisiting = getTeamUnclearedVisitingSites(team, initialBase.siteId);
+      const primaryVisiting = unclearedVisiting[0];
+      if (primaryVisiting && primaryVisiting.pendingUnits > 0 && !forceOverride) {
+        return {
+          success: false,
+          message: `Cannot restore "${extractBaseTeamName(team.teamName, team.baseTeamName)}" to Permanent at Initial Base (${initialBase.siteName}) yet: ${primaryVisiting.pendingUnits} unit(s) remain unreturned on visiting site (${primaryVisiting.siteName}). Return the visiting site stock first, or use Admin Force Restore.`,
+        };
+      }
+      const res = returnTeamToInitialSite(teamId, undefined, true);
+      return {
+        success: res.success,
+        message: res.message,
+      };
+    }
+
     const prevSiteId = team.pendingClearanceSiteId || team.previousSiteId;
     const prevSite = sites.find((s) => s.id === prevSiteId);
     const prevSiteName =
@@ -5421,9 +5720,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const currentSite = sites.find((s) => s.id === team.assignedSiteId);
     const currentSiteName = currentSite?.name || 'Current Site';
 
-    const pendingOnPrev = prevSiteId
-      ? computeTeamSiteInHandUnits(teamId, prevSiteId)
-      : computeTeamSiteInHandUnits(teamId);
+    const pendingOnPrev = prevSiteId ? computeTeamSiteInHandUnits(teamId, prevSiteId) : 0;
 
     if (pendingOnPrev > 0 && !forceOverride) {
       return {
@@ -5435,9 +5732,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const nowIso = new Date().toISOString();
     const cleanBase = extractBaseTeamName(team.teamName, team.baseTeamName);
-    const permanentTeamName = prevSiteName
-      ? formatPermanentTransferredTeamName(cleanBase, prevSiteName)
-      : cleanBase;
+    const permanentTeamName = formatPermanentTransferredTeamName(
+      cleanBase,
+      prevSiteName,
+      isAtInitialBase
+    );
 
     const updatedHistory: TeamSiteAssignmentHistoryRecord[] = (
       team.siteAssignmentHistory && team.siteAssignmentHistory.length > 0
@@ -5470,6 +5769,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updates: Partial<Team> = {
       baseTeamName: cleanBase,
       teamName: permanentTeamName,
+      initialSiteId: team.initialSiteId || initialBase.siteId,
+      initialSiteName: team.initialSiteName || initialBase.siteName,
       assignmentStatus: 'Permanent',
       pendingClearanceSiteId: undefined,
       pendingClearanceSiteName: undefined,
@@ -5504,11 +5805,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const teamsToPromote = teams.filter((t) => {
       if (t.isDeleted) return false;
       if (t.assignmentStatus !== 'Temporary') return false;
-      // Only auto-promote teams that were waiting on pendingClearanceSiteId stock clearance
+      const initialBase = getTeamInitialBaseSite(t, sites);
+      const isAtInitialBase = t.assignedSiteId === initialBase.siteId;
+
+      if (isAtInitialBase) {
+        // When a team is back at its Initial Base in Temporary state, auto-restore to Permanent as soon as all non-initial visiting sites have 0 pending stock!
+        const unclearedVisiting = getTeamUnclearedVisitingSites(t, initialBase.siteId);
+        return unclearedVisiting.length === 0;
+      }
+
+      // Only auto-promote visiting teams that were waiting on pendingClearanceSiteId stock clearance
       if (!t.pendingClearanceSiteId) return false;
       const remainingPrevStock = computeTeamSiteInHandUnits(t.id, t.pendingClearanceSiteId);
-      const remainingTotalStock = computeTeamSiteInHandUnits(t.id);
-      return remainingPrevStock <= 0 && remainingTotalStock <= 0;
+      return remainingPrevStock <= 0;
     });
 
     if (teamsToPromote.length === 0) return;
@@ -5520,26 +5829,35 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const match = teamsToPromote.find((tp) => tp.id === t.id);
         if (!match) return t;
         changed = true;
+        const initialBase = getTeamInitialBaseSite(t, sites);
+        const isAtInitialBase = t.assignedSiteId === initialBase.siteId;
         const prevSiteName =
           t.previousSiteName ||
           t.pendingClearanceSiteName ||
           sites.find((s) => s.id === (t.pendingClearanceSiteId || t.previousSiteId))?.name ||
           '';
         const cleanBase = extractBaseTeamName(t.teamName, t.baseTeamName);
-        const permanentName = prevSiteName
-          ? formatPermanentTransferredTeamName(cleanBase, prevSiteName)
-          : cleanBase;
+        const permanentName = formatPermanentTransferredTeamName(
+          cleanBase,
+          prevSiteName,
+          isAtInitialBase
+        );
 
         const nextHistory = (t.siteAssignmentHistory || []).map((h) => {
           if (h.status === 'Active' && h.siteId === t.assignedSiteId) {
             return {
               ...h,
               assignmentType: 'Permanent' as const,
+              isReturnedToInitialBase: isAtInitialBase || h.isReturnedToInitialBase,
+              previousSiteId: isAtInitialBase ? undefined : h.previousSiteId,
+              previousSiteName: isAtInitialBase ? undefined : h.previousSiteName,
               stockCleared: true,
               stockClearedAt: nowIso,
               promotedToPermanentAt: nowIso,
               promotedBy: 'Auto-Clearance Engine',
-              notes: `Previous site (${prevSiteName}) stock cleared — Auto-promoted to Permanent (Ref: ${prevSiteName})`,
+              notes: isAtInitialBase
+                ? `Returned to Initial Base (${initialBase.siteName}) — Visiting site stock cleared; auto-restored to Permanent "${cleanBase}"`
+                : `Previous site (${prevSiteName}) stock cleared — Auto-promoted to Permanent (Ref: ${prevSiteName})`,
             };
           }
           if (t.pendingClearanceSiteId && h.siteId === t.pendingClearanceSiteId) {
@@ -5556,7 +5874,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ...t,
           baseTeamName: cleanBase,
           teamName: permanentName,
+          initialSiteId: t.initialSiteId || initialBase.siteId,
+          initialSiteName: t.initialSiteName || initialBase.siteName,
           assignmentStatus: 'Permanent' as const,
+          previousSiteId: isAtInitialBase ? undefined : t.previousSiteId,
+          previousSiteName: isAtInitialBase ? undefined : t.previousSiteName,
           pendingClearanceSiteId: undefined,
           pendingClearanceSiteName: undefined,
           permanentConfirmedAt: nowIso,
@@ -5575,7 +5897,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return updated;
     });
-  }, [teamIssues, teamReturns, projectUsages, teams, sites, computeTeamSiteInHandUnits, currentTenantId, currentUser]);
+  }, [teamIssues, teamReturns, projectUsages, teams, sites, computeTeamSiteInHandUnits, getTeamUnclearedVisitingSites, currentTenantId, currentUser]);
 
   const updateTeam = (id: string, updates: Partial<Team>) => {
     const existingTeam = teams.find((t) => t.id === id);
@@ -9091,6 +9413,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateItem,
         updateTeam,
         transferTeamToSite,
+        returnTeamToInitialSite,
         promoteTeamAssignmentToPermanent,
         getTeamSiteInHandStock,
         updateProject,

@@ -68,8 +68,11 @@ import { ItemImageUploader } from '../common/ItemImageUploader';
 import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
 import { TeamTransferAndDetailsModal } from '../common/TeamTransferAndDetailsModal';
 import {
+  extractBaseTeamName,
   getTemporaryAssignmentBadgeLabel,
   getTeamCompleteAssignmentHistory,
+  getTeamInitialBaseSite,
+  isTeamAwayFromInitialBase,
 } from '../../utils/teamAssignmentUtils';
 
 interface MasterRegistrationsViewProps {
@@ -113,6 +116,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     getTeamInHandStock,
     getTeamSiteInHandStock,
     transferTeamToSite,
+    returnTeamToInitialSite,
     promoteTeamAssignmentToPermanent,
     teamIssues,
     projectUsages,
@@ -3116,6 +3120,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     .join('');
 
                   const isTemp = t.assignmentStatus === 'Temporary';
+                  const initialBase = getTeamInitialBaseSite(t, activeSites);
+                  const isAtInitialBase = t.assignedSiteId === initialBase.siteId;
+                  const isAwayFromHomeBase = isTeamAwayFromInitialBase(t, activeSites);
+                  const cleanBaseName = extractBaseTeamName(t.teamName, t.baseTeamName);
                   const prevSiteId = t.pendingClearanceSiteId || t.previousSiteId;
                   const prevSiteObj = prevSiteId ? activeSites.find((st) => st.id === prevSiteId) : undefined;
                   const prevSiteName = t.pendingClearanceSiteName || t.previousSiteName || prevSiteObj?.name;
@@ -3127,7 +3135,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     isSuperAdmin(currentUser.role) ||
                     isCentralOrAllSiteAdmin(currentUser.role) ||
                     normalizeRole(currentUser.role) === 'Branch Admin' ||
-                    currentUser.username === 'admin';
+                    currentUser.username === 'admin' ||
+                    (s ? isUserAssignedToSite(currentUser, s, activeSites) : false);
 
                   return (
                     <div
@@ -3160,9 +3169,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 <span className="font-mono tabular-nums text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
                                   SQ-{String(idx + 1).padStart(4, '0')}
                                 </span>
+                                <span aria-hidden="true">·</span>
+                                <span className="text-[10px] font-bold text-sky-700 dark:text-sky-400">
+                                  Initial Base: {initialBase.siteName}
+                                </span>
                               </div>
                               <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
-                                {t.teamName}
+                                {isAtInitialBase ? cleanBaseName : t.teamName}
                               </h3>
                               {hasTeamReceivedAnyStock(t.id) && (
                                 <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300">
@@ -3193,6 +3206,18 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             >
                               <History className="w-3.5 h-3.5" />
                             </button>
+                            {isAwayFromHomeBase && canPromote && (
+                              <button
+                                onClick={() => {
+                                  const res = returnTeamToInitialSite(t.id);
+                                  showToast(res.message);
+                                }}
+                                className="p-1.5 rounded-lg text-sky-700 dark:text-sky-400 hover:text-sky-900 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors cursor-pointer"
+                                title={`Return Team to Initial Base Site (${initialBase.siteName})`}
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               onClick={() => setTeamModalState({ teamId: t.id, tab: 'transfer' })}
                               className="p-1.5 rounded-lg text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
@@ -3225,56 +3250,117 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                                 {getTemporaryAssignmentBadgeLabel(s?.name || 'New Site')}
                               </span>
-                              {prevSiteName && (
+                              {!isAtInitialBase && prevSiteName && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-900/70 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800">
                                   Previous Site: {prevSiteName}
                                 </span>
                               )}
                             </div>
 
-                            {prevSitePendingUnits > 0 ? (
-                              <div className="flex items-start gap-2 text-[11px] text-rose-800 dark:text-rose-300 bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 rounded-xl p-2">
-                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                                <div>
-                                  <strong>{formatNumber(prevSitePendingUnits)} Units Unreturned</strong> on{' '}
-                                  <strong>{prevSiteName || 'Previous Site'}</strong>. Once cleared, this assignment automatically promotes to{' '}
-                                  <strong>Permanent (Ref: {prevSiteName})</strong>.
-                                </div>
-                              </div>
-                            ) : (
+                            {isAtInitialBase ? (
                               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                                 <span className="text-[11px] text-amber-900/90 dark:text-amber-300/90 font-medium">
-                                  {prevSiteName
-                                    ? `0 pending stock on ${prevSiteName}. Ready to confirm as Permanent.`
-                                    : 'Temporary assignment ready for Permanent confirmation.'}
+                                  Back at Initial Base ({initialBase.siteName}). Restore Permanent status as &ldquo;{cleanBaseName}&rdquo; (no Ref suffix).
                                 </span>
                                 {canPromote && (
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const res = promoteTeamAssignmentToPermanent(t.id);
+                                      const res = returnTeamToInitialSite(t.id, undefined, true);
                                       showToast(res.message);
                                     }}
                                     className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shadow-xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
                                   >
                                     <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>
-                                      Confirm Permanent{prevSiteName ? ` (Ref: ${prevSiteName})` : ''}
-                                    </span>
+                                    <span>Restore Permanent ({cleanBaseName})</span>
                                   </button>
+                                )}
+                              </div>
+                            ) : prevSitePendingUnits > 0 ? (
+                              <div className="space-y-2">
+                                <div className="flex items-start gap-2 text-[11px] text-rose-800 dark:text-rose-300 bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 rounded-xl p-2">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                                  <div>
+                                    <strong>{formatNumber(prevSitePendingUnits)} Units Unreturned</strong> on{' '}
+                                    <strong>{prevSiteName || 'Previous Site'}</strong>. Once cleared, this assignment automatically promotes to{' '}
+                                    <strong>Permanent (Ref: {prevSiteName})</strong>.
+                                  </div>
+                                </div>
+                                {isAwayFromHomeBase && canPromote && (
+                                  <div className="flex justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const res = returnTeamToInitialSite(t.id);
+                                        showToast(res.message);
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-extrabold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                      <span>Return to Initial Site ({initialBase.siteName})</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <span className="text-[11px] text-amber-900/90 dark:text-amber-300/90 font-medium">
+                                  {prevSiteName
+                                    ? `0 pending stock on ${prevSiteName}. Ready to confirm as Permanent or Return to Initial Base.`
+                                    : 'Temporary assignment ready for Permanent confirmation.'}
+                                </span>
+                                {canPromote && (
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {isAwayFromHomeBase && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const res = returnTeamToInitialSite(t.id);
+                                          showToast(res.message);
+                                        }}
+                                        className="px-2.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-extrabold shadow-xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        <span>Return to Initial Site ({initialBase.siteName})</span>
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const res = promoteTeamAssignmentToPermanent(t.id);
+                                        showToast(res.message);
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shadow-xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>
+                                        Confirm Permanent{prevSiteName ? ` (Ref: ${prevSiteName})` : ''}
+                                      </span>
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             )}
                           </div>
-                        ) : t.previousSiteName ? (
+                        ) : !isAtInitialBase && t.previousSiteName ? (
                           <div className="mt-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
                             <span className="inline-flex items-center gap-1.5 font-extrabold text-emerald-800 dark:text-emerald-300">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                              Permanent Assignment — {s?.name || 'Site'}
+                              Permanent Assignment — {s?.name || 'Site'} (Ref: {t.previousSiteName})
                             </span>
-                            <span className="font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/50">
-                              Ref: {t.previousSiteName}
-                            </span>
+                            {canPromote && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const res = returnTeamToInitialSite(t.id);
+                                  showToast(res.message);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-extrabold transition flex items-center gap-1 cursor-pointer"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Return to Initial Site ({initialBase.siteName})</span>
+                              </button>
+                            )}
                           </div>
                         ) : null}
 

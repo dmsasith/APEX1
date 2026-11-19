@@ -259,6 +259,7 @@ export interface TeamSiteAssignmentHistoryRecord {
   status: 'Active' | 'Completed / Transferred';
   previousSiteId?: string;
   previousSiteName?: string;
+  isReturnedToInitialBase?: boolean;
   pendingStockUnitsAtTransfer?: number;
   stockCleared?: boolean;
   stockClearedAt?: string;
@@ -276,6 +277,8 @@ export interface Team {
   baseTeamName?: string; // Original base team name without (Ref: ...) suffix
   teamLeaderName: string;
   teamLeaderIdNumber?: string; // Leader NIC or Worker ID Number
+  initialSiteId?: string; // Original / Home Base site ID where team was initially registered
+  initialSiteName?: string; // Original / Home Base site name
   assignedSiteId: string;
   assignmentStatus?: 'Permanent' | 'Temporary'; // Current site assignment state
   previousSiteId?: string; // Prior registered site ID before transfer
