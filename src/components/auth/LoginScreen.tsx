@@ -131,10 +131,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="hidden md:flex items-center gap-1.5 bg-white/90 border border-slate-200/80 rounded-xl px-3.5 py-1.5 shadow-2xs">
-              <span className="text-emerald-600 font-bold">◆</span>
-              <span className="font-bold text-slate-800 text-[11px] tracking-tight">
+          <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
+            <div className="hidden md:flex items-center gap-1.5 bg-white/90 border border-slate-200/80 rounded-xl px-3 py-1.5 shadow-2xs max-w-full min-w-0">
+              <span className="text-emerald-600 font-bold shrink-0">◆</span>
+              <span className="font-bold text-slate-800 text-[11px] tracking-tight leading-tight break-words">
                 Apex Developer | System Developed By Sasith Dissanayake
               </span>
             </div>

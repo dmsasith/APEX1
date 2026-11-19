@@ -238,9 +238,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
     <>
       <header className="sticky top-0 z-30 bg-slate-200/80 backdrop-blur-xl text-slate-900 border-b border-slate-300/85 shadow-[0_8px_28px_-10px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,0.75)]">
         {/* Main Top Liquid Glass Bar - Aligned to exact same 1600px grid as Workspace */}
-        <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 min-h-[60px] flex items-center justify-between gap-4">
+        <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 min-h-[60px] flex items-center justify-between gap-3 xl:gap-4">
           {/* Zone 1: Company & System Identity (Left-aligned with Sidebar) */}
-          <div className="flex items-center gap-3.5 min-w-0">
+          <div className="flex items-center gap-3.5 min-w-0 flex-1">
             {isCentralAdmin ? (
               <button
                 type="button"
@@ -324,12 +324,12 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
           </div>
 
           {/* Zone 2: Liquid Glass Action Controls & Status (Right-aligned with Main Workspace) */}
-          <div className="hidden lg:flex items-center gap-2 text-xs shrink-0">
+          <div className="hidden lg:flex flex-wrap items-center justify-end gap-1.5 xl:gap-2 text-xs min-w-0">
             {onReturnToGateway && authUser.username === 'admin' && (
               <button
                 type="button"
                 onClick={onReturnToGateway}
-                className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/90 hover:bg-white text-teal-800 border border-slate-200/90 shadow-2xs transition cursor-pointer"
+                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/90 hover:bg-white text-teal-800 border border-slate-200/90 shadow-2xs transition cursor-pointer"
                 title="Return to Developer Portal Gateway"
               >
                 <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -348,7 +348,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 <button
                   type="button"
                   onClick={() => setShowSubscriptionModal(true)}
-                  className={`h-9 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-bold whitespace-nowrap border transition cursor-pointer shadow-2xs ${
+                  className={`h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap border transition cursor-pointer shadow-2xs ${
                     sub.status === 'trialing'
                       ? 'bg-amber-50/90 hover:bg-amber-100/80 border-amber-300 text-amber-900'
                       : 'bg-emerald-50/90 hover:bg-emerald-100/80 border-emerald-300 text-emerald-900'
@@ -366,7 +366,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 <button
                   type="button"
                   onClick={() => setShowEmailVerifyModal(true)}
-                  className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-100/90 hover:bg-amber-200/70 border border-amber-300 text-amber-900 transition cursor-pointer shadow-2xs"
+                  className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-100/90 hover:bg-amber-200/70 border border-amber-300 text-amber-900 transition cursor-pointer shadow-2xs"
                   title="Verify Email"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -386,7 +386,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
             {pendingRequestsCount > 0 && (
               <button
                 onClick={onOpenPendingRequests}
-                className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl whitespace-nowrap bg-amber-50/90 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold transition-colors cursor-pointer shadow-2xs"
+                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl whitespace-nowrap bg-amber-50/90 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold transition-colors cursor-pointer shadow-2xs"
               >
                 <Bell className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span>{pendingRequestsCount} Pending</span>
@@ -396,7 +396,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
             {recycleBinCount > 0 && (
               <button
                 onClick={onOpenRecycleBin}
-                className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 border border-rose-200 text-rose-800 font-bold transition-colors cursor-pointer shadow-2xs"
+                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 border border-rose-200 text-rose-800 font-bold transition-colors cursor-pointer shadow-2xs"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                 <span>{recycleBinCount} in Bin</span>
@@ -428,10 +428,10 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
 
         {/* Row 2: Sub-Bar (Aligned to exact same 1600px grid as Row 1 & Workspace) */}
         <div className="bg-slate-300/45 border-t border-slate-300/80">
-          <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 xl:gap-3 text-xs text-slate-600">
             {/* Active User Controls (Left-aligned with Logo & Sidebar) */}
-            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-              <div className="h-8 flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-2.5 text-xs shadow-2xs">
+            <div className="flex items-center gap-2 min-w-0 max-w-full flex-wrap">
+              <div className="h-8 flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-2.5 text-xs shadow-2xs max-w-full min-w-0">
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(true)}
@@ -445,7 +445,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                     <select
                       value={currentUser.id}
                       onChange={(e) => setViewAsUser(activeUsers.find((u) => u.id === e.target.value)!)}
-                      className="bg-transparent text-slate-900 font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[165px]"
+                      className="bg-transparent text-slate-900 font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[130px] 2xl:max-w-[165px]"
                     >
                       {activeUsers.map((u) => (
                         <option key={u.id} value={u.id} className="bg-white text-slate-900">
@@ -454,7 +454,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                       ))}
                     </select>
                   ) : (
-                    <span className="font-bold text-slate-900 text-xs truncate max-w-[165px]">
+                    <span className="font-bold text-slate-900 text-xs truncate max-w-[140px] 2xl:max-w-[175px]">
                       {currentUser?.fullName} ({currentUser?.role})
                     </span>
                   )}
@@ -462,7 +462,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                   <button
                     type="button"
                     onClick={() => setShowProfileModal(true)}
-                    className="text-[11px] text-emerald-700 hover:text-emerald-600 font-bold cursor-pointer hover:underline whitespace-nowrap"
+                    className="text-[11px] text-emerald-700 hover:text-emerald-600 font-bold cursor-pointer hover:underline whitespace-nowrap shrink-0"
                   >
                     Edit Profile
                   </button>
@@ -472,7 +472,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               <button
                 type="button"
                 onClick={logout}
-                className="group h-8 flex items-center gap-1.5 px-3.5 rounded-xl bg-white/95 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200/90 hover:border-rose-200 font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap"
+                className="group h-8 flex items-center gap-1.5 px-3 rounded-xl bg-white/95 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200/90 hover:border-rose-200 font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap shrink-0"
                 title="Log Out"
               >
                 <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 shrink-0 transition-colors" />
@@ -480,13 +480,13 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               </button>
             </div>
 
-            {/* Status & Scope (Right-aligned with Action Buttons & Main Workspace) */}
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {/* Status, Scope & Developer Credit (Wraps cleanly inside container so nothing clips at laptop edges) */}
+            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 xl:gap-2 min-w-0 max-w-full">
               {config.barcodeEnabled !== false && (
                 <button
                   type="button"
                   onClick={() => setShowBarcodeLookupModal(true)}
-                  className="h-8 flex items-center gap-1.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap"
+                  className="h-8 flex items-center gap-1.5 px-2.5 xl:px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap shrink-0"
                   title="Scan Barcode via USB Gun or Mobile Phone Camera to check live stock"
                 >
                   <Barcode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -494,24 +494,28 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 </button>
               )}
 
-              <div className="h-8 flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-3 text-slate-600 shadow-2xs whitespace-nowrap">
+              <div
+                className="h-8 flex items-center gap-1.5 xl:gap-2 bg-white border border-slate-200/90 rounded-xl px-2.5 xl:px-3 text-slate-600 shadow-2xs min-w-0 max-w-full whitespace-nowrap"
+                title={`Scope: ${activeSiteName} · Role: ${currentUser.role}`}
+              >
                 <Layers className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>
+                <span className="truncate max-w-[145px] 2xl:max-w-[220px]">
                   Scope: <strong className="text-slate-900">{activeSiteName}</strong>
                 </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
-                <span>
+                <span aria-hidden="true" className="text-slate-300 shrink-0">·</span>
+                <span className="truncate max-w-[125px] 2xl:max-w-none">
                   Role: <strong className="text-emerald-700">{currentUser.role}</strong>
                 </span>
               </div>
 
-              <div className="h-8 flex items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-3 text-xs shadow-2xs whitespace-nowrap">
+              <div className="h-8 flex items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-2.5 text-xs shadow-2xs whitespace-nowrap shrink-0">
                 <Palette className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="text-[11px] text-slate-500 font-medium">Glass Tone:</span>
+                <span className="text-[11px] text-slate-500 font-medium hidden 2xl:inline">Glass Tone:</span>
+                <span className="text-[11px] text-slate-500 font-medium 2xl:hidden">Tone:</span>
                 <select
                   value={currentThemeId}
                   onChange={(e) => updateConfig({ themeId: e.target.value, logoColor: e.target.value })}
-                  className="bg-transparent text-slate-900 text-xs font-bold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-slate-900 text-xs font-bold focus:outline-none cursor-pointer max-w-[100px] 2xl:max-w-none truncate"
                 >
                   {Object.entries(APP_THEMES).map(([key, t]) => (
                     <option key={key} value={key} className="bg-white text-slate-900">
@@ -521,9 +525,14 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 </select>
               </div>
 
-              <div className="hidden xl:flex h-8 items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-3 text-[11px] font-bold text-slate-800 shadow-2xs whitespace-nowrap">
-                <span className="text-emerald-600">◆</span>
-                <span>Apex Developer | System Developed By Sasith Dissanayake</span>
+              <div
+                className="flex min-h-8 items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-2.5 xl:px-3 py-1 text-[11px] font-bold text-slate-800 shadow-2xs max-w-full"
+                title="Apex Developer | System Developed By Sasith Dissanayake"
+              >
+                <span className="text-emerald-600 shrink-0">◆</span>
+                <span className="leading-tight break-words sm:whitespace-nowrap">
+                  Apex Developer | System Developed By Sasith Dissanayake
+                </span>
               </div>
             </div>
           </div>
