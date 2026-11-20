@@ -45,12 +45,15 @@ export const SiteInventoriesView: React.FC = () => {
     activeSites,
     items,
     activeItems,
+    projects,
     getSiteItemStock,
     currentUser,
     stockRequests,
     acceptStockRequest,
     projectUsages,
     teams,
+    teamIssues,
+    teamReturns,
     clientFreeIssues,
     getClientFreeStockBalance,
   } = useStock();
@@ -72,6 +75,7 @@ export const SiteInventoriesView: React.FC = () => {
   }, [branchSites, selectedSiteId]);
   const [activeSection, setActiveSection] = useState<'inventory' | 'foc-materials' | 'history'>('inventory');
   const [expandedSiteTraceItemId, setExpandedSiteTraceItemId] = useState<string | null>(null);
+  const [expandedFocTabTraceItemId, setExpandedFocTabTraceItemId] = useState<string | null>(null);
 
   const selectedSite = activeSites.find((s) => s.id === selectedSiteId) || sites.find((s) => s.id === selectedSiteId);
 
@@ -86,22 +90,188 @@ export const SiteInventoriesView: React.FC = () => {
     );
   }, [stockRequests, selectedSiteId]);
 
-  // Site-Specific Direct FOC Client Materials Vouchers
+  // Site-Specific Direct or Assigned FOC Client Materials Vouchers
   const siteFocMaterials = useMemo(() => {
     if (!selectedSite) return [];
     return (clientFreeIssues || []).filter((v) => {
       if (v.isDeleted) return false;
-      const matchLocation = v.storageLocation && v.storageLocation.trim().toLowerCase() === selectedSite.name.trim().toLowerCase();
-      return matchLocation;
+      const matchAssignedSite = v.assignedSiteId === selectedSite.id;
+      const matchLocation =
+        v.storageLocation &&
+        v.storageLocation.trim().toLowerCase() === selectedSite.name.trim().toLowerCase();
+      const proj = (projects || []).find((p) => p.id === v.projectId || p.id === v.parentProjectId);
+      const matchProjectSite = proj?.siteId === selectedSite.id;
+      return matchAssignedSite || matchLocation || matchProjectSite;
     });
-  }, [clientFreeIssues, selectedSite]);
+  }, [clientFreeIssues, selectedSite, projects]);
 
   const totalSiteFocRecordsCount = siteFocRequests.length + siteFocMaterials.length;
-  
+
+  // Per-Item 5-Stage Standard Reconciliation Metrics at this Site Branch
+  const siteItemReconciliationMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        stage1InitialCentralFoc: number;
+        centralFocPoolRemaining: number;
+        stage2SiteFocIssued: number;
+        stage2SiteNormalIssued: number;
+        stage2TotalSiteReceived: number;
+        stage3TeamIssued: number;
+        stage3TeamReturnedGood: number;
+        stage3TeamReturnedDamaged: number;
+        stage3TeamInHand: number;
+        stage4Used: number;
+        stage4Wastage: number;
+        stage4TotalConsumed: number;
+        stage5SiteFocReturnableBalance: number;
+        stage5TotalClientReturnableBalance: number;
+        stage5SiteNormalBalance: number;
+        hasCentralFoc: boolean;
+        primaryFocProjectId?: string;
+        primaryFocProjectName?: string;
+      }
+    >();
+
+    if (!selectedSiteId) return map;
+
+    const siteProjects = (projects || []).filter((p) => !p.isDeleted && p.siteId === selectedSiteId);
+    const siteProjectFamilyIds = new Set<string>(siteProjects.map((p) => p.id));
+    (projects || [])
+      .filter((p) => !p.isDeleted && p.parentProjectId && siteProjectFamilyIds.has(p.parentProjectId))
+      .forEach((sp) => siteProjectFamilyIds.add(sp.id));
+
+    activeItems.forEach((item) => {
+      const sStock = getSiteItemStock(selectedSiteId, item.id);
+
+      // 1. Initial FOC Receipt at Central Stock for projects allocated to this site
+      let stage1InitialCentralFoc = 0;
+      let primaryFocProjectId: string | undefined;
+      let primaryFocProjectName: string | undefined;
+
+      (clientFreeIssues || [])
+        .filter((f) => {
+          if (f.isDeleted) return false;
+          const hasItm = (f.items || []).some((i) => i.itemId === item.id && Number(i.quantity) > 0);
+          if (!hasItm) return false;
+          const fProj = (projects || []).find((p) => p.id === f.projectId || p.id === f.parentProjectId);
+          const effectiveSiteId = f.assignedSiteId || fProj?.siteId;
+          if (effectiveSiteId === selectedSiteId || siteProjectFamilyIds.has(f.projectId)) return true;
+          return siteFocRequests.some(
+            (req) =>
+              (req.focProjectId === f.projectId ||
+                (f.parentProjectId && req.focProjectId === f.parentProjectId) ||
+                req.requestCategory === 'foc') &&
+              req.items.some((ri) => ri.itemId === item.id)
+          );
+        })
+        .forEach((f) => {
+          const row = (f.items || []).find((i) => i.itemId === item.id);
+          if (row && Number(row.quantity) > 0) {
+            stage1InitialCentralFoc += Number(row.quantity);
+            if (!primaryFocProjectId) {
+              primaryFocProjectId = f.projectId;
+              primaryFocProjectName = f.projectName;
+            }
+          }
+        });
+
+      // 2. Site Issue (Central -> Site)
+      const stage2SiteFocIssued = sStock.focReceived;
+      const stage2SiteNormalIssued = sStock.normalReceived;
+      const stage2TotalSiteReceived = sStock.received;
+
+      if (stage2SiteFocIssued > 0 && stage1InitialCentralFoc === 0) {
+        stage1InitialCentralFoc = stage2SiteFocIssued;
+      }
+
+      const centralFocPoolRemaining = Math.max(0, stage1InitialCentralFoc - stage2SiteFocIssued);
+
+      // 3. Team Issue (Site -> Field Teams)
+      const stage3TeamIssued = sStock.issued;
+      const stage3TeamReturnedGood = sStock.returned;
+      const stage3TeamReturnedDamaged = (teamReturns || [])
+        .filter(
+          (ret) =>
+            ret.siteId === selectedSiteId &&
+            ret.itemId === item.id &&
+            ret.condition === 'Damaged / Scrap'
+        )
+        .reduce((s, r) => s + Number(r.quantity || 0), 0);
+
+      // 4. Usage & Wastage at this Site
+      let stage4Used = 0;
+      let stage4Wastage = 0;
+      (projectUsages || [])
+        .filter((u) => !u.isDeleted && u.siteId === selectedSiteId)
+        .forEach((u) => {
+          const row = (u.items || []).find((i) => i.itemId === item.id);
+          if (row) {
+            stage4Used += Number(row.quantity || 0);
+            stage4Wastage += Number(row.wastageQuantity || 0);
+          }
+        });
+      stage4Wastage += stage3TeamReturnedDamaged;
+      const stage4TotalConsumed = stage4Used + stage4Wastage;
+
+      const stage3TeamInHand = Math.max(
+        0,
+        stage3TeamIssued - stage3TeamReturnedGood - stage4TotalConsumed
+      );
+
+      // 5. Balance / Returnable Stock on Project Completion
+      const focConsumedAtSite =
+        stage2SiteFocIssued > 0 ? Math.min(stage2SiteFocIssued, stage4TotalConsumed) : 0;
+      const stage5SiteFocReturnableBalance = Math.max(0, stage2SiteFocIssued - focConsumedAtSite);
+      const stage5TotalClientReturnableBalance = Math.max(
+        0,
+        stage1InitialCentralFoc - focConsumedAtSite
+      );
+      const normalConsumedAtSite = Math.max(0, stage4TotalConsumed - focConsumedAtSite);
+      const stage5SiteNormalBalance = Math.max(0, stage2SiteNormalIssued - normalConsumedAtSite);
+
+      const hasCentralFoc = stage2SiteFocIssued > 0 || stage1InitialCentralFoc > 0;
+
+      map.set(item.id, {
+        stage1InitialCentralFoc,
+        centralFocPoolRemaining,
+        stage2SiteFocIssued,
+        stage2SiteNormalIssued,
+        stage2TotalSiteReceived,
+        stage3TeamIssued,
+        stage3TeamReturnedGood,
+        stage3TeamReturnedDamaged,
+        stage3TeamInHand,
+        stage4Used,
+        stage4Wastage,
+        stage4TotalConsumed,
+        stage5SiteFocReturnableBalance,
+        stage5TotalClientReturnableBalance,
+        stage5SiteNormalBalance,
+        hasCentralFoc,
+        primaryFocProjectId,
+        primaryFocProjectName,
+      });
+    });
+
+    return map;
+  }, [
+    selectedSiteId,
+    projects,
+    activeItems,
+    getSiteItemStock,
+    clientFreeIssues,
+    siteFocRequests,
+    teamReturns,
+    projectUsages,
+  ]);
+
   // Inventory filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [stockScopeFilter, setStockScopeFilter] = useState<'allocated' | 'all' | 'low-stock'>('allocated');
+  const [stockScopeFilter, setStockScopeFilter] = useState<
+    'allocated' | 'central-foc' | 'low-stock' | 'all'
+  >('allocated');
 
   // History voucher filter states
   const [historySearch, setHistorySearch] = useState('');
@@ -212,9 +382,15 @@ export const SiteInventoriesView: React.FC = () => {
     if (!selectedSiteId) return 0;
     return activeItems.filter((i) => {
       const s = getSiteItemStock(selectedSiteId, i.id);
-      return s.hasActivity || s.availableBalance > 0;
+      const rec = siteItemReconciliationMap.get(i.id);
+      return s.hasActivity || s.availableBalance > 0 || Boolean(rec?.hasCentralFoc);
     }).length;
-  }, [selectedSiteId, activeItems, getSiteItemStock]);
+  }, [selectedSiteId, activeItems, getSiteItemStock, siteItemReconciliationMap]);
+
+  const siteCentralFocItemsCount = useMemo(() => {
+    if (!selectedSiteId) return 0;
+    return activeItems.filter((i) => siteItemReconciliationMap.get(i.id)?.hasCentralFoc).length;
+  }, [selectedSiteId, activeItems, siteItemReconciliationMap]);
 
   const siteLowStockCount = useMemo(() => {
     if (!selectedSiteId) return 0;
@@ -233,7 +409,16 @@ export const SiteInventoriesView: React.FC = () => {
     if (!matchesSearch || !matchesCategory) return false;
 
     const stock = getSiteItemStock(selectedSiteId, item.id);
-    if (stockScopeFilter === 'allocated' && !stock.hasActivity && stock.availableBalance <= 0) {
+    const rec = siteItemReconciliationMap.get(item.id);
+    if (
+      stockScopeFilter === 'allocated' &&
+      !stock.hasActivity &&
+      stock.availableBalance <= 0 &&
+      !rec?.hasCentralFoc
+    ) {
+      return false;
+    }
+    if (stockScopeFilter === 'central-foc' && !rec?.hasCentralFoc) {
       return false;
     }
     if (stockScopeFilter === 'low-stock' && !stock.isLowStock) {
@@ -243,26 +428,40 @@ export const SiteInventoriesView: React.FC = () => {
     return true;
   });
 
+  const siteFocItemsList = useMemo(
+    () => activeItems.filter((i) => siteItemReconciliationMap.get(i.id)?.hasCentralFoc),
+    [activeItems, siteItemReconciliationMap]
+  );
+
   const exportSiteInventoryCsv = () => {
     if (!selectedSite) return;
     const rows = filteredItems.map((item) => {
       const stock = getSiteItemStock(selectedSite.id, item.id);
+      const rec = siteItemReconciliationMap.get(item.id);
       return {
         'Site Name': selectedSite.name,
         Supervisor: selectedSite.supervisorName,
         'Item Code': item.itemCode,
         'Item Name': item.itemName,
+        'Stock Source': rec?.hasCentralFoc ? 'Central FOC + Site Stock' : 'Normal HQ Stock',
         Category: item.category,
         Unit: item.unit,
-        'Total Received (Transfers)': stock.received,
-        'Total Returned (Restocked)': stock.returned,
-        'Total Issued (Field Teams)': stock.issued,
-        'Available Balance': stock.availableBalance,
+        '1. Initial Central FOC Receipt': rec?.stage1InitialCentralFoc || 0,
+        '2a. Site Issue (Central FOC)': stock.focReceived,
+        '2b. Site Issue (Normal HQ)': stock.normalReceived,
+        '2c. Total Site Received': stock.received,
+        '3. Team Issue (Field Teams)': stock.issued,
+        'Team Returned (Restocked)': stock.returned,
+        '4a. Field Usage (Installed)': rec?.stage4Used || 0,
+        '4b. Field Wastage': rec?.stage4Wastage || 0,
+        '5a. Site FOC Returnable Balance': rec?.stage5SiteFocReturnableBalance || 0,
+        '5b. Total Client Returnable (Site + Central)': rec?.stage5TotalClientReturnableBalance || 0,
+        'Available Physical Site Yard Stock': stock.availableBalance,
         'Min Threshold': stock.threshold,
         'Low Stock Status': stock.isLowStock ? 'LOW STOCK' : 'Adequate',
       };
     });
-    exportToCsv(`${selectedSite.name.replace(/\s+/g, '_')}_Inventory`, rows);
+    exportToCsv(`${selectedSite.name.replace(/\s+/g, '_')}_Inventory_Reconciliation`, rows);
   };
 
   const exportSiteUsageHistoryCsv = () => {
@@ -305,15 +504,19 @@ export const SiteInventoriesView: React.FC = () => {
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
           <div className="space-y-1.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold tracking-wider uppercase">
-              <span>Branch Custody & Audit</span>
+              <span>Branch Custody &amp; Standard 5-Stage Reconciliation</span>
               <span aria-hidden="true" className="text-emerald-400/50">·</span>
-              <span className="text-emerald-200">Site Yard Balances & Usage Vouchers</span>
+              <span className="text-indigo-200">Central FOC Clearly Identified</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Site Branch Stock & Material Usage History
+              Site Branch Stock &amp; Material Reconciliation
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Live inventory ledger per site branch: view active yard balances and track site-specific material consumption vouchers logged by field teams.
+              Standard reconciliation sequence across site branches:{' '}
+              <strong>
+                1. FOC Central Stock Receipt → 2. Site Issue → 3. Team Issue → 4. Usage &amp; Wastage → 5. Balance / Returnable Stock on Completion
+              </strong>{' '}
+              with distinct <strong>Central FOC</strong> visual identification.
             </p>
           </div>
 
@@ -358,7 +561,7 @@ export const SiteInventoriesView: React.FC = () => {
           ))}
         </div>
 
-        {/* View Section Tabs (Live Stock vs Usage History) */}
+        {/* View Section Tabs (Live Stock vs FOC Reconciliation vs Usage History) */}
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
           <button
             type="button"
@@ -378,12 +581,12 @@ export const SiteInventoriesView: React.FC = () => {
             onClick={() => setActiveSection('foc-materials')}
             className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSection === 'foc-materials'
-                ? 'bg-white text-indigo-950 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                : 'text-indigo-800 hover:bg-indigo-50'
             }`}
           >
-            <span className="text-indigo-600">🎁</span>
-            <span>Client FOC Materials ({totalSiteFocRecordsCount})</span>
+            <span>🎁</span>
+            <span>Central FOC Materials ({siteCentralFocItemsCount || totalSiteFocRecordsCount})</span>
           </button>
 
           <button
@@ -417,9 +620,19 @@ export const SiteInventoriesView: React.FC = () => {
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-700 shadow-2xs">
           <div>
             <span className="font-bold text-slate-900 text-sm">{selectedSite.name}</span>
-            <div className="mt-0.5 text-slate-600">Location: {selectedSite.location} · Supervisor: <strong className="text-slate-800">{selectedSite.supervisorName}</strong></div>
+            <div className="mt-0.5 text-slate-600">
+              Location: {selectedSite.location} · Supervisor: <strong className="text-slate-800">{selectedSite.supervisorName}</strong>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {siteCentralFocItemsCount > 0 && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold">
+                <span className="px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-extrabold uppercase">
+                  Central FOC
+                </span>
+                <span>{siteCentralFocItemsCount} FOC Item(s) Active at Site</span>
+              </div>
+            )}
             <div className="text-slate-600">
               Active Field Teams: <strong className="text-slate-900 font-mono">{siteActiveTeamsList.length}</strong>
             </div>
@@ -456,70 +669,82 @@ export const SiteInventoriesView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {incomingShipments.map((req) => (
-                  <div
-                    key={req.id}
-                    className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-xs flex flex-col justify-between space-y-3"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                          {req.requestNoteNumber}
-                        </span>
-                        <span className="text-[11px] text-slate-500 font-mono">
-                          {formatDateTime(req.approvalDate || req.requestedDate)}
-                        </span>
+                {incomingShipments.map((req) => {
+                  const isFocShipment = req.requestCategory === 'foc' || Boolean(req.focProjectId);
+                  return (
+                    <div
+                      key={req.id}
+                      className={`bg-white border rounded-lg p-3.5 shadow-xs flex flex-col justify-between space-y-3 ${
+                        isFocShipment ? 'border-indigo-300 ring-1 ring-indigo-500/20' : 'border-slate-200'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              {req.requestNoteNumber}
+                            </span>
+                            {isFocShipment && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-600 text-white uppercase">
+                                Central FOC
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {formatDateTime(req.approvalDate || req.requestedDate)}
+                          </span>
+                        </div>
+
+                        <div className="mt-2 space-y-1">
+                          <div className="text-xs font-semibold text-slate-700">Dispatched Materials:</div>
+                          <div className="space-y-1 bg-slate-50 p-2 rounded border border-slate-100">
+                            {req.items.map((row) => {
+                              const itm = items.find((i) => i.id === row.itemId);
+                              const apprv = row.approvedQty ?? row.requestedQty;
+                              return (
+                                <div key={row.itemId} className="flex items-center justify-between text-xs text-slate-800">
+                                  <span className="truncate max-w-[200px]" title={itm?.itemName}>
+                                    <strong className="font-mono">{itm?.itemCode}</strong> · {itm?.itemName}
+                                  </span>
+                                  <span className="font-mono font-bold text-emerald-700 shrink-0 ml-2">
+                                    +{apprv} {itm?.unit}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {req.approvalNotes && (
+                          <div className="text-[11px] text-slate-500 italic mt-1.5 truncate" title={req.approvalNotes}>
+                            Dispatch Note: &ldquo;{req.approvalNotes}&rdquo;
+                          </div>
+                        )}
                       </div>
 
-                      <div className="mt-2 space-y-1">
-                        <div className="text-xs font-semibold text-slate-700">Dispatched Materials:</div>
-                        <div className="space-y-1 bg-slate-50 p-2 rounded border border-slate-100">
-                          {req.items.map((row) => {
-                            const itm = items.find((i) => i.id === row.itemId);
-                            const apprv = row.approvedQty ?? row.requestedQty;
-                            return (
-                              <div key={row.itemId} className="flex items-center justify-between text-xs text-slate-800">
-                                <span className="truncate max-w-[200px]" title={itm?.itemName}>
-                                  <strong className="font-mono">{itm?.itemCode}</strong> · {itm?.itemName}
-                                </span>
-                                <span className="font-mono font-bold text-emerald-700 shrink-0 ml-2">
-                                  +{apprv} {itm?.unit}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditReceive(req)}
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Inspect physical count and adjust received quantity if damaged"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Count / Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDirectReceive(req)}
+                          className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                          title="Confirm full shipment received into site stock"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Receive into Site Yard</span>
+                        </button>
                       </div>
-
-                      {req.approvalNotes && (
-                        <div className="text-[11px] text-slate-500 italic mt-1.5 truncate" title={req.approvalNotes}>
-                          Dispatch Note: &ldquo;{req.approvalNotes}&rdquo;
-                        </div>
-                      )}
                     </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditReceive(req)}
-                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Inspect physical count and adjust received quantity if damaged"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Count / Edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDirectReceive(req)}
-                        className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
-                        title="Confirm full shipment received into site stock"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Receive into Site Yard</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -528,7 +753,7 @@ export const SiteInventoriesView: React.FC = () => {
           <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               {/* Scope Filter Buttons */}
-              <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
+              <div className="inline-flex flex-wrap rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
                 <button
                   onClick={() => setStockScopeFilter('allocated')}
                   className={`px-3 py-1.5 rounded-md font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
@@ -538,6 +763,16 @@ export const SiteInventoriesView: React.FC = () => {
                   }`}
                 >
                   <span>Site Allocated ({siteAllocatedCount})</span>
+                </button>
+                <button
+                  onClick={() => setStockScopeFilter('central-foc')}
+                  className={`px-3 py-1.5 rounded-md font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    stockScopeFilter === 'central-foc'
+                      ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                      : 'text-indigo-800 hover:bg-indigo-50'
+                  }`}
+                >
+                  <span>🎁 Central FOC Only ({siteCentralFocItemsCount})</span>
                 </button>
                 <button
                   onClick={() => setStockScopeFilter('low-stock')}
@@ -602,7 +837,7 @@ export const SiteInventoriesView: React.FC = () => {
             </div>
           </div>
 
-          {/* Site Branch Stock Table */}
+          {/* Site Branch Stock Table (Ordered by Standard 5-Stage Reconciliation Flow with Distinct Central FOC Identification) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
               <div className="flex flex-wrap items-center gap-2">
@@ -610,19 +845,23 @@ export const SiteInventoriesView: React.FC = () => {
                   Showing <strong className="font-mono text-slate-900">{filteredItems.length}</strong> items{' '}
                   {stockScopeFilter === 'allocated' ? (
                     <span>allocated to <strong>{selectedSite?.name}</strong></span>
+                  ) : stockScopeFilter === 'central-foc' ? (
+                    <span>received from <strong>Central FOC Stock</strong></span>
                   ) : stockScopeFilter === 'low-stock' ? (
                     <span>with low stock warning at this site</span>
                   ) : (
                     <span>from full master catalog</span>
                   )}
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px]">
-                  <Layers className="w-3 h-3" />
-                  Click any item row or &ldquo;Forward Summary&rdquo; to trace Team Issues, Used/Wasted & Print Report
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-900 border border-indigo-200 font-bold text-[11px]">
+                  <span className="px-1.5 py-0.2 rounded bg-indigo-600 text-white text-[9px] font-extrabold uppercase">
+                    Central FOC
+                  </span>
+                  Rows highlighted in indigo indicate materials supplied from Central FOC Stock
                 </span>
               </div>
               <span className="font-mono text-[11px] text-slate-500">
-                Central Catalog: {activeItems.length} items total
+                1. Central FOC → 2. Site Issue → 3. Team Issue → 4. Usage &amp; Wastage → 5. Balance / Returnable
               </span>
             </div>
 
@@ -630,21 +869,30 @@ export const SiteInventoriesView: React.FC = () => {
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                   <tr>
-                    <th className="py-3.5 px-3.5">Item Code</th>
-                    <th className="py-3.5 px-4">Material Description</th>
-                    <th className="py-3.5 px-3.5">Category</th>
-                    <th className="py-3.5 px-3.5 text-center">Unit</th>
-                    <th className="py-3.5 px-3.5 text-right">Received (HQ)</th>
-                    <th className="py-3.5 px-3.5 text-right">Returned (Teams)</th>
-                    <th className="py-3.5 px-3.5 text-right">Issued (Teams)</th>
-                    <th className="py-3.5 px-4 text-right">Available Site Stock</th>
-                    <th className="py-3.5 px-3.5 text-center">Trace Summary</th>
+                    <th className="py-3.5 px-3.5">Item &amp; Source Tag</th>
+                    <th className="py-3.5 px-3.5">Material Description</th>
+                    <th className="py-3.5 px-3 text-right bg-indigo-50/60 text-indigo-950">
+                      1. FOC Central Receipt
+                    </th>
+                    <th className="py-3.5 px-3.5 text-right">
+                      2. Site Issue (HQ → Site)
+                    </th>
+                    <th className="py-3.5 px-3.5 text-right">
+                      3. Team Issue (Site → Team)
+                    </th>
+                    <th className="py-3.5 px-3.5 text-right">
+                      4. Usage &amp; Wastage
+                    </th>
+                    <th className="py-3.5 px-4 text-right bg-emerald-50/60 text-emerald-950">
+                      5. Balance / Returnable
+                    </th>
+                    <th className="py-3.5 px-3.5 text-center">5-Stage Report</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredItems.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 px-4 text-center">
+                      <td colSpan={8} className="py-12 px-4 text-center">
                         <div className="max-w-md mx-auto flex flex-col items-center">
                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
                             <Building2 className="w-5 h-5" />
@@ -652,6 +900,8 @@ export const SiteInventoriesView: React.FC = () => {
                           <div className="text-sm font-semibold text-slate-800">
                             {stockScopeFilter === 'allocated'
                               ? `No materials currently allocated to ${selectedSite?.name || 'this site branch'}`
+                              : stockScopeFilter === 'central-foc'
+                              ? `No Central FOC items allocated to ${selectedSite?.name || 'this site branch'}`
                               : stockScopeFilter === 'low-stock'
                               ? `No low stock warnings for this site branch`
                               : 'No items match your search criteria'}
@@ -661,7 +911,7 @@ export const SiteInventoriesView: React.FC = () => {
                               ? 'This site has not requisitioned or received any materials from Central Warehouse yet. Items will automatically appear here once stock transfer requests are accepted.'
                               : 'Try adjusting your search query, clearing filters, or switching to view the full catalog.'}
                           </p>
-                          {stockScopeFilter === 'allocated' && (
+                          {stockScopeFilter !== 'all' && (
                             <div className="flex items-center gap-2 mt-4">
                               <button
                                 onClick={() => setStockScopeFilter('all')}
@@ -677,7 +927,9 @@ export const SiteInventoriesView: React.FC = () => {
                   ) : (
                     filteredItems.map((item) => {
                       const stock = getSiteItemStock(selectedSiteId, item.id);
-                      const isUnallocated = !stock.hasActivity && stock.availableBalance <= 0;
+                      const rec = siteItemReconciliationMap.get(item.id);
+                      const hasCentralFoc = Boolean(rec?.hasCentralFoc);
+                      const isUnallocated = !stock.hasActivity && stock.availableBalance <= 0 && !hasCentralFoc;
                       const isExpanded = expandedSiteTraceItemId === item.id;
 
                       return (
@@ -689,59 +941,144 @@ export const SiteInventoriesView: React.FC = () => {
                             className={`transition-colors cursor-pointer ${
                               isExpanded
                                 ? 'bg-emerald-50/80 border-l-4 border-l-emerald-600'
+                                : hasCentralFoc
+                                ? 'bg-indigo-50/45 hover:bg-indigo-100/60 border-l-4 border-l-indigo-600'
                                 : 'hover:bg-slate-50'
                             }`}
                           >
                             <td className="py-3.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                {isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-emerald-700 shrink-0" />
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5">
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-4 h-4 text-emerald-700 shrink-0" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                                  )}
+                                  <span>{item.itemCode}</span>
+                                </div>
+                                {hasCentralFoc ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-sans font-extrabold bg-indigo-600 text-white shadow-2xs w-fit">
+                                    🎁 Central FOC
+                                  </span>
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200 w-fit">
+                                    Normal HQ
+                                  </span>
                                 )}
-                                <span>{item.itemCode}</span>
                               </div>
                             </td>
-                            <td className="py-3.5 px-4 text-slate-900 font-bold max-w-sm">
+
+                            <td className="py-3.5 px-3.5 text-slate-900 font-bold max-w-xs">
                               <div className="text-sm">{item.itemName}</div>
-                              {stock.focReceived > 0 && (
-                                <div className="mt-1 flex flex-wrap items-center gap-1">
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                    🎁 Client FOC: {formatNumber(stock.focReceived)} {item.unit}
+                              <div className="text-[11px] font-normal text-slate-500 mt-0.5">
+                                {item.category} ({item.unit})
+                              </div>
+                              {rec?.primaryFocProjectName && (
+                                <div className="mt-1 text-[11px] font-semibold text-indigo-800 truncate">
+                                  Project: {rec.primaryFocProjectName}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* STAGE 1: FOC CENTRAL STOCK RECEIPT */}
+                            <td className="py-3.5 px-3 text-right font-mono bg-indigo-50/30 whitespace-nowrap">
+                              {hasCentralFoc ? (
+                                <div>
+                                  <div className="font-black text-indigo-900">
+                                    {formatNumber(rec?.stage1InitialCentralFoc || 0)} {item.unit}
+                                  </div>
+                                  <div className="text-[10px] font-sans font-semibold text-indigo-700">
+                                    HQ Pool Rem: {formatNumber(rec?.centralFocPoolRemaining || 0)} {item.unit}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 font-sans">—</span>
+                              )}
+                            </td>
+
+                            {/* STAGE 2: SITE ISSUE (CENTRAL -> SITE) */}
+                            <td className="py-3.5 px-3.5 text-right font-mono whitespace-nowrap">
+                              <div className="font-black text-slate-900">
+                                {formatNumber(stock.received)} {item.unit}
+                              </div>
+                              <div className="mt-0.5 flex flex-col items-end gap-0.5">
+                                {stock.focReceived > 0 && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300">
+                                    Central FOC: +{formatNumber(stock.focReceived)}
                                   </span>
-                                  {stock.normalReceived > 0 && (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                      📦 Normal: {formatNumber(stock.normalReceived)} {item.unit}
+                                )}
+                                {stock.normalReceived > 0 && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                    Normal HQ: +{formatNumber(stock.normalReceived)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* STAGE 3: TEAM ISSUE (SITE -> FIELD TEAMS) */}
+                            <td className="py-3.5 px-3.5 text-right font-mono whitespace-nowrap">
+                              <div className="font-bold text-blue-800">
+                                {formatNumber(stock.issued)} {item.unit}
+                              </div>
+                              {stock.returned > 0 && (
+                                <div className="text-[11px] font-sans font-semibold text-emerald-700">
+                                  Ret Good: +{formatNumber(stock.returned)} {item.unit}
+                                </div>
+                              )}
+                              {(rec?.stage3TeamInHand || 0) > 0 && (
+                                <div className="text-[10px] font-sans font-bold text-indigo-700">
+                                  Teams In-Hand: {formatNumber(rec?.stage3TeamInHand || 0)}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* STAGE 4: USAGE & WASTAGE */}
+                            <td className="py-3.5 px-3.5 text-right font-mono whitespace-nowrap">
+                              <div className="font-bold text-slate-900">
+                                {formatNumber(rec?.stage4TotalConsumed || 0)} {item.unit}
+                              </div>
+                              <div className="text-[11px] font-sans">
+                                <span className="text-teal-700 font-semibold">
+                                  Used: {formatNumber(rec?.stage4Used || 0)}
+                                </span>
+                                {(rec?.stage4Wastage || 0) > 0 && (
+                                  <span className="text-rose-600 font-semibold ml-1">
+                                    • Waste: {formatNumber(rec?.stage4Wastage || 0)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* STAGE 5: BALANCE / RETURNABLE STOCK ON COMPLETION */}
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap bg-emerald-50/20">
+                              <div className="flex flex-col items-end gap-1">
+                                {stock.focReceived > 0 && (
+                                  <div className="text-right">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-extrabold bg-indigo-600 text-white shadow-2xs">
+                                      FOC Returnable: {formatNumber(rec?.stage5SiteFocReturnableBalance || 0)} {item.unit}
                                     </span>
-                                  )}
-                                </div>
-                              )}
+                                    {(rec?.centralFocPoolRemaining || 0) > 0 && (
+                                      <div className="text-[10px] font-semibold text-emerald-800 mt-0.5">
+                                        Total Client Returnable: {formatNumber(rec?.stage5TotalClientReturnableBalance || 0)} {item.unit}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {stock.normalReceived > 0 && stock.focReceived > 0 && (
+                                  <div className="text-[10px] font-mono text-slate-600">
+                                    Normal HQ Bal: <strong>{formatNumber(rec?.stage5SiteNormalBalance || 0)} {item.unit}</strong>
+                                  </div>
+                                )}
+                                <StockBalanceCell
+                                  balance={stock.availableBalance}
+                                  threshold={stock.threshold}
+                                  unit={item.unit}
+                                  unallocated={isUnallocated}
+                                  isLow={stock.isLowStock}
+                                />
+                              </div>
                             </td>
-                            <td className="py-3.5 px-3.5 text-slate-600 whitespace-nowrap font-medium">{item.category}</td>
-                            <td className="py-3.5 px-3.5 text-center text-slate-600 font-semibold">{item.unit}</td>
-                            <td className="py-3.5 px-3.5 text-right font-mono text-slate-800 font-bold">
-                              <div>{formatNumber(stock.received)}</div>
-                              {stock.focReceived > 0 && (
-                                <div className="text-xs text-indigo-700 font-sans font-bold">
-                                  🎁 {formatNumber(stock.focReceived)} FOC
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-3.5 text-right font-mono text-emerald-700 font-bold">
-                              +{formatNumber(stock.returned)}
-                            </td>
-                            <td className="py-3.5 px-3.5 text-right font-mono text-slate-700 font-semibold">
-                              -{formatNumber(stock.issued)}
-                            </td>
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <StockBalanceCell
-                                balance={stock.availableBalance}
-                                threshold={stock.threshold}
-                                unit={item.unit}
-                                unallocated={isUnallocated}
-                                isLow={stock.isLowStock}
-                              />
-                            </td>
+
                             <td
                               className="py-3.5 px-3.5 text-center whitespace-nowrap"
                               onClick={(e) => e.stopPropagation()}
@@ -754,17 +1091,19 @@ export const SiteInventoriesView: React.FC = () => {
                                 className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border shadow-2xs transition-all cursor-pointer active:scale-95 ${
                                   isExpanded
                                     ? 'bg-emerald-700 text-white border-emerald-800'
+                                    : hasCentralFoc
+                                    ? 'bg-indigo-700 hover:bg-indigo-600 text-white border-indigo-800'
                                     : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900'
                                 }`}
                               >
                                 <Layers className="w-3.5 h-3.5" />
-                                {isExpanded ? 'Hide Trace' : 'Forward Summary'}
+                                {isExpanded ? 'Hide Report' : '5-Stage Summary'}
                               </button>
                             </td>
                           </tr>
                           {isExpanded && (
                             <tr className="bg-slate-100/70">
-                              <td colSpan={9} className="p-2 sm:p-3">
+                              <td colSpan={8} className="p-2 sm:p-3">
                                 <ItemTraceabilitySummaryPanel
                                   item={item}
                                   mode="site"
@@ -785,29 +1124,175 @@ export const SiteInventoriesView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: CLIENT FOC MATERIALS ALLOCATED TO SITE YARD */}
+      {/* TAB 2: CLIENT FOC MATERIALS ALLOCATED TO SITE YARD (STANDARD 5-STAGE RECONCILIATION TABLE) */}
       {activeSection === 'foc-materials' && (
-        <div className="space-y-4">
-          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
+        <div className="space-y-5">
+          <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 text-white rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/30 border border-indigo-400/40 text-white flex items-center justify-center font-bold text-lg shrink-0">
                 🎁
               </div>
               <div>
-                <h3 className="font-bold text-sm text-indigo-950">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-500 text-white uppercase tracking-wider">
+                    Central FOC
+                  </span>
+                  <span className="text-xs text-indigo-200 font-semibold">
+                    Standard 5-Stage FOC Reconciliation Ledger
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-base text-white mt-0.5">
                   Client Free-Issue (FOC) Materials at {selectedSite?.name}
                 </h3>
-                <p className="text-xs text-indigo-800">
-                  Client-supplied free-issue materials approved & transferred to this site yard for assigned Main or Individual Projects.
+                <p className="text-xs text-indigo-200">
+                  1. FOC Central Stock Receipt → 2. Site Issue → 3. Team Issue → 4. Usage &amp; Wastage → 5. Balance / Returnable Stock on Completion
                 </p>
               </div>
             </div>
-            <span className="px-3 py-1 bg-white text-indigo-900 border border-indigo-300 rounded-lg text-xs font-bold font-mono">
-              {totalSiteFocRecordsCount} Record(s)
+            <span className="px-3 py-1.5 bg-white/10 text-white border border-white/20 rounded-lg text-xs font-bold font-mono shrink-0">
+              {siteFocItemsList.length} FOC Item(s) • {totalSiteFocRecordsCount} Transfer Record(s)
             </span>
           </div>
 
-          {totalSiteFocRecordsCount === 0 ? (
+          {/* 5-Stage FOC Reconciliation Master Table for this Site */}
+          {siteFocItemsList.length > 0 && (
+            <div className="bg-white rounded-xl border-2 border-indigo-300 shadow-xs overflow-hidden">
+              <div className="px-4 py-3 bg-indigo-50/80 border-b border-indigo-200 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-600 text-white uppercase">
+                    Central FOC
+                  </span>
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-indigo-950">
+                    Standard 5-Stage FOC Reconciliation Summary at {selectedSite?.name}
+                  </h4>
+                </div>
+                <span className="text-[11px] font-semibold text-indigo-800">
+                  Click &ldquo;Item Report &amp; Print&rdquo; on any item to view or print its A4 reconciliation report
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-700 uppercase border-b border-slate-200 font-bold">
+                    <tr>
+                      <th className="py-3 px-3">FOC Item &amp; Project</th>
+                      <th className="py-3 px-3 text-right bg-indigo-50/60 text-indigo-950">
+                        1. FOC Central Receipt
+                      </th>
+                      <th className="py-3 px-3 text-right">
+                        2. Site Issue (Central FOC)
+                      </th>
+                      <th className="py-3 px-3 text-right">
+                        3. Team Issue (Site → Team)
+                      </th>
+                      <th className="py-3 px-3 text-right">
+                        4. Usage &amp; Wastage
+                      </th>
+                      <th className="py-3 px-3 text-right bg-emerald-50/70 text-emerald-950">
+                        5. Balance / Returnable on Completion
+                      </th>
+                      <th className="py-3 px-3 text-center">Item Report</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-indigo-100">
+                    {siteFocItemsList.map((itm) => {
+                      const rec = siteItemReconciliationMap.get(itm.id)!;
+                      const isExpanded = expandedFocTabTraceItemId === itm.id;
+                      return (
+                        <React.Fragment key={itm.id}>
+                          <tr className="bg-indigo-50/25 hover:bg-indigo-50/60 border-l-4 border-l-indigo-600">
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-black text-indigo-950">{itm.itemCode}</span>
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-600 text-white uppercase">
+                                  Central FOC
+                                </span>
+                              </div>
+                              <div className="font-bold text-slate-900 mt-0.5">{itm.itemName}</div>
+                              {rec.primaryFocProjectName && (
+                                <div className="text-[11px] text-indigo-700 font-semibold">
+                                  Project: {rec.primaryFocProjectName}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono bg-indigo-50/40">
+                              <div className="text-sm font-black text-indigo-900">
+                                {formatNumber(rec.stage1InitialCentralFoc)} {itm.unit}
+                              </div>
+                              <div className="text-[10px] font-sans text-indigo-700">
+                                Central Pool Rem: <strong>{formatNumber(rec.centralFocPoolRemaining)} {itm.unit}</strong>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono">
+                              <div className="text-sm font-black text-indigo-700">
+                                +{formatNumber(rec.stage2SiteFocIssued)} {itm.unit}
+                              </div>
+                              <div className="text-[10px] font-sans text-slate-500">
+                                Issued to {selectedSite?.name}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono">
+                              <div className="text-sm font-bold text-blue-800">
+                                {formatNumber(rec.stage3TeamIssued)} {itm.unit}
+                              </div>
+                              <div className="text-[10px] font-sans text-emerald-700">
+                                Ret Good: +{formatNumber(rec.stage3TeamReturnedGood)} | In-Hand: {formatNumber(rec.stage3TeamInHand)}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono">
+                              <div className="text-sm font-black text-slate-900">
+                                {formatNumber(rec.stage4TotalConsumed)} {itm.unit}
+                              </div>
+                              <div className="text-[10px] font-sans">
+                                <span className="text-teal-700 font-bold">Used: {formatNumber(rec.stage4Used)}</span>
+                                {' • '}
+                                <span className="text-rose-600 font-bold">Waste: {formatNumber(rec.stage4Wastage)}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono bg-emerald-50/50">
+                              <div className="text-sm font-black text-indigo-900">
+                                Site Returnable: {formatNumber(rec.stage5SiteFocReturnableBalance)} {itm.unit}
+                              </div>
+                              <div className="text-[11px] font-bold text-emerald-800">
+                                Total Client Returnable: {formatNumber(rec.stage5TotalClientReturnableBalance)} {itm.unit}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedFocTabTraceItemId((prev) => (prev === itm.id ? null : itm.id))
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-700 hover:bg-indigo-600 text-white shadow-2xs cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>{isExpanded ? 'Hide Report' : 'Item Report & Print'}</span>
+                              </button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="bg-slate-100/80">
+                              <td colSpan={7} className="p-2.5">
+                                <ItemTraceabilitySummaryPanel
+                                  item={itm}
+                                  mode="site"
+                                  siteId={selectedSiteId}
+                                  focProjectId={rec.primaryFocProjectId}
+                                  onClose={() => setExpandedFocTabTraceItemId(null)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {totalSiteFocRecordsCount === 0 && siteFocItemsList.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center mx-auto mb-3 text-xl">
                 🎁
@@ -828,6 +1313,9 @@ export const SiteInventoriesView: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono font-bold text-xs bg-indigo-900 text-white px-2.5 py-1 rounded">
                         {req.requestNoteNumber}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-600 text-white uppercase">
+                        Central FOC Site Issue
                       </span>
                       <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-300 uppercase">
                         {req.focProjectScope === 'main' ? '🏢 Under Main Project' : '📄 Individual Project'}
@@ -861,14 +1349,14 @@ export const SiteInventoriesView: React.FC = () => {
                           <th className="py-2.5 px-3">Item Code</th>
                           <th className="py-2.5 px-3">Material Description</th>
                           <th className="py-2.5 px-3 text-center">Unit</th>
-                          <th className="py-2.5 px-3 text-right">Approved / Received at Site</th>
-                          <th className="py-2.5 px-3 text-right">Available in Site Yard</th>
+                          <th className="py-2.5 px-3 text-right">2. Site Issue (Central FOC)</th>
+                          <th className="py-2.5 px-3 text-right">5. Site FOC Returnable Balance</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {req.items.map((row, idx) => {
                           const itm = items.find((i) => i.id === row.itemId);
-                          const siteStk = getSiteItemStock(selectedSiteId, row.itemId);
+                          const rec = siteItemReconciliationMap.get(row.itemId);
                           const qty =
                             req.status === 'Accepted'
                               ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
@@ -886,7 +1374,7 @@ export const SiteInventoriesView: React.FC = () => {
                                 +{formatNumber(qty)} {itm?.unit}
                               </td>
                               <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
-                                {formatNumber(siteStk.availableBalance)} {itm?.unit}
+                                {formatNumber(rec?.stage5SiteFocReturnableBalance ?? 0)} {itm?.unit}
                               </td>
                             </tr>
                           );
@@ -903,13 +1391,16 @@ export const SiteInventoriesView: React.FC = () => {
                 </div>
               ))}
 
-              {/* Direct FOC Vouchers Stored at Site */}
+              {/* Initial Central FOC Vouchers Allocated to this Site */}
               {siteFocMaterials.map((foc) => (
                 <div key={foc.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono font-bold text-xs bg-indigo-900 text-white px-2.5 py-1 rounded">
                         {foc.voucherNumber}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300 uppercase">
+                        1. Initial Central FOC Receipt
                       </span>
                       <span className="text-xs font-bold text-slate-900">
                         Client: <span className="text-indigo-700">{foc.clientName}</span>
@@ -929,8 +1420,8 @@ export const SiteInventoriesView: React.FC = () => {
                           <th className="py-2.5 px-3">Item Code</th>
                           <th className="py-2.5 px-3">Material Description</th>
                           <th className="py-2.5 px-3 text-center">Unit</th>
-                          <th className="py-2.5 px-3 text-right">FOC Received Qty</th>
-                          <th className="py-2.5 px-3 text-right">Remaining Bal</th>
+                          <th className="py-2.5 px-3 text-right">1. Initial Central FOC Receipt</th>
+                          <th className="py-2.5 px-3 text-right">Central FOC Pool Remaining</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">

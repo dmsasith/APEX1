@@ -18,6 +18,7 @@ import {
   FileText,
   Clock,
   Layers,
+  ArrowLeft,
   ArrowRight,
   TrendingDown,
   ChevronDown,
@@ -39,6 +40,7 @@ import {
 import { useStock } from '../../context/StockContext';
 import { Item, ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } from '../../types';
 import { formatNumber, formatDate, formatDateTime, exportToCsv } from '../../utils/exportUtils';
+import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { ItemTraceabilitySummaryPanel } from '../common/ItemTraceabilitySummaryPanel';
@@ -57,6 +59,7 @@ interface NewItemRow {
 export const ClientFreeIssueView: React.FC = () => {
   const {
     config,
+    currentTenant,
     currentUser,
     activeItems,
     items,
@@ -70,6 +73,7 @@ export const ClientFreeIssueView: React.FC = () => {
     clearClientFreeIssues,
     getClientFreeStockBalance,
     getProjectFreeStockList,
+    getSiteItemStock,
     sites,
     activeSites,
     activeClients,
@@ -78,6 +82,9 @@ export const ClientFreeIssueView: React.FC = () => {
     updateClient,
     deleteClient,
     stockRequests,
+    teamIssues,
+    teamReturns,
+    teams,
     projectUsages,
   } = useStock();
 
@@ -101,6 +108,17 @@ export const ClientFreeIssueView: React.FC = () => {
   const [printingVoucher, setPrintingVoucher] = useState<ClientFreeIssueEntry | null>(null);
   const [expandedTraceKey, setExpandedTraceKey] = useState<string | null>(null);
   const [voucherModalTraceItemId, setVoucherModalTraceItemId] = useState<string | null>(null);
+  const [projectReportModalId, setProjectReportModalId] = useState<string | null>(null);
+  const [singleItemReportModal, setSingleItemReportModal] = useState<{
+    projectId: string;
+    itemId: string;
+  } | null>(null);
+  const [subProjectReportModal, setSubProjectReportModal] = useState<{
+    parentProjectId: string;
+    subProjectId: string;
+  } | null>(null);
+  const [selectedSubProjectByParent, setSelectedSubProjectByParent] = useState<Record<string, string>>({});
+  const [isExportingReportPdf, setIsExportingReportPdf] = useState(false);
 
   const resolveCatalogItem = (
     itemId: string,
@@ -482,27 +500,285 @@ export const ClientFreeIssueView: React.FC = () => {
     });
   }, [activeClients, selectedClientFilter, searchQuery]);
 
-  // Project Balance Overview (Grouped by Root Main Project or Standalone Individual Project)
+  // Project Balance Overview (Grouped by Root Main Project or Standalone Individual Project, with 5-Stage Reconciliation Metrics)
   const projectSummaries = useMemo(() => {
     const rootProjects = activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub');
 
     const list = rootProjects.map((p) => {
       const childSubProjects = activeProjects.filter((sp) => sp.parentProjectId === p.id);
       const isMainProject = p.projectScope === 'main' || childSubProjects.length > 0;
-      const freeStockItems = getProjectFreeStockList(p.id);
-      const totalRecv = freeStockItems.reduce((acc, it) => acc + it.totalReceived, 0);
-      const totalDispatched = freeStockItems.reduce((acc, it) => acc + it.dispatchedToSites, 0);
-      const totalUsed = freeStockItems.reduce((acc, it) => acc + it.totalUsed, 0);
-      const totalRem = freeStockItems.reduce((acc, it) => acc + it.centralWarehouseAvailable, 0);
+      const resolvedBranch = resolveProjectBranch(p);
+      const familyIds = new Set<string>([p.id, ...childSubProjects.map((sp) => sp.id)]);
+      const familyNamesLower = new Set<string>(
+        [
+          p.projectName,
+          p.projectId,
+          ...childSubProjects.flatMap((sp) => [sp.projectName, sp.projectId]),
+        ]
+          .filter(Boolean)
+          .map((s) => String(s).trim().toLowerCase())
+      );
+
+      const rawFreeStockItems = getProjectFreeStockList(p.id);
+
+      const freeStockItems = rawFreeStockItems.map((it) => {
+        // Stage 1: Initial FOC Receipt Vouchers at Central Stock
+        const initialFocVouchers = activeVouchers
+          .filter(
+            (v) =>
+              (familyIds.has(v.projectId) || (v.parentProjectId && familyIds.has(v.parentProjectId))) &&
+              v.items.some((vi) => vi.itemId === it.itemId && Number(vi.quantity) > 0)
+          )
+          .map((v) => {
+            const row = v.items.find((vi) => vi.itemId === it.itemId)!;
+            return {
+              id: v.id,
+              voucherNumber: v.voucherNumber,
+              dispatchNoteNo: v.dispatchNoteNo || 'N/A',
+              clientName: v.clientName,
+              receivedDate: v.receivedDate || v.createdAt,
+              receivedBy: v.receivedBy || 'Central Store',
+              storageLocation: v.storageLocation || 'Main Central Warehouse',
+              qty: Number(row.quantity) || 0,
+              remarks: row.remarks || v.notes || '',
+            };
+          });
+
+        // Stage 2: Site Issue Requisitions (Central -> Site Branch)
+        const siteIssueRequisitions = (stockRequests || [])
+          .filter((req) => {
+            if (req.status !== 'Approved / In-Transit' && req.status !== 'Accepted') return false;
+            const hasItem = req.items.some((ri) => ri.itemId === it.itemId);
+            if (!hasItem) return false;
+            if (req.focProjectId) {
+              return familyIds.has(req.focProjectId);
+            }
+            if (req.purpose) {
+              const pLow = req.purpose.trim().toLowerCase();
+              for (const pName of familyNamesLower) {
+                if (pName.length >= 3 && pLow.includes(pName)) return true;
+              }
+            }
+            if (req.requestCategory === 'foc' && (!resolvedBranch.siteId || req.siteId === resolvedBranch.siteId)) {
+              return true;
+            }
+            return false;
+          })
+          .map((req) => {
+            const row = req.items.find((ri) => ri.itemId === it.itemId)!;
+            const qty =
+              req.status === 'Accepted'
+                ? Number(row.receivedQty ?? row.approvedQty ?? row.requestedQty ?? 0)
+                : Number(row.approvedQty ?? row.requestedQty ?? 0);
+            const sName = sites.find((s) => s.id === req.siteId)?.name || resolvedBranch.siteName || 'Site Branch';
+            return {
+              id: req.id,
+              requestNoteNumber: req.requestNoteNumber,
+              date: req.acceptanceDate || req.approvalDate || req.requestedDate,
+              siteName: sName,
+              status: req.status,
+              byUser: req.acceptedBy || req.approvedBy || req.requestedBy,
+              qty,
+            };
+          })
+          .filter((r) => r.qty > 0);
+
+        // Stage 3: Team Issue & Team Returns at the Allocated Site Branch
+        const targetSiteId = resolvedBranch.siteId;
+        const teamIssueRecords = (teamIssues || [])
+          .filter((ti) => (!targetSiteId || ti.siteId === targetSiteId) && (ti.items || []).some((r) => r.itemId === it.itemId))
+          .map((ti) => {
+            const row = ti.items.find((r) => r.itemId === it.itemId)!;
+            const teamObj = (teams || []).find((t) => t.id === ti.teamId);
+            return {
+              id: ti.id,
+              issueNoteNumber: ti.issueNoteNumber,
+              date: ti.issueDate,
+              teamName: teamObj?.teamName || 'Field Team',
+              teamLeader: teamObj?.teamLeaderName || ti.issuedBy || 'Team Leader',
+              qty: Number(row.quantity) || 0,
+            };
+          })
+          .filter((r) => r.qty > 0);
+
+        const rawSiteTeamIssued = teamIssueRecords.reduce((s, r) => s + r.qty, 0);
+        const rawSiteTeamReturnedGood = (teamReturns || [])
+          .filter(
+            (ret) =>
+              (!targetSiteId || ret.siteId === targetSiteId) &&
+              ret.itemId === it.itemId &&
+              ret.condition === 'Good / Restock'
+          )
+          .reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+
+        // Stage 4: Usage & Wastage on this Project Family
+        const usageRecords = (projectUsages || [])
+          .filter(
+            (u) =>
+              !u.isDeleted &&
+              (familyIds.has(u.projectId) || (u.parentProjectId && familyIds.has(u.parentProjectId))) &&
+              (u.items || []).some((ui) => ui.itemId === it.itemId)
+          )
+          .map((u) => {
+            const row = u.items.find((ui) => ui.itemId === it.itemId)!;
+            const usedQty = Number(row.quantity) || 0;
+            const wastedQty = Number(row.wastageQuantity) || 0;
+            const projObj = projects.find((pr) => pr.id === u.projectId);
+            return {
+              id: u.id,
+              usageVoucherNumber: u.usageVoucherNumber,
+              date: u.usageDate || u.date,
+              subProjectId: u.projectId,
+              projectCode: projObj?.projectId || p.projectId,
+              projectName: u.projectName || projObj?.projectName || p.projectName,
+              teamName: u.teamName || (teams || []).find((t) => t.id === u.teamId)?.teamName || 'Field Team',
+              usedQty,
+              wastedQty,
+              totalConsumed: usedQty + wastedQty,
+            };
+          })
+          .filter((r) => r.totalConsumed > 0);
+
+        const stage1CentralFocReceipt = it.totalReceived;
+        const stage2SiteIssue = it.dispatchedToSites;
+        const centralFocPoolRem = it.centralWarehouseAvailable;
+
+        const stage4TotalConsumed = it.totalUsed;
+        const stage4Wastage = it.totalWastage || 0;
+        const stage4InstalledUsage = Math.max(0, stage4TotalConsumed - stage4Wastage);
+
+        const stage3TeamIssued =
+          rawSiteTeamIssued > 0
+            ? rawSiteTeamIssued
+            : stage4TotalConsumed;
+        const stage3TeamReturnedGood = rawSiteTeamReturnedGood;
+        const stage3TeamInHand = Math.max(
+          0,
+          stage3TeamIssued - stage3TeamReturnedGood - stage4TotalConsumed
+        );
+
+        // Stage 5: Balance / Returnable Stock on Project Completion
+        const effectiveSiteFocPool = stage2SiteIssue > 0 ? stage2SiteIssue : stage4TotalConsumed;
+        const stage5SiteReturnableBalance = Math.max(0, effectiveSiteFocPool - stage4TotalConsumed);
+        const stage5TotalClientReturnableBalance = Math.max(
+          0,
+          stage1CentralFocReceipt - stage4TotalConsumed
+        );
+
+        return {
+          ...it,
+          stage1CentralFocReceipt,
+          stage2SiteIssue,
+          centralFocPoolRem,
+          stage3TeamIssued,
+          stage3TeamReturnedGood,
+          stage3TeamInHand,
+          stage4InstalledUsage,
+          stage4Wastage,
+          stage4TotalConsumed,
+          stage5SiteReturnableBalance,
+          stage5TotalClientReturnableBalance,
+          initialFocVouchers,
+          siteIssueRequisitions,
+          teamIssueRecords,
+          usageRecords,
+        };
+      });
+
+      // Build Sub-Project-wise 5-Stage Flow Breakdown (for Main Projects with Sub-Projects)
+      // Each Sub-Project (e.g. KT-RGL-0505, KT-ABK-0506) gets its own sequential flow & cumulative pool balance
+      const itemCumulativeDeductionMap = new Map<string, number>();
+      const subProjectFlows = childSubProjects.map((sp, spIndex) => {
+        const spItems = freeStockItems.map((fi) => {
+          const spUsageLogs = fi.usageRecords.filter((u) => u.subProjectId === sp.id);
+          const spInstalledUsed = spUsageLogs.reduce((s, u) => s + u.usedQty, 0);
+          const spWastage = spUsageLogs.reduce((s, u) => s + u.wastedQty, 0);
+          const spTotalConsumed = spInstalledUsed + spWastage;
+
+          const effectiveSitePool = fi.stage2SiteIssue > 0 ? fi.stage2SiteIssue : fi.stage1CentralFocReceipt;
+          const priorSubProjectsConsumed = itemCumulativeDeductionMap.get(fi.itemId) || 0;
+          const openingSitePoolBeforeSp = Math.max(0, effectiveSitePool - priorSubProjectsConsumed);
+          const closingSitePoolAfterSp = Math.max(0, openingSitePoolBeforeSp - spTotalConsumed);
+          const closingTotalClientPoolAfterSp = Math.max(
+            0,
+            fi.stage1CentralFocReceipt - (priorSubProjectsConsumed + spTotalConsumed)
+          );
+          itemCumulativeDeductionMap.set(fi.itemId, priorSubProjectsConsumed + spTotalConsumed);
+
+          return {
+            itemId: fi.itemId,
+            itemCode: fi.itemCode,
+            itemName: fi.itemName,
+            unit: fi.unit,
+            stage1MainCentralFoc: fi.stage1CentralFocReceipt,
+            stage2MainSiteIssue: fi.stage2SiteIssue,
+            stage3MainTeamIssue: fi.stage3TeamIssued,
+            openingSitePoolBeforeSp,
+            spInstalledUsed,
+            spWastage,
+            spTotalConsumed,
+            closingSitePoolAfterSp,
+            closingTotalClientPoolAfterSp,
+            finalMainSiteReturnable: fi.stage5SiteReturnableBalance,
+            finalMainClientReturnable: fi.stage5TotalClientReturnableBalance,
+            spUsageLogs,
+          };
+        });
+
+        const spTotalInstalled = spItems.reduce((s, x) => s + x.spInstalledUsed, 0);
+        const spTotalWastage = spItems.reduce((s, x) => s + x.spWastage, 0);
+        const spTotalConsumed = spItems.reduce((s, x) => s + x.spTotalConsumed, 0);
+        const spTotalLogsCount = spItems.reduce((s, x) => s + x.spUsageLogs.length, 0);
+
+        return {
+          subProject: sp,
+          orderIndex: spIndex + 1,
+          items: spItems,
+          spTotalInstalled,
+          spTotalWastage,
+          spTotalConsumed,
+          spTotalLogsCount,
+        };
+      });
+
+      const totalRecv = freeStockItems.reduce((acc, it) => acc + it.stage1CentralFocReceipt, 0);
+      const totalDispatched = freeStockItems.reduce((acc, it) => acc + it.stage2SiteIssue, 0);
+      const totalTeamIssued = freeStockItems.reduce((acc, it) => acc + it.stage3TeamIssued, 0);
+      const totalInstalled = freeStockItems.reduce((acc, it) => acc + it.stage4InstalledUsage, 0);
+      const totalWastage = freeStockItems.reduce((acc, it) => acc + it.stage4Wastage, 0);
+      const totalUsed = freeStockItems.reduce((acc, it) => acc + it.stage4TotalConsumed, 0);
+      const totalRem = freeStockItems.reduce((acc, it) => acc + it.centralFocPoolRem, 0);
+      const totalSiteReturnable = freeStockItems.reduce(
+        (acc, it) => acc + it.stage5SiteReturnableBalance,
+        0
+      );
+      const totalClientReturnable = freeStockItems.reduce(
+        (acc, it) => acc + it.stage5TotalClientReturnableBalance,
+        0
+      );
+
+      const primaryClientName =
+        p.customerName ||
+        activeVouchers.find((v) => familyIds.has(v.projectId))?.clientName ||
+        'Registered Client';
+
       return {
         project: p,
+        primaryClientName,
+        resolvedBranch,
         isMainProject,
         childSubProjects,
+        subProjectFlows,
         items: freeStockItems,
         totalRecv,
         totalDispatched,
+        totalTeamIssued,
+        totalInstalled,
+        totalWastage,
         totalUsed,
         totalRem,
+        totalSiteReturnable,
+        totalClientReturnable,
       };
     });
 
@@ -529,7 +805,20 @@ export const ClientFreeIssueView: React.FC = () => {
       }
       return true;
     });
-  }, [activeProjects, getProjectFreeStockList, selectedProjectFilter, searchQuery]);
+  }, [
+    activeProjects,
+    getProjectFreeStockList,
+    selectedProjectFilter,
+    searchQuery,
+    activeVouchers,
+    stockRequests,
+    teamIssues,
+    teamReturns,
+    teams,
+    projectUsages,
+    projects,
+    sites,
+  ]);
 
   // Form Row management
   const handleItemSelect = (index: number, itemId: string) => {
@@ -977,13 +1266,28 @@ export const ClientFreeIssueView: React.FC = () => {
             {activeTab !== 'client-register' && (
               <select
                 value={selectedProjectFilter}
-                onChange={(e) => setSelectedProjectFilter(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedProjectFilter(val);
+                  const chosen = activeProjects.find((p) => p.id === val);
+                  if (chosen?.parentProjectId) {
+                    setSelectedSubProjectByParent((prev) => ({
+                      ...prev,
+                      [chosen.parentProjectId!]: chosen.id,
+                    }));
+                  } else if (chosen) {
+                    setSelectedSubProjectByParent((prev) => ({
+                      ...prev,
+                      [chosen.id]: 'all',
+                    }));
+                  }
+                }}
                 className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 <option value="all">All Projects</option>
                 {activeProjects.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.projectName} ({p.projectId})
+                    {p.parentProjectId ? `↳ [${p.projectId}] ${p.projectName}` : `[${p.projectId}] ${p.projectName}`}
                   </option>
                 ))}
               </select>
@@ -1034,360 +1338,791 @@ export const ClientFreeIssueView: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="px-4 py-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-950">
-                  <div className="flex items-center gap-2 font-bold">
-                    <Layers className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>
-                      Click any item row or <strong>&ldquo;Summary / Trace&rdquo;</strong> button below to view its <strong>Assigned Site Branch</strong> Traceability Summary (Inbound FOC/Transfers to that Assigned Site, Field Teams of that Site, Used/Wasted by those Teams &amp; Printable A4 Report).
+                {/* Compact Flow Guide Bar */}
+                <div className="px-4 py-2.5 bg-slate-900 text-white rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-extrabold uppercase">
+                      <Gift className="w-3 h-3" />
+                      Central FOC Flow
+                    </span>
+                    <span className="text-slate-200 font-medium">
+                      1. Central FOC → 2. Site Issue → 3. Team Issue → 4. Used &amp; Wastage (by Sub-Project) → 5. Returnable Balance
                     </span>
                   </div>
                   {expandedTraceKey && (
                     <button
                       type="button"
                       onClick={() => setExpandedTraceKey(null)}
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white border border-white/20 font-bold text-[11px] cursor-pointer"
                     >
-                      Collapse Open Summary
+                      Close Open Item Flow
                     </button>
                   )}
                 </div>
 
                 {projectSummaries
                   .filter((p) => p.items.length > 0)
-                  .map(({ project, isMainProject, childSubProjects, items: freeItems, totalRecv, totalDispatched, totalUsed, totalRem }) => {
-                    const resolvedBranch = resolveProjectBranch(project);
-                    return (
-                    <div
-                      key={project.id}
-                      className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs hover:border-indigo-300 transition-all"
-                    >
-                      {/* Project Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md">
-                              {project.projectId}
-                            </span>
-                            {isMainProject ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
-                                <span>🏢 Under Main Project ({childSubProjects.length} Sub-Projects)</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold uppercase">
-                                <span>📄 Individual Project</span>
-                              </span>
-                            )}
-                            <h3 className="text-base font-extrabold text-slate-900">
-                              {project.projectName}
-                            </h3>
-                            {resolvedBranch.siteName ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-extrabold">
-                                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Allocated Branch: {resolvedBranch.siteName}</span>
-                              </span>
-                            ) : null}
-                            {project.siteIdentifier && (
-                              <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                Site: {project.siteIdentifier}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3">
-                            {project.customerName && <span>Customer: <strong className="text-slate-700">{project.customerName}</strong></span>}
-                            {project.district && <span>District: <strong className="text-slate-700">{project.district}</strong></span>}
-                            <span>Total Free Materials: <strong className="text-slate-700">{freeItems.length} lines</strong></span>
-                            {isMainProject && (
-                              <span className="text-indigo-700 font-semibold">
-                                • Site branch requests & sub-project usage automatically deduct from this Main Project pool
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                  .map(
+                    ({
+                      project,
+                      primaryClientName,
+                      resolvedBranch,
+                      isMainProject,
+                      childSubProjects,
+                      subProjectFlows,
+                      items: freeItems,
+                      totalRecv,
+                      totalDispatched,
+                      totalTeamIssued,
+                      totalUsed,
+                      totalClientReturnable,
+                    }) => {
+                      const selectedSpId =
+                        selectedProjectFilter !== 'all' &&
+                        childSubProjects.some((sp) => sp.id === selectedProjectFilter)
+                          ? selectedProjectFilter
+                          : selectedSubProjectByParent[project.id] || 'all';
 
-                        {/* Mini Balances Pill */}
-                        <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-200">
-                          <div className="px-2">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">
-                              {isMainProject ? 'Main Pool Recv' : 'Received'}
-                            </div>
-                            <div className="font-mono font-bold text-slate-800">{formatNumber(totalRecv)}</div>
-                          </div>
-                          <div className="h-6 w-px bg-slate-200" />
-                          <div className="px-2">
-                            <div className="text-[10px] text-sky-600 font-bold uppercase">
-                              Sent to Sites
-                            </div>
-                            <div className="font-mono font-bold text-sky-700">{formatNumber(totalDispatched)}</div>
-                          </div>
-                          <div className="h-6 w-px bg-slate-200" />
-                          <div className="px-2">
-                            <div className="text-[10px] text-amber-600 font-bold uppercase">
-                              {isMainProject ? 'All Subs Used' : 'Installed'}
-                            </div>
-                            <div className="font-mono font-bold text-amber-700">{formatNumber(totalUsed)}</div>
-                          </div>
-                          <div className="h-6 w-px bg-slate-200" />
-                          <div className="px-2">
-                            <div className="text-[10px] text-emerald-600 font-bold uppercase">
-                              {isMainProject ? 'HQ Pool Avail' : 'In Hand (HQ)'}
-                            </div>
-                            <div className="font-mono font-black text-emerald-700">{formatNumber(totalRem)}</div>
-                          </div>
-                        </div>
-                      </div>
+                      const activeSubFlow =
+                        selectedSpId !== 'all'
+                          ? subProjectFlows.find((spf) => spf.subProject.id === selectedSpId) || null
+                          : null;
 
-                      {/* Items Table */}
-                      <div className="overflow-x-auto mt-3">
-                        <table className="w-full text-left text-xs">
-                          <thead>
-                            <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
-                              <th className="py-2.5 px-3">Item Code</th>
-                              <th className="py-2.5 px-3">Material Description</th>
-                              <th className="py-2.5 px-3 text-right">Received (FOC)</th>
-                              <th className="py-2.5 px-3 text-right">Dispatched to Sites</th>
-                              <th className="py-2.5 px-3 text-right">
-                                {isMainProject ? 'Installed (All Sub-Projects)' : 'Field Installed (Used)'}
-                              </th>
-                              <th className="py-2.5 px-3 text-right">Central Pool Balance</th>
-                              <th className="py-2.5 px-3 text-center">Status</th>
-                              <th className="py-2.5 px-3 text-center">Action / Trace Summary</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-medium">
-                            {freeItems.map((it) => {
-                              const totalDeducted = Math.max(it.dispatchedToSites, it.totalUsed);
-                              const percentAllocated = it.totalReceived > 0 ? (totalDeducted / it.totalReceived) * 100 : 0;
-                              const isDepleted = it.centralWarehouseAvailable <= 0;
-                              const rowTraceKey = `${project.id}:${it.itemId}`;
-                              const isExpanded = expandedTraceKey === rowTraceKey;
-                              const catalogItem = resolveCatalogItem(it.itemId, it.itemCode, it.itemName, it.unit);
-                              return (
-                                <React.Fragment key={it.itemId}>
-                                  <tr
-                                    onClick={() =>
-                                      setExpandedTraceKey((prev) => (prev === rowTraceKey ? null : rowTraceKey))
-                                    }
-                                    className={`transition-colors cursor-pointer ${
-                                      isExpanded
-                                        ? 'bg-emerald-50/80 border-l-4 border-l-emerald-600'
-                                        : 'hover:bg-slate-50/80'
+                      const selectScope = (nextSpId: string) => {
+                        setSelectedSubProjectByParent((prev) => ({
+                          ...prev,
+                          [project.id]: nextSpId,
+                        }));
+                        if (
+                          selectedProjectFilter !== 'all' &&
+                          childSubProjects.some((sp) => sp.id === selectedProjectFilter)
+                        ) {
+                          setSelectedProjectFilter(nextSpId === 'all' ? project.id : nextSpId);
+                        }
+                      };
+
+                      const childIds = new Set(childSubProjects.map((sp) => sp.id));
+                      const projectVouchers = activeVouchers.filter(
+                        (v) =>
+                          v.projectId === project.id ||
+                          v.parentProjectId === project.id ||
+                          childIds.has(v.projectId)
+                      );
+
+                      return (
+                        <div
+                          key={project.id}
+                          className="border border-slate-200 rounded-2xl bg-white shadow-2xs overflow-hidden"
+                        >
+                          {/* Clean Project Header */}
+                          <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                                  {project.projectId}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-extrabold uppercase">
+                                  <Gift className="w-3 h-3" />
+                                  Central FOC
+                                </span>
+                                <h3 className="text-base font-extrabold text-slate-900">
+                                  {project.projectName}
+                                </h3>
+                                {resolvedBranch.siteName && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                                    <Building2 className="w-3 h-3 text-emerald-600" />
+                                    {resolvedBranch.siteName}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3">
+                                <span>
+                                  Client: <strong className="text-slate-800">{primaryClientName}</strong>
+                                </span>
+                                <span>
+                                  Materials: <strong className="text-slate-800">{freeItems.length}</strong>
+                                </span>
+                                {isMainProject && subProjectFlows.length > 0 && (
+                                  <span>
+                                    Sub-Projects: <strong className="text-teal-700">{subProjectFlows.length}</strong>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right Side: Clean 5-Stage Numbers + Full Project Report Button */}
+                            <div className="flex flex-wrap items-center gap-2.5">
+                              <div className="flex flex-wrap items-center gap-1.5 text-xs bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                                <div className="px-1.5">
+                                  <div className="text-[10px] text-indigo-700 font-bold uppercase">1. Central</div>
+                                  <div className="font-mono font-black text-indigo-900">{formatNumber(totalRecv)}</div>
+                                </div>
+                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="px-1.5">
+                                  <div className="text-[10px] text-sky-700 font-bold uppercase">2. Site</div>
+                                  <div className="font-mono font-bold text-sky-800">{formatNumber(totalDispatched)}</div>
+                                </div>
+                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="px-1.5">
+                                  <div className="text-[10px] text-blue-700 font-bold uppercase">3. Team</div>
+                                  <div className="font-mono font-bold text-blue-800">{formatNumber(totalTeamIssued)}</div>
+                                </div>
+                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="px-1.5">
+                                  <div className="text-[10px] text-amber-700 font-bold uppercase">4. Used</div>
+                                  <div className="font-mono font-bold text-amber-800">{formatNumber(totalUsed)}</div>
+                                </div>
+                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="px-1.5">
+                                  <div className="text-[10px] text-emerald-700 font-bold uppercase">5. Returnable</div>
+                                  <div className="font-mono font-black text-emerald-700">{formatNumber(totalClientReturnable)}</div>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setProjectReportModalId(project.id)}
+                                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-extrabold shadow-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                                title="Open Full Main Project + Sub-Projects A4/PDF Report"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>Full Project Report</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Clean Scope Switcher Strip (Main Project vs Individual Sub-Projects) */}
+                          {isMainProject && subProjectFlows.length > 0 && (
+                            <div className="px-4 sm:px-5 py-2.5 bg-slate-50/90 border-b border-slate-200 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[11px] font-bold text-slate-500 mr-1">View Scope:</span>
+                              <button
+                                type="button"
+                                onClick={() => selectScope('all')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  !activeSubFlow
+                                    ? 'bg-indigo-600 text-white shadow-2xs'
+                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-indigo-50'
+                                }`}
+                              >
+                                Main Project Overview (All)
+                              </button>
+                              {subProjectFlows.map((spf) => {
+                                const isActive = activeSubFlow?.subProject.id === spf.subProject.id;
+                                return (
+                                  <button
+                                    key={spf.subProject.id}
+                                    type="button"
+                                    onClick={() => selectScope(isActive ? 'all' : spf.subProject.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                                      isActive
+                                        ? 'bg-teal-700 text-white shadow-2xs'
+                                        : 'bg-white text-teal-900 border border-teal-200 hover:bg-teal-50'
                                     }`}
                                   >
-                                    <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                      <div className="flex items-center gap-1.5">
-                                        {isExpanded ? (
-                                          <ChevronUp className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                                        ) : (
-                                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                        )}
-                                        <span>{it.itemCode}</span>
-                                      </div>
-                                    </td>
-                                    <td className="py-2.5 px-3 text-slate-800 font-semibold">
-                                      {it.itemName}
-                                    </td>
-                                    <td className="py-2.5 px-3 text-right font-mono text-slate-700 font-bold">
-                                      {formatNumber(it.totalReceived)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                    </td>
-                                    <td className="py-2.5 px-3 text-right font-mono text-sky-700 font-bold">
-                                      {it.dispatchedToSites > 0 ? `-${formatNumber(it.dispatchedToSites)}` : '0'}{' '}
-                                      <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                    </td>
-                                    <td className="py-2.5 px-3 text-right font-mono text-amber-700 font-bold">
-                                      {formatNumber(it.totalUsed)} <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                    </td>
-                                    <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900">
-                                      <span className={isDepleted ? 'text-rose-600' : 'text-emerald-700'}>
-                                        {formatNumber(it.centralWarehouseAvailable)}
-                                      </span>{' '}
-                                      <span className="text-[11px] text-slate-500 font-normal">{it.unit}</span>
-                                    </td>
-                                    <td className="py-2.5 px-3 text-center">
-                                      {isDepleted ? (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
-                                          {it.dispatchedToSites > 0 ? 'Dispatched to Sites (100%)' : 'Fully Consumed (100%)'}
-                                        </span>
-                                      ) : (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                          Active Pool ({Math.round(percentAllocated)}% Allocated)
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td
-                                      className="py-2.5 px-3 text-center whitespace-nowrap"
-                                      onClick={(e) => e.stopPropagation()}
+                                    <span>↳ {spf.subProject.projectId}</span>
+                                    <span
+                                      className={`px-1.5 py-0.2 rounded text-[10px] font-sans ${
+                                        isActive
+                                          ? 'bg-teal-900/60 text-teal-100'
+                                          : 'bg-teal-50 text-teal-800'
+                                      }`}
                                     >
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setExpandedTraceKey((prev) => (prev === rowTraceKey ? null : rowTraceKey))
-                                        }
-                                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border shadow-2xs transition-all cursor-pointer active:scale-95 ${
-                                          isExpanded
-                                            ? 'bg-emerald-700 text-white border-emerald-800'
-                                            : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900'
-                                        }`}
-                                      >
-                                        <Layers className="w-3.5 h-3.5" />
-                                        <span>{isExpanded ? 'Hide Trace' : 'Summary'}</span>
-                                      </button>
-                                    </td>
-                                  </tr>
-                                  {isExpanded && (
-                                    <tr className="bg-slate-100/70">
-                                      <td colSpan={8} className="p-2 sm:p-3">
-                                        <ItemTraceabilitySummaryPanel
-                                          item={catalogItem}
-                                          mode={resolvedBranch.siteId ? 'site' : 'central'}
-                                          siteId={resolvedBranch.siteId || undefined}
-                                          focProjectId={project.id}
-                                          onClose={() => setExpandedTraceKey(null)}
-                                        />
-                                      </td>
-                                    </tr>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Logged FOC Vouchers for this Project (with Admin Correction / Reassign Project Action) */}
-                      {(() => {
-                        const childIds = new Set(childSubProjects.map((sp) => sp.id));
-                        const projectVouchers = activeVouchers.filter(
-                          (v) =>
-                            v.projectId === project.id ||
-                            v.parentProjectId === project.id ||
-                            childIds.has(v.projectId)
-                        );
-                        if (projectVouchers.length === 0) return null;
-                        return (
-                          <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50/80 px-3.5 py-2.5 rounded-xl border border-slate-200/70">
-                            <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
-                              <FileCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                              <span>
-                                Logged FOC Shipments ({projectVouchers.length}):
-                              </span>
-                              {isCentralAdmin && (
-                                <span className="text-[11px] text-amber-700 font-medium hidden md:inline">
-                                  • Logged under wrong project? Click a voucher below to reassign or correct items:
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {projectVouchers.map((pv) => (
-                                <div
-                                  key={pv.id}
-                                  className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 shadow-2xs text-xs"
-                                >
-                                  <span className="font-mono font-bold text-indigo-700">{pv.voucherNumber}</span>
-                                  <span className="text-slate-400">•</span>
-                                  <span className="font-mono text-[11px] font-semibold text-slate-700">
-                                    {pv.dispatchNoteNo}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setViewingVoucher(pv)}
-                                    className="text-slate-400 hover:text-indigo-600 p-0.5 cursor-pointer"
-                                    title="View Voucher Details"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
+                                      {formatNumber(spf.spTotalConsumed)}
+                                    </span>
                                   </button>
-                                  {isCentralAdmin && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenEditVoucherModal(pv)}
-                                      className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white border border-amber-300 text-[10px] font-extrabold transition-colors cursor-pointer"
-                                      title="Admin Correction: Change Project or Edit FOC Items"
-                                    >
-                                      <RefreshCw className="w-3 h-3" />
-                                      <span>Correct / Reassign Project</span>
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
-                          </div>
-                        );
-                      })()}
+                          )}
 
-                      {/* Sub-Project Consumption Breakdown (for Major / Main Projects) */}
-                      {isMainProject && childSubProjects.length > 0 && (
-                        <div className="mt-4 pt-3.5 border-t border-indigo-100 bg-indigo-50/40 rounded-xl p-3.5">
-                          <div className="flex items-center justify-between mb-2.5">
-                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
-                              <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>Sub-Projects Individual Usage Breakdown ({childSubProjects.length} Sub-Projects)</span>
-                            </span>
-                            <span className="text-[11px] text-indigo-700 font-medium">
-                              Automatically deducted from Main Project [{project.projectId}]
-                            </span>
-                          </div>
+                          {/* VIEW MODE A: MAIN PROJECT OVERVIEW (SINGLE CLEAN TABLE — NO DUPLICATION) */}
+                          {!activeSubFlow ? (
+                            <div className="p-4 sm:p-5 space-y-4">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                  <thead>
+                                    <tr className="border-b-2 border-slate-200 bg-slate-50 text-slate-600 font-extrabold uppercase text-[10px]">
+                                      <th className="py-2.5 px-3">Item</th>
+                                      <th className="py-2.5 px-3 text-right bg-indigo-50/60 text-indigo-950">
+                                        1. Central FOC
+                                      </th>
+                                      <th className="py-2.5 px-3 text-right">2. Site Issue</th>
+                                      <th className="py-2.5 px-3 text-right">3. Team Issue</th>
+                                      <th className="py-2.5 px-3 text-right">
+                                        4. Used &amp; Wastage (Where It Went)
+                                      </th>
+                                      <th className="py-2.5 px-3 text-right bg-emerald-50/70 text-emerald-950">
+                                        5. Returnable Bal
+                                      </th>
+                                      <th className="py-2.5 px-3 text-center">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {freeItems.map((it) => {
+                                      const rowTraceKey = `${project.id}:${it.itemId}`;
+                                      const isExpanded = expandedTraceKey === rowTraceKey;
+                                      const catalogItem = resolveCatalogItem(
+                                        it.itemId,
+                                        it.itemCode,
+                                        it.itemName,
+                                        it.unit
+                                      );
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                            {childSubProjects.map((sp) => {
-                              const spItemUsages = freeItems
-                                .map((fi) => {
-                                  const match = fi.subProjectBreakdown?.find((b) => b.subProjectId === sp.id);
-                                  return {
-                                    itemCode: fi.itemCode,
-                                    itemName: fi.itemName,
-                                    unit: fi.unit,
-                                    usedQty: match?.usedQty || 0,
-                                  };
-                                })
-                                .filter((x) => x.usedQty > 0);
+                                      // Build compact distribution chips per sub-project (and direct main project if any)
+                                      const subBreakdownChips = subProjectFlows
+                                        .map((spf) => {
+                                          const spItem = spf.items.find((x) => x.itemId === it.itemId);
+                                          return {
+                                            spId: spf.subProject.id,
+                                            code: spf.subProject.projectId,
+                                            consumed: spItem?.spTotalConsumed || 0,
+                                          };
+                                        })
+                                        .filter((c) => c.consumed > 0);
 
-                              return (
-                                <div
-                                  key={sp.id}
-                                  className="bg-white border border-indigo-200/80 rounded-xl p-3 shadow-2xs flex flex-col justify-between"
-                                >
-                                  <div>
-                                    <div className="flex items-center justify-between gap-2 mb-1">
-                                      <span className="font-mono text-[10px] font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
-                                        ↳ {sp.projectId}
-                                      </span>
-                                      {sp.siteIdentifier && (
-                                        <span className="text-[10px] font-mono text-slate-500">
-                                          Site: {sp.siteIdentifier}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="font-bold text-xs text-slate-900 mb-2">
-                                      {sp.projectName}
-                                    </div>
+                                      const directMainConsumed = it.usageRecords
+                                        .filter((u) => u.subProjectId === project.id)
+                                        .reduce((s, u) => s + u.totalConsumed, 0);
 
-                                    {spItemUsages.length === 0 ? (
-                                      <div className="text-[11px] text-slate-400 italic">
-                                        No free stock consumed on this sub-project yet.
-                                      </div>
-                                    ) : (
-                                      <div className="space-y-1 border-t border-slate-100 pt-1.5">
-                                        {spItemUsages.map((u, idx) => (
-                                          <div key={idx} className="flex items-center justify-between text-[11px]">
-                                            <span className="text-slate-600 truncate pr-2">
-                                              [{u.itemCode}] {u.itemName}
+                                      return (
+                                        <React.Fragment key={it.itemId}>
+                                          <tr
+                                            onClick={() =>
+                                              setExpandedTraceKey((prev) =>
+                                                prev === rowTraceKey ? null : rowTraceKey
+                                              )
+                                            }
+                                            className={`transition-colors cursor-pointer ${
+                                              isExpanded
+                                                ? 'bg-emerald-50/80 border-l-4 border-l-emerald-600'
+                                                : 'hover:bg-indigo-50/40 border-l-4 border-l-indigo-500'
+                                            }`}
+                                          >
+                                            {/* Item */}
+                                            <td className="py-3 px-3">
+                                              <div className="flex items-start gap-2">
+                                                {isExpanded ? (
+                                                  <ChevronUp className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                                                ) : (
+                                                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                                                )}
+                                                <div>
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-mono font-bold text-slate-900">
+                                                      {it.itemCode}
+                                                    </span>
+                                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-600 text-white uppercase">
+                                                      Central FOC
+                                                    </span>
+                                                  </div>
+                                                  <div className="font-bold text-slate-800 mt-0.5">
+                                                    {it.itemName}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </td>
+
+                                            {/* 1. Central FOC */}
+                                            <td className="py-3 px-3 text-right font-mono bg-indigo-50/30 whitespace-nowrap">
+                                              <div className="text-sm font-black text-indigo-950">
+                                                {formatNumber(it.stage1CentralFocReceipt)}{' '}
+                                                <span className="text-[11px] font-normal text-indigo-700">
+                                                  {it.unit}
+                                                </span>
+                                              </div>
+                                              <div className="text-[10px] font-sans text-indigo-700">
+                                                Central Left: <strong>{formatNumber(it.centralFocPoolRem)}</strong>
+                                              </div>
+                                            </td>
+
+                                            {/* 2. Site Issue */}
+                                            <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
+                                              <div className="text-sm font-bold text-sky-800">
+                                                {formatNumber(it.stage2SiteIssue)}{' '}
+                                                <span className="text-[11px] font-normal text-slate-500">
+                                                  {it.unit}
+                                                </span>
+                                              </div>
+                                              <div className="text-[10px] font-sans text-slate-500">
+                                                {resolvedBranch.siteName || 'Site Branch'}
+                                              </div>
+                                            </td>
+
+                                            {/* 3. Team Issue */}
+                                            <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
+                                              <div className="text-sm font-bold text-blue-800">
+                                                {formatNumber(it.stage3TeamIssued)}{' '}
+                                                <span className="text-[11px] font-normal text-slate-500">
+                                                  {it.unit}
+                                                </span>
+                                              </div>
+                                              {it.stage3TeamReturnedGood > 0 && (
+                                                <div className="text-[10px] font-sans font-semibold text-emerald-700">
+                                                  Ret: +{formatNumber(it.stage3TeamReturnedGood)}
+                                                </div>
+                                              )}
+                                            </td>
+
+                                            {/* 4. Used & Wastage + Where It Went (Sub-Project Pills) */}
+                                            <td className="py-3 px-3 text-right">
+                                              <div className="font-mono text-sm font-black text-slate-900 whitespace-nowrap">
+                                                {formatNumber(it.stage4TotalConsumed)}{' '}
+                                                <span className="text-[11px] font-normal text-slate-500">
+                                                  {it.unit}
+                                                </span>
+                                              </div>
+                                              <div className="text-[10px] whitespace-nowrap">
+                                                <span className="text-teal-700 font-bold">
+                                                  Used: {formatNumber(it.stage4InstalledUsage)}
+                                                </span>
+                                                {' · '}
+                                                <span className="text-rose-600 font-bold">
+                                                  Waste: {formatNumber(it.stage4Wastage)}
+                                                </span>
+                                              </div>
+                                              {(subBreakdownChips.length > 0 || directMainConsumed > 0) && (
+                                                <div
+                                                  className="mt-1.5 flex flex-wrap justify-end gap-1"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                >
+                                                  {subBreakdownChips.map((chip) => (
+                                                    <button
+                                                      key={chip.spId}
+                                                      type="button"
+                                                      onClick={() => selectScope(chip.spId)}
+                                                      className="px-1.5 py-0.5 rounded bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 font-mono text-[10px] font-bold transition-colors cursor-pointer"
+                                                      title={`Click to view ${chip.code} Sub-Project Flow`}
+                                                    >
+                                                      {chip.code}: {formatNumber(chip.consumed)}
+                                                    </button>
+                                                  ))}
+                                                  {directMainConsumed > 0 && (
+                                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[10px] font-bold">
+                                                      Main: {formatNumber(directMainConsumed)}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </td>
+
+                                            {/* 5. Returnable Balance */}
+                                            <td className="py-3 px-3 text-right font-mono bg-emerald-50/40 whitespace-nowrap">
+                                              <div className="text-sm font-black text-emerald-800">
+                                                {formatNumber(it.stage5TotalClientReturnableBalance)}{' '}
+                                                <span className="text-[11px] font-normal text-emerald-700">
+                                                  {it.unit}
+                                                </span>
+                                              </div>
+                                              <div className="text-[10px] font-sans font-semibold text-indigo-700">
+                                                Site Bal: {formatNumber(it.stage5SiteReturnableBalance)} {it.unit}
+                                              </div>
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td
+                                              className="py-3 px-3 text-center whitespace-nowrap"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              <div className="inline-flex items-center gap-1.5">
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setExpandedTraceKey((prev) =>
+                                                      prev === rowTraceKey ? null : rowTraceKey
+                                                    )
+                                                  }
+                                                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                                    isExpanded
+                                                      ? 'bg-emerald-700 text-white border-emerald-800'
+                                                      : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900'
+                                                  }`}
+                                                  title="Expand complete step-by-step Item Flow (Central → Site → Team → Sub-Projects → Balance)"
+                                                >
+                                                  <Layers className="w-3.5 h-3.5" />
+                                                  <span>{isExpanded ? 'Hide Flow' : 'Item Flow'}</span>
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setSingleItemReportModal({
+                                                      projectId: project.id,
+                                                      itemId: it.itemId,
+                                                    })
+                                                  }
+                                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer"
+                                                  title="Open & Print Official A4 Report for this Individual Item"
+                                                >
+                                                  <Printer className="w-3.5 h-3.5" />
+                                                  <span>Item Report</span>
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+
+                                          {isExpanded && (
+                                            <tr className="bg-slate-100/70">
+                                              <td colSpan={7} className="p-2 sm:p-3">
+                                                <ItemTraceabilitySummaryPanel
+                                                  item={catalogItem}
+                                                  mode={resolvedBranch.siteId ? 'site' : 'central'}
+                                                  siteId={resolvedBranch.siteId || undefined}
+                                                  focProjectId={project.id}
+                                                  onClose={() => setExpandedTraceKey(null)}
+                                                />
+                                              </td>
+                                            </tr>
+                                          )}
+                                        </React.Fragment>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Compact Clickable Sub-Projects Summary Row (No Giant Duplicate Tables!) */}
+                              {isMainProject && subProjectFlows.length > 0 && (
+                                <div className="pt-3 border-t border-slate-100 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                                      Linked Sub-Projects ({subProjectFlows.length}) — Click any Sub-Project to view its Flow or Report
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                    {subProjectFlows.map((spf) => (
+                                      <div
+                                        key={spf.subProject.id}
+                                        onClick={() => selectScope(spf.subProject.id)}
+                                        className="p-3 rounded-xl border border-teal-200 bg-teal-50/40 hover:bg-teal-50 hover:border-teal-400 transition-all cursor-pointer flex items-center justify-between gap-2"
+                                      >
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-mono text-xs font-extrabold text-teal-800">
+                                              ↳ {spf.subProject.projectId}
                                             </span>
-                                            <span className="font-mono font-bold text-amber-700 shrink-0">
-                                              -{formatNumber(u.usedQty)} {u.unit}
+                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white border border-teal-200 text-teal-700 font-bold">
+                                              {spf.spTotalLogsCount} log(s)
                                             </span>
                                           </div>
-                                        ))}
+                                          <div className="text-xs font-bold text-slate-800 truncate mt-0.5">
+                                            {spf.subProject.projectName}
+                                          </div>
+                                          <div className="text-[11px] text-slate-600 font-mono mt-1">
+                                            Used: <strong className="text-teal-800">{formatNumber(spf.spTotalInstalled)}</strong>
+                                            {' · '}
+                                            Waste: <strong className="text-rose-600">{formatNumber(spf.spTotalWastage)}</strong>
+                                          </div>
+                                        </div>
+                                        <div
+                                          className="flex flex-col gap-1 shrink-0"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() => selectScope(spf.subProject.id)}
+                                            className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-600 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer"
+                                          >
+                                            <span>View Flow</span>
+                                            <ArrowRight className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setSubProjectReportModal({
+                                                parentProjectId: project.id,
+                                                subProjectId: spf.subProject.id,
+                                              })
+                                            }
+                                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer"
+                                          >
+                                            <Printer className="w-3 h-3" />
+                                            <span>Report</span>
+                                          </button>
+                                        </div>
                                       </div>
-                                    )}
+                                    ))}
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
+                              )}
+
+                              {/* Logged FOC Vouchers Bar (Preserves Admin Correction / Reassign Action) */}
+                              {projectVouchers.length > 0 && (
+                                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/80 px-3.5 py-2.5 rounded-xl border border-slate-200/70">
+                                  <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
+                                    <FileCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                                    <span>Central FOC Vouchers ({projectVouchers.length}):</span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {projectVouchers.map((pv) => (
+                                      <div
+                                        key={pv.id}
+                                        className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs"
+                                      >
+                                        <span className="font-mono font-bold text-indigo-700">{pv.voucherNumber}</span>
+                                        <span className="text-slate-400">•</span>
+                                        <span className="font-mono text-[11px] font-semibold text-slate-700">
+                                          {pv.dispatchNoteNo}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setViewingVoucher(pv)}
+                                          className="text-slate-400 hover:text-indigo-600 p-0.5 cursor-pointer"
+                                          title="View Voucher Details"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                        {isCentralAdmin && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenEditVoucherModal(pv)}
+                                            className="ml-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white border border-amber-300 text-[10px] font-extrabold transition-colors cursor-pointer"
+                                            title="Admin Correction: Change Project or Edit FOC Items"
+                                          >
+                                            <RefreshCw className="w-3 h-3" />
+                                            <span>Edit / Reassign</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            /* VIEW MODE B: CLEAN DEDICATED SUB-PROJECT FLOW VIEW */
+                            <div className="p-4 sm:p-5 space-y-4">
+                              {/* Sub-Project Flow Banner */}
+                              <div className="p-3.5 rounded-xl bg-teal-950 text-white flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-teal-500/30 border border-teal-400/40 font-mono text-[11px] font-extrabold text-teal-100">
+                                      SUB-PROJECT #{activeSubFlow.orderIndex}: {activeSubFlow.subProject.projectId}
+                                    </span>
+                                    <h4 className="text-sm font-extrabold text-white">
+                                      {activeSubFlow.subProject.projectName}
+                                    </h4>
+                                    {activeSubFlow.subProject.siteIdentifier && (
+                                      <span className="text-[11px] text-teal-200 bg-white/10 px-2 py-0.5 rounded font-mono">
+                                        Site: {activeSubFlow.subProject.siteIdentifier}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-teal-200 mt-1">
+                                    Showing dedicated material usage, wastage, and field vouchers for{' '}
+                                    <strong>{activeSubFlow.subProject.projectId}</strong> under Main Project{' '}
+                                    <strong>[{project.projectId}]</strong>.
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => selectScope('all')}
+                                    className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                    <span>Back to Main Project</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setSubProjectReportModal({
+                                        parentProjectId: project.id,
+                                        subProjectId: activeSubFlow.subProject.id,
+                                      })
+                                    }
+                                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span>Sub-Project Report</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Clean 4-Card Sub-Project Summary Strip */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                <div className="p-3 rounded-xl bg-teal-50/70 border border-teal-200">
+                                  <div className="text-[10px] font-bold uppercase text-teal-800">
+                                    Used on {activeSubFlow.subProject.projectId}
+                                  </div>
+                                  <div className="text-lg font-black font-mono text-teal-900 mt-0.5">
+                                    {formatNumber(activeSubFlow.spTotalInstalled)}
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200">
+                                  <div className="text-[10px] font-bold uppercase text-rose-800">
+                                    Wastage on {activeSubFlow.subProject.projectId}
+                                  </div>
+                                  <div className="text-lg font-black font-mono text-rose-700 mt-0.5">
+                                    {formatNumber(activeSubFlow.spTotalWastage)}
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200">
+                                  <div className="text-[10px] font-bold uppercase text-amber-800">
+                                    Sub-Project Total Consumed
+                                  </div>
+                                  <div className="text-lg font-black font-mono text-amber-900 mt-0.5">
+                                    {formatNumber(activeSubFlow.spTotalConsumed)}
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                  <div className="text-[10px] font-bold uppercase text-slate-600">
+                                    Field Usage Vouchers
+                                  </div>
+                                  <div className="text-lg font-black font-mono text-slate-900 mt-0.5">
+                                    {activeSubFlow.spTotalLogsCount}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Clean 6-Column Sub-Project Materials Table */}
+                              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                                <table className="w-full text-left text-xs">
+                                  <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase text-[10px]">
+                                      <th className="py-2.5 px-3">Item</th>
+                                      <th className="py-2.5 px-3 text-right">Main Project FOC Stock</th>
+                                      <th className="py-2.5 px-3 text-right bg-teal-50/70 text-teal-950">
+                                        Used on [{activeSubFlow.subProject.projectId}]
+                                      </th>
+                                      <th className="py-2.5 px-3 text-right bg-rose-50/60 text-rose-950">
+                                        Wastage
+                                      </th>
+                                      <th className="py-2.5 px-3 text-right bg-amber-50/60 text-amber-950">
+                                        Sub-Project Total
+                                      </th>
+                                      <th className="py-2.5 px-3 text-right bg-emerald-50/70 text-emerald-950">
+                                        Remaining Main Project Bal
+                                      </th>
+                                      <th className="py-2.5 px-3 text-center">Item Report</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {activeSubFlow.items.map((spIt) => (
+                                      <tr
+                                        key={spIt.itemId}
+                                        className={
+                                          spIt.spTotalConsumed > 0
+                                            ? 'bg-white hover:bg-teal-50/30'
+                                            : 'bg-slate-50/40 text-slate-400'
+                                        }
+                                      >
+                                        <td className="py-2.5 px-3">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-mono font-bold text-slate-900">
+                                              {spIt.itemCode}
+                                            </span>
+                                            <span className="px-1.5 py-0.2 rounded bg-indigo-600 text-white text-[9px] font-extrabold uppercase">
+                                              Central FOC
+                                            </span>
+                                          </div>
+                                          <div className="font-semibold text-slate-800">{spIt.itemName}</div>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-right font-mono whitespace-nowrap">
+                                          <div className="font-bold text-indigo-800">
+                                            Central: {formatNumber(spIt.stage1MainCentralFoc)} {spIt.unit}
+                                          </div>
+                                          <div className="text-[10px] text-sky-700">
+                                            Site Issue: {formatNumber(spIt.stage2MainSiteIssue)} {spIt.unit}
+                                          </div>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-right font-mono font-extrabold text-teal-800 bg-teal-50/20 whitespace-nowrap">
+                                          {formatNumber(spIt.spInstalledUsed)} {spIt.unit}
+                                        </td>
+                                        <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-600 bg-rose-50/20 whitespace-nowrap">
+                                          {formatNumber(spIt.spWastage)} {spIt.unit}
+                                        </td>
+                                        <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 bg-amber-50/30 whitespace-nowrap">
+                                          {formatNumber(spIt.spTotalConsumed)} {spIt.unit}
+                                        </td>
+                                        <td className="py-2.5 px-3 text-right font-mono bg-emerald-50/35 whitespace-nowrap">
+                                          <div className="font-black text-emerald-800">
+                                            {formatNumber(spIt.finalMainClientReturnable)} {spIt.unit}
+                                          </div>
+                                          <div className="text-[10px] text-indigo-700 font-sans">
+                                            Site Bal: {formatNumber(spIt.finalMainSiteReturnable)} {spIt.unit}
+                                          </div>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setSingleItemReportModal({
+                                                projectId: project.id,
+                                                itemId: spIt.itemId,
+                                              })
+                                            }
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-[11px] font-bold transition-colors cursor-pointer"
+                                          >
+                                            <Printer className="w-3 h-3" />
+                                            <span>Report</span>
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Clean Field Usage Vouchers Table for this Sub-Project */}
+                              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-700">
+                                  Field Usage Vouchers Logged on [{activeSubFlow.subProject.projectId}] ({activeSubFlow.spTotalLogsCount})
+                                </div>
+                                {activeSubFlow.spTotalLogsCount === 0 ? (
+                                  <div className="p-5 text-center text-xs text-slate-500">
+                                    No usage vouchers logged under {activeSubFlow.subProject.projectId} yet.
+                                  </div>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                      <thead>
+                                        <tr className="bg-white border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold">
+                                          <th className="py-2 px-3">Voucher #</th>
+                                          <th className="py-2 px-3">Date</th>
+                                          <th className="py-2 px-3">Field Team</th>
+                                          <th className="py-2 px-3">Material</th>
+                                          <th className="py-2 px-3 text-right">Used</th>
+                                          <th className="py-2 px-3 text-right">Wastage</th>
+                                          <th className="py-2 px-3 text-right">Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {activeSubFlow.items.flatMap((spIt) =>
+                                          spIt.spUsageLogs.map((uLog) => (
+                                            <tr key={`${spIt.itemId}-${uLog.id}`} className="hover:bg-slate-50/70">
+                                              <td className="py-2 px-3 font-mono font-bold text-teal-800">
+                                                {uLog.usageVoucherNumber}
+                                              </td>
+                                              <td className="py-2 px-3 text-slate-600">{formatDate(uLog.date)}</td>
+                                              <td className="py-2 px-3 font-semibold text-slate-800">
+                                                {uLog.teamName}
+                                              </td>
+                                              <td className="py-2 px-3 text-slate-800">
+                                                <span className="font-mono font-bold mr-1">{spIt.itemCode}</span>
+                                                {spIt.itemName}
+                                              </td>
+                                              <td className="py-2 px-3 text-right font-mono font-bold text-teal-700">
+                                                {formatNumber(uLog.usedQty)} {spIt.unit}
+                                              </td>
+                                              <td className="py-2 px-3 text-right font-mono font-bold text-rose-600">
+                                                {formatNumber(uLog.wastedQty)} {spIt.unit}
+                                              </td>
+                                              <td className="py-2 px-3 text-right font-mono font-black text-slate-900">
+                                                {formatNumber(uLog.totalConsumed)} {spIt.unit}
+                                              </td>
+                                            </tr>
+                                          ))
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    }
+                  )}
               </div>
             )}
           </div>
@@ -2807,6 +3542,1132 @@ export const ClientFreeIssueView: React.FC = () => {
           }))}
         />
       )}
+
+      {/* ------------------ MODAL 1: INDIVIDUAL ISSUED ITEM FOC REPORT (CLEAN & CLEAR) ------------------ */}
+      {singleItemReportModal && (() => {
+        const proj = projectSummaries.find((p) => p.project.id === singleItemReportModal.projectId);
+        const it = proj?.items.find((item) => item.itemId === singleItemReportModal.itemId);
+        if (!proj || !it) return null;
+        const singleReportElementId = `foc-single-item-report-${proj.project.id}-${it.itemId}`;
+        const projCode = proj.project.projectId || '';
+        const projName = proj.project.projectName || 'Project';
+        const clientName = proj.primaryClientName || 'Client';
+        const branchName = proj.resolvedBranch.siteName || 'Central Warehouse';
+
+        // Build clean distribution rows across Sub-Projects (plus Direct Main Project if used directly)
+        const directMainLogs = it.usageRecords.filter((u) => u.subProjectId === proj.project.id);
+        const directMainUsed = directMainLogs.reduce((s, u) => s + u.usedQty, 0);
+        const directMainWaste = directMainLogs.reduce((s, u) => s + u.wastedQty, 0);
+        const directMainTotal = directMainUsed + directMainWaste;
+
+        const distributionRows = [
+          ...proj.subProjectFlows.map((spf) => {
+            const spMatch = spf.items.find((x) => x.itemId === it.itemId);
+            return {
+              key: spf.subProject.id,
+              code: spf.subProject.projectId,
+              name: spf.subProject.projectName,
+              vouchers: spMatch?.spUsageLogs.length || 0,
+              used: spMatch?.spInstalledUsed || 0,
+              waste: spMatch?.spWastage || 0,
+              total: spMatch?.spTotalConsumed || 0,
+            };
+          }),
+          ...(directMainTotal > 0 || proj.subProjectFlows.length === 0
+            ? [
+                {
+                  key: proj.project.id,
+                  code: projCode || 'MAIN',
+                  name: `${projName}${proj.subProjectFlows.length > 0 ? ' (Direct Usage)' : ''}`,
+                  vouchers: directMainLogs.length,
+                  used: directMainUsed,
+                  waste: directMainWaste,
+                  total: directMainTotal,
+                },
+              ]
+            : []),
+        ];
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-5xl w-full shadow-2xl border border-slate-200 my-auto overflow-hidden">
+              {/* Top Action Header */}
+              <div className="bg-slate-900 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-extrabold uppercase">
+                      Central FOC · Item Report
+                    </span>
+                    <h3 className="text-sm font-extrabold">
+                      {it.itemCode} — {it.itemName}
+                    </h3>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Project: {projCode ? `[${projCode}] ` : ''}{projName} · Client: {clientName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      printHtmlElement(
+                        singleReportElementId,
+                        `Central_FOC_Item_Report_${it.itemCode}_${projCode || projName}`
+                      )
+                    }
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print A4</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isExportingReportPdf}
+                    onClick={async () => {
+                      setIsExportingReportPdf(true);
+                      try {
+                        await downloadElementAsPdf(
+                          singleReportElementId,
+                          `Central_FOC_Item_Report_${it.itemCode}_${projCode || 'Project'}.pdf`
+                        );
+                      } finally {
+                        setIsExportingReportPdf(false);
+                      }
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{isExportingReportPdf ? 'Saving...' : 'Download PDF'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSingleItemReportModal(null)}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer"
+                    aria-label="Close report"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable A4 Content */}
+              <div className="p-5 max-h-[82vh] overflow-y-auto bg-slate-100">
+                <div
+                  id={singleReportElementId}
+                  className="bg-white p-6 rounded-xl border border-slate-200 text-slate-900 space-y-5"
+                >
+                  {/* Document Header */}
+                  <div className="border-b-2 border-slate-900 pb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">
+                        CLIENT FREE-ISSUE (CENTRAL FOC) — INDIVIDUAL ITEM RECONCILIATION REPORT
+                      </div>
+                      <h1 className="text-lg font-black text-slate-900 mt-0.5">
+                        {it.itemCode} — {it.itemName} ({it.unit})
+                      </h1>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Project: <strong>{projCode ? `[${projCode}] ` : ''}{projName}</strong> · Client: <strong>{clientName}</strong> · Site Branch: <strong>{branchName}</strong>
+                      </p>
+                    </div>
+                    <div className="text-right text-xs">
+                      <span className="inline-block px-2.5 py-1 rounded bg-indigo-900 text-white font-extrabold text-[10px] uppercase">
+                        Central FOC Stock
+                      </span>
+                      <div className="text-[11px] text-slate-500 mt-1">
+                        Date: <strong>{new Date().toLocaleDateString()}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 5-Step Story KPI Strip */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+                    <div className="p-3 rounded-xl border-2 border-indigo-200 bg-indigo-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-indigo-800">1. Central FOC</div>
+                      <div className="text-lg font-black font-mono text-indigo-900 mt-0.5">
+                        {formatNumber(it.stage1CentralFocReceipt)} {it.unit}
+                      </div>
+                      <div className="text-[10px] text-indigo-700 mt-0.5">
+                        Central Left: <strong>{formatNumber(it.centralFocPoolRem)} {it.unit}</strong>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-sky-900">2. Site Issue</div>
+                      <div className="text-lg font-black font-mono text-sky-800 mt-0.5">
+                        {formatNumber(it.stage2SiteIssue)} {it.unit}
+                      </div>
+                      <div className="text-[10px] text-sky-800 mt-0.5">{branchName}</div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-violet-200 bg-violet-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-violet-900">3. Team Issue</div>
+                      <div className="text-lg font-black font-mono text-violet-800 mt-0.5">
+                        {formatNumber(it.stage3TeamIssued)} {it.unit}
+                      </div>
+                      <div className="text-[10px] text-violet-800 mt-0.5">
+                        Ret: +{formatNumber(it.stage3TeamReturnedGood)} · Hand: {formatNumber(it.stage3TeamInHand)}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-amber-900">4. Used &amp; Waste</div>
+                      <div className="text-lg font-black font-mono text-amber-900 mt-0.5">
+                        {formatNumber(it.stage4TotalConsumed)} {it.unit}
+                      </div>
+                      <div className="text-[10px] text-amber-900 mt-0.5">
+                        Used: {formatNumber(it.stage4InstalledUsage)} · Waste: {formatNumber(it.stage4Wastage)}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl border-2 border-emerald-300 bg-emerald-50/70">
+                      <div className="text-[10px] font-extrabold uppercase text-emerald-900">5. Returnable Bal</div>
+                      <div className="text-lg font-black font-mono text-emerald-800 mt-0.5">
+                        {formatNumber(it.stage5TotalClientReturnableBalance)} {it.unit}
+                      </div>
+                      <div className="text-[10px] font-bold text-indigo-800 mt-0.5">
+                        Site Bal: {formatNumber(it.stage5SiteReturnableBalance)} {it.unit}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 1: Central FOC Receipts */}
+                  <div>
+                    <h4 className="text-xs font-extrabold uppercase text-indigo-950 mb-1.5">
+                      Step 1 — Central FOC Stock Received from Client
+                    </h4>
+                    <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                      <thead>
+                        <tr className="bg-indigo-50 text-indigo-950 text-[10px] font-extrabold uppercase border-b border-indigo-200">
+                          <th className="py-2 px-3">FOC Voucher #</th>
+                          <th className="py-2 px-3">Dispatch Note #</th>
+                          <th className="py-2 px-3">Date</th>
+                          <th className="py-2 px-3">Received By</th>
+                          <th className="py-2 px-3 text-right">Qty ({it.unit})</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {it.initialFocVouchers.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-2.5 px-3 text-center text-slate-400">
+                              No Central FOC vouchers recorded.
+                            </td>
+                          </tr>
+                        ) : (
+                          it.initialFocVouchers.map((v, i) => (
+                            <tr key={i}>
+                              <td className="py-2 px-3 font-mono font-bold text-indigo-700">{v.voucherNumber}</td>
+                              <td className="py-2 px-3 font-mono text-slate-700">{v.dispatchNoteNo}</td>
+                              <td className="py-2 px-3 text-slate-600">{formatDate(v.receivedDate)}</td>
+                              <td className="py-2 px-3 text-slate-700">{v.receivedBy}</td>
+                              <td className="py-2 px-3 text-right font-mono font-extrabold text-indigo-800">
+                                +{formatNumber(v.qty)}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Step 2 & 3 Side-by-Side (Clean Compact Tables) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-xs font-extrabold uppercase text-sky-950 mb-1.5">
+                        Step 2 — Site Issues (Central → {branchName})
+                      </h4>
+                      <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                        <thead>
+                          <tr className="bg-sky-50 text-sky-950 text-[10px] font-extrabold uppercase border-b border-sky-200">
+                            <th className="py-2 px-2.5">Requisition #</th>
+                            <th className="py-2 px-2.5">Site &amp; Date</th>
+                            <th className="py-2 px-2.5 text-right">Qty ({it.unit})</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {it.siteIssueRequisitions.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="py-2.5 px-2.5 text-center text-slate-400">
+                                No site issues yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            it.siteIssueRequisitions.map((r, i) => (
+                              <tr key={i}>
+                                <td className="py-2 px-2.5 font-mono font-bold text-sky-800">{r.requestNoteNumber}</td>
+                                <td className="py-2 px-2.5 text-slate-700">
+                                  {r.siteName} · {formatDate(r.date)}
+                                </td>
+                                <td className="py-2 px-2.5 text-right font-mono font-extrabold text-sky-800">
+                                  {formatNumber(r.qty)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-extrabold uppercase text-violet-950 mb-1.5">
+                        Step 3 — Team Issues (Site → Field Teams)
+                      </h4>
+                      <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                        <thead>
+                          <tr className="bg-violet-50 text-violet-950 text-[10px] font-extrabold uppercase border-b border-violet-200">
+                            <th className="py-2 px-2.5">Issue #</th>
+                            <th className="py-2 px-2.5">Team &amp; Date</th>
+                            <th className="py-2 px-2.5 text-right">Qty ({it.unit})</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {it.teamIssueRecords.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="py-2.5 px-2.5 text-center text-slate-400">
+                                No team issues yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            it.teamIssueRecords.map((t, i) => (
+                              <tr key={i}>
+                                <td className="py-2 px-2.5 font-mono font-bold text-violet-800">{t.issueNoteNumber}</td>
+                                <td className="py-2 px-2.5 text-slate-700">
+                                  {t.teamName} · {formatDate(t.date)}
+                                </td>
+                                <td className="py-2 px-2.5 text-right font-mono font-extrabold text-violet-800">
+                                  {formatNumber(t.qty)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Step 4: Clean Sub-Project Usage Distribution Table + Usage Vouchers */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-extrabold uppercase text-teal-950">
+                      Step 4 — Where This Item Was Used (Main &amp; Sub-Project Breakdown)
+                    </h4>
+
+                    <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                      <thead>
+                        <tr className="bg-teal-50 text-teal-950 text-[10px] font-extrabold uppercase border-b border-teal-200">
+                          <th className="py-2 px-3">Project / Sub-Project</th>
+                          <th className="py-2 px-3 text-center">Vouchers</th>
+                          <th className="py-2 px-3 text-right">Used ({it.unit})</th>
+                          <th className="py-2 px-3 text-right">Wastage ({it.unit})</th>
+                          <th className="py-2 px-3 text-right">Total Consumed ({it.unit})</th>
+                          <th className="py-2 px-3 text-right">Share %</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {distributionRows.map((row) => {
+                          const sharePct =
+                            it.stage4TotalConsumed > 0
+                              ? Math.round((row.total / it.stage4TotalConsumed) * 100)
+                              : 0;
+                          return (
+                            <tr key={row.key}>
+                              <td className="py-2 px-3 font-semibold text-slate-900">
+                                <span className="font-mono font-bold text-teal-800 mr-1.5">[{row.code}]</span>
+                                {row.name}
+                              </td>
+                              <td className="py-2 px-3 text-center font-mono text-slate-600">{row.vouchers}</td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-teal-700">
+                                {formatNumber(row.used)}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-rose-600">
+                                {formatNumber(row.waste)}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-black text-slate-900">
+                                {formatNumber(row.total)}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-slate-600">
+                                {sharePct}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="bg-slate-50 font-black border-t-2 border-slate-300">
+                          <td className="py-2 px-3 text-slate-900 uppercase text-[11px]">Total Consumed</td>
+                          <td className="py-2 px-3 text-center font-mono">{it.usageRecords.length}</td>
+                          <td className="py-2 px-3 text-right font-mono text-teal-800">
+                            {formatNumber(it.stage4InstalledUsage)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono text-rose-700">
+                            {formatNumber(it.stage4Wastage)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono text-slate-900">
+                            {formatNumber(it.stage4TotalConsumed)} {it.unit}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono">100%</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Individual Field Usage Vouchers */}
+                    <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                      <thead>
+                        <tr className="bg-amber-50 text-amber-950 text-[10px] font-extrabold uppercase border-b border-amber-200">
+                          <th className="py-2 px-3">Usage Voucher #</th>
+                          <th className="py-2 px-3">Project / Sub-Project</th>
+                          <th className="py-2 px-3">Field Team</th>
+                          <th className="py-2 px-3">Date</th>
+                          <th className="py-2 px-3 text-right">Used ({it.unit})</th>
+                          <th className="py-2 px-3 text-right">Wastage ({it.unit})</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {it.usageRecords.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-2.5 px-3 text-center text-slate-400">
+                              No usage vouchers logged for this item yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          it.usageRecords.map((u, i) => (
+                            <tr key={i}>
+                              <td className="py-2 px-3 font-mono font-bold text-slate-800">{u.usageVoucherNumber}</td>
+                              <td className="py-2 px-3 text-slate-800">
+                                <span className="font-mono font-bold text-teal-800 mr-1">[{u.projectCode}]</span>
+                                {u.projectName}
+                              </td>
+                              <td className="py-2 px-3 font-semibold text-slate-700">{u.teamName}</td>
+                              <td className="py-2 px-3 text-slate-600">{formatDate(u.date)}</td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-teal-700">
+                                {formatNumber(u.usedQty)}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-rose-600">
+                                {formatNumber(u.wastedQty)}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Step 5: Final Completion Statement & Signatures */}
+                  <div className="p-4 rounded-xl bg-emerald-50/70 border-2 border-emerald-300 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase text-emerald-900">
+                        Step 5 — Final Returnable Stock on Project Completion
+                      </div>
+                      <p className="text-xs text-slate-700 mt-0.5">
+                        Central FOC Left: <strong>{formatNumber(it.centralFocPoolRem)} {it.unit}</strong> + Site Branch Balance:{' '}
+                        <strong>{formatNumber(it.stage5SiteReturnableBalance)} {it.unit}</strong>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold uppercase text-indigo-800 block">
+                        Final Client Returnable Balance
+                      </span>
+                      <span className="text-xl font-black font-mono text-emerald-800">
+                        {formatNumber(it.stage5TotalClientReturnableBalance)} {it.unit}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-xs text-slate-600">
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Central Store / FOC Controller</div>
+                      <div className="text-[10px]">Signature &amp; Date</div>
+                    </div>
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
+                      <div className="text-[10px]">Signature &amp; Date</div>
+                    </div>
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Client Representative ({clientName})</div>
+                      <div className="text-[10px]">Verification &amp; Sign-Off</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ------------------ MODAL 2: FULL MAIN PROJECT REPORT (PART 1 RECEIPTS → PART 2 SUB-PROJECTS → PART 3 FINAL BALANCE) ------------------ */}
+      {projectReportModalId && (() => {
+        const proj = projectSummaries.find((p) => p.project.id === projectReportModalId);
+        if (!proj) return null;
+        const masterReportElementId = `foc-project-master-report-${proj.project.id}`;
+        const projCode = proj.project.projectId || '';
+        const projName = proj.project.projectName || 'Project';
+        const clientName = proj.primaryClientName || 'Client';
+        const branchName = proj.resolvedBranch.siteName || 'Central Warehouse';
+
+        // Check if any usage was logged directly on the Main Project (outside Sub-Projects)
+        const directMainUsageRows = proj.items
+          .map((it) => {
+            const directLogs = it.usageRecords.filter((u) => u.subProjectId === proj.project.id);
+            const used = directLogs.reduce((s, u) => s + u.usedQty, 0);
+            const waste = directLogs.reduce((s, u) => s + u.wastedQty, 0);
+            return {
+              itemId: it.itemId,
+              itemCode: it.itemCode,
+              itemName: it.itemName,
+              unit: it.unit,
+              used,
+              waste,
+              total: used + waste,
+              vouchers: directLogs.map((l) => l.usageVoucherNumber),
+            };
+          })
+          .filter((r) => r.total > 0);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-6xl w-full shadow-2xl border border-slate-200 my-auto overflow-hidden">
+              {/* Top Action Header */}
+              <div className="bg-slate-950 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold uppercase">
+                      Full Project Report
+                    </span>
+                    <h3 className="text-sm font-extrabold">
+                      {projCode ? `[${projCode}] ` : ''}{projName}
+                    </h3>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Client: {clientName} · Branch: {branchName} · {proj.items.length} Item(s) · {proj.subProjectFlows.length} Sub-Project(s)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      printHtmlElement(
+                        masterReportElementId,
+                        `Full_Project_FOC_Report_${projCode || projName}`
+                      )
+                    }
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print Full Project A4</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isExportingReportPdf}
+                    onClick={async () => {
+                      setIsExportingReportPdf(true);
+                      try {
+                        await downloadElementAsPdf(
+                          masterReportElementId,
+                          `Full_Project_FOC_Report_${projCode || 'Project'}.pdf`
+                        );
+                      } finally {
+                        setIsExportingReportPdf(false);
+                      }
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{isExportingReportPdf ? 'Saving...' : 'Download Full PDF'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProjectReportModalId(null)}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer"
+                    aria-label="Close report"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable A4 Body */}
+              <div className="p-5 max-h-[82vh] overflow-y-auto bg-slate-100">
+                <div
+                  id={masterReportElementId}
+                  className="bg-white p-6 rounded-xl border border-slate-200 text-slate-900 space-y-6"
+                >
+                  {/* Corporate Header */}
+                  <div className="border-b-2 border-slate-900 pb-3.5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">
+                        CENTRAL STOCK &amp; PROJECT MATERIAL CONTROL — FULL FOC RECONCILIATION REPORT
+                      </div>
+                      <h1 className="text-lg font-black text-slate-900 mt-0.5">
+                        MAIN PROJECT: {projCode ? `[${projCode}] ` : ''}{projName}
+                      </h1>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Client: <strong>{clientName}</strong> · Allocated Site Branch: <strong>{branchName}</strong>
+                        {proj.subProjectFlows.length > 0 && (
+                          <span>
+                            {' '}· Sub-Projects:{' '}
+                            <strong>{proj.subProjectFlows.map((s) => s.subProject.projectId).join(', ')}</strong>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs">
+                      <span className="inline-block px-2.5 py-1 rounded bg-indigo-900 text-white font-extrabold text-[10px] uppercase">
+                        Central FOC Master Report
+                      </span>
+                      <div className="text-[11px] text-slate-500 mt-1">
+                        Generated: <strong>{new Date().toLocaleDateString()}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clean 5-Step Project Overview Strip */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+                    <div className="p-3 rounded-xl border-2 border-indigo-200 bg-indigo-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-indigo-800">1. Central FOC</div>
+                      <div className="text-lg font-black font-mono text-indigo-900 mt-0.5">
+                        {formatNumber(proj.totalRecv)}
+                      </div>
+                      <div className="text-[10px] text-indigo-700">Central Left: {formatNumber(proj.totalRem)}</div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-sky-900">2. Site Issue</div>
+                      <div className="text-lg font-black font-mono text-sky-800 mt-0.5">
+                        {formatNumber(proj.totalDispatched)}
+                      </div>
+                      <div className="text-[10px] text-sky-800">{branchName}</div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-violet-200 bg-violet-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-violet-900">3. Team Issue</div>
+                      <div className="text-lg font-black font-mono text-violet-800 mt-0.5">
+                        {formatNumber(proj.totalTeamIssued)}
+                      </div>
+                      <div className="text-[10px] text-violet-800">{proj.items.length} Material(s)</div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-amber-900">4. Total Used &amp; Waste</div>
+                      <div className="text-lg font-black font-mono text-amber-900 mt-0.5">
+                        {formatNumber(proj.totalUsed)}
+                      </div>
+                      <div className="text-[10px] text-amber-900">
+                        Used: {formatNumber(proj.totalInstalled)} · Waste: {formatNumber(proj.totalWastage)}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl border-2 border-emerald-300 bg-emerald-50/70">
+                      <div className="text-[10px] font-extrabold uppercase text-emerald-900">5. Client Returnable</div>
+                      <div className="text-lg font-black font-mono text-emerald-800 mt-0.5">
+                        {formatNumber(proj.totalClientReturnable)}
+                      </div>
+                      <div className="text-[10px] font-bold text-indigo-800">
+                        Site Bal: {formatNumber(proj.totalSiteReturnable)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PART 1: MAIN PROJECT STOCK RECEIVED & ISSUED */}
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-indigo-950 border-b-2 border-indigo-900 pb-1 mb-2">
+                      Part 1 — Main Project Stock Received &amp; Issued (Central FOC → Site → Teams)
+                    </h4>
+                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-800 text-[10px] font-extrabold uppercase border-b border-slate-300">
+                          <th className="py-2 px-2.5">#</th>
+                          <th className="py-2 px-2.5">Item Code &amp; Material</th>
+                          <th className="py-2 px-2 text-center">Unit</th>
+                          <th className="py-2 px-2.5 text-right">1. Central FOC Receipt</th>
+                          <th className="py-2 px-2.5 text-right">2. Site Issue ({branchName})</th>
+                          <th className="py-2 px-2.5 text-right">Central Left</th>
+                          <th className="py-2 px-2.5 text-right">3. Team Issue</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {proj.items.map((it, idx) => (
+                          <tr key={it.itemId}>
+                            <td className="py-2 px-2.5 font-mono text-slate-500">{idx + 1}</td>
+                            <td className="py-2 px-2.5">
+                              <span className="font-mono font-bold text-slate-900 mr-1.5">{it.itemCode}</span>
+                              <span className="font-semibold text-slate-800">{it.itemName}</span>
+                              <span className="ml-1.5 px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 text-[9px] font-extrabold uppercase">
+                                Central FOC
+                              </span>
+                            </td>
+                            <td className="py-2 px-2 text-center font-mono text-slate-600">{it.unit}</td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-indigo-900">
+                              {formatNumber(it.stage1CentralFocReceipt)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-sky-800">
+                              {formatNumber(it.stage2SiteIssue)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono text-slate-700">
+                              {formatNumber(it.centralFocPoolRem)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-violet-800">
+                              {formatNumber(it.stage3TeamIssued)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* PART 2: SUB-PROJECT-BY-SUB-PROJECT USAGE FLOW (SIMPLE & CLEAR) */}
+                  {proj.subProjectFlows.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase text-teal-950 border-b-2 border-teal-800 pb-1">
+                        Part 2 — Sub-Project-by-Sub-Project Usage Flow ({proj.subProjectFlows.length} Sub-Projects)
+                      </h4>
+
+                      {proj.subProjectFlows.map((spf) => {
+                        const usedItems = spf.items.filter((spIt) => spIt.spTotalConsumed > 0);
+                        return (
+                          <div
+                            key={spf.subProject.id}
+                            className="border border-teal-300 rounded-xl overflow-hidden"
+                          >
+                            <div className="px-3.5 py-2 bg-teal-950 text-white flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div>
+                                <span className="font-mono font-extrabold text-teal-200 mr-2">
+                                  Sub-Project #{spf.orderIndex}: [{spf.subProject.projectId}]
+                                </span>
+                                <strong>{spf.subProject.projectName}</strong>
+                              </div>
+                              <div className="font-mono text-[11px]">
+                                Used: <strong>{formatNumber(spf.spTotalInstalled)}</strong> · Wastage:{' '}
+                                <strong>{formatNumber(spf.spTotalWastage)}</strong> · Total:{' '}
+                                <strong>{formatNumber(spf.spTotalConsumed)}</strong>
+                              </div>
+                            </div>
+
+                            {usedItems.length === 0 ? (
+                              <div className="p-3 text-xs text-slate-500 bg-slate-50">
+                                No material consumption logged under [{spf.subProject.projectId}] yet.
+                              </div>
+                            ) : (
+                              <table className="w-full text-left border-collapse text-xs">
+                                <thead>
+                                  <tr className="bg-teal-50 text-teal-950 text-[10px] font-extrabold uppercase border-b border-teal-200">
+                                    <th className="py-1.5 px-3">Item Code &amp; Material</th>
+                                    <th className="py-1.5 px-2 text-center">Unit</th>
+                                    <th className="py-1.5 px-3 text-right">Used</th>
+                                    <th className="py-1.5 px-3 text-right">Wastage</th>
+                                    <th className="py-1.5 px-3 text-right">Sub-Project Total</th>
+                                    <th className="py-1.5 px-3">Voucher Ref(s)</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200">
+                                  {usedItems.map((spIt) => (
+                                    <tr key={spIt.itemId}>
+                                      <td className="py-1.5 px-3 font-semibold text-slate-900">
+                                        <span className="font-mono font-bold text-slate-800 mr-1.5">
+                                          {spIt.itemCode}
+                                        </span>
+                                        {spIt.itemName}
+                                      </td>
+                                      <td className="py-1.5 px-2 text-center font-mono text-slate-600">{spIt.unit}</td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-bold text-teal-700">
+                                        {formatNumber(spIt.spInstalledUsed)}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-bold text-rose-600">
+                                        {formatNumber(spIt.spWastage)}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-black text-slate-900">
+                                        {formatNumber(spIt.spTotalConsumed)}
+                                      </td>
+                                      <td className="py-1.5 px-3 font-mono text-[10px] text-slate-600">
+                                        {spIt.spUsageLogs.map((u) => u.usageVoucherNumber).join(', ')}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Direct Main Project Usage (if any usage was logged directly on parent Main Project) */}
+                      {directMainUsageRows.length > 0 && (
+                        <div className="border border-slate-300 rounded-xl overflow-hidden">
+                          <div className="px-3.5 py-2 bg-slate-800 text-white text-xs font-bold">
+                            Direct Usage Logged on Main Project [{projCode}]
+                          </div>
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-slate-50 text-slate-700 text-[10px] font-extrabold uppercase border-b border-slate-200">
+                                <th className="py-1.5 px-3">Item Code &amp; Material</th>
+                                <th className="py-1.5 px-2 text-center">Unit</th>
+                                <th className="py-1.5 px-3 text-right">Used</th>
+                                <th className="py-1.5 px-3 text-right">Wastage</th>
+                                <th className="py-1.5 px-3 text-right">Total</th>
+                                <th className="py-1.5 px-3">Voucher Ref(s)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {directMainUsageRows.map((row) => (
+                                <tr key={row.itemId}>
+                                  <td className="py-1.5 px-3 font-semibold text-slate-900">
+                                    <span className="font-mono font-bold mr-1.5">{row.itemCode}</span>
+                                    {row.itemName}
+                                  </td>
+                                  <td className="py-1.5 px-2 text-center font-mono text-slate-600">{row.unit}</td>
+                                  <td className="py-1.5 px-3 text-right font-mono font-bold text-teal-700">
+                                    {formatNumber(row.used)}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-mono font-bold text-rose-600">
+                                    {formatNumber(row.waste)}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-mono font-black text-slate-900">
+                                    {formatNumber(row.total)}
+                                  </td>
+                                  <td className="py-1.5 px-3 font-mono text-[10px] text-slate-600">
+                                    {row.vouchers.join(', ')}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* PART 3 (BOTTOM): FINAL FULL PROJECT USAGE & CLIENT RETURNABLE BALANCE SUMMARY */}
+                  <div>
+                    <div className="border-b-2 border-emerald-800 pb-1 mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-xs font-black uppercase text-emerald-950">
+                        {proj.subProjectFlows.length > 0
+                          ? `Part 3 (Final Summary) — Full Main Project [${projCode}] Total Usage & Client Returnable Balance`
+                          : `Final Full Project Usage & Client Returnable Balance Summary`}
+                      </h4>
+                      <span className="text-[10px] font-extrabold text-emerald-800">
+                        Balance to Return to Client on Project Completion
+                      </span>
+                    </div>
+
+                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                      <thead>
+                        <tr className="bg-slate-900 text-white text-[10px] font-extrabold uppercase">
+                          <th className="py-2.5 px-2">#</th>
+                          <th className="py-2.5 px-2.5">Item Code &amp; Description</th>
+                          <th className="py-2.5 px-2 text-center">Unit</th>
+                          <th className="py-2.5 px-2.5 text-right bg-indigo-950">1. Central FOC</th>
+                          <th className="py-2.5 px-2.5 text-right bg-sky-950">2. Site Issue</th>
+                          <th className="py-2.5 px-2.5 text-right bg-violet-950">3. Team Issue</th>
+                          <th className="py-2.5 px-2.5 text-right bg-amber-950">4. Total Used + Waste</th>
+                          <th className="py-2.5 px-2.5 text-right bg-emerald-950">5a. Site Returnable</th>
+                          <th className="py-2.5 px-2.5 text-right bg-emerald-900">5b. Final Client Returnable</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {proj.items.map((it, idx) => (
+                          <tr key={it.itemId}>
+                            <td className="py-2 px-2 font-mono text-slate-500">{idx + 1}</td>
+                            <td className="py-2 px-2.5">
+                              <span className="font-mono font-bold text-slate-900 mr-1.5">{it.itemCode}</span>
+                              <span className="font-semibold text-slate-800">{it.itemName}</span>
+                            </td>
+                            <td className="py-2 px-2 text-center font-mono text-slate-600">{it.unit}</td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-indigo-800 bg-indigo-50/30">
+                              {formatNumber(it.stage1CentralFocReceipt)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-sky-800">
+                              {formatNumber(it.stage2SiteIssue)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-violet-800">
+                              {formatNumber(it.stage3TeamIssued)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono bg-amber-50/30">
+                              <div className="font-black text-slate-900">
+                                {formatNumber(it.stage4TotalConsumed)}
+                              </div>
+                              <div className="text-[10px] text-slate-600">
+                                {formatNumber(it.stage4InstalledUsage)}U + {formatNumber(it.stage4Wastage)}W
+                              </div>
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-extrabold text-indigo-800 bg-indigo-50/30">
+                              {formatNumber(it.stage5SiteReturnableBalance)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-black text-emerald-800 bg-emerald-50/60">
+                              {formatNumber(it.stage5TotalClientReturnableBalance)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Official 3-Column Sign-Off */}
+                  <div className="grid grid-cols-3 gap-6 pt-5 border-t-2 border-slate-300 text-xs text-slate-600">
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Central Store / FOC Controller</div>
+                      <div className="text-[10px]">Prepared By · Signature &amp; Date</div>
+                    </div>
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
+                      <div className="text-[10px]">Verified By · Signature &amp; Date</div>
+                    </div>
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Client Representative ({clientName})</div>
+                      <div className="text-[10px]">Final Completion Approval</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ------------------ MODAL 3: DEDICATED SUB-PROJECT FLOW REPORT ------------------ */}
+      {subProjectReportModal && (() => {
+        const proj = projectSummaries.find((p) => p.project.id === subProjectReportModal.parentProjectId);
+        const spf = proj?.subProjectFlows.find((s) => s.subProject.id === subProjectReportModal.subProjectId);
+        if (!proj || !spf) return null;
+
+        const spReportElementId = `foc-subproject-report-${spf.subProject.id}`;
+        const spCode = spf.subProject.projectId;
+        const spName = spf.subProject.projectName;
+        const parentCode = proj.project.projectId;
+        const parentName = proj.project.projectName;
+        const clientName = proj.primaryClientName || 'Client';
+        const branchName = proj.resolvedBranch.siteName || 'Central Warehouse';
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-5xl w-full shadow-2xl border border-slate-200 my-auto overflow-hidden">
+              {/* Top Header */}
+              <div className="bg-teal-950 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-teal-600 text-white text-[10px] font-extrabold uppercase">
+                      Sub-Project Flow Report
+                    </span>
+                    <h3 className="text-sm font-extrabold">
+                      [{spCode}] {spName}
+                    </h3>
+                  </div>
+                  <p className="text-[11px] text-teal-200 mt-0.5">
+                    Main Project: [{parentCode}] {parentName} · Client: {clientName} · Branch: {branchName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      printHtmlElement(spReportElementId, `SubProject_FOC_Report_${spCode}`)
+                    }
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print Sub-Project A4</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isExportingReportPdf}
+                    onClick={async () => {
+                      setIsExportingReportPdf(true);
+                      try {
+                        await downloadElementAsPdf(
+                          spReportElementId,
+                          `SubProject_FOC_Report_${spCode}.pdf`
+                        );
+                      } finally {
+                        setIsExportingReportPdf(false);
+                      }
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{isExportingReportPdf ? 'Saving...' : 'Download PDF'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubProjectReportModal(null)}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer"
+                    aria-label="Close report"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable A4 Body */}
+              <div className="p-5 max-h-[82vh] overflow-y-auto bg-slate-100">
+                <div
+                  id={spReportElementId}
+                  className="bg-white p-6 rounded-xl border border-slate-200 text-slate-900 space-y-5"
+                >
+                  {/* Document Header */}
+                  <div className="border-b-2 border-slate-900 pb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800">
+                        CLIENT FOC — DEDICATED SUB-PROJECT USAGE FLOW REPORT
+                      </div>
+                      <h1 className="text-lg font-black text-slate-900 mt-0.5">
+                        SUB-PROJECT: [{spCode}] {spName}
+                      </h1>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Main Project: <strong>[{parentCode}] {parentName}</strong> · Client: <strong>{clientName}</strong> · Site Branch: <strong>{branchName}</strong>
+                      </p>
+                    </div>
+                    <div className="text-right text-xs">
+                      <span className="inline-block px-2.5 py-1 rounded bg-teal-900 text-white font-extrabold text-[10px] uppercase">
+                        Sub-Project #{spf.orderIndex}
+                      </span>
+                      <div className="text-[11px] text-slate-500 mt-1">
+                        Date: <strong>{new Date().toLocaleDateString()}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 KPI Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="p-3 rounded-xl border border-teal-200 bg-teal-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-teal-900">Used on [{spCode}]</div>
+                      <div className="text-lg font-black font-mono text-teal-900 mt-0.5">
+                        {formatNumber(spf.spTotalInstalled)}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-rose-200 bg-rose-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-rose-900">Wastage</div>
+                      <div className="text-lg font-black font-mono text-rose-700 mt-0.5">
+                        {formatNumber(spf.spTotalWastage)}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
+                      <div className="text-[10px] font-extrabold uppercase text-amber-900">Total Consumed</div>
+                      <div className="text-lg font-black font-mono text-amber-900 mt-0.5">
+                        {formatNumber(spf.spTotalConsumed)}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="text-[10px] font-extrabold uppercase text-slate-600">Usage Vouchers</div>
+                      <div className="text-lg font-black font-mono text-slate-900 mt-0.5">
+                        {spf.spTotalLogsCount}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Part 1: Sub-Project Materials Summary */}
+                  <div>
+                    <h4 className="text-xs font-extrabold uppercase text-teal-950 mb-1.5">
+                      Part 1 — Material Usage on [{spCode}] &amp; Main Project Remaining Balance
+                    </h4>
+                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                      <thead>
+                        <tr className="bg-teal-950 text-white text-[10px] font-extrabold uppercase">
+                          <th className="py-2 px-2.5">#</th>
+                          <th className="py-2 px-2.5">Item Code &amp; Material</th>
+                          <th className="py-2 px-2 text-center">Unit</th>
+                          <th className="py-2 px-2.5 text-right">Main FOC (Central / Site)</th>
+                          <th className="py-2 px-2.5 text-right">Used on [{spCode}]</th>
+                          <th className="py-2 px-2.5 text-right">Wastage</th>
+                          <th className="py-2 px-2.5 text-right">Sub-Project Total</th>
+                          <th className="py-2 px-2.5 text-right">Main Project Remaining Bal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {spf.items.map((spIt, idx) => (
+                          <tr key={spIt.itemId}>
+                            <td className="py-2 px-2.5 font-mono text-slate-500">{idx + 1}</td>
+                            <td className="py-2 px-2.5">
+                              <span className="font-mono font-bold text-slate-900 mr-1.5">{spIt.itemCode}</span>
+                              <span className="font-semibold text-slate-800">{spIt.itemName}</span>
+                            </td>
+                            <td className="py-2 px-2 text-center font-mono text-slate-600">{spIt.unit}</td>
+                            <td className="py-2 px-2.5 text-right font-mono text-slate-700">
+                              {formatNumber(spIt.stage1MainCentralFoc)} / {formatNumber(spIt.stage2MainSiteIssue)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-teal-700">
+                              {formatNumber(spIt.spInstalledUsed)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold text-rose-600">
+                              {formatNumber(spIt.spWastage)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-black text-slate-900">
+                              {formatNumber(spIt.spTotalConsumed)}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-extrabold text-emerald-800 bg-emerald-50/40">
+                              {formatNumber(spIt.finalMainClientReturnable)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Part 2: Field Usage Vouchers for this Sub-Project */}
+                  <div>
+                    <h4 className="text-xs font-extrabold uppercase text-slate-800 mb-1.5">
+                      Part 2 — Field Usage Vouchers Logged on [{spCode}]
+                    </h4>
+                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-800 text-[10px] font-extrabold uppercase border-b border-slate-300">
+                          <th className="py-2 px-2.5">Voucher #</th>
+                          <th className="py-2 px-2.5">Date</th>
+                          <th className="py-2 px-2.5">Field Team</th>
+                          <th className="py-2 px-2.5">Material</th>
+                          <th className="py-2 px-2.5 text-right">Used</th>
+                          <th className="py-2 px-2.5 text-right">Wastage</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {spf.spTotalLogsCount === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-3 px-3 text-center text-slate-400">
+                              No field usage vouchers logged under [{spCode}] yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          spf.items.flatMap((spIt) =>
+                            spIt.spUsageLogs.map((uLog) => (
+                              <tr key={`${spIt.itemId}-${uLog.id}`}>
+                                <td className="py-2 px-2.5 font-mono font-bold text-teal-800">
+                                  {uLog.usageVoucherNumber}
+                                </td>
+                                <td className="py-2 px-2.5 text-slate-600">{formatDate(uLog.date)}</td>
+                                <td className="py-2 px-2.5 font-semibold text-slate-800">{uLog.teamName}</td>
+                                <td className="py-2 px-2.5 text-slate-800">
+                                  <span className="font-mono font-bold mr-1">{spIt.itemCode}</span>
+                                  {spIt.itemName}
+                                </td>
+                                <td className="py-2 px-2.5 text-right font-mono font-bold text-teal-700">
+                                  {formatNumber(uLog.usedQty)} {spIt.unit}
+                                </td>
+                                <td className="py-2 px-2.5 text-right font-mono font-bold text-rose-600">
+                                  {formatNumber(uLog.wastedQty)} {spIt.unit}
+                                </td>
+                              </tr>
+                            ))
+                          )
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Sign-Off Block */}
+                  <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-xs text-slate-600">
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Prepared By (Site Store)</div>
+                      <div className="text-[10px]">Signature &amp; Date</div>
+                    </div>
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
+                      <div className="text-[10px]">Signature &amp; Date</div>
+                    </div>
+                    <div>
+                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="font-bold text-slate-800">Client / Project Inspector</div>
+                      <div className="text-[10px]">Sub-Project Sign-Off</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ------------------ CONFIRM MODAL ------------------ */}
       <ConfirmModal
