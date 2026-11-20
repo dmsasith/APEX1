@@ -655,6 +655,7 @@ export const ClientFreeIssueView: React.FC = () => {
               usageVoucherNumber: u.usageVoucherNumber,
               date: u.usageDate || u.date,
               subProjectId: u.projectId,
+              siteId: u.siteId,
               projectCode: projObj?.projectId || p.projectId,
               projectName: u.projectName || projObj?.projectName || p.projectName,
               teamName: u.teamName || (teams || []).find((t) => t.id === u.teamId)?.teamName || 'Field Team',
@@ -712,11 +713,16 @@ export const ClientFreeIssueView: React.FC = () => {
       });
 
       // Build Sub-Project-wise 5-Stage Flow Breakdown (for Main Projects with Sub-Projects)
-      // Each Sub-Project (e.g. KT-RGL-0505, KT-ABK-0506) gets its own sequential flow & cumulative pool balance
+      // Each Sub-Project (e.g. Site Area Sub-Project or KT-RGL-0505, KT-ABK-0506) gets its own sequential flow & cumulative pool balance
       const itemCumulativeDeductionMap = new Map<string, number>();
       const subProjectFlows = childSubProjects.map((sp, spIndex) => {
         const spItems = freeStockItems.map((fi) => {
-          const spUsageLogs = fi.usageRecords.filter((u) => u.subProjectId === sp.id);
+          const spUsageLogs = fi.usageRecords.filter(
+            (u) =>
+              u.subProjectId === sp.id ||
+              (u.subProjectId === p.id &&
+                Boolean(sp.siteId && sp.siteId !== 'ALL_AREAS' && u.siteId === sp.siteId))
+          );
           const spInstalledUsed = spUsageLogs.reduce((s, u) => s + u.usedQty, 0);
           const spWastage = spUsageLogs.reduce((s, u) => s + u.wastedQty, 0);
           const spTotalConsumed = spInstalledUsed + spWastage;
