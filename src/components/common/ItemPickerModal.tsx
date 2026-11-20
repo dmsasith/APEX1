@@ -728,13 +728,28 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
                       </td>
 
                       {/* Item Name & Specs */}
-                      <td className="py-3 px-4 min-w-[200px] max-w-[280px]">
-                        <div className="font-semibold text-slate-900 text-xs sm:text-sm group-hover:text-emerald-950 truncate" title={item.itemName}>
-                          {item.itemName}
+                      <td className="py-3 px-4 min-w-[220px] max-w-[300px]">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.itemName}
+                              className="w-9 h-9 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                              <Package className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-slate-900 text-xs sm:text-sm group-hover:text-emerald-950 truncate" title={item.itemName}>
+                              {item.itemName}
+                            </div>
+                            {item.description && (
+                              <div className="text-[11px] text-slate-500 truncate mt-0.5" title={item.description}>{item.description}</div>
+                            )}
+                          </div>
                         </div>
-                        {item.description && (
-                          <div className="text-[11px] text-slate-500 truncate mt-0.5" title={item.description}>{item.description}</div>
-                        )}
                       </td>
 
                       {/* Category */}

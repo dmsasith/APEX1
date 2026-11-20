@@ -14,6 +14,8 @@ import {
   Boxes,
   ScanLine,
   Plus,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -56,6 +58,8 @@ export const BranchStockReturnView: React.FC = () => {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [filterBranchId, setFilterBranchId] = useState('all');
+  const [openDropdownRowIdx, setOpenDropdownRowIdx] = useState<number | null>(null);
+  const [dropdownSearch, setDropdownSearch] = useState<string>('');
 
   // Confirmation modal
   const [confirmState, setConfirmState] = useState<{
@@ -522,19 +526,145 @@ export const BranchStockReturnView: React.FC = () => {
                           </div>
                         </div>
 
-                        <div>
-                          <select
-                            value={row.itemId}
-                            onChange={(e) => handleUpdateReturnRow(idx, 'itemId', e.target.value)}
-                            className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            required
-                          >
-                            {availableStockItems.map(({ item, availableBalance }) => (
-                              <option key={item.id} value={item.id}>
-                                [{item.itemCode}] {item.itemName} — In Stock: {availableBalance} {item.unit}
-                              </option>
-                            ))}
-                          </select>
+                        <div className="relative">
+                          {(() => {
+                            const isDropdownOpen = openDropdownRowIdx === idx;
+                            const q = dropdownSearch.trim().toLowerCase();
+                            const filteredAvail = q
+                              ? availableStockItems.filter(
+                                  ({ item }) =>
+                                    item.itemCode.toLowerCase().includes(q) ||
+                                    item.itemName.toLowerCase().includes(q) ||
+                                    item.category.toLowerCase().includes(q)
+                                )
+                              : availableStockItems;
+
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isDropdownOpen) {
+                                      setOpenDropdownRowIdx(null);
+                                    } else {
+                                      setOpenDropdownRowIdx(idx);
+                                      setDropdownSearch('');
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-slate-300 hover:border-slate-400 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-between gap-2.5 cursor-pointer shadow-2xs text-left"
+                                >
+                                  {rowEntry ? (
+                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                      {rowEntry.item.imageUrl ? (
+                                        <img
+                                          src={rowEntry.item.imageUrl}
+                                          alt={rowEntry.item.itemName}
+                                          className="w-10 h-10 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                          <Package className="w-4 h-4" />
+                                        </div>
+                                      )}
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[11px]">
+                                            {rowEntry.item.itemCode}
+                                          </span>
+                                          <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 text-[11px]">
+                                            In Stock: {formatNumber(rowEntry.availableBalance)} {rowEntry.item.unit}
+                                          </span>
+                                        </div>
+                                        <div className="font-extrabold text-slate-900 text-xs truncate mt-0.5">
+                                          {rowEntry.item.itemName}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-400">Select branch item to return...</span>
+                                  )}
+                                  <ChevronDown
+                                    className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${
+                                      isDropdownOpen ? 'rotate-180' : ''
+                                    }`}
+                                  />
+                                </button>
+
+                                {isDropdownOpen && (
+                                  <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl overflow-hidden">
+                                    <div className="p-2 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+                                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <input
+                                        type="text"
+                                        value={dropdownSearch}
+                                        onChange={(e) => setDropdownSearch(e.target.value)}
+                                        placeholder="Search branch stock item code or name..."
+                                        className="w-full text-xs bg-transparent focus:outline-none text-slate-800"
+                                        autoFocus
+                                      />
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                                      {filteredAvail.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-slate-400">
+                                          No matching branch items found.
+                                        </div>
+                                      ) : (
+                                        filteredAvail.map(({ item, availableBalance }) => {
+                                          const isSelected = item.id === row.itemId;
+                                          return (
+                                            <div
+                                              key={item.id}
+                                              onClick={() => {
+                                                handleUpdateReturnRow(idx, 'itemId', item.id);
+                                                setOpenDropdownRowIdx(null);
+                                                setDropdownSearch('');
+                                              }}
+                                              className={`p-2.5 hover:bg-indigo-50/70 cursor-pointer flex items-center justify-between gap-2.5 transition-colors ${
+                                                isSelected ? 'bg-indigo-50 font-semibold' : ''
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                {item.imageUrl ? (
+                                                  <img
+                                                    src={item.imageUrl}
+                                                    alt={item.itemName}
+                                                    className="w-10 h-10 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                                  />
+                                                ) : (
+                                                  <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                                    <Package className="w-4 h-4" />
+                                                  </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-mono font-bold text-[11px] text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                                      {item.itemCode}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-500 font-medium">
+                                                      {item.category}
+                                                    </span>
+                                                  </div>
+                                                  <div className="text-xs font-extrabold text-slate-900 truncate mt-0.5">
+                                                    {item.itemName}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-2 shrink-0">
+                                                <span className="px-2 py-1 rounded-md font-mono text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                                  In Stock: {formatNumber(availableBalance)} {item.unit}
+                                                </span>
+                                                {isSelected && <Check className="w-4 h-4 text-indigo-700 shrink-0" />}
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
@@ -653,16 +783,29 @@ export const BranchStockReturnView: React.FC = () => {
                   <div
                     key={item.id}
                     onClick={() => handleAddOrIncrementBranchItem(item.id, item.itemCode, item.itemName)}
-                    className={`p-2.5 border rounded-lg cursor-pointer transition-colors flex items-center justify-between ${
+                    className={`p-2.5 border rounded-lg cursor-pointer transition-colors flex items-center justify-between gap-2.5 ${
                       isSelected
                         ? 'border-indigo-500 bg-indigo-50/50'
                         : 'border-slate-100 bg-slate-50 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="min-w-0 pr-2">
-                      <div className="text-xs font-bold text-slate-800 truncate">{item.itemName}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">
-                        {item.itemCode} · {item.category}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.itemName}
+                          className="w-9 h-9 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                          <Package className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="min-w-0 pr-1">
+                        <div className="text-xs font-bold text-slate-800 truncate">{item.itemName}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">
+                          {item.itemCode} · {item.category}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0">

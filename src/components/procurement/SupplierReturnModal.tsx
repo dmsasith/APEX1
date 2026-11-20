@@ -516,11 +516,28 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
                         const isOverStock = row.quantity > available;
                         const lineTotal = row.quantity * row.unitCost;
 
+                        const catItem = items.find((c) => c.id === row.itemId);
+
                         return (
                           <tr key={row.itemId} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
                             <td className="py-2.5 px-3">
-                              <div className="font-bold text-slate-900">{row.itemName}</div>
-                              <div className="text-[11px] font-mono text-slate-500">{row.itemCode} · {row.unit}</div>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {catItem?.imageUrl ? (
+                                  <img
+                                    src={catItem.imageUrl}
+                                    alt={row.itemName}
+                                    className="w-9 h-9 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                    <Package className="w-4 h-4" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-bold text-slate-900 truncate">{row.itemName}</div>
+                                  <div className="text-[11px] font-mono text-slate-500">{row.itemCode} · {row.unit}</div>
+                                </div>
+                              </div>
                             </td>
                             <td className="py-2.5 px-3 text-center">
                               <span

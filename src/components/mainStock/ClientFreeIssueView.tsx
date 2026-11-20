@@ -36,6 +36,7 @@ import {
   X,
   Lock,
   RefreshCw,
+  Package,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { Item, ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } from '../../types';
@@ -44,6 +45,7 @@ import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { ItemTraceabilitySummaryPanel } from '../common/ItemTraceabilitySummaryPanel';
+import { SearchableItemSelect } from '../common/SearchableItemSelect';
 import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
 
@@ -1337,9 +1339,9 @@ export const ClientFreeIssueView: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-7">
                 {/* Compact Flow Guide Bar */}
-                <div className="px-4 py-2.5 bg-slate-900 text-white rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="px-4 py-2.5 bg-slate-900 text-white rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-xs">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-extrabold uppercase">
                       <Gift className="w-3 h-3" />
@@ -1363,20 +1365,56 @@ export const ClientFreeIssueView: React.FC = () => {
                 {projectSummaries
                   .filter((p) => p.items.length > 0)
                   .map(
-                    ({
-                      project,
-                      primaryClientName,
-                      resolvedBranch,
-                      isMainProject,
-                      childSubProjects,
-                      subProjectFlows,
-                      items: freeItems,
-                      totalRecv,
-                      totalDispatched,
-                      totalTeamIssued,
-                      totalUsed,
-                      totalClientReturnable,
-                    }) => {
+                    (
+                      {
+                        project,
+                        primaryClientName,
+                        resolvedBranch,
+                        isMainProject,
+                        childSubProjects,
+                        subProjectFlows,
+                        items: freeItems,
+                        totalRecv,
+                        totalDispatched,
+                        totalTeamIssued,
+                        totalUsed,
+                        totalClientReturnable,
+                      },
+                      cardIdx
+                    ) => {
+                      // Distinct, bold high-contrast color themes per Main Project card so each Main Project stands out clearly
+                      const PROJECT_CARD_THEMES = [
+                        {
+                          frame: 'border-2 border-indigo-700 ring-4 ring-indigo-600/15',
+                          headerBg: 'bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900',
+                          badgeBg: 'bg-indigo-500 text-white border-indigo-300/40',
+                          scopeBar: 'bg-indigo-100/80 border-b-2 border-indigo-300',
+                          activeMainBtn: 'bg-indigo-800 text-white shadow-sm ring-2 ring-indigo-400',
+                        },
+                        {
+                          frame: 'border-2 border-teal-700 ring-4 ring-teal-600/15',
+                          headerBg: 'bg-gradient-to-r from-teal-950 via-teal-900 to-slate-900',
+                          badgeBg: 'bg-teal-500 text-white border-teal-300/40',
+                          scopeBar: 'bg-teal-100/80 border-b-2 border-teal-300',
+                          activeMainBtn: 'bg-teal-800 text-white shadow-sm ring-2 ring-teal-400',
+                        },
+                        {
+                          frame: 'border-2 border-purple-700 ring-4 ring-purple-600/15',
+                          headerBg: 'bg-gradient-to-r from-purple-950 via-purple-900 to-slate-900',
+                          badgeBg: 'bg-purple-500 text-white border-purple-300/40',
+                          scopeBar: 'bg-purple-100/80 border-b-2 border-purple-300',
+                          activeMainBtn: 'bg-purple-800 text-white shadow-sm ring-2 ring-purple-400',
+                        },
+                        {
+                          frame: 'border-2 border-blue-700 ring-4 ring-blue-600/15',
+                          headerBg: 'bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900',
+                          badgeBg: 'bg-blue-500 text-white border-blue-300/40',
+                          scopeBar: 'bg-blue-100/80 border-b-2 border-blue-300',
+                          activeMainBtn: 'bg-blue-800 text-white shadow-sm ring-2 ring-blue-400',
+                        },
+                      ];
+                      const theme = PROJECT_CARD_THEMES[cardIdx % PROJECT_CARD_THEMES.length];
+
                       const selectedSpId =
                         selectedProjectFilter !== 'all' &&
                         childSubProjects.some((sp) => sp.id === selectedProjectFilter)
@@ -1412,96 +1450,112 @@ export const ClientFreeIssueView: React.FC = () => {
                       return (
                         <div
                           key={project.id}
-                          className="border border-slate-200 rounded-2xl bg-white shadow-2xs overflow-hidden"
+                          className={`rounded-2xl bg-white shadow-lg overflow-hidden ${theme.frame}`}
                         >
-                          {/* Clean Project Header */}
-                          <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
-                            <div className="space-y-1">
+                          {/* Bold, High-Contrast Main Project Header Banner */}
+                          <div
+                            className={`p-4 sm:p-5 ${theme.headerBg} text-white flex flex-col xl:flex-row xl:items-center justify-between gap-4`}
+                          >
+                            <div className="space-y-1.5">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-mono text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${theme.badgeBg}`}
+                                >
+                                  <FolderKanban className="w-3 h-3" />
+                                  {isMainProject
+                                    ? `MAIN PROJECT #${cardIdx + 1}`
+                                    : `PROJECT #${cardIdx + 1}`}
+                                </span>
+                                <span className="font-mono text-xs font-black text-slate-950 bg-amber-400 border border-amber-300 px-2.5 py-0.5 rounded-md shadow-2xs">
                                   {project.projectId}
                                 </span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-extrabold uppercase">
-                                  <Gift className="w-3 h-3" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/15 border border-white/25 text-white text-[10px] font-extrabold uppercase">
+                                  <Gift className="w-3 h-3 text-amber-300" />
                                   Central FOC
                                 </span>
-                                <h3 className="text-base font-extrabold text-slate-900">
-                                  {project.projectName}
-                                </h3>
                                 {resolvedBranch.siteName && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-                                    <Building2 className="w-3 h-3 text-emerald-600" />
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-500/25 text-emerald-200 border border-emerald-400/40 text-[11px] font-extrabold">
+                                    <Building2 className="w-3 h-3 text-emerald-300" />
                                     {resolvedBranch.siteName}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3">
-                                <span>
-                                  Client: <strong className="text-slate-800">{primaryClientName}</strong>
+
+                              <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                                {project.projectName}
+                              </h3>
+
+                              <div className="text-xs text-slate-200 flex flex-wrap items-center gap-3 pt-0.5">
+                                <span className="bg-white/10 px-2.5 py-0.5 rounded-md border border-white/15">
+                                  Client: <strong className="text-white">{primaryClientName}</strong>
                                 </span>
-                                <span>
-                                  Materials: <strong className="text-slate-800">{freeItems.length}</strong>
+                                <span className="bg-white/10 px-2.5 py-0.5 rounded-md border border-white/15">
+                                  FOC Items: <strong className="text-amber-300">{freeItems.length}</strong>
                                 </span>
                                 {isMainProject && subProjectFlows.length > 0 && (
-                                  <span>
-                                    Sub-Projects: <strong className="text-teal-700">{subProjectFlows.length}</strong>
+                                  <span className="bg-teal-500/25 text-teal-100 px-2.5 py-0.5 rounded-md border border-teal-400/40 font-bold">
+                                    Linked Sub-Projects: <strong className="text-white">{subProjectFlows.length}</strong>
                                   </span>
                                 )}
                               </div>
                             </div>
 
-                            {/* Right Side: Clean 5-Stage Numbers + Full Project Report Button */}
+                            {/* Right Side: High-Contrast 5-Stage Numbers + Full Project Report Button */}
                             <div className="flex flex-wrap items-center gap-2.5">
-                              <div className="flex flex-wrap items-center gap-1.5 text-xs bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                              <div className="flex flex-wrap items-center gap-1.5 text-xs bg-slate-950/60 backdrop-blur-xs px-3 py-2 rounded-xl border border-white/20">
                                 <div className="px-1.5">
-                                  <div className="text-[10px] text-indigo-700 font-bold uppercase">1. Central</div>
-                                  <div className="font-mono font-black text-indigo-900">{formatNumber(totalRecv)}</div>
+                                  <div className="text-[10px] text-indigo-300 font-extrabold uppercase">1. Central</div>
+                                  <div className="font-mono font-black text-white text-sm">{formatNumber(totalRecv)}</div>
                                 </div>
-                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="h-6 w-px bg-white/15" />
                                 <div className="px-1.5">
-                                  <div className="text-[10px] text-sky-700 font-bold uppercase">2. Site</div>
-                                  <div className="font-mono font-bold text-sky-800">{formatNumber(totalDispatched)}</div>
+                                  <div className="text-[10px] text-sky-300 font-extrabold uppercase">2. Site</div>
+                                  <div className="font-mono font-bold text-sky-200 text-sm">{formatNumber(totalDispatched)}</div>
                                 </div>
-                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="h-6 w-px bg-white/15" />
                                 <div className="px-1.5">
-                                  <div className="text-[10px] text-blue-700 font-bold uppercase">3. Team</div>
-                                  <div className="font-mono font-bold text-blue-800">{formatNumber(totalTeamIssued)}</div>
+                                  <div className="text-[10px] text-blue-300 font-extrabold uppercase">3. Team</div>
+                                  <div className="font-mono font-bold text-blue-200 text-sm">{formatNumber(totalTeamIssued)}</div>
                                 </div>
-                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="h-6 w-px bg-white/15" />
                                 <div className="px-1.5">
-                                  <div className="text-[10px] text-amber-700 font-bold uppercase">4. Used</div>
-                                  <div className="font-mono font-bold text-amber-800">{formatNumber(totalUsed)}</div>
+                                  <div className="text-[10px] text-amber-300 font-extrabold uppercase">4. Used</div>
+                                  <div className="font-mono font-bold text-amber-200 text-sm">{formatNumber(totalUsed)}</div>
                                 </div>
-                                <div className="h-5 w-px bg-slate-200" />
+                                <div className="h-6 w-px bg-white/15" />
                                 <div className="px-1.5">
-                                  <div className="text-[10px] text-emerald-700 font-bold uppercase">5. Returnable</div>
-                                  <div className="font-mono font-black text-emerald-700">{formatNumber(totalClientReturnable)}</div>
+                                  <div className="text-[10px] text-emerald-300 font-extrabold uppercase">5. Returnable</div>
+                                  <div className="font-mono font-black text-emerald-300 text-sm">{formatNumber(totalClientReturnable)}</div>
                                 </div>
                               </div>
 
                               <button
                                 type="button"
                                 onClick={() => setProjectReportModalId(project.id)}
-                                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-extrabold shadow-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 text-xs font-black shadow-md transition-all inline-flex items-center gap-1.5 cursor-pointer shrink-0"
                                 title="Open Full Main Project + Sub-Projects A4/PDF Report"
                               >
-                                <Printer className="w-3.5 h-3.5" />
+                                <Printer className="w-4 h-4" />
                                 <span>Full Project Report</span>
                               </button>
                             </div>
                           </div>
 
-                          {/* Clean Scope Switcher Strip (Main Project vs Individual Sub-Projects) */}
+                          {/* Bold Scope Switcher Strip (Main Project vs Individual Sub-Projects) */}
                           {isMainProject && subProjectFlows.length > 0 && (
-                            <div className="px-4 sm:px-5 py-2.5 bg-slate-50/90 border-b border-slate-200 flex flex-wrap items-center gap-1.5">
-                              <span className="text-[11px] font-bold text-slate-500 mr-1">View Scope:</span>
+                            <div
+                              className={`px-4 sm:px-5 py-3 ${theme.scopeBar} flex flex-wrap items-center gap-2`}
+                            >
+                              <span className="text-[11px] font-black uppercase tracking-wider text-slate-800 mr-1">
+                                View Scope:
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => selectScope('all')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                                   !activeSubFlow
-                                    ? 'bg-indigo-600 text-white shadow-2xs'
-                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-indigo-50'
+                                    ? theme.activeMainBtn
+                                    : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
                                 }`}
                               >
                                 Main Project Overview (All)
@@ -1513,18 +1567,18 @@ export const ClientFreeIssueView: React.FC = () => {
                                     key={spf.subProject.id}
                                     type="button"
                                     onClick={() => selectScope(isActive ? 'all' : spf.subProject.id)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                                    className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-extrabold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                                       isActive
-                                        ? 'bg-teal-700 text-white shadow-2xs'
-                                        : 'bg-white text-teal-900 border border-teal-200 hover:bg-teal-50'
+                                        ? 'bg-teal-800 text-white shadow-sm ring-2 ring-teal-400'
+                                        : 'bg-white text-teal-950 border-2 border-teal-600/60 hover:bg-teal-50'
                                     }`}
                                   >
                                     <span>↳ {spf.subProject.projectId}</span>
                                     <span
-                                      className={`px-1.5 py-0.2 rounded text-[10px] font-sans ${
+                                      className={`px-1.5 py-0.2 rounded text-[10px] font-sans font-black ${
                                         isActive
-                                          ? 'bg-teal-900/60 text-teal-100'
-                                          : 'bg-teal-50 text-teal-800'
+                                          ? 'bg-teal-950/70 text-teal-100'
+                                          : 'bg-teal-100 text-teal-900'
                                       }`}
                                     >
                                       {formatNumber(spf.spTotalConsumed)}
@@ -1538,12 +1592,12 @@ export const ClientFreeIssueView: React.FC = () => {
                           {/* VIEW MODE A: MAIN PROJECT OVERVIEW (SINGLE CLEAN TABLE — NO DUPLICATION) */}
                           {!activeSubFlow ? (
                             <div className="p-4 sm:p-5 space-y-4">
-                              <div className="overflow-x-auto">
+                              <div className="overflow-x-auto border border-slate-200 rounded-xl">
                                 <table className="w-full text-left text-xs">
                                   <thead>
-                                    <tr className="border-b-2 border-slate-200 bg-slate-50 text-slate-600 font-extrabold uppercase text-[10px]">
+                                    <tr className="border-b-2 border-slate-300 bg-slate-100 text-slate-800 font-extrabold uppercase text-[10px]">
                                       <th className="py-2.5 px-3">Item</th>
-                                      <th className="py-2.5 px-3 text-right bg-indigo-50/60 text-indigo-950">
+                                      <th className="py-2.5 px-3 text-right bg-indigo-100/70 text-indigo-950">
                                         1. Central FOC
                                       </th>
                                       <th className="py-2.5 px-3 text-right">2. Site Issue</th>
@@ -1551,13 +1605,13 @@ export const ClientFreeIssueView: React.FC = () => {
                                       <th className="py-2.5 px-3 text-right">
                                         4. Used &amp; Wastage (Where It Went)
                                       </th>
-                                      <th className="py-2.5 px-3 text-right bg-emerald-50/70 text-emerald-950">
+                                      <th className="py-2.5 px-3 text-right bg-emerald-100/70 text-emerald-950">
                                         5. Returnable Bal
                                       </th>
                                       <th className="py-2.5 px-3 text-center">Actions</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-slate-100">
+                                  <tbody className="divide-y divide-slate-200">
                                     {freeItems.map((it) => {
                                       const rowTraceKey = `${project.id}:${it.itemId}`;
                                       const isExpanded = expandedTraceKey === rowTraceKey;
@@ -1595,16 +1649,27 @@ export const ClientFreeIssueView: React.FC = () => {
                                             className={`transition-colors cursor-pointer ${
                                               isExpanded
                                                 ? 'bg-emerald-50/80 border-l-4 border-l-emerald-600'
-                                                : 'hover:bg-indigo-50/40 border-l-4 border-l-indigo-500'
+                                                : 'hover:bg-indigo-50/40 border-l-4 border-l-indigo-600'
                                             }`}
                                           >
-                                            {/* Item */}
+                                            {/* Item with Thumbnail */}
                                             <td className="py-3 px-3">
-                                              <div className="flex items-start gap-2">
+                                              <div className="flex items-center gap-2.5">
                                                 {isExpanded ? (
-                                                  <ChevronUp className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                                                  <ChevronUp className="w-4 h-4 text-emerald-700 shrink-0" />
                                                 ) : (
-                                                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                                                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                                                )}
+                                                {catalogItem.imageUrl ? (
+                                                  <img
+                                                    src={catalogItem.imageUrl}
+                                                    alt={it.itemName}
+                                                    className="w-9 h-9 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                                  />
+                                                ) : (
+                                                  <div className="w-9 h-9 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                                    <Package className="w-4 h-4" />
+                                                  </div>
                                                 )}
                                                 <div>
                                                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -1792,14 +1857,14 @@ export const ClientFreeIssueView: React.FC = () => {
                                       <div
                                         key={spf.subProject.id}
                                         onClick={() => selectScope(spf.subProject.id)}
-                                        className="p-3 rounded-xl border border-teal-200 bg-teal-50/40 hover:bg-teal-50 hover:border-teal-400 transition-all cursor-pointer flex items-center justify-between gap-2"
+                                        className="p-3 rounded-xl border-2 border-teal-500/80 bg-teal-50/70 hover:bg-teal-100/70 hover:border-teal-600 transition-all cursor-pointer flex items-center justify-between gap-2 shadow-2xs"
                                       >
                                         <div className="min-w-0">
                                           <div className="flex items-center gap-1.5">
-                                            <span className="font-mono text-xs font-extrabold text-teal-800">
+                                            <span className="font-mono text-xs font-extrabold text-teal-900">
                                               ↳ {spf.subProject.projectId}
                                             </span>
-                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white border border-teal-200 text-teal-700 font-bold">
+                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white border border-teal-300 text-teal-800 font-bold">
                                               {spf.spTotalLogsCount} log(s)
                                             </span>
                                           </div>
@@ -1996,7 +2061,14 @@ export const ClientFreeIssueView: React.FC = () => {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-100">
-                                    {activeSubFlow.items.map((spIt) => (
+                                    {activeSubFlow.items.map((spIt) => {
+                                      const spCatItem = resolveCatalogItem(
+                                        spIt.itemId,
+                                        spIt.itemCode,
+                                        spIt.itemName,
+                                        spIt.unit
+                                      );
+                                      return (
                                       <tr
                                         key={spIt.itemId}
                                         className={
@@ -2006,15 +2078,30 @@ export const ClientFreeIssueView: React.FC = () => {
                                         }
                                       >
                                         <td className="py-2.5 px-3">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="font-mono font-bold text-slate-900">
-                                              {spIt.itemCode}
-                                            </span>
-                                            <span className="px-1.5 py-0.2 rounded bg-indigo-600 text-white text-[9px] font-extrabold uppercase">
-                                              Central FOC
-                                            </span>
+                                          <div className="flex items-center gap-2.5">
+                                            {spCatItem.imageUrl ? (
+                                              <img
+                                                src={spCatItem.imageUrl}
+                                                alt={spIt.itemName}
+                                                className="w-8 h-8 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                              />
+                                            ) : (
+                                              <div className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                                <Package className="w-3.5 h-3.5" />
+                                              </div>
+                                            )}
+                                            <div>
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="font-mono font-bold text-slate-900">
+                                                  {spIt.itemCode}
+                                                </span>
+                                                <span className="px-1.5 py-0.2 rounded bg-indigo-600 text-white text-[9px] font-extrabold uppercase">
+                                                  Central FOC
+                                                </span>
+                                              </div>
+                                              <div className="font-semibold text-slate-800">{spIt.itemName}</div>
+                                            </div>
                                           </div>
-                                          <div className="font-semibold text-slate-800">{spIt.itemName}</div>
                                         </td>
                                         <td className="py-2.5 px-3 text-right font-mono whitespace-nowrap">
                                           <div className="font-bold text-indigo-800">
@@ -2057,7 +2144,8 @@ export const ClientFreeIssueView: React.FC = () => {
                                           </button>
                                         </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
@@ -3212,19 +3300,12 @@ export const ClientFreeIssueView: React.FC = () => {
                         <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1">
                           {idx + 1}. Material / Cable Item <span className="text-rose-500">*</span>
                         </label>
-                        <select
-                          value={row.itemId}
-                          onChange={(e) => handleItemSelect(idx, e.target.value)}
-                          required
-                          className="w-full h-9 px-2.5 text-xs bg-slate-50 focus:bg-white border border-slate-300 rounded-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">-- Select Material / Cable --</option>
-                          {activeItems.map((itm) => (
-                            <option key={itm.id} value={itm.id}>
-                              [{itm.itemCode}] {itm.itemName} ({itm.unit})
-                            </option>
-                          ))}
-                        </select>
+                        <SearchableItemSelect
+                          selectedItemId={row.itemId}
+                          onSelectItem={(selected) => handleItemSelect(idx, selected.id)}
+                          placeholder="-- Search & Select Material / Cable --"
+                          showStockBadge={true}
+                        />
                       </div>
 
                       <div className="sm:col-span-3">

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, Check, X, Barcode } from 'lucide-react';
+import { Search, ChevronDown, Check, X, Barcode, Package } from 'lucide-react';
 import { Item } from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatNumber } from '../../utils/exportUtils';
@@ -233,72 +233,85 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         }`}
       >
         {selectedItem ? (
-          <div className="flex flex-col gap-1 pr-2 min-w-0 flex-1">
-            {/* Top Row: Item Code, Classification Badge, Unit, and Stock Badges */}
-            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-xs shrink-0 border border-slate-200">
-                {selectedItem.itemCode}
-              </span>
-              {isMachineryItem(selectedItem) ? (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 shrink-0 border border-amber-200">
-                  🚜 Machinery
+          <div className="flex items-center gap-3 pr-2 min-w-0 flex-1">
+            {selectedItem.imageUrl ? (
+              <img
+                src={selectedItem.imageUrl}
+                alt={selectedItem.itemName}
+                className="w-10 h-10 rounded-lg object-cover border border-slate-300 bg-white shrink-0 shadow-2xs"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                <Package className="w-4 h-4" />
+              </div>
+            )}
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              {/* Top Row: Item Code, Classification Badge, Unit, and Stock Badges */}
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-xs shrink-0 border border-slate-200">
+                  {selectedItem.itemCode}
                 </span>
-              ) : (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
-                  📦 Material
+                {isMachineryItem(selectedItem) ? (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 shrink-0 border border-amber-200">
+                    🚜 Machinery
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
+                    📦 Material
+                  </span>
+                )}
+                <span className="text-slate-500 text-[11px] shrink-0 font-semibold">
+                  Unit: <strong className="text-slate-700">{selectedItem.unit}</strong>
                 </span>
-              )}
-              <span className="text-slate-500 text-[11px] shrink-0 font-semibold">
-                Unit: <strong className="text-slate-700">{selectedItem.unit}</strong>
-              </span>
 
-              {showStockBadge && (() => {
-                const stock = getItemStockInfo(selectedItem.id);
-                return (
-                  <div className="ml-auto flex items-center gap-1.5 flex-wrap shrink-0">
-                    {hasRequestingSite && stock.siteAvailable !== undefined && (
+                {showStockBadge && (() => {
+                  const stock = getItemStockInfo(selectedItem.id);
+                  return (
+                    <div className="ml-auto flex items-center gap-1.5 flex-wrap shrink-0">
+                      {hasRequestingSite && stock.siteAvailable !== undefined && (
+                        <span
+                          className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                            stock.siteIsLowActive || stock.siteAvailable === 0
+                              ? 'bg-amber-50 text-amber-800 border border-amber-300'
+                              : stock.siteIsLowOrZero
+                              ? 'bg-amber-50/70 text-amber-700 border border-amber-200'
+                              : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}
+                          title={`Site Available Stock: ${formatNumber(stock.siteAvailable)} ${selectedItem.unit} (Min Threshold: ${stock.siteThreshold ?? 0})`}
+                        >
+                          {stock.siteIsLowOrZero ? '⚠️ ' : ''}Site Avl: {formatNumber(stock.siteAvailable)} {selectedItem.unit}
+                        </span>
+                      )}
                       <span
-                        className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
-                          stock.siteIsLowActive || stock.siteAvailable === 0
-                            ? 'bg-amber-50 text-amber-800 border border-amber-300'
-                            : stock.siteIsLowOrZero
-                            ? 'bg-amber-50/70 text-amber-700 border border-amber-200'
-                            : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        className={`px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
+                          stock.available === 0
+                            ? 'bg-red-50 text-red-600 border border-red-200'
+                            : stock.isFocMode
+                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                            : stock.isLow
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}
-                        title={`Site Available Stock: ${formatNumber(stock.siteAvailable)} ${selectedItem.unit} (Min Threshold: ${stock.siteThreshold ?? 0})`}
+                        title={`${stock.label}: ${formatNumber(stock.available)} ${selectedItem.unit}`}
                       >
-                        {stock.siteIsLowOrZero ? '⚠️ ' : ''}Site Avl: {formatNumber(stock.siteAvailable)} {selectedItem.unit}
+                        {stock.isFocMode
+                          ? `FOC Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
+                          : hasRequestingSite
+                          ? `Main Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
+                          : `${formatNumber(stock.available)} ${selectedItem.unit}`}
                       </span>
-                    )}
-                    <span
-                      className={`px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
-                        stock.available === 0
-                          ? 'bg-red-50 text-red-600 border border-red-200'
-                          : stock.isFocMode
-                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                          : stock.isLow
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      }`}
-                      title={`${stock.label}: ${formatNumber(stock.available)} ${selectedItem.unit}`}
-                    >
-                      {stock.isFocMode
-                        ? `FOC Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
-                        : hasRequestingSite
-                        ? `Main Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
-                        : `${formatNumber(stock.available)} ${selectedItem.unit}`}
-                    </span>
-                  </div>
-                );
-              })()}
-            </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
-            {/* Bottom Row (Underneath Item Code): Full Item Name clearly visible */}
-            <div
-              className="text-slate-900 font-extrabold text-xs sm:text-sm leading-snug break-words"
-              title={`${selectedItem.itemName}${selectedItem.description ? ` (${selectedItem.description})` : ''}`}
-            >
-              {selectedItem.itemName}
+              {/* Bottom Row (Underneath Item Code): Full Item Name clearly visible */}
+              <div
+                className="text-slate-900 font-extrabold text-xs sm:text-sm leading-snug break-words"
+                title={`${selectedItem.itemName}${selectedItem.description ? ` (${selectedItem.description})` : ''}`}
+              >
+                {selectedItem.itemName}
+              </div>
             </div>
           </div>
         ) : (
@@ -514,6 +527,17 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                         : ''
                     }`}
                   >
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.itemName}
+                        className="w-11 h-11 rounded-xl object-cover border border-slate-200 bg-white shrink-0 shadow-2xs mt-0.5"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400 mt-0.5">
+                        <Package className="w-5 h-5" />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1 space-y-1">
                       {/* Line 1: Item Code & Status/Type Badges */}
                       <div className="flex items-center gap-2 min-w-0 flex-wrap">

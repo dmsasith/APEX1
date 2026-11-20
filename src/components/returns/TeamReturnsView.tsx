@@ -12,6 +12,9 @@ import {
   Lock,
   ScanLine,
   Plus,
+  ChevronDown,
+  Search,
+  Check,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -55,6 +58,8 @@ export const TeamReturnsView: React.FC = () => {
   const [selectedReturnForPrint, setSelectedReturnForPrint] = useState<TeamReturn | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [openDropdownRowIdx, setOpenDropdownRowIdx] = useState<number | null>(null);
+  const [dropdownSearch, setDropdownSearch] = useState<string>('');
 
   // In-app confirmation modal state
   const [confirmState, setConfirmState] = useState<{
@@ -572,26 +577,163 @@ export const TeamReturnsView: React.FC = () => {
                           </div>
                         </div>
 
-                        <div>
-                          <select
-                            value={row.itemId}
-                            onChange={(e) => handleUpdateReturnRow(idx, 'itemId', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none font-semibold"
-                            required
-                          >
-                            {eligibleItems.map((item) => {
-                              const st = getSiteItemStock(selectedSiteId, item.itemId);
-                              const isDoc = st.received > 0;
-                              return (
-                                <option key={item.itemId} value={item.itemId}>
-                                  [{item.itemCode}] {item.itemName} — In-Hand: {item.currentInHand} {item.unit}{' '}
-                                  {isDoc
-                                    ? `✓ (Yard Transferred: ${st.received})`
-                                    : '⚠️ (No Main Yard Transfer - Blocked)'}
-                                </option>
-                              );
-                            })}
-                          </select>
+                        <div className="relative">
+                          {(() => {
+                            const selectedCatalogItem = items.find((c) => c.id === row.itemId);
+                            const isDropdownOpen = openDropdownRowIdx === idx;
+                            const q = dropdownSearch.trim().toLowerCase();
+                            const filteredEligible = q
+                              ? eligibleItems.filter(
+                                  (e) =>
+                                    e.itemCode.toLowerCase().includes(q) ||
+                                    e.itemName.toLowerCase().includes(q)
+                                )
+                              : eligibleItems;
+
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isDropdownOpen) {
+                                      setOpenDropdownRowIdx(null);
+                                    } else {
+                                      setOpenDropdownRowIdx(idx);
+                                      setDropdownSearch('');
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-slate-300 hover:border-slate-400 rounded-xl text-xs bg-white focus:ring-2 focus:ring-purple-700 focus:outline-none flex items-center justify-between gap-2.5 cursor-pointer shadow-2xs text-left"
+                                >
+                                  {rowItemInHand ? (
+                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                      {selectedCatalogItem?.imageUrl ? (
+                                        <img
+                                          src={selectedCatalogItem.imageUrl}
+                                          alt={rowItemInHand.itemName}
+                                          className="w-10 h-10 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                          <Package className="w-4 h-4" />
+                                        </div>
+                                      )}
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[11px]">
+                                            {rowItemInHand.itemCode}
+                                          </span>
+                                          <span className="font-mono font-bold text-purple-800 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 text-[11px]">
+                                            In-Hand: {formatNumber(rowItemInHand.currentInHand)} {rowItemInHand.unit}
+                                          </span>
+                                          {isRowDoc ? (
+                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                              ✓ Yard Transferred: {rowSiteStock?.received || 0}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                              ⚠️ No Main Yard Transfer
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="font-extrabold text-slate-900 text-xs truncate mt-0.5">
+                                          {rowItemInHand.itemName}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-400">Select item to return...</span>
+                                  )}
+                                  <ChevronDown
+                                    className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${
+                                      isDropdownOpen ? 'rotate-180' : ''
+                                    }`}
+                                  />
+                                </button>
+
+                                {isDropdownOpen && (
+                                  <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl overflow-hidden">
+                                    <div className="p-2 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+                                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <input
+                                        type="text"
+                                        value={dropdownSearch}
+                                        onChange={(e) => setDropdownSearch(e.target.value)}
+                                        placeholder="Search in-hand item code or name..."
+                                        className="w-full text-xs bg-transparent focus:outline-none text-slate-800"
+                                        autoFocus
+                                      />
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                                      {filteredEligible.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-slate-400">
+                                          No matching in-hand items found.
+                                        </div>
+                                      ) : (
+                                        filteredEligible.map((item) => {
+                                          const st = getSiteItemStock(selectedSiteId, item.itemId);
+                                          const isDoc = st.received > 0;
+                                          const catItem = items.find((c) => c.id === item.itemId);
+                                          const isSelected = item.itemId === row.itemId;
+                                          return (
+                                            <div
+                                              key={item.itemId}
+                                              onClick={() => {
+                                                handleUpdateReturnRow(idx, 'itemId', item.itemId);
+                                                setOpenDropdownRowIdx(null);
+                                                setDropdownSearch('');
+                                              }}
+                                              className={`p-2.5 hover:bg-purple-50/70 cursor-pointer flex items-center justify-between gap-2.5 transition-colors ${
+                                                isSelected ? 'bg-purple-50 font-semibold' : ''
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                {catItem?.imageUrl ? (
+                                                  <img
+                                                    src={catItem.imageUrl}
+                                                    alt={item.itemName}
+                                                    className="w-10 h-10 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                                  />
+                                                ) : (
+                                                  <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                                    <Package className="w-4 h-4" />
+                                                  </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-mono font-bold text-[11px] text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                                      {item.itemCode}
+                                                    </span>
+                                                    {isDoc ? (
+                                                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                                        ✓ Yard Transferred: {st.received}
+                                                      </span>
+                                                    ) : (
+                                                      <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                                        ⚠️ No Main Yard Transfer
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <div className="text-xs font-extrabold text-slate-900 truncate mt-0.5">
+                                                    {item.itemName}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-2 shrink-0">
+                                                <span className="px-2 py-1 rounded-md font-mono text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200">
+                                                  In-Hand: {formatNumber(item.currentInHand)} {item.unit}
+                                                </span>
+                                                {isSelected && <Check className="w-4 h-4 text-purple-700 shrink-0" />}
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
@@ -752,10 +894,31 @@ export const TeamReturnsView: React.FC = () => {
                     {eligibleItems.map((item) => {
                       const st = getSiteItemStock(selectedSiteId, item.itemId);
                       const isDoc = st.received > 0;
+                      const catItem = items.find((c) => c.id === item.itemId);
                       return (
-                        <tr key={item.itemId} className="hover:bg-slate-50">
+                        <tr
+                          key={item.itemId}
+                          onClick={() => handleAddOrIncrementScannedItem(item.itemId, item.itemCode, item.itemName)}
+                          className="hover:bg-purple-50/50 cursor-pointer transition-colors"
+                          title="Click to select or increment in return form"
+                        >
                           <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{item.itemCode}</td>
-                          <td className="py-2.5 px-3 text-slate-900 font-bold max-w-[180px] truncate">{item.itemName}</td>
+                          <td className="py-2.5 px-3 text-slate-900 font-bold max-w-[210px]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {catItem?.imageUrl ? (
+                                <img
+                                  src={catItem.imageUrl}
+                                  alt={item.itemName}
+                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                  <Package className="w-3.5 h-3.5" />
+                                </div>
+                              )}
+                              <span className="truncate">{item.itemName}</span>
+                            </div>
+                          </td>
                           <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                             {formatNumber(item.currentInHand)} <span className="text-xs text-slate-500">{item.unit}</span>
                           </td>

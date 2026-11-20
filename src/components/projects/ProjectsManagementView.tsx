@@ -1781,19 +1781,25 @@ export const ProjectsManagementView: React.FC = () => {
                           key={p.id}
                           className={`transition-colors ${
                             effScope === 'main'
-                              ? 'bg-indigo-50/35 hover:bg-indigo-50/70'
+                              ? 'bg-indigo-100/70 hover:bg-indigo-100 border-l-4 border-l-indigo-700 border-t-2 border-t-indigo-300'
                               : effScope === 'sub'
-                              ? 'bg-slate-50/60 hover:bg-teal-50/40'
-                              : 'hover:bg-slate-50/70'
+                              ? 'bg-teal-50/35 hover:bg-teal-50/75 border-l-4 border-l-teal-500'
+                              : 'hover:bg-slate-50/70 border-l-4 border-l-slate-300'
                           }`}
                         >
                           <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                            <div className={`flex flex-col gap-1 ${effScope === 'sub' ? 'pl-4 border-l-2 border-teal-400' : ''}`}>
-                              <span className="bg-white text-slate-800 px-2 py-0.5 rounded border border-slate-200 w-fit shadow-2xs">
+                            <div className={`flex flex-col gap-1 ${effScope === 'sub' ? 'pl-4 border-l-2 border-teal-500' : ''}`}>
+                              <span
+                                className={`px-2 py-0.5 rounded border w-fit shadow-2xs ${
+                                  effScope === 'main'
+                                    ? 'bg-indigo-950 text-amber-300 border-indigo-800 font-black'
+                                    : 'bg-white text-slate-800 border-slate-200'
+                                }`}
+                              >
                                 {p.projectId}
                               </span>
                               {effScope === 'main' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-600 text-white w-fit">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-indigo-700 text-white w-fit shadow-2xs">
                                   <FolderTree className="w-2.5 h-2.5" />
                                   <span>MAIN PROJECT ({childSubs.length} Sub)</span>
                                 </span>

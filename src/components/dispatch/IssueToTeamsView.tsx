@@ -14,6 +14,7 @@ import {
   Briefcase,
   Lock,
   ScanLine,
+  Package,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -529,14 +530,27 @@ export const IssueToTeamsView: React.FC = () => {
                   return (
                     <div
                       key={item.id}
-                      className="p-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                      className="p-2.5 flex items-center justify-between gap-2.5 hover:bg-slate-50 transition-colors"
                     >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-semibold text-slate-900 text-xs">{item.itemCode}</span>
-                          <span className="text-[11px] text-slate-500">· {item.category}</span>
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.itemName}
+                            className="w-9 h-9 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                            <Package className="w-4 h-4" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-semibold text-slate-900 text-xs">{item.itemCode}</span>
+                            <span className="text-[11px] text-slate-500">· {item.category}</span>
+                          </div>
+                          <div className="text-xs text-slate-700 truncate font-medium">{item.itemName}</div>
                         </div>
-                        <div className="text-xs text-slate-700 truncate font-medium">{item.itemName}</div>
                       </div>
 
                       <div className="flex items-center gap-3 shrink-0">
@@ -613,8 +627,23 @@ export const IssueToTeamsView: React.FC = () => {
                       return (
                         <tr key={row.itemId} className="hover:bg-slate-50">
                           <td className="py-2.5 px-3">
-                            <span className="font-mono font-semibold text-slate-900">{itm?.itemCode}</span>
-                            <div className="text-[10px] text-slate-500 truncate max-w-[170px]">{itm?.itemName}</div>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {itm?.imageUrl ? (
+                                <img
+                                  src={itm.imageUrl}
+                                  alt={itm.itemName}
+                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
+                                  <Package className="w-3.5 h-3.5" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="font-mono font-semibold text-slate-900">{itm?.itemCode}</span>
+                                <div className="text-[10px] text-slate-500 truncate max-w-[160px]">{itm?.itemName}</div>
+                              </div>
+                            </div>
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-slate-600">
                             {formatNumber(stock.availableBalance)} {itm?.unit}
