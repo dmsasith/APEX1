@@ -67,11 +67,19 @@ const QUICK_PROMPTS: QuickPrompt[] = [
   },
   {
     id: 'main-sub-projects-foc',
-    labelEn: '🏢 Main & Sub-Projects + FOC Reconciliation?',
-    labelSi: '🏢 Main Project, Sub-Projects සහ FOC Reconciliation කරන්නේ කොහොමද?',
-    promptEn: 'How do Major / Main Projects, Sub-Projects, Individual Projects, receiving Client Free Stock under a Main Project, and Total vs. Sub-Project Reconciliation work?',
-    promptSi: 'Project Registry එකේ Major / Main Project, Sub-Projects සහ Individual Projects හදාගෙන, Main Project යටතට Client Free Stock අරගෙන, Sub-Project වලට Usage දාලා Total සහ Sub-Project Reconciliation බලන්නේ කොහොමද?',
-    targetTab: 'projects',
+    labelEn: '🎁 5-Stage Free Stock Reconciliation & ALL AREAS?',
+    labelSi: '🎁 පියවර 5 Free Stock Reconciliation සහ ALL AREAS?',
+    promptEn: 'How do the 5-Stage Client FOC Reconciliation Flow (Central -> Site -> Team -> Usage/Wastage -> Completion Returnable Balance), Sub-Project & Full Project Reports, Central FOC tags in Site Stock, and ALL AREAS branch projects work?',
+    promptSi: 'පියවර 5 Client Free Stock (FOC) Reconciliation Flow (Central -> Site -> Team -> Usage/Wastage -> Returnable Balance), Main/Sub-Project Reports, Site Stock හි Central FOC Badge සහ ALL AREAS විකල්පය වැඩ කරන්නේ කොහොමද?',
+    targetTab: 'client-free-stock',
+  },
+  {
+    id: 'new-connection-foc-hierarchy',
+    labelEn: '🔌 Main Project -> New Connection FOC?',
+    labelSi: '🔌 Main Project -> New Connection FOC?',
+    promptEn: 'How does the Main Project -> Under New Connections structure work across Telecom, Water, Electrical, and Solar sections, and why does the FOC dropdown filter by active section?',
+    promptSi: 'Telecom, Water, Electrical, Solar New Connections සඳහා Main Project -> Under New Connections ක්‍රමය සහ අදාළ Section එකට FOC ලැබුණු Main Projects පමණක් Filter වී පෙන්වන ආකාරය කියන්න.',
+    targetTab: 'project-usage',
   },
   {
     id: 'project-sections-templates',
@@ -174,8 +182,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through **International Industry Section Templates (Telecom New Connection, Water Project, Electrical Power & Solar PV) + "+ Add Field" Custom Field Builder, Field Team Site Transfers ("Temporary Assigned to - [New Site]" vs. Permanent "(Ref: [Old Site])"), Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]"), Team Name Lock After Stock Issue, Multi-Item Batch Returns in Team Returns (RV) & Branch Returns (BRM), Optional Item Photos (<200KB Auto-Compression & "Print with Image"), Central & Site Branch Item Lifecycle Summaries, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports, and Assigned-Site Client FOC**.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ **International Section Templates (Telecom New Connection, Water Project, Electrical Power සහ Solar PV) + "+ Add Field" මගින් අලුත් Fields එකතු කිරීම, Field Team Site Transfers ("Temporary Assigned to - [New Site]" සහ Permanent "(Ref: [Old Site])"), Site අනුව වෙන් කළ Team In-Hand Stock ("Stock to Return - [Site Name]"), බඩු ගත් Team Name වෙනස් කිරීම Lock කිරීම, Team Returns සහ Branch Returns දෙකේම Items ගණනාවක් එකවර Return කිරීම, 200KB ට අඩු Item Photos සහ "Print with Image", Item Lifecycle Summary, ISO 9001:2015 Format Settings, Digital Signatures, Wastage Qty, Full Site Reports සහ Client FOC** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through the latest updates including **5-Stage Client Free Stock (FOC) Reconciliation (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Completion Returnable Balance), Color-Coded Main & Sub-Project Reports, Site Branch "Central FOC" Highlighting, "ALL AREAS" Island-Wide Projects, Main Project -> Under New Connections (Telecom/Water/Electric/Solar with Section-Filtered FOC), Field Team Transfers, Site-Separated In-Hand Stock, Item Photos in PO/Return Dropdowns (<200KB & "Print with Image"), ISO 9001:2015 Formats, and Digital Signatures**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ නවතම විශේෂාංග වන **පියවර 5 Client Free Stock (FOC) Reconciliation (Central -> Site -> Team -> Usage/Wastage -> Completion Returnable Balance), වර්ණ ගැන්වූ Main/Sub-Project Reports, Site Branch Stock හි "Central FOC" Badge, "ALL AREAS (All Site Branches)" විකල්පය, Main Project -> Under New Connections (Telecom/Water/Electric/Solar + Section අනුව Filter වන FOC), Team Transfers, PO/Return Dropdown වල Item Images (<200KB & "Print with Image"), ISO 9001:2015 Formats සහ Digital Signatures** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 

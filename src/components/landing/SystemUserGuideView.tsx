@@ -130,20 +130,20 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'For defective or excess vendor deliveries, create an official Return to Vendor (RTV) / Debit Note with outward Gate Pass and credit claim tracking. For site-damaged items, inspect and restore repaired units back into Main Stock via the Damaged Stock ledger.',
       },
       {
-        stepTitle: '4. Record Client Free Materials (FOC) — Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Correction',
+        stepTitle: '4. Client Free Stock (FOC) 5-Stage Reconciliation Flow, Color-Coded Project Cards & Full Central Reports',
         detail:
-          'Open "Client Free Stock", click "+ Log Client Free Stock", and choose "Under Main Project" or "Individual Project". Physical FOC materials default to "Main Central Warehouse (Central Yard)" as inbound storage, while selecting the Target Project automatically detects and LOCKS the "Allocated Site Branch" so stock cannot be accidentally issued to the wrong site. Furthermore, the Client FOC Lifecycle & Summary view is strictly isolated to the Assigned Site Branch — showing only teams, distributions, and project usage belonging to that specific site. If a shipment was logged under the wrong project, Admins can edit and reassign the FOC voucher directly inside Client Free Stock.',
+          'Open "Client Free Stock", click "+ Log Client Free Stock", and select "Under Main Project" or "Individual Project". Physical FOC deliveries default to Central Warehouse, while selecting a project automatically LOCKS its "Allocated Site Branch" (or choose "ALL AREAS" for island-wide contracts usable by any branch). Both Client Free Stock and Project Reconciliation follow the clear 5-Stage Standard Reconciliation Flow: (1) Initial FOC Receipt at Central -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Balance / Returnable Stock on Project Completion. Color-coded Main Project cards link every Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below with its own flow and end with a consolidated Full Usage & Client Balance Summary. You can also print clean A4/PDF reports per individual issued item or as one Full Consolidated Project Report, and Admins can reassign mis-logged FOC vouchers anytime.',
       },
       {
-        stepTitle: '5. Central Stock Item Selection — Full End-to-End Lifecycle Summary & Printable A4 Report',
+        stepTitle: '5. Central Stock Item Selection — Full End-to-End Lifecycle Summary & PO / Return Dropdown Item Images',
         detail:
-          'In "Main Stock Control -> Central Stock Inventory", click any item row (or its "Summary" button) to expand a complete End-to-End Material Lifecycle & Custody Summary directly underneath that item. It breaks down: (1) Inbound Sources (how much arrived via Supplier POs/GRN, Manual/Spot Entries, Client FOC, and Site Good Returns), (2) Site Branch Distribution & each site\'s current Site Store In-Hand, (3) Field Teams Allocation, Used, Wasted & each team\'s current Team In-Hand, (4) Project Consumption & Wastage logs, and live Custody KPI cards (Central In-Hand, Sites In-Hand, Teams In-Hand, Used, and Wasted/Damaged) — complete with "Print A4 Summary" and "Download PDF" buttons.',
+          'In "Main Stock Control -> Central Stock Inventory", click any item row (or "Summary") to expand its End-to-End Lifecycle & Custody Summary underneath: Inbound Sources (PO/GRN, Manual, Client FOC, Site Good Returns), Site Branch Distribution & Site In-Hand, Field Teams Allocation, Project Consumption & Wastage, and live Custody KPIs with "Print A4 Summary" & "Download PDF". Additionally, item thumbnails appear directly in PO, Requisition, Team Return (RV), and Branch Return (BRM) dropdown lists.',
       },
     ],
     keyOutputs: [
-      'Printable Purchase Orders (PO) & Multi-Item Batch GRN Vouchers',
+      'Printable Purchase Orders (PO), Multi-Item Batch GRNs & Item Thumbnails in PO / Return Dropdowns',
       'Return to Vendor (RTV) Debit Notes & Outward Gate Passes',
-      'Client FOC Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Reassignment',
+      '5-Stage Client FOC Reconciliation Flow, Individual-Item & Full Project A4/PDF Reports + ALL AREAS Support',
       'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (Printable A4 / PDF)',
     ],
   },
@@ -158,19 +158,19 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     icon: Send,
     steps: [
       {
-        stepTitle: '1. Two-Tab Stock Requisition Form: Normal Stock vs. Client Free Stock (FOC) for Assigned Project',
+        stepTitle: '1. Two-Tab Stock Requisition Form: Normal Stock vs. Client FOC (Including "ALL AREAS" Projects)',
         detail:
-          'In "Stock Requisitions -> + New Stock Requirement Form", choose your Requesting Site Branch first, then switch between two dedicated tabs: (1) "Normal Stock Request" for regular warehouse stock (where items that are Low Stock at your site automatically appear at the very top of the list with "Site Low" & "Site Avl:" badges alongside "Main:" stock), or (2) "Client Free Stock for Assigned Project Request" which filters and displays ONLY the Major/Main Projects and Individual Projects allocated to your selected Site Branch.',
+          'In "Stock Requisitions -> + New Stock Requirement Form", choose your Requesting Site Branch first, then switch between two dedicated tabs: (1) "Normal Stock Request" for regular warehouse stock (where items that are Low Stock at your site automatically appear at the very top with "Site Low" & "Site Avl:" badges alongside "Main:" stock), or (2) "Client Free Stock for Assigned Project Request" which displays Major/Main Projects and Individual Projects assigned to your Site Branch PLUS any "ALL AREAS (All Site Branches)" island-wide projects.',
       },
       {
         stepTitle: '2. HQ Dispatch Approval & Automatic MainStock / FOC Pool Deduction to Site Branch',
         detail:
-          'Central HQ reviews the requisition table (displaying full Item Code + Material Description, wrapped Date/Time, and project badges). When approved and confirmed as received at the Site Branch, Normal requests deduct from Central Main Stock and add to Site Branch Stock, while FOC requests deduct from the Central Main FOC Pool and transfer into the Site Branch Yard for Sub-Project or Individual Project usage.',
+          'Central HQ reviews the requisition table (displaying full Item Code + Material Description, wrapped Date/Time, and project badges). When approved and confirmed as received at the Site Branch, Normal requests deduct from Central Main Stock and add to Site Branch Stock, while FOC requests deduct from the Central Main FOC Pool and transfer into the Site Branch Yard for Sub-Project, New Connection, or Individual Project usage.',
       },
       {
-        stepTitle: '3. Site Branch Stock Item Selection — Forward Traceability Summary & Printable A4 Report',
+        stepTitle: '3. Site Branch Stock — "Central FOC" Visual Identification & 5-Stage Forward Reconciliation Summary',
         detail:
-          'In "Site Branch Stock (Site Inventories)", click any item row (or its "Forward Summary" button) to expand the Site Branch Forward Traceability Summary underneath that item. It shows everything that happened to that item at and forward from the selected Site Branch: transfers received from HQ/FOC, quantities issued to each Field Team at that site, quantities used and wasted on site projects, Site Yard In-Hand, and Site Teams In-Hand — with "Print A4 Summary" and "Download PDF" buttons.',
+          'In "Site Branch Stock (Site Inventories)", stock received from Central FOC is clearly highlighted with a distinct "Central FOC" badge/color tag so branch supervisors never confuse free client stock with normal company stock. Click any item row (or "Forward Summary") to expand its forward reconciliation breakdown following the same clear sequence: Transfers Received (Normal vs. Central FOC) -> Site Issues to Field Teams -> Project Usage & Wastage -> Site Yard & Teams In-Hand Balance — with "Print A4 Summary" and "Download PDF" buttons.',
       },
       {
         stepTitle: '4. Daily Issuance to Field Crews (IN) & Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]")',
@@ -179,8 +179,8 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      '2-Tab Stock Requisitions: Normal Stock vs. Branch-Exclusive Client FOC',
-      'Site Branch Stock Item Selection -> Forward Traceability Summary (Printable A4 / PDF)',
+      '2-Tab Stock Requisitions: Normal Stock vs. Assigned-Site & "ALL AREAS" Client FOC',
+      'Site Branch Stock "Central FOC" Highlight Badge & 5-Stage Forward Traceability Summary (Printable A4 / PDF)',
       'Site-Separated Team In-Hand Stock: "Stock to Return - [Old Site]" vs. Active Site Stock (Never Combined)',
       'Printable Numbered Issue Notes (IN), Gate Passes & TSR Audit Reports',
     ],
@@ -201,26 +201,26 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'In "Project & New Section Registry -> New Section Registry & Material Templates", click "+ Add New Section" (or use the 1-click Quick-Load Template buttons) to load international standard templates for: (1) Telecom New Connection (ITU-T G.984 / FTTH), (2) Water Supply & Utility Project (ISO 4064 / AWWA — Water Account No, Meter Serial, Pipe DN/PN, Pressure Bar, Ferrule Size), (3) Electrical Power Connection (IEC 60364 — Service Order No, Energy Meter kWh, Phase/Voltage, kVA Demand, Earth Resistance Ω), (4) Solar PV & Net-Metering (IEC 62446 — Net-Metering Ref, Inverter Serial, kWp DC/kW AC, PV Panels, BESS kWh, Bi-Directional Meter), or (5) Standard EPC Project. You can customize all 6 Core Field Labels and click "+ Add Field" to add unlimited custom technical fields (or add fields on the fly inside the Register Project modal).',
       },
       {
-        stepTitle: '2. 6-Core + Custom Field Registration & 3-Step Session-Locked Team Daily Progress (Telecom, Water, Electric & Solar)',
+        stepTitle: '2. "Main Project -> Under New Connections" (Telecom/Water/Electric/Solar), Section-Filtered FOC & "ALL AREAS" Branch',
         detail:
-          'When any Connection/Utility Section (Telecom, Water, Electric, or Solar) is selected: (a) In Project Registration, the form automatically loads that template\'s 6 tailored Core Fields at the top plus all configured International & Custom Fields. (b) In "Material Usage / Daily Progress Entry", it switches to a streamlined 1-2-3 layout: Step 1 (Top) selects Field Team & Working Area and LOCKS them until the page is refreshed ("Confirm & Lock Team / Area") so the team\'s entire day of connections can be entered back-to-back without re-selecting the team; Step 2 lets you search/select a connection or click "+ Register New Connection" right there to fill the 6 Core Fields + Custom Fields on the spot; Step 3 records Material Usage and keeps Step 1 locked after submission.',
+          'Across all 4 New Connection sections (Telecom, Water, Electrical, Solar), you can register a "Standalone New Connection", an umbrella "Main Project (For New Connections)", or a connection "Under Main Project (New Connection)". When registering any project, pick a specific Site Branch OR choose "ALL AREAS (All Site Branches)" so any branch can use the project and its Client FOC pool. In "Material Usage / Daily Progress Entry", Step 1 locks Team & Area until refresh, Step 2 registers/selects the connection, and FOC Main Project selectors ONLY appear if Client FOC stock exists specifically for that active section (so normal Company Stock remains clutter-free).',
       },
       {
-        stepTitle: '3. Log Installed Qty + "Wastage Qty", Active-Site-Only Stock Enforcement & Auto Main Pool Deduction',
+        stepTitle: '3. Log Installed Qty + "Wastage Qty", Active-Site Stock Guard & Sub-Project / Main Project Reconciliation Flow',
         detail:
-          'In "Material Usage / Daily Progress Entry" and Voucher Edit modals, enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Teams can ONLY consume materials issued under the project\'s own Site Branch — unreturned stock from a previous site ("Stock to Return - [Previous Site Name]") is automatically excluded and blocked from usage on the new site. Total Deduct (Used + Wastage) is validated live against the team\'s active-site In-Hand balance and auto-deducts from Parent Main Project FOC pools.',
+          'Enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Teams only consume active-site stock (unless the project or Main Project is "ALL AREAS", which allows all branches). In Reconciliation, color-coded Main Project cards show each linked Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below in its own flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Balance), ending with a Full Usage & Client Completion Returnable Balance Report; selecting a single Sub-Project shows that Sub-Project\'s dedicated flow.',
       },
       {
-        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)" & Multi-Item Batch Returns (RV / BRM)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)" & Multi-Item Batch Returns (RV / BRM with Item Photos)',
         detail:
-          'Open "Usage Vouchers History" and select a project to unlock "Full Report for This Site (Project)" showing: (Part 1) Separate Team-by-Team consumption & Wastage with Team Subtotals, and (Part 2) Full Site Consolidated Grand Total (Print/PDF or Excel CSV). In both "Team Returns" (RV) and "Branch Returns" (BRM), you can add multiple items at once ("+ Add Item" or "+ Add All Held / Available"), set per-item quantities and conditions (Good / Damaged), and return the entire batch together on a single shared Return Voucher.',
+          'Open "Usage Vouchers History" and select a project to unlock "Full Report for This Site (Project)" showing: (Part 1) Separate Team-by-Team consumption & Wastage with Team Subtotals, and (Part 2) Full Site Consolidated Grand Total (Print/PDF or Excel CSV). In both "Team Returns" (RV) and "Branch Returns" (BRM), item thumbnails display inside dropdowns, and you can add multiple items at once ("+ Add Item" or "+ Add All Held / Available"), set per-item Good/Damaged conditions, and return the entire batch on a single Return Voucher.',
       },
     ],
     keyOutputs: [
-      'International Section Templates (Telecom FTTH, Water Supply, Electrical Power, Solar PV) + "+ Add Field" Builder',
-      '6-Core + Custom Field Registration & 3-Step Daily Progress (Team & Area Locked Until Refresh)',
-      'Active-Site-Only Team Stock Usage Enforcement & Multi-Item Batch Returns (RV / BRM)',
-      'Full Report for This Site (Project): Team Subtotals + Full Grand Total (PDF/CSV)',
+      'International Section Templates (Telecom, Water, Electric, Solar) + "+ Add Field" Builder & "ALL AREAS" Branch Option',
+      'Main Project -> Under New Connections Hierarchy + Section-Filtered FOC Visibility (Only When FOC Exists)',
+      'Main & Sub-Project Color-Coded 5-Stage Reconciliation + Completion Returnable Balance Report',
+      'Full Report for This Site (Project) & Multi-Item Batch Returns (RV / BRM with Item Photos)',
     ],
   },
   {
@@ -367,20 +367,20 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'ප්‍රමිතියෙන් තොර හෝ වැඩිපුර ලැබුණු භාණ්ඩ ආපසු සැපයුම්කරු වෙත යැවීමේදී "Return to Vendor (RTV) / Debit Note" සහ Gate Pass පත්‍රිකා නිකුත් කරන්න. වැඩබිම්වලදී හානි වූ භාණ්ඩ අලුත්වැඩියා කර නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිත කරන්න.',
       },
       {
-        stepTitle: '4. Client Free Stock (FOC) — Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීම',
+        stepTitle: '4. Client Free Stock (FOC) පියවර 5 Reconciliation Flow, වර්ණ ගැන්වූ Project Cards සහ Central Reports',
         detail:
-          '"Client Free Stock" හි "+ Log Client Free Stock" තුළ Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට ස්වයංක්‍රීයව Link වී Lock වේ. එමෙන්ම Client FOC Summary බැලීමේදී එම FOC තොගය අදාළ Assigned Site එකේ විස්තර, එම Site එකේ Teams වලට නිකුත් කිරීම් සහ භාවිතයන් පමණක් වෙනම පැහැදිලිව පෙන්වයි. වැරදි Project එකකට FOC වවුචරයක් වැටී ඇත්නම් Admin හට එය Edit කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.',
+          '"Client Free Stock" හි "+ Log Client Free Stock" තුළ Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට Lock වේ ("ALL AREAS" ලෙස සෑදූ Project සඳහා ඕනෑම Site එකකට නිකුත් කළ හැක). FOC වාර්තා පැහැදිලි පියවර 5 ක්‍රමයට පෙන්වයි: (1) Central Stock FOC ලැබීම -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Project Completion පසු Client වෙත ආපසු භාර දිය හැකි ඉතිරිය (Returnable Balance). වෙනස් වර්ණවලින් වෙන් කළ Main Project Cards යටතේ සෑම Sub-Project එකකම (උදා: KT-RGL-0505, KT-ABK-0506) Flow එක වෙන වෙනමත්, අවසානයේ මුළු Main Project එකේම Full Usage & Balance Report එකත් ලබාගත හැක. එමෙන්ම Central Stock වෙතින් එක් එක් Issued Item එක වෙන වෙනමත්, Project එකේ සියලු Items එකටත් A4/PDF Report ලෙස ගත හැක.',
       },
       {
-        stepTitle: '5. Central Stock හි Item එකක් Select කළ විට පෙන්වන සම්පූර්ණ Item Lifecycle Summary සහ Printable වාර්තාව',
+        stepTitle: '5. Central Stock Item Summary සහ PO / Return Dropdown වල Item Image පෙන්වීම',
         detail:
-          '"Main Stock Control -> Central Stock Inventory" වගුවේ ඕනෑම භාණ්ඩ පේළියක් මත ක්ලික් කළ විට (හෝ "Summary" බටන් එක එබූ විට) එම පේළියට යටින් සම්පූර්ණ Item Lifecycle & Custody Summary එක විවෘත වේ. එම භාණ්ඩය කවර සැපයුම්කරුවන්ගෙන් PO / GRN හරහා හෝ Manual / FOC මගින් කොපමණ ආවාද, එක් එක් Site Branch එකට බෙදී ගිය ආකාරය, Site වලින් Field Teams වලට බෙදුණු ආකාරය, Teams මගින් Projects වලට Used සහ Wasted ගිය ප්‍රමාණයන්, මෙන්ම Central In-Hand, Site In-Hand සහ Team In-Hand තොග සියල්ල එකම තැනකින් බලා "Print A4 Summary" හෝ "Download PDF" මගින් මුද්‍රණය කරගත හැක.',
+          '"Main Stock Control -> Central Stock Inventory" වගුවේ ඕනෑම භාණ්ඩ පේළියක් මත ක්ලික් කළ විට (හෝ "Summary" බටන් එක එබූ විට) එම භාණ්ඩය PO/GRN, Manual හෝ FOC හරහා ආ ආකාරය, Site සහ Teams වලට බෙදී ගිය ආකාරය, Used/Wasted සහ Central/Site/Team In-Hand තොග සියල්ල "Print A4 Summary" සහ "Download PDF" සමඟ පෙන්වයි. තවද PO දැමීමේදී සහ Team/Branch Returns දැමීමේදී Dropdown ලැයිස්තුවල Item Image එකද පැහැදිලිව පෙන්වයි.',
       },
     ],
     keyOutputs: [
-      'මුද්‍රණය කළ හැකි Purchase Orders (PO) සහ Multi-Item GRN වවුචර්',
+      'Purchase Orders (PO), Multi-Item GRN සහ PO/Return Dropdown වල Item Images පෙන්වීම',
       'Return to Vendor (RTV) Debit Notes සහ Outward Gate Pass පත්‍රිකා',
-      'Client FOC Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීම',
+      'පියවර 5 Client FOC Reconciliation, වෙන වෙනම/සම්පූර්ණ Central FOC Reports සහ "ALL AREAS" පහසුකම',
       'Central Stock Item Summary — PO/Manual ලැබීම්, Site/Team බෙදීම්, Used/Wasted සහ Printable A4/PDF',
     ],
   },
@@ -395,9 +395,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     icon: Send,
     steps: [
       {
-        stepTitle: '1. Stock Requisition ෆෝම් එකේ ටැබ් 2: Normal Stock Request සහ Client Free Stock for Assigned Project Request',
+        stepTitle: '1. Stock Requisition ෆෝම් එකේ ටැබ් 2: Normal Stock සහ Assigned/ALL AREAS Client FOC Request',
         detail:
-          '"Stock Requisitions -> + New Stock Requirement Form" විවෘත කර පළමුව බඩු ඉල්ලන "Requesting Site Branch *" තෝරන්න. එහි පැහැදිලි ටැබ් 2ක් ඇත: (1) "1. Normal Stock Request" — සාමාන්‍ය ගබඩා තොග ඉල්ලුම් කිරීමට (මෙහිදී එම ශාඛාවේ දැනට Low Stock වී ඇති භාණ්ඩ ලැයිස්තුවේ උඩින්ම "Site Low" ලෙස පෙරී පෙන්වන අතර සෑම භාණ්ඩයකම ප්‍රධාන ගබඩාවේ තොගය "Main:" සහ ශාඛාවේ දැනට ඇති තොගය "Site Avl:" ලෙස එතැනම පෙන්වයි). (2) "2. Client Free Stock for Assigned Project Request" — තෝරාගත් Site Branch එකට අදාළව ලියාපදිංචි කර ඇති Major/Main Projects සහ Individual Projects පමණක් පෙන්වන බැවින් වෙනත් ශාඛාවක Project බඩු පැටලෙන්නේ නැත.',
+          '"Stock Requisitions -> + New Stock Requirement Form" විවෘත කර පළමුව බඩු ඉල්ලන "Requesting Site Branch *" තෝරන්න. එහි ටැබ් 2ක් ඇත: (1) "1. Normal Stock Request" — සාමාන්‍ය තොග සඳහා ("Site Low" භාණ්ඩ උඩින්ම පෙන්වන අතර "Main:" හා "Site Avl:" තොග පෙන්වයි). (2) "2. Client Free Stock for Assigned Project Request" — තෝරාගත් Site Branch එකට අදාළ Projects මෙන්ම "ALL AREAS (All Site Branches)" ලෙස සෑදූ පොදු Projects ද පෙන්වන බැවින් Island-wide FOC බඩු ඕනෑම Site එකකට Request කළ හැක.',
       },
       {
         stepTitle: '2. ප්‍රධාන ගබඩාවෙන් Approve කිරීම සහ Main Stock / FOC Pool එකෙන් අඩු වී Site Branch එකට ලැබීම',
@@ -405,9 +405,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'Stock Requisitions වගුවේ සෑම ඉල්ලුම්පතකම Item Code එක සමඟ භාණ්ඩයේ සම්පූර්ණ නම (Material Description) සහ Project විස්තර පැහැදිලිව පෙන්වයි. ප්‍රධාන ගබඩාවෙන් Approve කර ශාඛාවෙන් භාරගත් පසු, සාමාන්‍ය තොග Main Stock එකෙන්ද, FOC තොග ප්‍රධාන FOC Pool එකෙන්ද අඩු වී අදාළ Site Branch Stock එකට නිවැරදිව එකතු වේ.',
       },
       {
-        stepTitle: '3. Site Branch Stock හි Item එකක් Select කළ විට පෙන්වන Forward Traceability Summary සහ Print පහසුකම',
+        stepTitle: '3. Site Branch Stock හි "Central FOC" Badge එක සහ පියවර 5 Forward Reconciliation Summary',
         detail:
-          '"Site Branch Stock (Site Inventories)" තුළ ඕනෑම භාණ්ඩ පේළියක් මත ක්ලික් කළ විට (හෝ "Forward Summary" බටන් එක එබූ විට) එම ශාඛාවට HQ/FOC වලින් ලැබුණු ප්‍රමාණය, එම ශාඛාවෙන් එක් එක් Field Team වලට නිකුත් කළ ප්‍රමාණය, ශාඛාවේ Projects වල Used සහ Wasted වූ ප්‍රමාණයන්, මෙන්ම දැනට පවතින Site Store In-Hand සහ Site Teams In-Hand තොග සාරාංශය එතැනම යටින් දිස්වේ. එයද "Print A4 Summary" හෝ "Download PDF" මගින් මුද්‍රණය කළ හැක.',
+          '"Site Branch Stock (Site Inventories)" තුළ Central Stock වෙතින් ලැබුණු Client FOC බඩු අනෙක් තොග වලින් වෙන් කර හඳුනාගැනීමට පැහැදිලි "Central FOC" Badge/Tag එකක් සහ වර්ණ Highlight එකක් පෙන්වයි. ඕනෑම Item එකක් Select කළ විට එම ශාඛාවට ලැබුණු තොග (Normal vs Central FOC), Field Teams වලට නිකුත් කිරීම්, Projects වල Used/Wasted සහ Site Store / Teams In-Hand ඉතිරිය පියවරෙන් පියවර පෙන්වා "Print A4 Summary" හෝ "Download PDF" මගින් මුද්‍රණය කළ හැක.',
       },
       {
         stepTitle: '4. වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Site අනුව වෙන් වූ Team In-Hand Stock ("Stock to Return - [Site Name]")',
@@ -416,9 +416,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Normal Stock සහ Branch-Exclusive Client FOC සඳහා වෙන් වූ Requisition ටැබ් 2',
-      'Site Branch Stock Item Selection -> Forward Traceability Summary (Printable A4 / PDF)',
-      'Team In-Hand Stock: "Stock to Return - [පරණ Site නම]" සහ අලුත් Site එකේ බඩු එකතු නොකර වෙන වෙනම පෙන්වීම',
+      'Normal Stock, Assigned-Site සහ "ALL AREAS" Client FOC සඳහා ටැබ් 2කින් යුත් Requisitions',
+      'Site Branch Stock හි "Central FOC" Badge Highlight සහ Forward Reconciliation Summary (Printable A4 / PDF)',
+      'Team In-Hand Stock: "Stock to Return - [පරණ Site නම]" සහ අලුත් Site එකේ බඩු වෙන වෙනම පෙන්වීම',
       'Material Description සහිත පැහැදිලි Requisition වගුව, IN සහ TSR වාර්තා',
     ],
   },
@@ -438,26 +438,26 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Project & New Section Registry -> New Section Registry & Material Templates" හි "+ Add New Section" (හෝ Quick-Load බටන්) මගින් පහත International Templates එක ක්ලික් එකකින් Load කරගත හැක: (1) Telecom New Connection (ITU-T G.984 / FTTH — NC No, ONT Serial, FDP/Splitter Port, Optical Power dBm), (2) Water Supply Project (ISO 4064 / AWWA — Water Account No, Water Meter Serial, Pipe Diameter DN/PN, Pressure Bar, Ferrule/Saddle Size), (3) Electrical Power Project (IEC 60364 — Consumer Account No, Energy Meter Serial kWh, Phase/Voltage, Contract Demand kVA, Earth Resistance Ω), (4) Solar PV & Net-Metering Project (IEC 62446 — Solar Project/Net-Metering Ref, Inverter Serial, System Capacity kWp DC/kW AC, PV Module & Panel Count, Battery BESS kWh), හෝ (5) Standard EPC Project. එමෙන්ම "+ Add Field" බටන් එක මගින් ඔබට අවශ්‍ය ඕනෑම අලුත් Field එකක් (හෝ Project Register කරන තැනදීම "+ Add Custom Field") එකතු කරගත හැක.',
       },
       {
-        stepTitle: '2. Core Fields 6 + Custom Fields ලියාපදිංචිය සහ පියවර 1, 2, 3 Daily Progress (Team & Area Lock සමඟ)',
+        stepTitle: '2. "Main Project -> Under New Connections" (Telecom/Water/Electric/Solar), Section-Filtered FOC සහ "ALL AREAS" Branch',
         detail:
-          'Telecom, Water, Electric හෝ Solar වැනි Connection Section එකක් තෝරාගත් විට: (අ) Project Register කරන තැන එම Section එකට අදාළ ප්‍රධාන කරුණු 6 (Core 6 Fields) සහ ඔබ එකතු කළ International / Custom Fields සියල්ල ස්වයංක්‍රීයව පෙන්වයි. (ආ) Daily Progress ("Material Usage / Daily Progress Entry") පිටුවේදී සරල 1, 2, 3 පියවර පෙන්වයි: පියවර 1 (උඩින්ම): Team & Area Selection — එක වරක් Team එක සහ Area එක තෝරා Confirm කළ පසු Page එක Refresh කරන තුරු එම විස්තර Lock වී පවතී. පියවර 2: Select Connection හෝ එතැනම ඇති "+ Register New Connection" Tab එකෙන් අදාළ Section එකේ Core Fields 6 සහ Custom Fields එවෙලේම ඇතුළත් කර Register කරගැනීමට. පියවර 3: Material Usage ඇතුළත් කර Submit කිරීම.',
+          'Telecom, Water, Electrical, සහ Solar යන සියලුම New Connection Section 4 තුළම (1) Standalone New Connection, (2) Main Project (For New Connections), හෝ (3) Under Main Project (New Connection) ලෙස Register කළ හැක. Project Register කරද්දී "Assigned Site Branch" Dropdown එකෙන් අදාළ Site Branch එක හෝ පොදු "ALL AREAS (All Site Branches)" තෝරාගත හැක (එවිට ඕනෑම Site එකකින් එම Project/FOC බඩු භාවිත කළ හැක). Daily Progress හි 1-2-3 පියවර වලදී එම අදාළ Section එකට FOC තොග ලැබී ඇත්නම් පමණක් FOC Main Project Dropdown එක පෙරී (Filter වී) පෙන්වන අතර Company Stock පමණක් නම් අනවශ්‍ය FOC Options පෙන්වන්නේ නැත.',
       },
       {
-        stepTitle: '3. Daily Progress Entry හි "Wastage Qty" සහ අදාළ Site එකේ බඩු පමණක් භාවිතා කිරීමේ නීතිය (Site-Only Stock Usage)',
+        stepTitle: '3. "Wastage Qty", Site-Only / ALL AREAS Stock සහ Main Project & Sub-Project Reconciliation වාර්තාව',
         detail:
-          'Material Usage / Daily Progress Entry හි භාවිතා කළ ප්‍රමාණය (Qty Used) මෙන්ම අපතේ ගිය ප්‍රමාණය ("Wastage Qty") ද ඇතුළත් කළ හැක. Team එකකට යම් Site එකක Project එකකට පාවිච්චි කළ හැක්කේ එම Site එකෙන් නිකුත් කළ බඩු පමණි — කලින් හිටපු Site එකක භාර නොදුන් බඩු ("Stock to Return - [Previous Site Name]") අලුත් Site එකේ වැඩවලට පාවිච්චි කිරීමට ඉඩ නොදෙන අතර ඒවා අදාළ පරණ Site එකටම Return කළ යුතුය.',
+          'Qty Used සමඟ "Wastage Qty" සටහන් කළ හැකි අතර Main Project එකක් තෝරාගත් විට වර්ණ ගැන්වූ Cards මගින් වෙන් වූ ඒ යටතේ ඇති සෑම Sub-Project එකකම (උදා: KT-RGL-0505, KT-ABK-0506) Flow එක වෙන වෙනම පෙන්වා අවසානයේ Project Completion පසු Client වෙත භාර දිය යුතු Returnable Balance ඇතුළත් Full Usage & Balance Report එක ලබාදෙයි. තනි Sub-Project එකක් තේරූ විට එම Sub-Project එකට පමණක් අදාළ Usage Flow එක පෙන්වයි.',
       },
       {
-        stepTitle: '4. Usage Vouchers History — "Full Report for This Site" සහ භාණ්ඩ ගණනාවක් එකවර ආපසු භාරදීම (Multi-Item Team & Branch Returns)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site" සහ Item Photo සහිත Multi-Item Returns (RV / BRM)',
         detail:
-          '"Usage Vouchers History" හි Project එකක් තේරූ විට "Full Report for This Site (Project)" මගින් Team Subtotals සහ Full Grand Total ලබාගත හැක. ඉතිරි අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ ආපසු භාරදීමේදී "Team Returns" (RV) සහ "Branch Returns" (BRM) යන ස්ථාන දෙකේදීම එක වරකට එක භාණ්ඩයක් පමණක් නොව, "+ Add Item" හෝ "+ Add All Held / Available" මගින් භාණ්ඩ ගණනාවක් එකවර ලැයිස්තුවට එකතු කර තනි Return Voucher එකකින් එක සැරේ Return කළ හැක.',
+          '"Usage Vouchers History" හි Project එකක් තේරූ විට "Full Report for This Site (Project)" මගින් Team Subtotals සහ Full Grand Total ලබාගත හැක. ඉතිරි අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ ආපසු භාරදීමේදී "Team Returns" (RV) සහ "Branch Returns" (BRM) යන ස්ථාන දෙකේදීම Dropdown ලැයිස්තුවල Item Image පෙන්වන අතර "+ Add Item" හෝ "+ Add All Held / Available" මගින් භාණ්ඩ ගණනාවක් එකවර තනි Return Voucher එකකින් Return කළ හැක.',
       },
     ],
     keyOutputs: [
-      'International Section Templates (Telecom, Water, Electric, Solar) + "+ Add Field" Custom Field Builder',
-      'Core 6 + Custom Fields Register ආකෘතිය සහ 1-2-3 Daily Progress (Team & Area Lock)',
-      'අලුත් Site එකේ වැඩවලට එම Site එකේ බඩු පමණක් භාවිතා කිරීම සහ Multi-Item Team/Branch Returns',
-      '"Full Report for This Site (Project)" — Team Subtotals + Full Grand Total (PDF/CSV)',
+      'International Section Templates (Telecom, Water, Electric, Solar) + "+ Add Field" සහ "ALL AREAS" Branch විකල්පය',
+      'Main Project -> Under New Connections ව්‍යුහය සහ Section අනුව Filter වන Client FOC Dropdown',
+      'වර්ණ ගැන්වූ Main Project & Sub-Project 5-Stage Reconciliation සහ Client Completion Returnable Report',
+      '"Full Report for This Site (Project)" සහ Item Images සහිත Multi-Item Team/Branch Returns',
     ],
   },
   {
@@ -624,33 +624,33 @@ const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
 
 const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
   {
-    group: 'Warehouse, Procurement & End-to-End Item Traceability',
+    group: 'Warehouse, 5-Stage Client FOC Reconciliation & End-to-End Traceability',
     items: [
-      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (PO/Manual/FOC Inbound, Site & Team Distribution, Used/Wasted, Central/Site/Team In-Hand + Printable A4/PDF)',
-      'Site Branch Stock Item Selection -> Forward Traceability Summary (HQ Transfers, Site Team Issues, Project Used/Wasted, Site & Team In-Hand + Printable A4/PDF)',
+      '5-Stage Standard Client FOC Reconciliation Flow: Initial Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Completion Returnable Balance',
+      'Color-Coded Main Project Cards + Sub-Project Individual Flow (KT-RGL-0505, KT-ABK-0506) & Full Consolidated Balance Report',
+      'Central FOC A4/PDF Reports: Generate Separate Reports per Issued Item OR One Full Consolidated Report for the Entire Project',
+      'Site Branch Stock "Central FOC" Highlight Badge & Forward Traceability Summary (Printable A4 / PDF)',
+      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (PO/Manual/FOC Inbound, Site & Team Distribution, Used/Wasted, Central/Site/Team In-Hand)',
       'Sequential 0001-Based Codes, IDs & Voucher References (ITM-0001, PO-2026-0001, RN-2026-0001)',
-      'Central HQ Warehouse + Unlimited Regional Site Yards',
       'Single-Shot Camera & USB Gun Barcode Scanner with Auto-Hide & "Scan Now" Button',
-      'Supplier Purchase Orders (PO) & Multi-Item Atomic GRN Vouchers',
-      'Return to Vendor (RTV) Official Debit Notes & Outward Gate Passes',
-      'Client Free Stock (FOC) Auto-Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Voucher Correction',
-      'Optional Item Image Upload (Auto-Compressed <200KB) & "Print with Image" Option on Vouchers/Reports',
+      'Supplier Purchase Orders (PO), Multi-Item Atomic GRN Vouchers & Return to Vendor (RTV) Debit Notes',
+      'Item Photos (<200KB Auto-Compressed) Displayed in Item Catalog, Requisitions, POs & Return Dropdowns + "Print with Image" Toggle',
       'Excel / CSV Bulk Import, Multi-Sheet Export & Low-Stock Alerts',
     ],
   },
   {
-    group: 'Field Operations, International Section Templates (Telecom/Water/Electric/Solar) & Batch Returns',
+    group: 'Field Operations, "ALL AREAS" Multi-Site Projects, New Connection FOC & Batch Returns',
     items: [
-      'International Industry Section Templates: 1-Click Auto-Load for Telecom New Connection (ITU-T G.984), Water Supply Project (ISO 4064 / AWWA), Electrical Power Project (IEC 60364), Solar PV & Net-Metering (IEC 62446) & Standard EPC Project',
-      '"+ Add Field" Dynamic Custom Field Builder: Customize 6 Core Field Labels & Add Unlimited Custom Technical Fields per Section (or Inline During Project Registration)',
-      'Field Team Site Transfer Workflow: "Temporary Assigned to - [New Site]" -> Permanent "[Team Name] (Ref: [Previous Site])" & Complete Assigned Sites History',
-      'Site-Separated Team In-Hand Stock: Unreturned Old-Site Stock Shown Separately Under "Stock to Return - [Site Name]" (Never Combined with New Site Stock)',
-      'Strict Active-Site Material Usage: Teams Can Only Consume Stock Issued at the Current Site for Current Site Projects',
-      'Team Name Integrity Lock: Teams That Have Received Any Stock Cannot Be Renamed, Protecting Historical Voucher & In-Hand Audit Accuracy',
-      'Multi-Item Batch Returns in Both Team Returns (RV) & Branch Returns (BRM) ("+ Add Item" / "+ Add All Held or Available" on One Voucher)',
-      '3-Step Connection Daily Progress (Telecom, Water, Electric, Solar): Step 1 Team & Area (Locked Until Refresh) -> Step 2 Search or "+ Register New Connection" -> Step 3 Material Usage',
-      '2-Tab Stock Requisitions (RN): Normal Stock vs. Branch-Exclusive Client FOC Request with Two-Line Item Code + Material Name Dropdowns',
-      'Auto Low-Stock Priority Top Sorting & Live "Site Avl:" + "Main:" Balances in Requisitions',
+      '"ALL AREAS (All Site Branches)" Universal Branch Option: Register Island-Wide Projects/FOC Accessible by Any Site Branch',
+      'Main Project -> Under New Connections Hierarchy Across All 4 Utility Sections (Telecom, Water, Electrical, Solar)',
+      'Section-Filtered Client FOC Visibility: Only Shows FOC Main Projects Belonging to the Active NC Section When FOC Exists',
+      'International Industry Section Templates + "+ Add Field" Dynamic Custom Field Builder',
+      'Field Team Site Transfer Workflow: "Temporary Assigned to - [New Site]" -> Permanent "[Team Name] (Ref: [Previous Site])" & Assigned Sites History',
+      'Site-Separated Team In-Hand Stock: Unreturned Old-Site Stock Under "Stock to Return - [Site Name]" (Never Combined with New Site Stock)',
+      'Team Name Integrity Lock After Stock Issue + Active-Site Material Usage Enforcement',
+      'Multi-Item Batch Returns in Both Team Returns (RV) & Branch Returns (BRM) ("+ Add Item" / "+ Add All Held or Available")',
+      '3-Step Connection Daily Progress (Telecom, Water, Electric, Solar): Step 1 Team & Area (Locked Until Refresh) -> Step 2 Connection -> Step 3 Usage',
+      '2-Tab Stock Requisitions (RN): Normal Stock (Low-Stock Top Sorted) vs. Assigned-Site & "ALL AREAS" Client FOC',
       'Installed Qty + Wastage Qty Tracking with Live (Used + Wastage) Team In-Hand Validation',
       'Usage Vouchers History -> "Full Report for This Site (Project)" (Team Subtotals + Grand Total)',
     ],
@@ -671,31 +671,33 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
 
 const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
   {
-    group: 'ගබඩා කළමනාකරණය, ප්‍රසම්පාදනය සහ Item Lifecycle Summary',
+    group: 'ගබඩා කළමනාකරණය, පියවර 5 Free Stock Reconciliation සහ Item Lifecycle Summary',
     items: [
-      'Central Stock Item Summary: ඕනෑම Item එකක් Select කළ විට PO/Manual/FOC ලැබීම්, Site හා Team බෙදීම්, Used/Wasted සහ Central/Site/Team In-Hand පෙන්වන Printable A4/PDF සාරාංශය',
-      'Site Branch Stock Forward Summary: ශාඛා ගබඩාවේ Item එකක් Select කළ විට HQ ලැබීම්, ශාඛාවේ Teams වලට නිකුත් කිරීම්, Used/Wasted සහ In-Hand පෙන්වන Printable A4/PDF සාරාංශය',
-      '0001 සිට පිළිවෙළට ජනනය වන Item Codes, Project IDs සහ PO/Site Request Dropdown වල Item Code එක යටින් Item Name පැහැදිලිව පෙන්වීම',
-      'ප්‍රධාන ගබඩාව (Central HQ) සහ සීමාවකින් තොර ප්‍රාදේශීය ශාඛා ගබඩා (Site Yards)',
+      'පියවර 5 Client FOC Reconciliation Flow: Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Project Completion Returnable Balance',
+      'වර්ණ ගැන්වූ Main Project Cards + එක් එක් Sub-Project Flow (KT-RGL-0505, KT-ABK-0506) සහ අවසන් Full Usage & Balance Report',
+      'Central Stock වෙතින් එක් එක් Issued Item එක වෙන වෙනමත්, Project එකේ සියලු Items එකටත් A4/PDF Report ලබාගැනීම',
+      'Site Branch Stock හි "Central FOC" Badge/Highlight සහ Forward Traceability Summary (Printable A4 / PDF)',
+      'Central Stock Item Summary: PO/Manual/FOC ලැබීම්, Site හා Team බෙදීම්, Used/Wasted සහ Central/Site/Team In-Hand පෙන්වීම',
+      '0001 සිට පිළිවෙළට ජනනය වන Item Codes, Project IDs සහ PO / Requisition / Return Dropdown වල Item Images පෙන්වීම',
       'Detect වූ සැණින් නතර වී Camera ඉවත් වන Single-Shot Scanner සහ "Scan Now" බටන් එක',
-      'නිල Purchase Orders (PO) සහ Multi-Item GRN ප්‍රධාන ගබඩාවට එකවර භාරගැනීම',
-      'සැපයුම්කරු වෙත ආපසු යැවීමේ (RTV) Debit Notes සහ Outward Gate Pass',
-      'Client FOC Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීමේ පහසුකම',
+      'නිල Purchase Orders (PO), Multi-Item GRN සහ Return to Vendor (RTV) Debit Notes / Gate Pass',
       '200KB ට අඩුවෙන් Auto-Compress වන Item Image Upload සහ වවුචර් Print කිරීමේදී "Print with Image" තේරීම',
       'Excel / CSV Bulk Import, Multi-Sheet Export සහ අවම තොග අනතුරු ඇඟවීම්',
     ],
   },
   {
-    group: 'වැඩබිම් මෙහෙයුම්, International Templates (Telecom/Water/Electric/Solar), Team Transfers සහ Multi-Item Returns',
+    group: 'වැඩබිම් මෙහෙයුම්, "ALL AREAS" Projects, New Connection FOC සහ Multi-Item Returns',
     items: [
-      'International Industry Section Templates: Telecom New Connection (ITU-T G.984), Water Supply Project (ISO 4064), Electrical Power Project (IEC 60364), Solar PV Project (IEC 62446) සහ Standard EPC සඳහා සූදානම් කළ ජාත්‍යන්තර Templates',
-      '"+ Add Field" Custom Field Builder: Section එකක් සෑදීමේදී හෝ Edit කිරීමේදී Core Fields 6 වෙනස් කිරීමට සහ අලුත් Custom Fields කැමති ගණනක් එකතු කිරීමට ඇති පහසුකම',
-      'Team Site Transfer ක්‍රියාවලිය: "Temporary Assigned to - [New Site]" -> බඩු Clear වූ පසු Permanent "[Team Name] (Ref: [Previous Site])" සහ සම්පූර්ණ Assigned Sites History',
-      'Site අනුව වෙන් වූ Team In-Hand Stock: කලින් Site එකේ භාර නොදුන් බඩු "Stock to Return - [Site Name]" යටතේත්, අලුත් Site එකේ බඩු අලුත් Site නම යටතේත් එකතු නොකර වෙන වෙනම පෙන්වීම',
-      'අලුත් Site එකේ වැඩවලට එම Site එකෙන් නිකුත් කළ බඩු පමණක් භාවිතා කිරීමට ඉඩ දීම සහ බඩු ලබාගෙන ඇති Team වල නම (Team Name) වෙනස් කළ නොහැකි ලෙස ආරක්ෂා කිරීම',
-      'Team Returns (RV) සහ Branch Returns (BRM) දෙකේම Items ගණනාවක් එකතු කර ("+ Add Item" / "+ Add All") එක සැරේ තනි වවුචරයකින් Return කිරීමේ පහසුකම',
-      'Connection Sections (Telecom, Water, Electric, Solar) 1-2-3 Daily Progress: පියවර 1 Team & Area (Refresh කරන තුරු Lock වේ) -> පියවර 2 Select හෝ "+ Register New Connection" -> පියවර 3 Material Usage',
-      'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock සහ Branch-Exclusive Client FOC Request)',
+      '"ALL AREAS (All Site Branches)" විකල්පය: Island-wide Projects/FOC ලියාපදිංචි කර ඕනෑම Site Branch එකකට Request හා Usage දැමීමට ඇති පහසුකම',
+      'Telecom, Water, Electrical සහ Solar යන සියලුම New Connection Section 4 සඳහාම Main Project -> Under New Connections ව්‍යුහය',
+      'Section අනුව Filter වන Client FOC: අදාළ NC Section එකට FOC ලැබුණු Main Projects ඇත්නම් පමණක් FOC Dropdown පෙන්වීම',
+      'International Industry Section Templates (Telecom, Water, Electric, Solar) + "+ Add Field" Custom Field Builder',
+      'Team Site Transfer ක්‍රියාවලිය: "Temporary Assigned to - [New Site]" -> Permanent "[Team Name] (Ref: [Previous Site])" සහ Sites History',
+      'Site අනුව වෙන් වූ Team In-Hand Stock: කලින් Site එකේ භාර නොදුන් බඩු "Stock to Return - [Site Name]" යටතේ වෙනම පෙන්වීම',
+      'බඩු ලබාගෙන ඇති Team Name Lock කිරීම සහ අදාළ Site එකේ බඩු පමණක් වැඩවලට භාවිත කිරීමේ නීතිය',
+      'Team Returns (RV) සහ Branch Returns (BRM) දෙකේම Items ගණනාවක් ("+ Add Item" / "+ Add All") එක සැරේ Return කිරීම',
+      'Connection Sections 1-2-3 Daily Progress: පියවර 1 Team & Area (Refresh කරන තුරු Lock වේ) -> පියවර 2 Connection -> පියවර 3 Usage',
+      'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත් (Normal Stock සහ Assigned-Site / ALL AREAS Client FOC Request)',
       'Material Usage / Daily Progress Entry හි Installed Qty සමඟ Wastage Qty (අපතේ යාම්) සටහන් කිරීම',
       'Usage History හි "Full Report for This Site (Project)" (Team Subtotals + Full Grand Total + PDF/CSV)',
     ],
@@ -1198,12 +1200,12 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
     current.y += 32;
 
     const siStages = [
-      'පියවර 01 (Master Setup): භාණ්ඩ, යන්ත්‍රෝපකරණ, ශාඛා ගබඩා, සැපයුම්කරුවන් සහ වැඩ කණ්ඩායම් (Auto Crew Size සමඟ) ලියාපදිංචි කිරීම.',
-      'පියවර 02 (PO, GRN & RTV): සැපයුම්කරු PO නිකුත් කිරීම, GRN මුද්‍රණය, Client Free Stock (FOC) සහ RTV Debit Notes සටහන් කිරීම.',
-      'පියවර 03 (Branch Transfer): ශාඛා මගින් බඩු ඉල්ලුම්පත් (RN) යොමු කිරීම සහ ප්‍රධාන ගබඩාවෙන් අනුමත කර ශාඛා වෙත යැවීම.',
-      'පියවර 04 (Field Crew Issue): වැඩ කණ්ඩායම් නායකයින් වෙත එදිනෙදා භාණ්ඩ හා ටූල්ස් නිකුත් කිරීම (IN / Gate Pass) සහ In-Hand තොග පරීක්ෂාව.',
-      'පියවර 05 (Daily Progress, Wastage & Returns): Material Usage / Daily Progress Entry හරහා භාවිතය සහ Wastage Qty සටහන් කිරීම, Full Site (Project) වාර්තා සහ ආපසු භාරදීම් (RV / BRM).',
-      'පියවර 06 (Company Formats): ආයතනයේ PDF හෝ Image ආකෘති පත්‍ර Upload කර සියලුම වවුචර් එම Format එකෙන්ම මුද්‍රණය කරගැනීම.',
+      'පියවර 01 (Master Setup): භාණ්ඩ (200KB Photos), "ALL AREAS" හෝ Branch Projects (Main -> New Connections ඇතුළුව) සහ Teams ලියාපදිංචි කිරීම.',
+      'පියවර 02 (PO, GRN & පියවර 5 FOC): PO නිකුත් කිරීම, GRN, සහ Client FOC (Central -> Site -> Team -> Usage -> Returnable Balance) සටහන් කිරීම.',
+      'පියවර 03 (Branch Transfer & "Central FOC"): ශාඛා මගින් බඩු ඉල්ලීම (ALL AREAS FOC ඇතුළුව) සහ Site Stock හි "Central FOC" ලෙස වෙන් කර පෙන්වීම.',
+      'පියවර 04 (Field Crew Issue): වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN / Gate Pass) සහ Site අනුව වෙන් වූ In-Hand තොග පරීක්ෂාව.',
+      'පියවර 05 (Daily Progress, Wastage & Full Reports): Section අනුව Filter වන FOC, Main/Sub-Project Balance Reports සහ Multi-Item Returns (RV / BRM).',
+      'පියවර 06 (ISO Formats & Signatures): ISO 9001:2015 Formats, Signers, Digital Signatures සහ Company PDF/Image Format සැකසීම.',
     ];
 
     current.ctx.font = `600 16.5px ${fontStack}`;
@@ -1654,14 +1656,14 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'පියවර 02',
-                        title: 'PO, GRN සහ RTV',
-                        desc: 'සැපයුම්කරු PO නිකුත් කිරීම, GRN මුද්‍රණය, Client FOC සහ RTV හර සටහන්.',
+                        title: 'PO, GRN, FOC සහ RTV',
+                        desc: 'Item Images සහිත PO නිකුත් කිරීම, GRN, 5-Stage Client FOC ("ALL AREAS" ඇතුළුව) සහ RTV.',
                         icon: ShoppingCart,
                       },
                       {
                         stage: 'පියවර 03',
-                        title: 'ශාඛා තොග හුවමාරුව',
-                        desc: 'ශාඛා මගින් බඩු ඉල්ලුම් කිරීම (RN) සහ ප්‍රධාන ගබඩාවෙන් ශාඛා වෙත යැවීම.',
+                        title: 'ශාඛා තොග සහ Central FOC',
+                        desc: 'ශාඛා මගින් බඩු ඉල්ලුම් කිරීම (RN), Central FOC badge හඳුනාගැනීම සහ ප්‍රධාන ගබඩාවෙන් යැවීම.',
                         icon: Building2,
                       },
                       {
@@ -1672,8 +1674,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'පියවර 05',
-                        title: 'Daily Progress, Wastage සහ Reports',
-                        desc: 'භාවිතය හා Wastage Qty සටහන් කිරීම (PU), Full Site වාර්තා සහ ආපසු භාරදීම (RV / BRM).',
+                        title: 'Usage, 5-Stage FOC සහ Reports',
+                        desc: 'Main Project -> New Connections භාවිතය, Wastage, 5-Stage FOC Balance සහ ආපසු භාරදීම (RV/BRM).',
                         icon: RotateCcw,
                       },
                       {
@@ -1692,14 +1694,14 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'Stage 02',
-                        title: 'PO, GRN & RTV',
-                        desc: 'Issue Supplier POs, print batch GRNs, log Client FOC & Debit Notes.',
+                        title: 'PO, GRN, FOC & RTV',
+                        desc: 'Issue POs with thumbnails, print GRNs, log Client FOC ("ALL AREAS" supported) & RTV.',
                         icon: ShoppingCart,
                       },
                       {
                         stage: 'Stage 03',
-                        title: 'Branch Transfer',
-                        desc: 'Site branches request stock (RN); Central HQ approves & dispatches.',
+                        title: 'Branch Stock & Central FOC',
+                        desc: 'Request stock (RN), identify "Central FOC" items in Site Stock & dispatch from HQ.',
                         icon: Building2,
                       },
                       {
@@ -1710,8 +1712,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'Stage 05',
-                        title: 'Daily Progress, Wastage & Reports',
-                        desc: 'Log usage & Wastage Qty (PU), run Full Site Reports, and return surplus (RV / BRM).',
+                        title: 'Usage, 5-Stage FOC & Reports',
+                        desc: 'Log Main Project -> New Connections usage & wastage, 5-Stage FOC balance & returns (RV/BRM).',
                         icon: RotateCcw,
                       },
                       {

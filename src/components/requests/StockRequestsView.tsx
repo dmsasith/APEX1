@@ -82,12 +82,18 @@ export const StockRequestsView: React.FC = () => {
   // Helper to resolve which Site Branch a Project (and its FOC pool) belongs to
   const resolveProjectBranch = (p?: typeof activeProjects[0]): { siteId: string; siteName: string } => {
     if (!p) return { siteId: '', siteName: '' };
+    if (p.siteId === 'ALL_AREAS' || (p.siteName && p.siteName.trim().toUpperCase() === 'ALL AREAS')) {
+      return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+    }
     if (p.siteId) {
       const matched = sites.find((s) => s.id === p.siteId);
       return { siteId: p.siteId, siteName: matched?.name || p.siteName || '' };
     }
     if (p.parentProjectId) {
       const parent = projects.find((mp) => mp.id === p.parentProjectId);
+      if (parent?.siteId === 'ALL_AREAS' || (parent?.siteName && parent.siteName.trim().toUpperCase() === 'ALL AREAS')) {
+        return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+      }
       if (parent?.siteId) {
         const matched = sites.find((s) => s.id === parent.siteId);
         return { siteId: parent.siteId, siteName: matched?.name || parent.siteName || '' };
@@ -97,6 +103,9 @@ export const StockRequestsView: React.FC = () => {
     const voucherWithBranch = (clientFreeIssues || []).find(
       (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id) && v.assignedSiteId
     );
+    if (voucherWithBranch?.assignedSiteId === 'ALL_AREAS') {
+      return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+    }
     if (voucherWithBranch?.assignedSiteId) {
       const matched = sites.find((s) => s.id === voucherWithBranch.assignedSiteId);
       return {
@@ -118,12 +127,18 @@ export const StockRequestsView: React.FC = () => {
       }
     }
     if (p.siteName) {
+      if (p.siteName.trim().toUpperCase() === 'ALL AREAS') {
+        return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+      }
       const byName = branchSites.find(
         (s) => s.name.trim().toLowerCase() === p.siteName!.trim().toLowerCase()
       );
       if (byName) return { siteId: byName.id, siteName: byName.name };
     }
     if (p.district) {
+      if (p.district.trim().toUpperCase() === 'ALL AREAS') {
+        return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+      }
       const dLow = p.district.trim().toLowerCase();
       const byDist = branchSites.find(
         (s) =>
@@ -136,13 +151,17 @@ export const StockRequestsView: React.FC = () => {
     return { siteId: '', siteName: p.siteName || '' };
   };
 
-  // Filter client FOC materials by selected branch / user assigned site(s)
+  // Filter client FOC materials by selected branch / user assigned site(s) (ALL_AREAS is open to all branches)
   const filteredClientFocMaterials = useMemo(() => {
     return (clientFreeIssues || []).filter((v) => {
       if (v.isDeleted) return false;
       const projObj = projects.find((p) => p.id === v.projectId);
       const resolvedBranch = resolveProjectBranch(projObj);
       const effectiveSiteId = v.assignedSiteId || resolvedBranch.siteId;
+
+      if (effectiveSiteId === 'ALL_AREAS') {
+        return true;
+      }
 
       if (isCentralAdmin) {
         if (selectedBranchFilter !== 'all') {
@@ -303,10 +322,12 @@ export const StockRequestsView: React.FC = () => {
       });
   }, [activeProjects, getProjectFreeStockList, clientFreeIssues, sites, projects, stockRequests]);
 
-  // Filter FOC Root Projects strictly to those allocated to the currently selected Requesting Site Branch (formSiteId)
+  // Filter FOC Root Projects to those allocated to the currently selected Requesting Site Branch (formSiteId) OR allocated to ALL AREAS ('ALL_AREAS')
   const focRootProjectsWithMeta = useMemo(() => {
     if (!formSiteId) return allFocRootProjectsWithMeta;
-    return allFocRootProjectsWithMeta.filter((entry) => entry.resolvedSiteId === formSiteId);
+    return allFocRootProjectsWithMeta.filter(
+      (entry) => entry.resolvedSiteId === formSiteId || entry.resolvedSiteId === 'ALL_AREAS'
+    );
   }, [allFocRootProjectsWithMeta, formSiteId]);
 
   // Any legacy projects that do not yet have a Site Branch assigned

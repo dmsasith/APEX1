@@ -108,36 +108,27 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'nc section',
     ],
     answerEn: () =>
-      `**How International Industry Section Templates (Telecom, Water, Electric, Solar) & "+ Add Field" Work:**\n\n` +
-      `**1. Ready-to-Load International Section Templates (1-Click Auto-Load):**\n` +
-      `When creating or editing a section in **Project & New Section Registry -> New Section Registry & Material Templates**, you can pick any of the 5 International Industry Templates:\n` +
-      `   • **Telecom New Connection (ITU-T G.984 / FTTH):** Customer FTTH/NC No, ONT Serial No, Customer Name, Address, Mobile, Exchange Area + FDP/Splitter Port, Optical Power (dBm), Bandwidth Tier & Drop Span.\n` +
-      `   • **Water Supply & Utility Project (ISO 4064 / AWWA):** Water Account/Application No, Water Meter Serial & Make, Consumer Name, Premises Address, Mobile, WSS Zone/DMA Area + Pipe Diameter & Material Class (DN/PN), Tariff Class, Initial Reading ($m^3$) & Pressure (Bar), Ferrule/Saddle Size.\n` +
-      `   • **Electrical Power & Service Connection (IEC 60364 / IEEE):** Consumer Account/Service Order No, Energy Meter Serial (kWh), Consumer Name, Installation Address, Mobile, Transformer Substation/Feeder/Pole No + Phase/Voltage/Amps, Contract Demand (kVA) & Main Breaker, Earth Electrode Resistance ($\\Omega$), Meter Seal No.\n` +
-      `   • **Solar PV & Net-Metering Project (IEC 62446 / UL 1741):** Solar Project/Net-Metering Ref No, Solar Inverter Serial & Model, Client Name, Roof/Site Address, Mobile, Grid Substation & Scheme + System Capacity (kWp DC / kW AC), PV Module Make & Panel Count, Battery BESS (kWh), Bi-Directional Meter No & String Test ($V_{oc}/I_{sc}$).\n` +
-      `   • **Standard / Custom Engineering Project (ISO 21500 / EPC):** Main / Sub / Individual Project hierarchy + Contract Ref & GPS Coordinates.\n\n` +
-      `**2. "+ Add Field" Custom Dynamic Field Builder:**\n` +
-      `• Inside the Create/Edit Section modal (or directly inside the **Register Project** modal via **"+ Add Custom Field to This Section Template"**), click **+ Add Field** to add any number of custom fields (Field Name, Placeholder/Example, Required toggle) or customize the 6 Core Field labels.\n\n` +
-      `**3. Daily Progress Entry ("Material Usage / Daily Progress Entry") — Simple 1, 2, 3 Steps:**\n` +
-      `For any Connection/Utility Section (**Telecom, Water, Electric, Solar**), Daily Progress automatically switches to **Steps 1, 2, 3**:\n` +
-      `• **Step 1 — Team & Area Selection (Top-Most & Locked Until Refresh):** Select Site Branch, Field Team, and Working Area and click **Confirm & Lock Team / Area**. Step 1 stays locked until page refresh so you can enter all daily connections back-to-back without re-selecting the team.\n` +
-      `• **Step 2 — Select Connection or "+ Register New Connection":** Search existing connections or click **+ Register New Connection** right inside Step 2 to fill the section's 6 Core Fields + Custom Fields on the spot.\n` +
-      `• **Step 3 — Enter Material Usage:** Log **Qty Used** + **Wastage Qty** and submit.`,
+      `**How International Industry Section Templates (Telecom, Water, Electric, Solar), "Main Project -> Under New Connections" & Section-Filtered FOC Work:**\n\n` +
+      `**1. Ready-to-Load International Section Templates & "+ Add Field":**\n` +
+      `In **Project & New Section Registry -> New Section Registry & Material Templates**, load presets for **Telecom New Connection (ITU-T G.984)**, **Water Supply (ISO 4064)**, **Electrical Power (IEC 60364)**, **Solar PV (IEC 62446)**, or **Standard EPC**, and add unlimited custom technical fields via **+ Add Field**.\n\n` +
+      `**2. Main Project -> Under New Connections (All 4 Utility Sections) & Section-Filtered FOC:**\n` +
+      `• In Telecom, Water, Electrical, and Solar sections, you can register a **Standalone New Connection**, an umbrella **🏢 Main Project (For New Connections)** (for bulk Client FOC), or a connection **↳ Under Main Project (New Connection)**.\n` +
+      `• In **Material Usage / Daily Progress Entry**, FOC Main Project dropdowns **ONLY appear if Client FOC stock actually exists for that specific active section** (e.g., Telecom NC only shows Telecom NC FOC Main Projects; normal Company Stock remains completely clutter-free).\n\n` +
+      `**3. Daily Progress Entry (Simple 1, 2, 3 Steps with Team & Area Lock):**\n` +
+      `• **Step 1 — Team & Area Selection (Locked Until Refresh):** Pick Site Branch, Field Team, and Working Area and click **Confirm & Lock Team / Area**.\n` +
+      `• **Step 2 — Select Connection or "+ Register New Connection":** Pick an existing line or register a new connection right inside Step 2.\n` +
+      `• **Step 3 — Enter Material Usage:** Log **Qty Used** + **Wastage Qty** (automatically deducts from Parent Main Project FOC balance when linked).`,
     answerSi: () =>
-      `**International Section Templates (Telecom, Water, Electric, Solar) සහ "+ Add Field" ක්‍රියාත්මක වන ආකාරය:**\n\n` +
-      `**1. International Industry Section Templates (1-Click Auto-Load):**\n` +
-      `**Project & New Section Registry -> New Section Registry & Material Templates** වෙත ගොස් **"+ Add New Section"** (හෝ Quick-Load බටන්) එබූ විට පහත International Templates එක ක්ලික් එකකින් Load කරගත හැක:\n` +
-      `   • **Telecom New Connection (ITU-T G.984 / FTTH):** Customer FTTH/NC No, ONT Serial No, Customer Name, Address, Mobile, Exchange Area + FDP/Splitter Port, Optical Power (dBm), Package Tier, Drop Cable Span.\n` +
-      `   • **Water Supply & Utility Project (ISO 4064 / AWWA):** Water Account No, Water Meter Serial, Consumer Name, Address, Mobile, WSS Zone/DMA Area + Pipe Diameter (DN/PN), Tariff Class, Initial Meter Reading ($m^3$) & Pressure (Bar), Ferrule/Saddle Size.\n` +
-      `   • **Electrical Power & Service Connection (IEC 60364 / IEEE):** Consumer Account/Service Order No, Energy Meter Serial (kWh), Consumer Name, Address, Mobile, Substation/Feeder/Pole No + Supply Phase/Voltage/Amps, Contract Demand (kVA) & Breaker, Earth Resistance ($\\Omega$), Meter Seal No.\n` +
-      `   • **Solar PV & Net-Metering Project (IEC 62446 / UL 1741):** Solar Project/Net-Metering Ref No, Solar Inverter Serial, Client Name, Roof Address, Mobile, Grid Substation & Scheme + System Capacity (kWp DC / kW AC), PV Module Make & Panel Count, Battery Storage (kWh), Bi-Directional Meter No.\n` +
-      `   • **Standard / Custom Engineering Project (ISO 21500 / EPC):** Main / Sub / Individual Project ආකෘතිය.\n\n` +
-      `**2. "+ Add Field" මගින් අලුතින් Fields එකතු කිරීම:**\n` +
-      `• Section එකක් හදද්දී හෝ Edit කරද්දී **"+ Add Field"** බටන් එකෙන් ඔබට අවශ්‍ය ඕනෑම අලුත් Field එකක් (Field Name, Placeholder, Required) එකතු කළ හැකි අතර Core Fields 6 හි නම්ද වෙනස් කළ හැක. Project එකක් Register කරන Modal එක තුළ සිටමද **"+ Add Custom Field to This Section Template"** මගින් අලුත් Fields එකතු කළ හැක.\n\n` +
-      `**3. Daily Progress Enter කරන පිටුව (Telecom, Water, Electric, Solar තේරූ විට — පියවර 1, 2, 3):**\n` +
-      `• **පියවර 1 — Team & Area Selection (උඩින්ම සහ Refresh කරනකම් Lock වේ):** උඩින්ම Field Team සහ Area එක තෝරා **"Confirm & Lock Team / Area"** එබූ පසු Page එක Refresh කරනකම් Lock වී පවතී.\n` +
-      `• **පියවර 2 — Select Connection හෝ "+ Register New Connection":** දැනට ඇති Connection එකක් තෝරන්න හෝ **"+ Register New Connection"** Tab එකෙන් එම Section එකේ Core Fields 6 සහ Custom Fields එවෙලේම ඇතුළත් කර Register කරගන්න.\n` +
-      `• **පියවර 3 — Material Usage Enter කිරීම:** වැය වූ Materials (**Qty Used** + **Wastage Qty**) ඇතුළත් කර Submit කරන්න.`,
+      `**International Section Templates (Telecom, Water, Electric, Solar), "Main Project -> Under New Connections" සහ Section-Filtered FOC:**\n\n` +
+      `**1. International Templates සහ "+ Add Field":**\n` +
+      `**Project & New Section Registry -> New Section Registry & Material Templates** තුළ **Telecom New Connection**, **Water Project**, **Electrical Power**, සහ **Solar PV** Templates එක ක්ලික් එකෙන් Load කර **"+ Add Field"** මගින් අලුත් Fields එකතු කළ හැක.\n\n` +
+      `**2. සියලුම New Connection Section 4 සඳහා "Main Project -> Under New Connections" සහ FOC Filter වීම:**\n` +
+      `• Telecom, Water, Electrical, සහ Solar යන ඕනෑම New Connection Section එකක **Standalone New Connection**, **🏢 Main Project (For New Connections)**, හෝ **↳ Under Main Project (New Connection)** ලෙස Register කළ හැක.\n` +
+      `• **Material Usage / Daily Progress Entry** හිදී Client FOC තොග ලැබී ඇති **එම අදාළ Section එකේ Main Projects පමණක්** Dropdown එකට Filter වී පෙන්වයි (Company Stock පමණක් නම් අනවශ්‍ය FOC Options පෙන්වන්නේ නැත).\n\n` +
+      `**3. Daily Progress Enter කරන පියවර 1, 2, 3:**\n` +
+      `• **පියවර 1:** Field Team සහ Area එක තෝරා Confirm කළ පසු Page එක Refresh කරනකම් Lock වී පවතී.\n` +
+      `• **පියවර 2:** Connection එක Select කරන්න හෝ **"+ Register New Connection"** මගින් අලුත් Connection එකක් එතැනම Register කරන්න.\n` +
+      `• **පියවර 3:** **Qty Used** සහ **Wastage Qty** ඇතුළත් කර Submit කරන්න (Main Project එකට අදාළ නම් FOC තොගයෙන් ඉබේම අඩු වේ).`,
   },
   {
     id: 'field-team-site-transfer-and-site-separated-stock',
@@ -352,6 +343,9 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'reconcile',
       'umbrella',
       'parent project',
+      'all areas',
+      'returnable',
+      'completion',
     ],
     phrases: [
       'major project',
@@ -364,36 +358,40 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'sub project hadanne',
       'main project eken adu',
       'free stock reconciliation',
+      'all areas',
+      'reconciliation flow',
     ],
     answerEn: (ctx) =>
-      `**How Major / Main Projects, Sub-Projects, Individual Projects & Free Stock (FOC) Reconciliation Work:**\n\n` +
-      `**Step 1 — Register Projects with Mandatory "Assigned Site Branch *" (Project & New Section Registry):**\n` +
-      `1. Open **Project & New Section Registry** and click **Register Project**.\n` +
-      `2. Select the **Project Structure Type** and choose the mandatory **Assigned Site Branch ***:\n` +
-      `   • **🏢 Major / Main Project (Umbrella):** Use when a client issues bulk Free Stock for an entire area or contract containing multiple sub-projects. You can also add initial Sub-Projects right inside the same modal, or click **+ Sub-Project** on any Main Project row anytime.\n` +
-      `   • **↳ Sub-Project (Under Main Project):** Links a sub-project under a Parent Major / Main Project (automatically inherits the Main Project's Assigned Site Branch).\n` +
-      `   • **📄 Individual Project (Standalone):** A single standalone project assigned to its Site Branch.\n\n` +
-      `**Step 2 — Receive Client Free-Issue Stock (FOC) into Central Main Stock with Auto Branch Allocation:**\n` +
-      `1. Open **Client Free Stock (FOC)** and click **+ Log Client Free Stock**.\n` +
-      `2. Select **🏢 Under Main Project** (or **📄 Individual Project**) and choose the project. **Receiving Storage Yard** defaults to **Main Central Warehouse (Central Yard)**, while **Allocated Site Branch** automatically links and **locks** to that project's Assigned Site Branch. Admins can also edit and reassign mis-logged FOC vouchers inside Client Free Stock.\n\n` +
-      `**Step 3 — Request FOC Stock from Site Branch & Enter Material Usage / Daily Progress (with Wastage Qty):**\n` +
-      `1. In **Stock Requisitions -> + New Stock Requirement Form**, switch to Tab 2 (**2. Client Free Stock for Assigned Project Request**). Only projects assigned to your **Requesting Site Branch** are displayed. Once approved and received, the stock moves from Central HQ FOC Pool to your Site Branch.\n` +
-      `2. Open **Material Usage / Daily Progress Entry** -> in Step 2, select the **Sub-Project** (filtered by Step 1's Project Section). Logging **Qty Used** and **Wastage Qty** on a Sub-Project **automatically deducts from the Parent Main Project's Free Stock balance**.\n` +
-      `3. Open **Usage Vouchers History -> Full Report for This Site (Project)** for team-by-team & grand totals, or the **Reconciliation** tab (Tab 3) to inspect the **Total Main Project Reconciliation** and **Sub-Projects Individual Breakdown**.${
+      `**5-Stage Standard Free Stock (FOC) Reconciliation Flow, Main/Sub-Projects & "ALL AREAS" Multi-Site Support:**\n\n` +
+      `**1. Register Projects with Branch OR "🌐 ALL AREAS (All Site Branches)":**\n` +
+      `• In **Project & New Section Registry -> Register Project**, select **Major/Main Project**, **Sub-Project**, **Individual Project**, or **New Connection**.\n` +
+      `• Pick a specific **Assigned Site Branch *** OR choose **🌐 ALL AREAS (All Site Branches)** for island-wide contracts (e.g., *"ISLAND WIDE FTTH NEW CONNECTION"*) so **any Site Branch** can request its FOC stock and log material usage without a branch lock.\n\n` +
+      `**2. Clear 5-Stage Standard FOC Reconciliation Flow:**\n` +
+      `All Client FOC summaries and reports follow one clear, chronological sequence:\n` +
+      `   1) **Initial FOC Receipt at Central** (Total received at HQ Central Stock)\n` +
+      `   2) **Site Issue** (Dispatched from Central HQ to Site Branches)\n` +
+      `   3) **Team Issue** (Issued from Site Branches to Field Teams)\n` +
+      `   4) **Usage & Wastage** (Installed Qty & Wastage logged on site/connections)\n` +
+      `   5) **Balance / Returnable Stock on Project Completion** (Central + Site + Team In-Hand returnable to Client)\n\n` +
+      `**3. Color-Coded Main Project Cards, Sub-Project Flows & Central A4/PDF Reports:**\n` +
+      `• Selecting a **Sub-Project** shows its dedicated flow. Selecting a **Main Project** displays **color-coded Main Project cards**, each linked **Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506)** in its own flow section below, and a **Full Usage & Client Balance Summary Report** at the bottom.\n` +
+      `• In **Client Free Stock / Central Stock**, print clean A4/PDF reports either **per individual issued item** OR as **one consolidated report for all items in a project**.${
         ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
       }`,
     answerSi: (ctx) =>
-      `**Major / Main Projects, Sub-Projects, Individual Projects සහ Free Stock (FOC) Reconciliation ක්‍රියාත්මක වන ආකාරය:**\n\n` +
-      `**1 වන පියවර — Project Registry තුළ අනිවාර්ය "Assigned Site Branch *" සමඟ ව්‍යාපෘති සෑදීම:**\n` +
-      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත ගොස් **"Register Project"** ක්ලික් කරන්න.\n` +
-      `2. ව්‍යාපෘති වර්ගය (**🏢 Major / Main Project**, **↳ Sub-Project**, හෝ **📄 Individual Project**) තෝරා, එම ව්‍යාපෘතිය අයත් වන ශාඛාව **"Assigned Site Branch *"** Dropdown එකෙන් අනිවාර්යයෙන්ම තෝරන්න (Sub-Project එකකට Main Project එකේ Site Branch එක ඉබේම ලැබේ).\n\n` +
-      `**2 වන පියවර — Client Free Stock (FOC) ප්‍රධාන ගබඩාවට භාරගැනීම, Locked Site Branch සහ Admin නිවැරදි කිරීම්:**\n` +
-      `1. **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
-      `2. එහිදී බඩු මුලින්ම ලැබෙන ස්ථානය ලෙස **"Main Central Warehouse (Central Yard)"** Default පවතින අතර, Project එක තේරූ සැණින් **"Allocated Site Branch"** එක එම Project එකේ Site Branch එකට ස්වයංක්‍රීයව Link වී Lock වේ (වෙනත් ශාඛාවකට වෙනස් කළ නොහැක). වැරදි Project එකකට ලොග් වූ FOC වවුචර Admin හට Edit කර නිවැරදි Project එකට මාරු කළ හැක.\n\n` +
-      `**3 වන පියවර — අදාළ Site Branch එකෙන් FOC බඩු Request කිරීම සහ Sub-Project Usage / Wastage දැමීම:**\n` +
-      `1. **"Stock Requisitions -> + New Stock Requirement Form"** හි 2 වන ටැබ් එකෙන් (**"2. Client Free Stock for Assigned Project Request"**) තෝරාගත් Site Branch එකට අදාළ Projects පමණක් පෙන්වන අතර, එය Approve වූ පසු Central FOC Pool එකෙන් අඩු වී Site Branch එකට එකතු වේ.\n` +
-      `2. **"Material Usage / Daily Progress Entry"** පිටුවේදී අදාළ **Sub-Project** එක තෝරා **Qty Used** සහ **Wastage Qty** දැමූ සැණින් එය **ස්වයංක්‍රීයව Main Project එකේ Free Stock තොගයෙන් අඩු වේ**.\n` +
-      `3. **"Usage Vouchers History -> Full Report for This Site (Project)"** හරහා Teams වෙන වෙනම හා සම්පූර්ණ එකතුවද, **"Reconciliation"** (Tab 3) මගින් Main/Sub-Project ගැලපුමද බලාගත හැක.${
+      `**පියවර 5 Client Free Stock (FOC) Reconciliation Flow, Main/Sub-Projects සහ "ALL AREAS" පහසුකම:**\n\n` +
+      `**1. Project ලියාපදිංචිය — Site Branch හෝ "🌐 ALL AREAS (All Site Branches)":**\n` +
+      `• **Project & New Section Registry -> Register Project** තුළ Project එක අදාළ Site Branch එකට හෝ **🌐 ALL AREAS (All Site Branches)** ලෙස Register කළ හැක.\n` +
+      `• **ALL AREAS** ලෙස Register කළ විට එම Project එකට ලැබෙන FOC බඩු **ඕනෑම Site Branch එකකින්** Request කර භාවිත කළ හැක (Site Lock බාධාවක් නැත).\n\n` +
+      `**2. පැහැදිලි පියවර 5 Standard FOC Reconciliation Flow එක:**\n` +
+      `   1) **Initial FOC Receipt at Central:** මුලින්ම Central Stock එකට ලැබුණු FOC ප්‍රමාණය.\n` +
+      `   2) **Site Issue:** Central එකෙන් අදාළ Site එකට (හෝ Sites වලට) නිකුත් කළ ප්‍රමාණය.\n` +
+      `   3) **Team Issue:** Site එකෙන් Field Teams වලට නිකුත් කළ ප්‍රමාණය.\n` +
+      `   4) **Usage & Wastage:** වැඩබිමේදී සිදු වූ භාවිතය (Usage) සහ නාස්තිය (Wastage).\n` +
+      `   5) **Balance / Returnable Stock on Project Completion:** Project අවසන් වූ පසු Client වෙත ආපසු භාර දිය හැකි ඉතිරි ප්‍රමාණය.\n\n` +
+      `**3. වර්ණ ගැන්වූ Main Project Cards, Sub-Project Flow සහ Central Reports:**\n` +
+      `• **Sub-Project** එකක් තේරූ විට එම Sub-Project එකේ Usage Flow එක වෙනම පෙන්වයි. **Main Project** එකක් තේරූ විට වෙනස් වර්ණ Cards යටතේ ඒ යටතේ ඇති හැම **Sub-Project (උදා: KT-RGL-0505, KT-ABK-0506)** එකකම Flow එක පහළට වෙන වෙනම පෙන්වා අවසානයේ **Full Usage & Client Balance Summary Report** එක ලබාදෙයි.\n` +
+      `• Central Stock හරහා සෑම Issued Item එකකටම **වෙන වෙනම Report** මෙන්ම Project එකේ **සියලු Items එකට ගත් Consolidated A4/PDF Report** එකක්ද ලබාගත හැක.${
         ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
   },
@@ -411,6 +409,7 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'district',
       'sub area',
       'assigned site branch',
+      'all areas',
     ],
     phrases: [
       'how to register a project',
@@ -419,28 +418,22 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'project master list',
       'project ekak hadanne',
       'project register karanne',
+      'all areas branch',
     ],
     answerEn: (ctx) =>
-      `**How to Register & Manage Projects (Major/Main, Sub-Project & Individual):**\n\n` +
-      `1. **Open Project Registry:** Click **Project & New Section Registry** in the left sidebar.\n` +
-      `2. **Choose Project Structure Type:** Click **Register Project** and select:\n` +
-      `   • **🏢 Major / Main Project:** Umbrella project that holds multiple Sub-Projects and a shared Client Free Stock pool.\n` +
-      `   • **↳ Sub-Project:** Linked under a Parent Main Project (can also be added in 1 click via **+ Sub-Project** on any Main Project row).\n` +
-      `   • **📄 Individual Project:** Standalone single project.\n` +
-      `3. **Select Mandatory "Assigned Site Branch *":** Choose the Site Branch responsible for this project so Client FOC stock is automatically allocated exclusively to that branch.\n` +
-      `4. **Enter Project Details:** Fill in Project ID (auto-generated starting from 0001), Reference No, Project/Customer Name, Customer Phone Number, Site ID, Client/Principal, Project Section, District, and Sub Area.\n` +
-      `5. **Reconciliation & Usage View:** Click the **usage entry(s)** badge on any Main Project or Sub-Project row to inspect the shared Free Stock pool, Sub-Project breakdown, and team consumption.${
+      `**How to Register & Manage Projects (Main, Sub-Project, Individual, New Connections & "ALL AREAS"):**\n\n` +
+      `1. **Open Project Registry:** Click **Project & New Section Registry** in the left sidebar and click **Register Project**.\n` +
+      `2. **Choose Project Structure Type:** Select **🏢 Major / Main Project** (or **Main Project for New Connections**), **↳ Sub-Project** (or **Under Main Project**), or **📄 Individual / Standalone**.\n` +
+      `3. **Select Assigned Site Branch * (or "🌐 ALL AREAS"):** Choose the project's Site Branch, OR select **🌐 ALL AREAS (All Site Branches)** if the contract runs across multiple branches so any site can request its FOC stock and log field usage.\n` +
+      `4. **Enter Project Details & Save:** Fill in Project ID (0001 sequential), Reference No, Name, Client, District, and section technical fields.${
         ctx.activeProjectsCount ? `\n\n📌 *Currently **${ctx.activeProjectsCount} active project(s)** are registered.*` : ''
       }`,
     answerSi: (ctx) =>
-      `**අලුත් Project එකක් (Main Project, Sub-Project හෝ Individual Project) ලියාපදිංචි කරන ආකාරය:**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry"** වෙත යන්න.\n` +
-      `2. **"Register Project"** ක්ලික් කර ව්‍යාපෘති වර්ගය තෝරන්න:\n` +
-      `   • **🏢 Major / Main Project:** Sub-Projects කිහිපයක් සහ පොදු Free Stock තොගයක් සහිත ප්‍රධාන ව්‍යාපෘතිය.\n` +
-      `   • **↳ Sub-Project:** ප්‍රධාන ව්‍යාපෘතියක් යටතේ ඇති අනු-ව්‍යාපෘතිය (Main Project පේළියේ ඇති **"+ Sub-Project"** බටන් එකෙන්ද එක් කළ හැක).\n` +
-      `   • **📄 Individual Project:** වෙනම තනි ව්‍යාපෘතියක්.\n` +
-      `3. **අනිවාර්ය "Assigned Site Branch *" තේරීම:** ව්‍යාපෘතිය අදාළ වන Site Branch එක Dropdown එකෙන් අනිවාර්යයෙන්ම තෝරන්න.\n` +
-      `4. **විස්තර ඇතුළත් කිරීම:** Project ID (0001 සිට ඉබේම ජනනය වේ), Project/Customer Name, දුරකථන අංකය, Project Section, District සහ Sub Area ඇතුළත් කර Save කරන්න.${
+      `**අලුත් Project එකක් (Main, Sub, Individual, New Connection සහ "ALL AREAS") ලියාපදිංචි කරන ආකාරය:**\n\n` +
+      `1. වම් පස මෙනුවෙන් **"Project & New Section Registry" -> "Register Project"** ක්ලික් කරන්න.\n` +
+      `2. ව්‍යාපෘති වර්ගය (**🏢 Major / Main Project**, **↳ Sub-Project**, හෝ **📄 Individual / Standalone**) තෝරන්න.\n` +
+      `3. **"Assigned Site Branch *" තේරීම (හෝ "🌐 ALL AREAS"):** අදාළ Site Branch එක තෝරන්න; නැතිනම් ලංකාවේම / ඕනෑම Site එකක භාවිත වන Project එකක් නම් **"🌐 ALL AREAS (All Site Branches)"** තෝරන්න.\n` +
+      `4. Project ID (0001 සිට ඉබේම සෑදේ), නම, Client සහ Section Fields පුරවා Save කරන්න.${
         ctx.activeProjectsCount ? `\n\n📌 *දැනට සක්‍රීය Projects **${ctx.activeProjectsCount}ක්** ලියාපදිංචි කර ඇත.*` : ''
       }`,
   },
@@ -566,24 +559,23 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'branch ekata badu',
     ],
     answerEn: (ctx) =>
-      `**How to Request & Transfer Stock (Normal Stock vs. Project Client FOC) from Main Warehouse to a Branch Yard:**\n\n` +
+      `**How to Request & Transfer Stock (Normal Stock vs. Assigned/ALL AREAS Client FOC) from Main Warehouse to a Branch Yard:**\n\n` +
       `1. **Open Stock Requisitions:** Go to **Stock Requisitions** from the left sidebar and click **+ New Stock Requirement Form**.\n` +
       `2. **Select Requesting Site Branch & Choose Request Tab:**\n` +
-      `   • **Tab 1 — 1. Normal Stock Request:** Request regular warehouse stock. Items that are currently **Low Stock** at your requesting branch automatically appear at the top of the list with a **⚠️ Site Low** badge, showing both **Site Avl:** and **Main:** balances.\n` +
-      `   • **Tab 2 — 2. Client Free Stock for Assigned Project Request:** Exclusively shows **Major / Main Projects** and **Individual Projects** assigned to your selected **Requesting Site Branch** so client stock never mixes across branches.\n` +
-      `3. **Approve & Dispatch (HQ):** Central HQ reviews the requisition table (with full Item Code + Material Description) and clicks **Approve & Dispatch**.\n` +
-      `4. **Confirm Receipt at Branch (GRN):** Clicking **Confirm Receipt (GRN)** deducts from Central Main Stock (or Central FOC Pool) and adds the stock directly into **Site Branch Stock**.${
+      `   • **Tab 1 — 1. Normal Stock Request:** Request regular warehouse stock. Low-stock items at your site automatically appear at the top with a **⚠️ Site Low** badge and live **Site Avl:** + **Main:** balances.\n` +
+      `   • **Tab 2 — 2. Client Free Stock for Assigned Project Request:** Shows Major/Main Projects and Individual Projects assigned to your selected Site Branch **PLUS any "🌐 ALL AREAS (All Site Branches)" projects** so island-wide FOC stock can be requested by any site.\n` +
+      `3. **Approve, Dispatch & "Central FOC" Badge in Site Branch Stock:** Once approved by HQ and confirmed at the site, FOC transfers carry a distinct **🎁 Central FOC** badge & color highlight inside **Site Branch Stock** so branch teams always know which items belong to Central Client FOC.${
         ctx.pendingRequestsCount
           ? `\n\n📌 *Live Status:* **${ctx.pendingRequestsCount} pending stock request(s)** waiting for action.`
           : ''
       }`,
     answerSi: (ctx) =>
-      `**Main Warehouse (ප්‍රධාන ගබඩාවේ) සිට Branch / Site එකකට බඩු Request කර Transfer කරගන්නා ආකාරය (Normal Stock සහ Client FOC):**\n\n` +
-      `1. **Request ෆෝම් එක විවෘත කිරීම:** වම් පස මෙනුවෙන් **"Stock Requisitions"** වෙත ගොස් **"+ New Stock Requirement Form"** බටන් එක ක්ලික් කර පළමුව **"Requesting Site Branch *"** තෝරන්න.\n` +
+      `**Main Warehouse සිට Branch / Site එකකට බඩු Request කර Transfer කරගන්නා ආකාරය (Normal Stock සහ Assigned / ALL AREAS FOC):**\n\n` +
+      `1. **"Stock Requisitions"** වෙත ගොස් **"+ New Stock Requirement Form"** ක්ලික් කර **"Requesting Site Branch *"** තෝරන්න.\n` +
       `2. **ටැබ් දෙකෙන් අදාළ වර්ගය තේරීම:**\n` +
-      `   • **1. Normal Stock Request:** සාමාන්‍ය ගබඩා තොග ඉල්ලුම් කිරීමට. මෙහිදී එම Site එකේ දැනට අඩු තොග (Low Stock) ඇති භාණ්ඩ ලැයිස්තුවේ උඩින්ම **"⚠️ Site Low"** ලෙස පෙරී පෙන්වන අතර සෑම භාණ්ඩයකම **"Site Avl:"** සහ **"Main:"** තොග ප්‍රමාණයන් එතැනම පෙන්වයි.\n` +
-      `   • **2. Client Free Stock for Assigned Project Request:** තෝරාගත් Site Branch එකට අදාළව වෙන් කර ඇති **Major / Main Projects** සහ **Individual Projects** පමණක් පෙන්වන අතර, එම ව්‍යාපෘතියේ FOC බඩු පැටලෙන්නේ නැතිව ශාඛාවට ගෙන්වාගත හැක.\n` +
-      `3. **Approve කර Branch එකට භාරගැනීම:** ප්‍රධාන ගබඩාවෙන් Approve කර Branch එකෙන් Confirm කළ පසු, අදාළ ප්‍රමාණයන් Main Stock / FOC Pool එකෙන් අඩු වී **"Site Branch Stock"** එකට එකතු වේ.${
+      `   • **1. Normal Stock Request:** සාමාන්‍ය ගබඩා තොග ඉල්ලුම් කිරීමට (**"⚠️ Site Low"** භාණ්ඩ උඩින්ම පෙන්වයි).\n` +
+      `   • **2. Client Free Stock for Assigned Project Request:** තෝරාගත් Site Branch එකට අදාළ Projects මෙන්ම **"🌐 ALL AREAS (All Site Branches)"** ලෙස සෑදූ පොදු Projects ද පෙන්වන බැවින් ඕනෑම Site එකකට එම FOC බඩු Request කළ හැක.\n` +
+      `3. **Site Branch Stock හි "Central FOC" ලෙස වෙන් කර පෙන්වීම:** Approve වී Site එකට ලැබුණු පසු **"Site Branch Stock"** තුළ Central FOC වෙතින් ආ බඩු **"🎁 Central FOC"** Badge/Tag එකක් සහ වර්ණ Highlight එකකින් වෙන් කර පෙන්වයි.${
         ctx.pendingRequestsCount
           ? `\n\n📌 *දැනට පද්ධතියේ Pending Requests **${ctx.pendingRequestsCount}ක්** ඇත.*`
           : ''
@@ -717,6 +709,9 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'reassign',
       'edit foc',
       'waradila',
+      'central foc',
+      'returnable',
+      'all areas',
     ],
     phrases: [
       'client free stock',
@@ -726,23 +721,23 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'wrong project foc',
       'correct foc',
       'foc waradila',
+      'central foc',
+      'free stock report',
     ],
     answerEn: () =>
-      `**How to Manage Client Free Stock (FOC) — Locked Site Branch, Assigned-Site Isolated FOC Summary & Admin Correction:**\n\n` +
-      `1. Open **Client Free Stock (FOC)** from the left sidebar and click **+ Log Client Free Stock**.\n` +
-      `2. Choose **🏢 Under Main Project** or **📄 Individual Project** and select the project:\n` +
-      `   • **Receiving Storage Yard (Inbound):** Defaults to **Main Central Warehouse (Central Yard)** because physical client materials enter Central Main Stock first.\n` +
-      `   • **Allocated Site Branch (Auto-Locked):** Selecting the project automatically links and **locks** the **Allocated Site Branch** to that project's registered branch so FOC materials can never be accidentally issued to the wrong site branch.\n` +
-      `3. **Assigned-Site Isolated FOC Summary:** When you click **Summary** on any FOC item/project inside **Client Free Stock (FOC)**, the lifecycle breakdown is strictly isolated to that **Assigned Site Branch** — showing only the site distribution, field teams, and project consumption belonging to that assigned site.\n` +
-      `4. **Admin FOC Voucher Correction / Reassignment:** If a shipment was mistakenly logged under the wrong project, Admins can click **Edit** on that FOC voucher directly inside **Client Free Stock (FOC)** and select the correct Target Project.`,
+      `**How Client Free Stock (FOC) 5-Stage Reconciliation, Central FOC Badges & Project Reports Work:**\n\n` +
+      `1. **Log Client FOC (+ Log Client Free Stock):** Select **🏢 Under Main Project** (including **Main Project for New Connections**) or **📄 Individual Project**. Physical stock enters **Main Central Warehouse**, while **Allocated Site Branch** automatically locks to the project's branch — or choose **🌐 ALL AREAS** so any branch can draw from it.\n` +
+      `2. **Standard 5-Stage FOC Reconciliation Order:** Every summary & report follows:\n` +
+      `   • **1. Initial FOC Receipt at Central** -> **2. Site Issue** -> **3. Team Issue** -> **4. Usage & Wastage** -> **5. Balance / Returnable Stock on Project Completion**.\n` +
+      `3. **Site Branch Stock "Central FOC" Badge:** Inside **Site Branch Stock**, stock sourced from Central FOC displays a highlighted **🎁 Central FOC** tag and keeps the same 5-stage sequence.\n` +
+      `4. **Color-Coded Main/Sub-Project Cards & Central Printable Reports:** Color-coded Main Project cards show each Sub-Project (**KT-RGL-0505**, **KT-ABK-0506**) below with a consolidated completion balance at the end. In Central Stock / Client Free Stock, generate A4/PDF reports **per individual issued item** OR as **one full project report**, and Admins can reassign mis-logged FOC vouchers anytime.`,
     answerSi: () =>
-      `**Client Free Stock (FOC) — Auto-Locked Site Branch, අදාළ Site එකට පමණක් වෙන් වූ FOC Summary සහ Admin නිවැරදි කිරීම:**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"Client Free Stock (FOC)"** වෙත ගොස් **"+ Log Client Free Stock"** ක්ලික් කරන්න.\n` +
-      `2. **Target Project Mode** (**🏢 Under Main Project** හෝ **📄 Individual Project**) තෝරා අදාළ Project එක තෝරන්න:\n` +
-      `   • **Receiving Storage Yard (Inbound):** බඩු මුලින්ම ලැබෙන්නේ ප්‍රධාන ගබඩාවට බැවින් **"Main Central Warehouse (Central Yard)"** Default ලෙස පවතී.\n` +
-      `   • **Allocated Site Branch (Auto-Locked):** Project එක තේරූ සැණින් එම Project එකට අදාළ **Site Branch** එක ස්වයංක්‍රීයව Link වී **Lock** වේ.\n` +
-      `3. **අදාළ Assigned Site එකට පමණක් වෙන් වූ FOC Summary:** Client Free Stock තුළ ඕනෑම භාණ්ඩයක **Summary** බැලීමේදී එම FOC තොගය අදාළ Assigned Site එකේ විස්තර, එම Site එකේ Teams වලට බෙදුණු ප්‍රමාණ සහ එම Site එකේ භාවිතයන් පමණක් වෙනම පෙන්වයි.\n` +
-      `4. **වැරදි FOC වවුචර Admin විසින් නිවැරදි කිරීම:** යම් හෙයකින් FOC තොගයක් වැරදි Project එකකට ලොග් වී ඇත්නම්, Admin හට **Client Free Stock** තුළදීම එම වවුචරය **Edit** කර නිවැරදි Project එකට මාරු (Reassign) කළ හැක.`,
+      `**Client Free Stock (FOC) පියවර 5 Reconciliation Flow, "Central FOC" Badge සහ වාර්තා ක්‍රියාත්මක වන ආකාරය:**\n\n` +
+      `1. **Client FOC ඇතුළත් කිරීම (+ Log Client Free Stock):** Project එක තේරූ විට **Allocated Site Branch** එක එම Project එකේ ශාඛාවට Lock වේ — නැතිනම් **🌐 ALL AREAS** ලෙස ඇති Project වල බඩු **ඕනෑම Site එකකට** නිකුත් කළ හැක.\n` +
+      `2. **පැහැදිලි පියවර 5 Reconciliation පිළිවෙළ:**\n` +
+      `   • **(1) Central Stock FOC ලැබීම** -> **(2) Site Issue** -> **(3) Team Issue** -> **(4) Usage & Wastage** -> **(5) Project Completion පසු Client වෙත ආපසු භාර දිය හැකි ඉතිරිය (Balance / Returnable)**.\n` +
+      `3. **Site Branch Stock හි "Central FOC" හඳුනාගැනීම:** Site Branch Stock තුළ Central FOC වෙතින් ලැබුණු භාණ්ඩ **"🎁 Central FOC"** Badge/Tag එකක් සහ වර්ණ Highlight එකකින් පැහැදිලිව වෙන් කර පෙන්වයි.\n` +
+      `4. **වර්ණ ගැන්වූ Main/Sub-Project Cards සහ Central Reports:** වෙනස් වර්ණ Cards යටතේ සෑම Sub-Project එකකම Flow එක පෙන්වා අවසානයේ සම්පූර්ණ Client Balance වාර්තාව ලබාදෙයි. Central Stock හරහා **සෑම Item එකකටම වෙන වෙනම Report** මෙන්ම **Project එකේ සියලු Items එකට ගත් Report** එකක්ද Print/PDF කරගත හැක. වැරදි Project එකකට වැටුණු FOC වවුචර Admin හට Edit කර මාරු කළ හැක.`,
   },
   {
     id: 'items-barcodes-machinery',
@@ -760,18 +755,17 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       '200kb',
     ],
     answerEn: (ctx) =>
-      `**Item Catalog, Auto-Compressed Item Photos (<200KB), "Print with Image" & Single-Shot Barcode Scanning:**\n\n` +
-      `• **Item Catalog & Plant/Equipment:** Open **Item Catalog** for all items or **Plant & Equipment** specifically for machinery and tools (auto-numbered starting from **ITM-0001** / **MCH-0001**).\n` +
-      `• **Optional Item Image Upload (<200KB Auto-Compression) & "Print with Image":** When creating or editing an item, you can optionally upload an **Item Photo**. The system automatically resizes and compresses the image to **under 200KB** so the database stays fast. When printing any voucher or report, you can check **"Print with Image"** in the print toolbar to include item photos on the printed document.\n` +
-      `• **Excel Bulk Import / Export:** Import items from Excel/CSV using **Sync (Add + Update)**, **Append Only**, or **Replace** modes.\n` +
-      `• **Single-Shot Barcode Scanner ("Scan Now"):** When scanning with a **Mobile Camera** or **USB / Wireless Barcode Gun**, the scanner detects once, immediately stops and hides the live camera feed, and displays a **"Scan Now"** button to turn the scanner back on for the next item.\n\n` +
+      `**Item Catalog, Auto-Compressed Item Photos (<200KB) in PO & Return Dropdowns, "Print with Image" & Single-Shot Scanner:**\n\n` +
+      `• **Item Catalog & Plant/Equipment:** Open **Item Catalog** or **Plant & Equipment** (sequential **ITM-0001** / **MCH-0001** codes).\n` +
+      `• **Item Photos (<200KB) Across Dropdowns & "Print with Image":** Attach an optional Item Photo (auto-compressed under 200KB). Item thumbnails automatically display inside dropdown lists when creating **Purchase Orders (PO)**, **Stock Requisitions (RN)**, **Team Returns (RV)**, and **Branch Returns (BRM)**, and vouchers include a **"Print with Image"** toggle.\n` +
+      `• **Excel Bulk Import / Export:** Import via **Sync**, **Append Only**, or **Replace** modes.\n` +
+      `• **Single-Shot Barcode Scanner ("Scan Now"):** Detects once and auto-hides the camera to prevent duplicate scans.\n\n` +
       `📌 *Current Catalog:* **${ctx.activeItemsCount ?? 0}** active items (**${ctx.lowStockItemsCount ?? 0}** low-stock alerts).`,
     answerSi: (ctx) =>
-      `**Item Catalog, 200KB ට අඩු Item Image Upload ("Print with Image"), Excel Import සහ Single-Shot Barcode Scanner:**\n\n` +
-      `• **Item Catalog & Plant/Equipment:** සියලුම භාණ්ඩ **"Item Catalog"** මගින්ද, යන්ත්‍රෝපකරණ සහ Tools **"Plant & Equipment"** මගින්ද (0001 සිට අංකනය වන සේ) කළමනාකරණය කළ හැක.\n` +
-      `• **200KB ට අඩුවෙන් Auto-Compress වන Item Image සහ "Print with Image":** Items ඇතුළත් කිරීමේදී අවශ්‍ය නම් භාණ්ඩයේ Photo එකක් Upload කළ හැකි අතර පද්ධතිය මගින් එය ස්වයංක්‍රීයව **200KB ට අඩු** ප්‍රමාණයකට Compress කරයි. ඕනෑම වවුචරයක් Print කිරීමේදී **"Print with Image"** Tick කිරීමෙන් රූපය සමඟ Print කරගත හැක.\n` +
-      `• **Excel Import / Export:** Excel ගොනුවක් මගින් භාණ්ඩ සිය ගණනක් එකවර පද්ධතියට ඇතුළත් කළ හැක.\n` +
-      `• **Single-Shot Barcode Scanner ("Scan Now"):** Mobile Camera එකෙන් හෝ USB Barcode Gun එකෙන් Scan කරන විට එක වරක් Detect වූ සැණින් Scanner එක ස්වයංක්‍රීයව නතර වී Camera Screen එක ඉවත් වේ. නැවත ඊළඟ භාණ්ඩය Scan කිරීමට **"Scan Now"** බටන් එක ඔබන්න.\n\n` +
+      `**Item Catalog, PO හා Return Dropdown වල පෙන්වන Item Images (<200KB), "Print with Image" සහ Single-Shot Scanner:**\n\n` +
+      `• **Item Catalog & Plant/Equipment:** 0001 සිට අංකනය වන සියලුම භාණ්ඩ සහ යන්ත්‍රෝපකරණ.\n` +
+      `• **Dropdown වල Item Photo සහ "Print with Image":** භාණ්ඩයකට Photo එකක් එක් කළ විට (200KB ට අඩුවෙන් Auto-Compress වේ) **Purchase Orders (PO)**, **Requisitions (RN)**, **Team Returns (RV)** සහ **Branch Returns (BRM)** දමන Dropdown ලැයිස්තු තුළද එම භාණ්ඩයේ රූපය පෙන්වයි. Print කිරීමේදී **"Print with Image"** භාවිත කළ හැක.\n` +
+      `• **Single-Shot Barcode Scanner ("Scan Now"):** එක වරක් Detect වූ සැණින් Camera එක ඉබේම නතර වේ.\n\n` +
       `📌 *දැනට පද්ධතියේ:* සක්‍රීය Items **${ctx.activeItemsCount ?? 0}**ක් ඇත.`,
   },
   {
@@ -1052,13 +1046,12 @@ export function resolveSmartSystemSupportAnswer(
       reply:
         `**Apex Stock & Site Management System — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
         `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන කොටස්:\n` +
-        `1. **Master Registrations & Item Photos (<200KB):** Items (200KB ට අඩුවෙන් Auto-Compress වන Photo සහ "Print with Image" සමඟ), Branches (Sites), Field Teams (බඩු ලබාගත් පසු Team Name වෙනස් කිරීම Lock වේ), Suppliers, Clients සහ Users ලියාපදිංචි කිරීම.\n` +
-        `2. **International Section Templates (Telecom, Water, Electric, Solar) & "+ Add Field":** අලුත් Section හදද්දී ජාත්‍යන්තර ප්‍රමිතියේ Templates 1-Click එකෙන් Load කිරීම සහ **"+ Add Field"** මගින් අලුත් Fields කැමති ගණනක් එකතු කිරීම.\n` +
-        `3. **Field Team Site Transfer & Site-Separated In-Hand Stock:** Team එකක් වෙනත් Site එකකට මාරු කිරීමේදී **"Temporary Assigned to - [New Site]"** -> බඩු Clear වූ පසු Permanent **"[Team Name] (Ref: [Previous Site])"** ලෙස පෙන්වීම, සහ **Team In-Hand Stock** හි පරණ Site එකේ බඩු **"Stock to Return - [Site Name]"** යටතේත් අලුත් Site එකේ බඩු වෙනමත් එකතු නොකර පෙන්වීම.\n` +
-        `4. **Main Central Stock, Supplier Orders (PO) & Client Free Stock (FOC):** ප්‍රධාන ගබඩාවට GRN දැමීම, Purchase Orders, Supplier Returns (Debit Notes), Auto-Locked Site Branch සහිත Client FOC සහ Damaged Stock කළමනාකරණය.\n` +
-        `5. **Material Usage / Daily Progress Entry:** අලුත් Site එකේ වැඩවලට එම Site එකේ බඩු පමණක් භාවිතා කිරීමට ඉඩ දීම, Telecom/Water/Electric/Solar 1-2-3 පියවර, **Qty Used + Wastage Qty** සහ **Full Report for This Site (Project)**.\n` +
-        `6. **Multi-Item Team Returns (RV) & Branch Returns (BRM):** ස්ථාන දෙකේදීම **"+ Add Item"** හෝ **"+ Add All"** මගින් භාණ්ඩ ගණනාවක් එකතු කර එක සැරේ තනි වවුචරයකින් Return කිරීම.\n` +
-        `7. **Document Templates (ISO 9001:2015 Formats, Signers & Digital Signatures):** Auto Tenant Header, Signers, Digital Signatures සහ Isolated Single-Click A4 Print.\n\n` +
+        `1. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Completion Returnable Balance පිළිවෙළ, වර්ණ ගැන්වූ Main/Sub-Project Cards, Central Item/Project PDF Reports, Site Stock හි **"Central FOC"** Badge සහ ඕනෑම Site එකකට භාවිත කළ හැකි **"ALL AREAS"** Projects.\n` +
+        `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** සියලුම New Connection Section 4 සඳහාම Main Project යටතේ FOC කළමනාකරණය සහ අදාළ Section එකට FOC ඇත්නම් පමණක් Filter වන Dropdowns.\n` +
+        `3. **Master Registrations & PO/Return Item Images (<200KB):** Items (PO/Requisition/Return Dropdown වල Photo සමඟ), Branches, Teams (Transfer & Name Lock), Clients සහ Users.\n` +
+        `4. **Field Team Site Transfer & Site-Separated Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Old Site])"** සහ **"Stock to Return - [Site Name]"**.\n` +
+        `5. **Material Usage & Multi-Item Returns (RV / BRM):** 1-2-3 Connection Flow, **Qty Used + Wastage Qty**, **Full Report for This Site**, සහ භාණ්ඩ කිහිපයක් එකවර Return කිරීම.\n` +
+        `6. **Document Templates (ISO 9001:2015 Formats, Signers & Digital Signatures):** Auto Tenant Header, Digital Signatures සහ Isolated Single-Click A4 Print.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
   }
@@ -1068,13 +1061,12 @@ export function resolveSmartSystemSupportAnswer(
     reply:
       `**Apex Stock & Site Management System — Complete Feature Guide:**\n\n` +
       `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules available in the system:\n` +
-      `1. **Master Registrations & Item Photos (<200KB):** Register Items (with optional <200KB auto-compressed photos & "Print with Image"), Branches, Field Teams & Crew Members (with Team Name lock once stock is issued), Suppliers, Clients, and Users.\n` +
-      `2. **International Section Templates (Telecom, Water, Electric, Solar) & "+ Add Field" Builder:** Auto-load international templates for Telecom FTTH, Water Supply, Electrical Power, Solar PV, or Standard EPC sections and add unlimited custom fields via **"+ Add Field"**.\n` +
-      `3. **Field Team Site Transfer & Site-Separated In-Hand Stock:** Transfer teams with **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** tracking, Complete Assigned Sites History, and strict separation of **"Stock to Return - [Previous Site Name]"** vs. Active Site Stock.\n` +
-      `4. **Main Central Stock, Supplier Orders (PO) & Client Free Stock (FOC):** Record GRNs, manage Purchase Orders, Supplier Returns (RTV), Debit Notes, Damaged Stock restoration, and Auto-Locked Site Branch Client FOC.\n` +
-      `5. **Material Usage / Daily Progress Entry:** Active-site-only team stock consumption enforcement, 3-step Connection workflow (Team & Area locked until refresh), **Qty Used + Wastage Qty** entry, and **Full Report for This Site (Project)**.\n` +
-      `6. **Multi-Item Team Returns (RV) & Branch Returns (BRM):** Add multiple items at once (**+ Add Item** / **+ Add All Held or Available**) and return them in a single batch voucher.\n` +
-      `7. **Document Templates (ISO 9001:2015 Format Settings, Signers & Digital Signatures):** Configure ISO formats, Signer designations, Digital Signatures, and Isolated Single-Click A4 Printing.\n\n` +
+      `1. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Completion Returnable Balance), color-coded Main & Sub-Project cards, per-item & full-project Central Reports, **"Central FOC"** badge in Site Branch Stock, and **"ALL AREAS"** multi-site projects.\n` +
+      `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** Unified Main Project FOC hierarchy across all 4 utility sections with section-filtered FOC dropdowns (only visible when FOC exists for that section).\n` +
+      `3. **Master Registrations & Item Photos (<200KB):** Register Items (thumbnails displayed in PO, Requisition, RV & BRM dropdowns + "Print with Image"), Branches, Teams (with Name Lock), Suppliers, Clients, and Users.\n` +
+      `4. **Field Team Site Transfer & Site-Separated In-Hand Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** and strict separation of **"Stock to Return - [Previous Site Name]"** vs. Active Site Stock.\n` +
+      `5. **Material Usage & Multi-Item Batch Returns (RV / BRM):** 1-2-3 Connection workflow, **Qty Used + Wastage Qty**, **Full Report for This Site (Project)**, and single-voucher batch returns.\n` +
+      `6. **Document Templates (ISO 9001:2015 Format Settings, Signers & Digital Signatures):** Configure ISO formats, Signer designations, Digital Signatures, and Isolated Single-Click A4 Printing.\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

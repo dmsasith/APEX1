@@ -84,15 +84,21 @@ export const ProjectsManagementView: React.FC = () => {
     [activeSites]
   );
 
-  // Helper to resolve a project's effective Site Branch (including legacy fallback by parent or district/name)
+  // Helper to resolve a project's effective Site Branch (including ALL_AREAS and legacy fallback by parent or district/name)
   const resolveProjectSite = (p?: Project): { siteId: string; siteName: string } => {
     if (!p) return { siteId: '', siteName: '' };
+    if (p.siteId === 'ALL_AREAS' || (p.siteName && p.siteName.trim().toUpperCase() === 'ALL AREAS')) {
+      return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+    }
     if (p.siteId) {
       const matched = sites.find((s) => s.id === p.siteId);
       return { siteId: p.siteId, siteName: matched?.name || p.siteName || '' };
     }
     if (p.parentProjectId) {
       const parent = activeProjects.find((mp) => mp.id === p.parentProjectId);
+      if (parent?.siteId === 'ALL_AREAS' || (parent?.siteName && parent.siteName.trim().toUpperCase() === 'ALL AREAS')) {
+        return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+      }
       if (parent?.siteId) {
         const matched = sites.find((s) => s.id === parent.siteId);
         return { siteId: parent.siteId, siteName: matched?.name || parent.siteName || '' };
@@ -105,6 +111,9 @@ export const ProjectsManagementView: React.FC = () => {
       if (byName) return { siteId: byName.id, siteName: byName.name };
     }
     if (p.district) {
+      if (p.district.trim().toUpperCase() === 'ALL AREAS') {
+        return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+      }
       const dLow = p.district.trim().toLowerCase();
       const byDist = branchSites.find(
         (s) =>
@@ -249,16 +258,28 @@ export const ProjectsManagementView: React.FC = () => {
     [activeProjects]
   );
 
-  // Candidate parent projects (all Main Projects + Individual Projects that could become a Main Project)
+  // Candidate parent projects strictly filtered to the selected section in the modal
   const selectableParentProjects = useMemo(
     () =>
-      activeProjects.filter(
-        (p) =>
-          !p.parentProjectId &&
-          p.projectScope !== 'sub' &&
-          (!editingProject || p.id !== editingProject.id)
-      ),
-    [activeProjects, editingProject]
+      activeProjects
+        .filter((p) => {
+          if (p.parentProjectId || p.projectScope === 'sub') return false;
+          if (p.ncNumber && getEffectiveScope(p) !== 'main') return false;
+          if (editingProject && p.id === editingProject.id) return false;
+          if (!projectTypeId) return true;
+          if (p.projectTypeId) return p.projectTypeId === projectTypeId;
+          const secObj = activeProjectTypes.find((pt) => pt.id === projectTypeId);
+          if (p.projectTypeName && secObj) {
+            return p.projectTypeName.trim().toLowerCase() === secObj.name.trim().toLowerCase();
+          }
+          return false;
+        })
+        .sort((a, b) => {
+          const aMain = getEffectiveScope(a) === 'main' ? 1 : 0;
+          const bMain = getEffectiveScope(b) === 'main' ? 1 : 0;
+          return bMain - aMain;
+        }),
+    [activeProjects, editingProject, projectTypeId, activeProjectTypes]
   );
 
   // Distinct districts for filtering
@@ -295,9 +316,15 @@ export const ProjectsManagementView: React.FC = () => {
         customMatches;
 
       const matchesSiteBranch =
-        siteBranchFilter === 'all' || resolvedSite.siteId === siteBranchFilter;
+        siteBranchFilter === 'all' ||
+        resolvedSite.siteId === siteBranchFilter ||
+        (siteBranchFilter !== 'ALL_AREAS' && resolvedSite.siteId === 'ALL_AREAS');
       const matchesDistrict = districtFilter === 'all' || p.district === districtFilter;
-      const matchesSection = sectionFilter === 'all' || p.projectTypeId === sectionFilter;
+      const matchesSection =
+        sectionFilter === 'all' ||
+        p.projectTypeId === sectionFilter ||
+        (getEffectiveScope(p) === 'main' &&
+          activeProjects.some((c) => c.parentProjectId === p.id && c.projectTypeId === sectionFilter));
       const effScope = getEffectiveScope(p);
       const matchesScope = scopeFilter === 'all' || effScope === scopeFilter;
       const matchesParent =
@@ -476,11 +503,15 @@ export const ProjectsManagementView: React.FC = () => {
       if (!editingProject) {
         const existingSubsCount = activeProjects.filter((sp) => sp.parentProjectId === parentObj.id).length;
         setProjectId(`${parentObj.projectId}-SUB-${String(existingSubsCount + 1).padStart(4, '0')}`);
-        if (parentObj.projectTypeId) setProjectTypeId(parentObj.projectTypeId);
-        if (parentObj.customerName) setCustomerName(parentObj.customerName);
+        const currentTypeObj = activeProjectTypes.find((pt) => pt.id === projectTypeId);
+        const currentIsNc = isTelecomNewConnectionSection(currentTypeObj);
+        if (parentObj.projectTypeId && !currentIsNc) {
+          setProjectTypeId(parentObj.projectTypeId);
+        }
+        if (parentObj.customerName && !currentIsNc) setCustomerName(parentObj.customerName);
         if (parentObj.district) setDistrict(parentObj.district);
-        if (parentObj.referenceNo) setReferenceNo(parentObj.referenceNo);
-        if (parentObj.customFieldValues) setCustomFieldValues({ ...parentObj.customFieldValues });
+        if (parentObj.referenceNo && !currentIsNc) setReferenceNo(parentObj.referenceNo);
+        if (parentObj.customFieldValues && !currentIsNc) setCustomFieldValues({ ...parentObj.customFieldValues });
       }
     }
   };
@@ -553,7 +584,12 @@ export const ProjectsManagementView: React.FC = () => {
     const selectedTypeObj = activeProjectTypes.find((pt) => pt.id === projectTypeId);
     const pTypeName = selectedTypeObj ? selectedTypeObj.name : '';
     const isNcMode = isTelecomNewConnectionSection(selectedTypeObj, editingProject?.projectTypeName);
-    const selectedBranchObj = sites.find((s) => s.id === assignedSiteId) || branchSites[0];
+    const isAllAreasBranch = assignedSiteId === 'ALL_AREAS';
+    const selectedBranchObj = isAllAreasBranch
+      ? undefined
+      : sites.find((s) => s.id === assignedSiteId) || branchSites[0];
+    const resolvedBranchId = isAllAreasBranch ? 'ALL_AREAS' : selectedBranchObj?.id || undefined;
+    const resolvedBranchName = isAllAreasBranch ? 'ALL AREAS' : selectedBranchObj?.name || undefined;
     const effCoreLabels = getEffectiveSectionCoreLabels(selectedTypeObj, editingProject?.projectTypeName);
     const effCustomFields = getEffectiveSectionCustomFields(selectedTypeObj, editingProject?.projectTypeName);
 
@@ -579,9 +615,13 @@ export const ProjectsManagementView: React.FC = () => {
     const finalCustomFieldValues =
       Object.keys(cleanedCustomValues).length > 0 ? cleanedCustomValues : undefined;
 
-    if (isNcMode) {
+    if (isNcMode && projectScope !== 'main') {
       if (!ncNumber.trim() || !customerName.trim()) {
         setFormError(`${effCoreLabels.primaryIdLabel} and ${effCoreLabels.customerNameLabel} are required.`);
+        return;
+      }
+      if (projectScope === 'sub' && !parentProjectId) {
+        setFormError('Please select the Parent Major / Main Project for this New Connection.');
         return;
       }
       if (customerPhone.trim()) {
@@ -604,16 +644,35 @@ export const ProjectsManagementView: React.FC = () => {
       const cleanMobile = customerPhone.trim();
       const cleanExch = exchangeArea.trim();
 
+      const ncParentObj =
+        projectScope === 'sub' ? activeProjects.find((p) => p.id === parentProjectId) : undefined;
+
+      if (projectScope === 'sub' && ncParentObj) {
+        const parentUpdates: Partial<Project> = {};
+        if (ncParentObj.projectScope !== 'main') {
+          parentUpdates.projectScope = 'main';
+        }
+        if (!ncParentObj.siteId && resolvedBranchId) {
+          parentUpdates.siteId = resolvedBranchId;
+          parentUpdates.siteName = resolvedBranchName;
+        }
+        if (Object.keys(parentUpdates).length > 0) {
+          updateProject(ncParentObj.id, parentUpdates);
+        }
+      }
+
+      const finalNcScope: 'individual' | 'sub' = projectScope === 'sub' && ncParentObj ? 'sub' : 'individual';
+
       if (editingProject) {
         updateProject(editingProject.id, {
           projectId: cleanNcNo,
           projectName: cleanCustName,
-          projectScope: 'individual',
-          parentProjectId: undefined,
-          parentProjectCode: undefined,
-          parentProjectName: undefined,
-          siteId: selectedBranchObj?.id || undefined,
-          siteName: selectedBranchObj?.name || undefined,
+          projectScope: finalNcScope,
+          parentProjectId: finalNcScope === 'sub' ? ncParentObj?.id : undefined,
+          parentProjectCode: finalNcScope === 'sub' ? ncParentObj?.projectId : undefined,
+          parentProjectName: finalNcScope === 'sub' ? ncParentObj?.projectName : undefined,
+          siteId: resolvedBranchId,
+          siteName: resolvedBranchName,
           customerName: cleanCustName,
           customerPhone: cleanMobile || undefined,
           siteIdentifier: cleanNcNo,
@@ -624,18 +683,26 @@ export const ProjectsManagementView: React.FC = () => {
           projectTypeId: projectTypeId || undefined,
           projectTypeName: pTypeName || 'Telecom New Connection',
           referenceNo: cleanOnt || referenceNo.trim() || cleanNcNo,
-          district: selectedBranchObj?.location || selectedBranchObj?.name || district.trim() || cleanExch || '',
+          district:
+            (isAllAreasBranch ? cleanExch || district.trim() || 'ALL AREAS' : selectedBranchObj?.location || selectedBranchObj?.name || district.trim() || cleanExch || ''),
           subArea: cleanExch || subArea.trim(),
           customFieldValues: finalCustomFieldValues,
         });
-        showToast(`${pTypeName || 'Connection'} "${cleanNcNo} — ${cleanCustName}" updated successfully.`);
+        showToast(
+          `${pTypeName || 'Connection'} "${cleanNcNo} — ${cleanCustName}" updated${
+            finalNcScope === 'sub' && ncParentObj ? ` under Main Project [${ncParentObj.projectId}]` : ''
+          }.`
+        );
       } else {
         addProject({
           projectId: cleanNcNo,
           projectName: cleanCustName,
-          projectScope: 'individual',
-          siteId: selectedBranchObj?.id || undefined,
-          siteName: selectedBranchObj?.name || undefined,
+          projectScope: finalNcScope,
+          parentProjectId: finalNcScope === 'sub' ? ncParentObj?.id : undefined,
+          parentProjectCode: finalNcScope === 'sub' ? ncParentObj?.projectId : undefined,
+          parentProjectName: finalNcScope === 'sub' ? ncParentObj?.projectName : undefined,
+          siteId: resolvedBranchId,
+          siteName: resolvedBranchName,
           customerName: cleanCustName,
           customerPhone: cleanMobile || undefined,
           siteIdentifier: cleanNcNo,
@@ -646,12 +713,17 @@ export const ProjectsManagementView: React.FC = () => {
           projectTypeId: projectTypeId || undefined,
           projectTypeName: pTypeName || 'Telecom New Connection',
           referenceNo: cleanOnt || cleanNcNo,
-          district: selectedBranchObj?.location || selectedBranchObj?.name || cleanExch || 'General',
+          district:
+            (isAllAreasBranch ? cleanExch || 'ALL AREAS' : selectedBranchObj?.location || selectedBranchObj?.name || cleanExch || 'General'),
           subArea: cleanExch || 'Exchange Area',
           customFieldValues: finalCustomFieldValues,
           status: 'Active',
         });
-        showToast(`${pTypeName || 'Connection'} "${cleanNcNo} — ${cleanCustName}" registered successfully.`);
+        showToast(
+          `${pTypeName || 'Connection'} "${cleanNcNo} — ${cleanCustName}" registered${
+            finalNcScope === 'sub' && ncParentObj ? ` under Main Project [${ncParentObj.projectId}]` : ''
+          }.`
+        );
       }
 
       setShowAddModal(false);
@@ -664,7 +736,7 @@ export const ProjectsManagementView: React.FC = () => {
     }
 
     if (branchSites.length > 0 && !assignedSiteId) {
-      setFormError('Please select the Assigned Site Branch for this project.');
+      setFormError('Please select the Assigned Site Branch (or ALL AREAS) for this project.');
       return;
     }
 
@@ -697,9 +769,9 @@ export const ProjectsManagementView: React.FC = () => {
       if (parentObj.projectScope !== 'main') {
         parentUpdates.projectScope = 'main';
       }
-      if (!parentObj.siteId && selectedBranchObj) {
-        parentUpdates.siteId = selectedBranchObj.id;
-        parentUpdates.siteName = selectedBranchObj.name;
+      if (!parentObj.siteId && resolvedBranchId) {
+        parentUpdates.siteId = resolvedBranchId;
+        parentUpdates.siteName = resolvedBranchName;
       }
       if (Object.keys(parentUpdates).length > 0) {
         updateProject(parentObj.id, parentUpdates);
@@ -714,32 +786,36 @@ export const ProjectsManagementView: React.FC = () => {
         parentProjectId: projectScope === 'sub' ? parentObj?.id : undefined,
         parentProjectCode: projectScope === 'sub' ? parentObj?.projectId : undefined,
         parentProjectName: projectScope === 'sub' ? parentObj?.projectName : undefined,
-        siteId: selectedBranchObj?.id || undefined,
-        siteName: selectedBranchObj?.name || undefined,
+        siteId: resolvedBranchId,
+        siteName: resolvedBranchName,
         customerName: customerName.trim() || undefined,
         customerPhone: customerPhone.trim() || undefined,
         siteIdentifier: siteIdentifier.trim().toUpperCase() || undefined,
         projectTypeId: projectTypeId || undefined,
         projectTypeName: pTypeName || undefined,
         referenceNo: referenceNo.trim(),
-        district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
+        district:
+          district.trim() ||
+          (isAllAreasBranch ? 'ALL AREAS' : selectedBranchObj?.location || selectedBranchObj?.name || ''),
         subArea: subArea.trim(),
         customFieldValues: finalCustomFieldValues,
       });
 
-      // If this is a Main Project, sync the assigned Site Branch to all its child Sub-Projects
-      if (projectScope === 'main' && selectedBranchObj) {
+      // If this is a Main Project, sync the assigned Site Branch to child Sub-Projects (if specific branch, or if child has no branch)
+      if (projectScope === 'main' && resolvedBranchId) {
         activeProjects
           .filter((sp) => sp.parentProjectId === editingProject.id)
           .forEach((sp) => {
-            updateProject(sp.id, {
-              siteId: selectedBranchObj.id,
-              siteName: selectedBranchObj.name,
-            });
+            if (!isAllAreasBranch || !sp.siteId) {
+              updateProject(sp.id, {
+                siteId: resolvedBranchId,
+                siteName: resolvedBranchName,
+              });
+            }
           });
       }
 
-      showToast(`Project "${projectName}" updated successfully (Assigned Branch: ${selectedBranchObj?.name || 'Updated'}).`);
+      showToast(`Project "${projectName}" updated successfully (Assigned Branch: ${resolvedBranchName || 'Updated'}).`);
     } else {
       const createdMainOrProj = addProject({
         projectId: projectId.trim().toUpperCase(),
@@ -748,15 +824,17 @@ export const ProjectsManagementView: React.FC = () => {
         parentProjectId: projectScope === 'sub' ? parentObj?.id : undefined,
         parentProjectCode: projectScope === 'sub' ? parentObj?.projectId : undefined,
         parentProjectName: projectScope === 'sub' ? parentObj?.projectName : undefined,
-        siteId: selectedBranchObj?.id || undefined,
-        siteName: selectedBranchObj?.name || undefined,
+        siteId: resolvedBranchId,
+        siteName: resolvedBranchName,
         customerName: customerName.trim() || undefined,
         customerPhone: customerPhone.trim() || undefined,
         siteIdentifier: siteIdentifier.trim().toUpperCase() || undefined,
         projectTypeId: projectTypeId || undefined,
         projectTypeName: pTypeName || undefined,
         referenceNo: referenceNo.trim(),
-        district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
+        district:
+          district.trim() ||
+          (isAllAreasBranch ? 'ALL AREAS' : selectedBranchObj?.location || selectedBranchObj?.name || ''),
         subArea: subArea.trim(),
         customFieldValues: finalCustomFieldValues,
         status: 'Active',
@@ -776,15 +854,17 @@ export const ProjectsManagementView: React.FC = () => {
             parentProjectId: createdMainOrProj.id,
             parentProjectCode: createdMainOrProj.projectId,
             parentProjectName: createdMainOrProj.projectName,
-            siteId: selectedBranchObj?.id || undefined,
-            siteName: selectedBranchObj?.name || undefined,
+            siteId: resolvedBranchId,
+            siteName: resolvedBranchName,
             customerName: customerName.trim() || undefined,
             customerPhone: customerPhone.trim() || undefined,
             siteIdentifier: sp.siteId.trim().toUpperCase() || undefined,
             projectTypeId: projectTypeId || undefined,
             projectTypeName: pTypeName || undefined,
             referenceNo: referenceNo.trim(),
-            district: district.trim() || selectedBranchObj?.location || selectedBranchObj?.name || '',
+            district:
+              district.trim() ||
+              (isAllAreasBranch ? 'ALL AREAS' : selectedBranchObj?.location || selectedBranchObj?.name || ''),
             subArea: sp.subArea.trim() || subArea.trim(),
             customFieldValues: finalCustomFieldValues,
             status: 'Active',
@@ -1624,6 +1704,9 @@ export const ProjectsManagementView: React.FC = () => {
                   className="px-2.5 py-1.5 border border-emerald-300 rounded-lg text-xs bg-emerald-50/50 text-slate-900 font-bold focus:outline-none"
                 >
                   <option value="all">All Site Branches ({branchSites.length})</option>
+                  <option value="ALL_AREAS">
+                    🌐 ALL AREAS ({activeProjects.filter((p) => resolveProjectSite(p).siteId === 'ALL_AREAS').length})
+                  </option>
                   {branchSites.map((bs) => {
                     const count = activeProjects.filter((p) => resolveProjectSite(p).siteId === bs.id).length;
                     return (
@@ -1906,7 +1989,12 @@ export const ProjectsManagementView: React.FC = () => {
                           </td>
 
                           <td className="py-3 px-3 whitespace-nowrap">
-                            {resolvedSite.siteName ? (
+                            {resolvedSite.siteId === 'ALL_AREAS' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-100 text-sky-950 border border-sky-400 text-xs font-extrabold shadow-2xs">
+                                <Building2 className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                                <span>🌐 ALL AREAS (All Sites)</span>
+                              </span>
+                            ) : resolvedSite.siteName ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-300 text-xs font-extrabold shadow-2xs">
                                 <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                 <span>{resolvedSite.siteName}</span>
@@ -2321,7 +2409,25 @@ export const ProjectsManagementView: React.FC = () => {
                 </div>
                 <select
                   value={projectTypeId}
-                  onChange={(e) => setProjectTypeId(e.target.value)}
+                  onChange={(e) => {
+                    const nextSecId = e.target.value;
+                    setProjectTypeId(nextSecId);
+                    if (projectScope === 'sub') {
+                      const nextSecObj = activeProjectTypes.find((pt) => pt.id === nextSecId);
+                      const matchingMain = activeProjects.find((p) => {
+                        if (p.parentProjectId || p.projectScope === 'sub') return false;
+                        if (p.ncNumber && getEffectiveScope(p) !== 'main') return false;
+                        if (editingProject && p.id === editingProject.id) return false;
+                        if (!nextSecId) return true;
+                        if (p.projectTypeId) return p.projectTypeId === nextSecId;
+                        if (p.projectTypeName && nextSecObj) {
+                          return p.projectTypeName.trim().toLowerCase() === nextSecObj.name.trim().toLowerCase();
+                        }
+                        return false;
+                      });
+                      setParentProjectId(matchingMain?.id || '');
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 >
                   <option value="">General Project (No specific section)</option>
@@ -2333,7 +2439,148 @@ export const ProjectsManagementView: React.FC = () => {
                 </select>
               </div>
 
-              {isModalNewConnection ? (
+              {/* STEP 1: SELECT PROJECT STRUCTURE TYPE (AVAILABLE FOR BOTH NEW CONNECTIONS & STANDARD PROJECTS) */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  1. Select Project Structure Type *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectScope('individual');
+                      if (!editingProject && !isModalNewConnection) {
+                        const nextInd = getNextIndividualProjectSeq();
+                        setProjectId(nextInd.projectId);
+                        setReferenceNo(nextInd.referenceNo);
+                      }
+                    }}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                      projectScope === 'individual'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-emerald-500/40'
+                        : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
+                    }`}
+                  >
+                    <div className="text-xs font-extrabold flex items-center gap-1.5">
+                      <span>{isModalNewConnection ? '📄 Standalone New Connection' : '📄 Individual Project'}</span>
+                    </div>
+                    <div className={`text-[11px] mt-1 leading-snug ${projectScope === 'individual' ? 'text-slate-300' : 'text-slate-500'}`}>
+                      {isModalNewConnection
+                        ? 'Single standalone New Connection using normal Company Stock.'
+                        : 'Single standalone project with its own direct stock & usage.'}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectScope('main');
+                      if (!editingProject) {
+                        const nextMain = getNextMainProjectSeq();
+                        setProjectId(nextMain.projectId);
+                        setReferenceNo(nextMain.referenceNo);
+                      }
+                    }}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                      projectScope === 'main'
+                        ? 'bg-indigo-950 text-white border-indigo-900 shadow-xs ring-2 ring-indigo-500/40'
+                        : 'bg-white hover:bg-indigo-50/50 text-slate-800 border-slate-200'
+                    }`}
+                  >
+                    <div className="text-xs font-extrabold flex items-center gap-1.5">
+                      <span>{isModalNewConnection ? '🏢 Main Project (For New Connections)' : '🏢 Major / Main Project'}</span>
+                    </div>
+                    <div className={`text-[11px] mt-1 leading-snug ${projectScope === 'main' ? 'text-indigo-200' : 'text-slate-500'}`}>
+                      {isModalNewConnection
+                        ? 'Umbrella Main Project that groups New Connections & receives bulk Client FOC Free Stock.'
+                        : 'Umbrella project that receives bulk Free Stock for multiple Sub-Projects.'}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectScope('sub');
+                      const defaultParent =
+                        selectableParentProjects.find((p) => p.id === parentProjectId) ||
+                        selectableParentProjects.find((p) => p.projectTypeId === projectTypeId) ||
+                        selectableParentProjects[0];
+                      if (defaultParent) {
+                        handleParentProjectChange(defaultParent.id);
+                      }
+                    }}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                      projectScope === 'sub'
+                        ? 'bg-teal-950 text-white border-teal-900 shadow-xs ring-2 ring-teal-500/40'
+                        : 'bg-white hover:bg-teal-50/50 text-slate-800 border-slate-200'
+                    }`}
+                  >
+                    <div className="text-xs font-extrabold flex items-center gap-1.5">
+                      <span>{isModalNewConnection ? '↳ Under Main Project (New Connection)' : '↳ Sub-Project'}</span>
+                    </div>
+                    <div className={`text-[11px] mt-1 leading-snug ${projectScope === 'sub' ? 'text-teal-200' : 'text-slate-500'}`}>
+                      {isModalNewConnection
+                        ? 'Register New Connection under a Main Project (uses Main Project Client FOC if allocated).'
+                        : "Operates under a Main Project & deducts from the Main Project's Free Stock."}
+                    </div>
+                  </button>
+                </div>
+
+                {/* If Sub-Project / Under Main Project is selected, show Parent Main Project selector */}
+                {projectScope === 'sub' && (
+                  <div className="pt-2 border-t border-slate-200 mt-2">
+                    <label className="block text-xs font-bold text-teal-900 mb-1">
+                      {isModalNewConnection
+                        ? 'Select Parent Main Project (Main Project → Under New Connections) *'
+                        : 'Select Parent Major / Main Project (Under Main Project) *'}
+                    </label>
+                    {selectableParentProjects.length === 0 ? (
+                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
+                        No Main Project registered yet. Please select <strong>🏢 Main Project</strong> above to register your Main Project first.
+                      </div>
+                    ) : (
+                      <select
+                        value={parentProjectId}
+                        onChange={(e) => handleParentProjectChange(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 border border-teal-300 rounded-lg text-xs font-bold text-slate-900 bg-teal-50/50 focus:bg-white focus:ring-2 focus:ring-teal-600 focus:outline-none"
+                      >
+                        <option value="">-- Choose Parent Main Project --</option>
+                        {selectableParentProjects.map((mp) => {
+                          const mpSite = resolveProjectSite(mp);
+                          const mpFocCount = getProjectFreeStockList(mp.id).length;
+                          return (
+                            <option key={mp.id} value={mp.id}>
+                              [{mp.projectId}] {mp.projectName}
+                              {mpSite.siteName ? ` — Branch: ${mpSite.siteName}` : ''}
+                              {mp.customerName ? ` — Client: ${mp.customerName}` : ''}
+                              {mpFocCount > 0 ? ` — 🎁 Client FOC Stock (${mpFocCount} items)` : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    )}
+                    {(() => {
+                      const chosenParent = selectableParentProjects.find((mp) => mp.id === parentProjectId);
+                      const chosenParentFoc = chosenParent ? getProjectFreeStockList(chosenParent.id) : [];
+                      if (chosenParent && chosenParentFoc.length > 0) {
+                        return (
+                          <p className="text-[11px] text-purple-800 bg-purple-50 border border-purple-200 rounded-lg px-2.5 py-1.5 mt-1.5 font-semibold">
+                            🎁 Client FOC Free Stock Available on [{chosenParent.projectId}] ({chosenParentFoc.length} material item{chosenParentFoc.length > 1 ? 's' : ''}). Any FOC usage on this New Connection will automatically deduct from the Main Project&apos;s FOC balance.
+                          </p>
+                        );
+                      }
+                      return (
+                        <p className="text-[11px] text-teal-700 mt-1 font-medium">
+                          ✓ Linked under the selected Main Project so all New Connections under this Main Project are tracked and reconciled together.
+                        </p>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {isModalNewConnection && projectScope !== 'main' ? (
                 /* CONNECTION / UTILITY 6-CORE-FIELD + INTERNATIONAL CUSTOM FIELDS REGISTRATION FORMAT (TELECOM, WATER, ELECTRIC, SOLAR) */
                 <div className="space-y-4">
                   <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl space-y-3.5 shadow-sm">
@@ -2601,6 +2848,9 @@ export const ProjectsManagementView: React.FC = () => {
                         onChange={(e) => setAssignedSiteId(e.target.value)}
                         className="px-3 py-1.5 border border-emerald-400 rounded-lg text-xs font-bold text-slate-900 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                       >
+                        <option value="ALL_AREAS">
+                          🌐 ALL AREAS (All Site Branches — Open to Any Site)
+                        </option>
                         {branchSites.map((bs) => (
                           <option key={bs.id} value={bs.id}>
                             🏢 {bs.name} {bs.location ? `(${bs.location})` : ''}
@@ -2611,121 +2861,8 @@ export const ProjectsManagementView: React.FC = () => {
                   )}
                 </div>
               ) : (
-                /* STANDARD PROJECT FORMAT (MAIN / SUB / INDIVIDUAL) */
+                /* STANDARD / MAIN PROJECT FORMAT */
                 <>
-                  {/* STEP 1: SELECT PROJECT STRUCTURE TYPE */}
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      1. Select Project Structure Type *
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProjectScope('individual');
-                          if (!editingProject) {
-                            const nextInd = getNextIndividualProjectSeq();
-                            setProjectId(nextInd.projectId);
-                            setReferenceNo(nextInd.referenceNo);
-                          }
-                        }}
-                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                          projectScope === 'individual'
-                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-emerald-500/40'
-                            : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
-                        }`}
-                      >
-                        <div className="text-xs font-extrabold flex items-center gap-1.5">
-                          <span>📄 Individual Project</span>
-                        </div>
-                        <div className={`text-[11px] mt-1 leading-snug ${projectScope === 'individual' ? 'text-slate-300' : 'text-slate-500'}`}>
-                          Single standalone project with its own direct stock & usage.
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProjectScope('main');
-                          if (!editingProject) {
-                            const nextMain = getNextMainProjectSeq();
-                            setProjectId(nextMain.projectId);
-                            setReferenceNo(nextMain.referenceNo);
-                          }
-                        }}
-                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                          projectScope === 'main'
-                            ? 'bg-indigo-950 text-white border-indigo-900 shadow-xs ring-2 ring-indigo-500/40'
-                            : 'bg-white hover:bg-indigo-50/50 text-slate-800 border-slate-200'
-                        }`}
-                      >
-                        <div className="text-xs font-extrabold flex items-center gap-1.5">
-                          <span>🏢 Major / Main Project</span>
-                        </div>
-                        <div className={`text-[11px] mt-1 leading-snug ${projectScope === 'main' ? 'text-indigo-200' : 'text-slate-500'}`}>
-                          Umbrella project that receives bulk Free Stock for multiple Sub-Projects.
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProjectScope('sub');
-                          const defaultParent = selectableParentProjects.find((p) => p.id === parentProjectId) || selectableParentProjects[0];
-                          if (defaultParent) {
-                            handleParentProjectChange(defaultParent.id);
-                          }
-                        }}
-                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                          projectScope === 'sub'
-                            ? 'bg-teal-950 text-white border-teal-900 shadow-xs ring-2 ring-teal-500/40'
-                            : 'bg-white hover:bg-teal-50/50 text-slate-800 border-slate-200'
-                        }`}
-                      >
-                        <div className="text-xs font-extrabold flex items-center gap-1.5">
-                          <span>↳ Sub-Project</span>
-                        </div>
-                        <div className={`text-[11px] mt-1 leading-snug ${projectScope === 'sub' ? 'text-teal-200' : 'text-slate-500'}`}>
-                          Operates under a Main Project & deducts from the Main Project&apos;s Free Stock.
-                        </div>
-                      </button>
-                    </div>
-
-                    {/* If Sub-Project is selected, show Parent Main Project selector */}
-                    {projectScope === 'sub' && (
-                      <div className="pt-2 border-t border-slate-200 mt-2">
-                        <label className="block text-xs font-bold text-teal-900 mb-1">
-                          Select Parent Major / Main Project (Under Main Project) *
-                        </label>
-                        {selectableParentProjects.length === 0 ? (
-                          <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
-                            No Main Project registered yet. Please select <strong>🏢 Major / Main Project</strong> above to register your Main Project first.
-                          </div>
-                        ) : (
-                          <select
-                            value={parentProjectId}
-                            onChange={(e) => handleParentProjectChange(e.target.value)}
-                            required
-                            className="w-full px-3 py-2 border border-teal-300 rounded-lg text-xs font-bold text-slate-900 bg-teal-50/50 focus:bg-white focus:ring-2 focus:ring-teal-600 focus:outline-none"
-                          >
-                            <option value="">-- Choose Parent Main Project --</option>
-                            {selectableParentProjects.map((mp) => {
-                              const mpSite = resolveProjectSite(mp);
-                              return (
-                                <option key={mp.id} value={mp.id}>
-                                  [{mp.projectId}] {mp.projectName} {mpSite.siteName ? `— Branch: ${mpSite.siteName}` : ''} {mp.customerName ? `— Client: ${mp.customerName}` : ''}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        )}
-                        <p className="text-[11px] text-teal-700 mt-1 font-medium">
-                          ✓ Any material usage entered for this Sub-Project will automatically deduct from the selected Main Project&apos;s Free Stock balance while keeping separate Sub-Project records.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -2781,7 +2918,7 @@ export const ProjectsManagementView: React.FC = () => {
                     />
                   </div>
 
-                  {/* MANDATORY ASSIGNED SITE BRANCH SELECTOR */}
+                  {/* MANDATORY ASSIGNED SITE BRANCH SELECTOR (INCLUDES ALL AREAS OPTION) */}
                   <div className="p-3.5 bg-emerald-50/80 border-2 border-emerald-300 rounded-xl space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5 uppercase tracking-wide">
@@ -2789,7 +2926,7 @@ export const ProjectsManagementView: React.FC = () => {
                         <span>Assigned Site Branch *</span>
                       </label>
                       <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-700 text-white uppercase">
-                        Mandatory Branch Link
+                        {assignedSiteId === 'ALL_AREAS' ? '🌐 All Areas (Open to All Sites)' : 'Mandatory Branch Link'}
                       </span>
                     </div>
                     <select
@@ -2798,23 +2935,38 @@ export const ProjectsManagementView: React.FC = () => {
                       onChange={(e) => {
                         const nextId = e.target.value;
                         setAssignedSiteId(nextId);
+                        if (nextId === 'ALL_AREAS') {
+                          if (!district.trim() || branchSites.some((b) => b.name === district || b.location === district)) {
+                            setDistrict('ALL AREAS');
+                          }
+                          return;
+                        }
                         const chosenSite = branchSites.find((b) => b.id === nextId);
-                        if (chosenSite && (!district.trim() || branchSites.some((b) => b.name === district || b.location === district))) {
+                        if (chosenSite && (!district.trim() || district === 'ALL AREAS' || branchSites.some((b) => b.name === district || b.location === district))) {
                           setDistrict(chosenSite.location || chosenSite.name);
                         }
                       }}
                       className="w-full px-3.5 py-2.5 border-2 border-emerald-400 rounded-xl text-xs sm:text-sm font-bold text-slate-900 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Assigned Site Branch * --</option>
+                      <option value="ALL_AREAS">
+                        🌐 ALL AREAS (All Site Branches — Any Site Can Request FOC &amp; Log Usage)
+                      </option>
                       {branchSites.map((bs) => (
                         <option key={bs.id} value={bs.id}>
                           🏢 {bs.name} {bs.location ? `(${bs.location})` : ''}
                         </option>
                       ))}
                     </select>
-                    <p className="text-[11px] text-emerald-800 font-medium leading-snug">
-                      ✓ When Client Free-Issue (FOC) stock is logged for this project, it enters <strong>Main Central Warehouse</strong> first and is <strong>automatically allocated exclusively to this Site Branch</strong> so only this branch can request it.
-                    </p>
+                    {assignedSiteId === 'ALL_AREAS' ? (
+                      <p className="text-[11px] text-sky-900 bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1.5 font-semibold leading-snug">
+                        🌐 <strong>ALL AREAS Active:</strong> This project is not restricted to a single site branch. When Client Free-Issue (FOC) stock is received for this project, <strong>ANY Site Branch</strong> can request that FOC stock from Central Stock and log material usage under this project.
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-emerald-800 font-medium leading-snug">
+                        ✓ When Client Free-Issue (FOC) stock is logged for this project, it enters <strong>Main Central Warehouse</strong> first and is <strong>automatically allocated exclusively to this Site Branch</strong> (or choose <strong>🌐 ALL AREAS</strong> above to allow all sites to use it).
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

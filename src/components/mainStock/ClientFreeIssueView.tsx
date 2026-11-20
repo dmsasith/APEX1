@@ -175,15 +175,21 @@ export const ClientFreeIssueView: React.FC = () => {
     [sites]
   );
 
-  // Helper to resolve which Site Branch a project is assigned to
+  // Helper to resolve which Site Branch a project is assigned to (supports ALL_AREAS)
   const resolveProjectBranch = (p?: typeof activeProjects[0]): { siteId: string; siteName: string } => {
     if (!p) return { siteId: '', siteName: '' };
+    if (p.siteId === 'ALL_AREAS' || (p.siteName && p.siteName.trim().toUpperCase() === 'ALL AREAS')) {
+      return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+    }
     if (p.siteId) {
       const matched = sites.find((s) => s.id === p.siteId);
       return { siteId: p.siteId, siteName: matched?.name || p.siteName || '' };
     }
     if (p.parentProjectId) {
       const parent = projects.find((mp) => mp.id === p.parentProjectId);
+      if (parent?.siteId === 'ALL_AREAS' || (parent?.siteName && parent.siteName.trim().toUpperCase() === 'ALL AREAS')) {
+        return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+      }
       if (parent?.siteId) {
         const matched = sites.find((s) => s.id === parent.siteId);
         return { siteId: parent.siteId, siteName: matched?.name || parent.siteName || '' };
@@ -192,6 +198,9 @@ export const ClientFreeIssueView: React.FC = () => {
     const voucherWithBranch = clientFreeIssues.find(
       (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id) && v.assignedSiteId
     );
+    if (voucherWithBranch?.assignedSiteId === 'ALL_AREAS') {
+      return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+    }
     if (voucherWithBranch?.assignedSiteId) {
       const matched = sites.find((s) => s.id === voucherWithBranch.assignedSiteId);
       return {
@@ -206,6 +215,9 @@ export const ClientFreeIssueView: React.FC = () => {
       if (byName) return { siteId: byName.id, siteName: byName.name };
     }
     if (p.district) {
+      if (p.district.trim().toUpperCase() === 'ALL AREAS') {
+        return { siteId: 'ALL_AREAS', siteName: 'ALL AREAS' };
+      }
       const dLow = p.district.trim().toLowerCase();
       const byDist = branchSites.find(
         (s) =>
@@ -507,7 +519,14 @@ export const ClientFreeIssueView: React.FC = () => {
     const rootProjects = activeProjects.filter((p) => !p.parentProjectId && p.projectScope !== 'sub');
 
     const list = rootProjects.map((p) => {
-      const childSubProjects = activeProjects.filter((sp) => sp.parentProjectId === p.id);
+      const childSubProjects = activeProjects.filter(
+        (sp) =>
+          sp.id !== p.id &&
+          (sp.parentProjectId === p.id ||
+            (projectUsages || []).some(
+              (u) => !u.isDeleted && u.projectId === sp.id && u.parentProjectId === p.id
+            ))
+      );
       const isMainProject = p.projectScope === 'main' || childSubProjects.length > 0;
       const resolvedBranch = resolveProjectBranch(p);
       const familyIds = new Set<string>([p.id, ...childSubProjects.map((sp) => sp.id)]);
@@ -561,7 +580,12 @@ export const ClientFreeIssueView: React.FC = () => {
                 if (pName.length >= 3 && pLow.includes(pName)) return true;
               }
             }
-            if (req.requestCategory === 'foc' && (!resolvedBranch.siteId || req.siteId === resolvedBranch.siteId)) {
+            if (
+              req.requestCategory === 'foc' &&
+              (!resolvedBranch.siteId ||
+                resolvedBranch.siteId === 'ALL_AREAS' ||
+                req.siteId === resolvedBranch.siteId)
+            ) {
               return true;
             }
             return false;
@@ -585,8 +609,8 @@ export const ClientFreeIssueView: React.FC = () => {
           })
           .filter((r) => r.qty > 0);
 
-        // Stage 3: Team Issue & Team Returns at the Allocated Site Branch
-        const targetSiteId = resolvedBranch.siteId;
+        // Stage 3: Team Issue & Team Returns at the Allocated Site Branch (or across all sites when ALL_AREAS)
+        const targetSiteId = resolvedBranch.siteId === 'ALL_AREAS' ? '' : resolvedBranch.siteId;
         const teamIssueRecords = (teamIssues || [])
           .filter((ti) => (!targetSiteId || ti.siteId === targetSiteId) && (ti.items || []).some((r) => r.itemId === it.itemId))
           .map((ti) => {
@@ -986,7 +1010,10 @@ export const ClientFreeIssueView: React.FC = () => {
     const targetProj = activeProjects.find((p) => p.id === formProjectId) || projects.find((p) => p.id === formProjectId);
     const resolvedProjBranch = resolveProjectBranch(targetProj);
     const finalBranchId = resolvedProjBranch.siteId || formAssignedSiteId;
-    const allocatedBranch = sites.find((s) => s.id === finalBranchId);
+    const isAllAreasAlloc = finalBranchId === 'ALL_AREAS';
+    const allocatedBranch = isAllAreasAlloc ? undefined : sites.find((s) => s.id === finalBranchId);
+    const resolvedAllocId = isAllAreasAlloc ? 'ALL_AREAS' : allocatedBranch?.id;
+    const resolvedAllocName = isAllAreasAlloc ? 'ALL AREAS' : allocatedBranch?.name;
 
     // Sync project scope and Assigned Site Branch onto the target project (and its sub-projects)
     if (targetProj) {
@@ -994,21 +1021,21 @@ export const ClientFreeIssueView: React.FC = () => {
       if (formProjectMode === 'main' && !targetProj.parentProjectId && targetProj.projectScope !== 'main') {
         projUpdates.projectScope = 'main';
       }
-      if (allocatedBranch && !targetProj.siteId) {
-        projUpdates.siteId = allocatedBranch.id;
-        projUpdates.siteName = allocatedBranch.name;
+      if (resolvedAllocId && !targetProj.siteId) {
+        projUpdates.siteId = resolvedAllocId;
+        projUpdates.siteName = resolvedAllocName;
       }
       if (Object.keys(projUpdates).length > 0) {
         updateProject(targetProj.id, projUpdates);
       }
-      if (allocatedBranch) {
+      if (resolvedAllocId) {
         activeProjects
           .filter((sp) => sp.parentProjectId === targetProj.id)
           .forEach((sp) => {
             if (!sp.siteId) {
               updateProject(sp.id, {
-                siteId: allocatedBranch.id,
-                siteName: allocatedBranch.name,
+                siteId: resolvedAllocId,
+                siteName: resolvedAllocName,
               });
             }
           });
@@ -1022,8 +1049,8 @@ export const ClientFreeIssueView: React.FC = () => {
       projectScope: (formProjectMode === 'main' ? 'main' : (targetProj?.projectScope || 'individual')) as 'individual' | 'main' | 'sub',
       parentProjectId: targetProj?.parentProjectId,
       parentProjectName: targetProj?.parentProjectName,
-      assignedSiteId: allocatedBranch?.id || targetProj?.siteId,
-      assignedSiteName: allocatedBranch?.name || targetProj?.siteName,
+      assignedSiteId: resolvedAllocId || targetProj?.siteId,
+      assignedSiteName: resolvedAllocName || targetProj?.siteName,
       siteIdentifier: targetProj?.siteIdentifier || '',
       dispatchNoteNo: formDispatchNoteNo.trim(),
       receivedDate: formReceivedDate,
@@ -1038,7 +1065,7 @@ export const ClientFreeIssueView: React.FC = () => {
       setEditingVoucher(null);
       setShowLogModal(false);
       triggerToast(
-        `FOC Voucher ${editingVoucher.voucherNumber} corrected & reassigned to Project "${targetProj?.projectName || 'Project'}" (Branch: ${allocatedBranch?.name || 'Site Branch'})!`
+        `FOC Voucher ${editingVoucher.voucherNumber} corrected & reassigned to Project "${targetProj?.projectName || 'Project'}" (Branch: ${resolvedAllocName || 'Site Branch'})!`
       );
       return;
     }
@@ -3110,9 +3137,10 @@ export const ClientFreeIssueView: React.FC = () => {
                             formProjectMode === 'main' || p.projectScope === 'main' || subCount > 0
                               ? `🏢 [Main Project] `
                               : `📄 `;
+                          const secBadge = p.projectTypeName ? ` — [${p.projectTypeName}]` : '';
                           return (
                             <option key={p.id} value={p.id}>
-                              {prefix}{p.projectName} ({p.projectId}){resolvedBranch.siteName ? ` — Branch: ${resolvedBranch.siteName}` : ''}{subCount > 0 ? ` (${subCount} Sub-Projects)` : ''}
+                              {prefix}{p.projectName} ({p.projectId}){secBadge}{resolvedBranch.siteName ? ` — Branch: ${resolvedBranch.siteName}` : ''}{subCount > 0 ? ` (${subCount} Sub-Projects)` : ''}
                             </option>
                           );
                         });
@@ -3214,13 +3242,15 @@ export const ClientFreeIssueView: React.FC = () => {
                         projects.find((p) => p.id === formProjectId);
                       const resolvedProjBranch = resolveProjectBranch(selectedProjObj);
                       const isBranchLocked = Boolean(resolvedProjBranch.siteId);
-                      const lockedSiteObj = sites.find(
-                        (s) => s.id === (resolvedProjBranch.siteId || formAssignedSiteId)
-                      );
-                      const lockedBranchDisplay =
-                        lockedSiteObj
-                          ? `${lockedSiteObj.name}${lockedSiteObj.location ? ` (${lockedSiteObj.location})` : ''}`
-                          : resolvedProjBranch.siteName || 'Assigned Site Branch';
+                      const isAllAreasLocked = resolvedProjBranch.siteId === 'ALL_AREAS';
+                      const lockedSiteObj = isAllAreasLocked
+                        ? undefined
+                        : sites.find((s) => s.id === (resolvedProjBranch.siteId || formAssignedSiteId));
+                      const lockedBranchDisplay = isAllAreasLocked
+                        ? 'ALL AREAS (Open to All Site Branches)'
+                        : lockedSiteObj
+                        ? `${lockedSiteObj.name}${lockedSiteObj.location ? ` (${lockedSiteObj.location})` : ''}`
+                        : resolvedProjBranch.siteName || 'Assigned Site Branch';
 
                       return (
                         <>
@@ -3230,19 +3260,36 @@ export const ClientFreeIssueView: React.FC = () => {
                             </label>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-700 text-white uppercase shadow-2xs">
                               <Lock className="w-2.5 h-2.5" />
-                              <span>{isBranchLocked ? 'Locked to Project' : 'Select Branch'}</span>
+                              <span>{isBranchLocked ? (isAllAreasLocked ? 'All Areas' : 'Locked to Project') : 'Select Branch'}</span>
                             </span>
                           </div>
 
                           {isBranchLocked ? (
                             <div
-                              className="w-full h-10 px-3.5 bg-emerald-50 border-2 border-emerald-500 rounded-xl text-xs font-extrabold text-emerald-950 flex items-center justify-between select-none cursor-not-allowed shadow-2xs"
-                              title="Locked to the Site Branch registered for this Project so stock cannot be accidentally issued to another branch"
+                              className={`w-full h-10 px-3.5 rounded-xl text-xs font-extrabold flex items-center justify-between select-none cursor-not-allowed shadow-2xs ${
+                                isAllAreasLocked
+                                  ? 'bg-sky-50 border-2 border-sky-500 text-sky-950'
+                                  : 'bg-emerald-50 border-2 border-emerald-500 text-emerald-950'
+                              }`}
+                              title={
+                                isAllAreasLocked
+                                  ? 'This project is registered for ALL AREAS — any Site Branch can request and use this FOC stock'
+                                  : 'Locked to the Site Branch registered for this Project so stock cannot be accidentally issued to another branch'
+                              }
                             >
-                              <span className="truncate">🏢 {lockedBranchDisplay}</span>
-                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-md shrink-0 ml-2">
-                                <Lock className="w-3 h-3 text-emerald-800" />
-                                <span>Auto-Locked</span>
+                              <span className="truncate">
+                                {isAllAreasLocked ? '🌐 ' : '🏢 '}
+                                {lockedBranchDisplay}
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md shrink-0 ml-2 ${
+                                  isAllAreasLocked
+                                    ? 'text-sky-900 bg-sky-200/80'
+                                    : 'text-emerald-800 bg-emerald-200/80'
+                                }`}
+                              >
+                                <Lock className="w-3 h-3" />
+                                <span>{isAllAreasLocked ? 'All Sites' : 'Auto-Locked'}</span>
                               </span>
                             </div>
                           ) : (
@@ -3253,6 +3300,9 @@ export const ClientFreeIssueView: React.FC = () => {
                               className="w-full h-10 px-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-xs font-extrabold text-emerald-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
                             >
                               <option value="">-- Select Site Branch --</option>
+                              <option value="ALL_AREAS">
+                                🌐 ALL AREAS (All Site Branches — Open to Any Site)
+                              </option>
                               {branchSites.map((bs) => (
                                 <option key={bs.id} value={bs.id}>
                                   🏢 {bs.name} {bs.location ? `(${bs.location})` : ''}
@@ -3262,7 +3312,9 @@ export const ClientFreeIssueView: React.FC = () => {
                           )}
 
                           <p className="text-[11px] text-emerald-800 font-semibold mt-1">
-                            🔒 Locked to this project&apos;s branch — prevents accidental issue to other sites.
+                            {isAllAreasLocked || formAssignedSiteId === 'ALL_AREAS'
+                              ? '🌐 Open to ALL AREAS — any Site Branch can request and use this project’s FOC stock.'
+                              : '🔒 Locked to this project’s branch — prevents accidental issue to other sites.'}
                           </p>
                         </>
                       );

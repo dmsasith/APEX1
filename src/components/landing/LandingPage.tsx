@@ -158,8 +158,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       a: `After ${pricingMetrics.trialDays} days, you can choose between our Pro Monthly plan ($${pricingMetrics.monthlyPriceFormatted}/mo) or our cost-saving Pro Annual VIP plan ($${pricingMetrics.annualPriceClean}/yr — Save ${pricingMetrics.annualSavingsPercent}%). All data, inventory records, and transaction history entered during your trial remain 100% safe and intact. You can activate your plan via Bank QR or wire transfer slip upload.`,
     },
     {
-      q: 'How does Client-Supplied Free Stock work with the Master Client Register?',
-      a: 'When a project owner or main contractor supplies materials free of charge for a specific project, you register the client in the Client Register and log their Dispatch Note (DN). When field teams record material installation on that project, the system automatically deducts from the Client-Supplied Stock first before touching your company-purchased inventory.',
+      q: 'How does Client-Supplied Free Stock (FOC) & 5-Stage Reconciliation work?',
+      a: 'Register the client in the Master Client Register and log their FOC Receipt against a Project (assigned to a single Site Branch OR "🌐 ALL AREAS (All Site Branches)" for island-wide contracts). Both Central Stock and Site Branch Stock highlight these goods with a "Central FOC" badge and follow the clear 5-Stage Reconciliation Flow: 1. Central FOC Receipt -> 2. Site Issue -> 3. Team Issue -> 4. Usage & Wastage -> 5. Returnable Client Balance on Project Completion—complete with color-coded Main Project cards, per-Sub-Project breakdowns, and 1-click A4/PDF individual & consolidated project reports.',
+    },
+    {
+      q: 'How does the "Main Project -> Under New Connections" & "ALL AREAS" structure work?',
+      a: 'Across Telecom, Water, Electrical, and Solar sections, you can register a Main Project and nest New Connections underneath it. When recording Daily Progress, only FOC stock allocated to that active section appears in the FOC dropdown—zero cross-section confusion. Plus, selecting "🌐 ALL AREAS (All Site Branches)" on a Project lets any site branch request and consume that project’s FOC stock with consolidated cross-branch reporting.',
     },
     {
       q: 'How is our company data kept separate from other clients (Multi-Tenant Security)?',
@@ -167,7 +171,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       q: 'Can site branch supervisors view or issue materials from other branches?',
-      a: 'No. When you create a user account assigned to a specific Site Branch, their workspace automatically locks to that branch. They can only request stock from Central HQ, manage their own branch inventory, and issue items to field teams under their branch.',
+      a: 'No. When you create a user account assigned to a specific Site Branch, their workspace automatically locks to that branch. They can only request Normal stock or their branch’s / ALL AREAS FOC projects from Central HQ, manage their own branch inventory, and issue items to field teams under their branch.',
     },
     {
       q: 'Can we import our existing inventory catalog from Excel and back up our data?',
@@ -250,10 +254,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'warehouse',
       categoryLabel: 'Warehouse, PO & FOC',
-      feature: '1-Click Central Stock End-to-End Item Lifecycle Summary (Printable A4/PDF)',
-      detail: 'Select any item in Central Stock to view every PO/Manual/FOC inbound source, how it split across Sites, how Sites issued to Teams, Used/Wasted, and Central/Site/Team In-Hand.',
+      feature: '1-Click Central Stock End-to-End & Project A4/PDF Reports (Individual + Consolidated)',
+      detail: 'Select any item in Central Stock to trace every PO/Manual/FOC receipt, site splits, team issues, usage/wastage, and print both Per-Item A4/PDF reports and Consolidated All-Items Project Reports.',
       isSpecialHighlight: true,
-      apex: '✓ Built-In Interactive + A4/PDF Print',
+      apex: '✓ Per-Item + Consolidated Project A4/PDF',
       sortly: '✕ Not Available',
       zoho: '✕ Basic stock card only (No team/site chain)',
       inflowCin7: '✕ Warehouse level only',
@@ -262,10 +266,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'warehouse',
       categoryLabel: 'Warehouse, PO & FOC',
-      feature: '1-Click Site Branch Forward Traceability Summary (Printable A4/PDF)',
-      detail: 'Select any item inside a Site Branch to see HQ transfers received, quantities issued to each Field Team at that site, Project Used/Wastage, and Site/Team In-Hand.',
+      feature: 'Site Branch "Central FOC" Badge & Forward 5-Stage Traceability (Printable A4/PDF)',
+      detail: 'Site Branch Stock visually highlights Central-received free stock with a distinct "Central FOC" badge/row accent and tracks Inbound -> Site Issue -> Team Issue -> Usage & Wastage -> Balance.',
       isSpecialHighlight: true,
-      apex: '✓ Built-In Forward Traceability + Print',
+      apex: '✓ "Central FOC" Highlight + 5-Stage Print',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -274,10 +278,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'warehouse',
       categoryLabel: 'Warehouse, PO & FOC',
-      feature: 'Client-Supplied Free Stock (FOC) with Auto-Locked Site Branch',
-      detail: 'Receive client/telecom-operator free materials at zero cost liability; selecting the project auto-locks the Allocated Site Branch so FOC stock never mixes across branches.',
+      feature: '5-Stage Client FOC Reconciliation (Auto Branch Lock + "🌐 ALL AREAS" Multi-Site)',
+      detail: 'Standard 5-Stage FOC Flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Client Returnable Balance) with color-coded Main Project cards, per-Sub-Project flows, and "ALL AREAS" island-wide contract support.',
       isSpecialHighlight: true,
-      apex: '✓ Native FOC Pool + Auto Branch Lock',
+      apex: '✓ 5-Stage FOC Flow + "ALL AREAS" Multi-Site',
       sortly: '✕ No Client FOC concept',
       zoho: '✕ Built for retail sales, not Client FOC',
       inflowCin7: '✕ No Client FOC accounting',
@@ -330,11 +334,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'warehouse',
       categoryLabel: 'Warehouse, PO & FOC',
-      feature: 'Optional Item Photo Upload (<200KB Auto-Compression) & "Print with Image" Option',
-      detail: 'Attach item photos that automatically resize & compress under 200KB for fast cloud loading, choose "Print with Image" on any voucher/report, and view Two-Line Item Code + Name dropdowns in POs & Requisitions.',
+      feature: 'Item Photos (<200KB), PO/Return Dropdown Thumbnails & "Print with Image"',
+      detail: 'Auto-compress item photos under 200KB, see item thumbnails directly inside Purchase Order (PO), Team/Branch Return (RV/BRM) & Requisition dropdowns, and toggle "Print with Image" on vouchers/reports.',
       isSpecialHighlight: true,
-      apex: '✓ <200KB Auto-Compress + "Print with Image"',
-      sortly: '◐ Photos supported (No voucher print toggle)',
+      apex: '✓ PO/Return Thumbnails + "Print with Image"',
+      sortly: '◐ Photos supported (No PO/Return print toggle)',
       zoho: '◐ Basic item image',
       inflowCin7: '◐ Basic item image',
       legacyErp: '✕ Text-only item masters',
@@ -463,10 +467,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'projects',
       categoryLabel: 'Projects & Industry Templates',
-      feature: '3-Tier Project Hierarchy (Major/Main Umbrella, Sub-Projects & Individual)',
-      detail: 'Receive bulk Client FOC under a Major Project; logging usage on any linked Sub-Project automatically deducts from the parent Main Project FOC pool.',
+      feature: '3-Tier Project Hierarchy + "Main Project -> Under New Connections" & Section-Filtered FOC',
+      detail: 'Receive bulk Client FOC under a Main Project and nest Sub-Projects OR New Connections (Telecom, Water, Electric, Solar) beneath it. Usage dropdowns show only FOC stock allocated to that active section—zero cross-section clutter.',
       isSpecialHighlight: true,
-      apex: '✓ 3-Tier Main/Sub/Individual + Auto Pool Deduct',
+      apex: '✓ Main/Sub + New Connection Section FOC',
       sortly: '✕ Flat folders only',
       zoho: '✕ No Main/Sub-Project FOC pool sharing',
       inflowCin7: '✕ Single job reference only',
@@ -647,6 +651,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
   const microFeaturesSpotlight = [
     {
+      title: '5-Stage Client FOC Reconciliation & Color-Coded Project Cards',
+      desc: 'Tracks 1. Central Receipt -> 2. Site Issue -> 3. Team Issue -> 4. Usage & Wastage -> 5. Client Returnable Balance with distinct Main Project cards & per-Sub-Project flows.',
+    },
+    {
+      title: '"🌐 ALL AREAS (All Site Branches)" Universal Contracts',
+      desc: 'Assign an island-wide Project or FOC voucher to "ALL AREAS" so any Site Branch can request, issue, and consume FOC stock under one consolidated audit trail.',
+    },
+    {
+      title: '"Main Project -> Under New Connections" & Section-Filtered FOC',
+      desc: 'Nest Telecom, Water, Electric, or Solar New Connections under a Main Project; material usage only shows FOC dropdowns when FOC exists for that exact section.',
+    },
+    {
+      title: 'Site Branch "Central FOC" Badge & Consolidated Project Reports',
+      desc: 'Site Branch Stock highlights HQ-supplied FOC items with a "Central FOC" badge, and Central Stock exports both Individual-Item and Consolidated All-Items Project PDFs.',
+    },
+    {
       title: 'Telecom, Water, Electric & Solar Templates + "+ Add Field"',
       desc: '1-click load International Industry Section Templates (ITU-T, ISO 4064, IEC 60364, IEC 62446) and add unlimited custom fields via "+ Add Field".',
     },
@@ -663,12 +683,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       desc: 'Add multiple items at once ("+ Add Item" / "+ Add All Held") with Good/Damaged conditions and return the entire batch on a single shared voucher.',
     },
     {
-      title: '<200KB Auto-Compressed Item Photos & "Print with Image"',
-      desc: 'Attach optional item photos (auto-compressed under 200KB), toggle "Print with Image" on any voucher, and see Item Code + Name in all dropdowns.',
-    },
-    {
-      title: '1-Click Item Lifecycle & Forward Summary',
-      desc: 'Click any item in Central Stock or Site Branch Stock to see every PO, site transfer, team issue, project usage, and wastage in one printable A4 view.',
+      title: 'Item Thumbnails in PO & Return Dropdowns + "Print with Image"',
+      desc: 'View item photos directly inside Purchase Order (PO), Team/Branch Return (RV/BRM) & Requisition dropdowns (<200KB auto-compress) and toggle "Print with Image".',
     },
     {
       title: '3-Step Connection Progress with Session-Locked Team',
@@ -679,20 +695,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       desc: 'Items running low at a requesting site automatically jump to the top of the requisition list with live "Site Avl:" and "Main:" balances.',
     },
     {
-      title: 'Single-Shot Barcode Scan ("Scan Now")',
-      desc: 'Camera scanner detects once and immediately hides to prevent duplicate rapid scans, with a 1-click "Scan Now" trigger for the next item.',
-    },
-    {
-      title: 'Client FOC Auto-Locked Site Branch',
-      desc: 'Selecting a project when receiving Client Free Stock automatically locks the Allocated Site Branch so FOC materials never leak to another branch.',
-    },
-    {
-      title: 'Team Name Lock After Stock Issue & Admin Delete Gate',
-      desc: 'Locks Team Name against renaming once stock is issued to protect historical vouchers, and requires Admin Password verification on every delete action.',
-    },
-    {
-      title: 'Full Site Report (Team Subtotals + Grand Total)',
-      desc: 'Generates a 2-part A4 PDF & Excel report showing each team’s individual subtotal followed by the consolidated site grand total.',
+      title: 'Single-Shot Barcode Scan ("Scan Now") & Admin Delete Gate',
+      desc: 'Camera scanner detects once and auto-hides to prevent duplicates, while every delete action across the system requires Admin Password verification.',
     },
   ];
 
@@ -1276,10 +1280,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <Gift className="w-5 h-5" />
                   </div>
                   <h3 className="font-extrabold text-base text-white">
-                    Client-Supplied Free Stock & Client Register
+                    5-Stage Client FOC Reconciliation & &ldquo;ALL AREAS&rdquo; Support
                   </h3>
                   <p className="text-xs text-slate-200 mt-2 leading-relaxed font-medium">
-                    Directly connected Master Client Register and Free-Issue Stock ledger. Record client-provided project materials at zero cost liability and auto-deduct them when projects consume stock.
+                    Track Client Free Stock across 5 clear stages (Central Receipt &rarr; Site Issue &rarr; Team Issue &rarr; Usage &amp; Wastage &rarr; Client Balance), highlight Central FOC inside Site Stock, and assign island-wide contracts to &ldquo;🌐 ALL AREAS&rdquo;.
                   </p>
                 </div>
 
@@ -1288,10 +1292,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <FolderKanban className="w-5 h-5" />
                   </div>
                   <h3 className="font-extrabold text-base text-white">
-                    Multi-Team Project Usage & Section Templates
+                    Main Project &rarr; New Connections &amp; Section FOC
                   </h3>
                   <p className="text-xs text-slate-200 mt-2 leading-relaxed font-medium">
-                    Load reusable project section templates, assign multiple field crews to the same project, and track exact material installation per crew and WBS site identifier.
+                    Group Telecom, Water, Electrical &amp; Solar New Connections under Main Projects, filter FOC selectors strictly by active section, and print Individual or Consolidated Project A4/PDF reports.
                   </p>
                 </div>
 

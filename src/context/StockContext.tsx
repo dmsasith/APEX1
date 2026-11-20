@@ -7668,7 +7668,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const rootProjObj = parentProj || projects.find((p) => p.id === rootProjectId);
     const rootProjectName =
       parentProj?.projectName || targetProj?.parentProjectName || targetProj?.projectName || 'Project';
-    const childSubProjects = projects.filter((p) => !p.isDeleted && p.parentProjectId === rootProjectId);
+    const childSubProjects = projects.filter(
+      (p) =>
+        !p.isDeleted &&
+        p.id !== rootProjectId &&
+        (p.parentProjectId === rootProjectId ||
+          projectUsages.some(
+            (u) => !u.isDeleted && u.projectId === p.id && u.parentProjectId === rootProjectId
+          ))
+    );
     const isSubProjectPool =
       Boolean(targetProj?.parentProjectId) ||
       targetProj?.projectScope === 'main' ||
@@ -7824,7 +7832,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         : undefined;
     const rootProjectId = parentProj ? parentProj.id : (targetProj?.parentProjectId || projectId);
     const rootProjObj = parentProj || projects.find((p) => p.id === rootProjectId);
-    const childSubProjects = projects.filter((p) => !p.isDeleted && p.parentProjectId === rootProjectId);
+    const childSubProjects = projects.filter(
+      (p) =>
+        !p.isDeleted &&
+        p.id !== rootProjectId &&
+        (p.parentProjectId === rootProjectId ||
+          projectUsages.some(
+            (u) => !u.isDeleted && u.projectId === p.id && u.parentProjectId === rootProjectId
+          ))
+    );
 
     const familyIds = new Set<string>([
       rootProjectId,
