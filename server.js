@@ -1,9 +1,12 @@
 // server.ts
-import "dotenv/config";
-import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import express2 from "express";
+
+// server/apiApp.ts
+import "dotenv/config";
+import express from "express";
 import crypto from "crypto";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 
@@ -1057,220 +1060,228 @@ Click any **Quick Help** topic above or ask about any specific feature!`
   };
 }
 
-// server.ts
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = path.dirname(__filename);
-var app = express();
-var PORT = Number(process.env.PORT || 3e3);
-app.disable("x-powered-by");
-app.set("trust proxy", 1);
-app.use(express.json({ limit: "10mb" }));
-app.use((req, res, next) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
-  if (process.env.NODE_ENV === "production" || req.secure) {
-    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+// server/apiApp.ts
+function resolveSessionSigningSecret() {
+  const explicit = (process.env.SESSION_SECRET || "").trim();
+  if (explicit) return explicit;
+  const masterPass = (process.env.MASTER_ADMIN_PASSCODE || "").trim();
+  if (masterPass) {
+    return crypto.createHmac("sha256", "apex-session-key-v1").update(masterPass).digest("hex");
   }
-  next();
-});
-app.use("/api", (req, res, next) => {
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    const originHeader = req.get("origin");
-    if (originHeader) {
-      try {
-        const originHost = new URL(originHeader).host.toLowerCase();
-        const forwardedHost = (req.get("x-forwarded-host") || req.get("host") || "").split(",")[0].trim().toLowerCase();
-        let appUrlHost = "";
-        if (process.env.APP_URL) {
-          try {
-            appUrlHost = new URL(process.env.APP_URL).host.toLowerCase();
-          } catch {
-            appUrlHost = "";
+  return crypto.randomBytes(32).toString("hex");
+}
+function createApiApp() {
+  const app2 = express();
+  app2.disable("x-powered-by");
+  app2.set("trust proxy", 1);
+  app2.use(express.json({ limit: "10mb" }));
+  const SESSION_SIGNING_SECRET = resolveSessionSigningSecret();
+  app2.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+    if (process.env.NODE_ENV === "production" || req.secure) {
+      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    }
+    next();
+  });
+  app2.use("/api", (req, res, next) => {
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+      const originHeader = req.get("origin");
+      if (originHeader) {
+        try {
+          const originHost = new URL(originHeader).host.toLowerCase();
+          const forwardedHost = (req.get("x-forwarded-host") || req.get("host") || "").split(",")[0].trim().toLowerCase();
+          let appUrlHost = "";
+          if (process.env.APP_URL) {
+            try {
+              appUrlHost = new URL(process.env.APP_URL).host.toLowerCase();
+            } catch {
+              appUrlHost = "";
+            }
           }
-        }
-        const allowedHosts = [forwardedHost, appUrlHost].filter(Boolean);
-        if (allowedHosts.length > 0 && !allowedHosts.includes(originHost)) {
-          res.status(403).json({ error: "Cross-origin request blocked." });
+          const vercelHost = (process.env.VERCEL_URL || "").trim().toLowerCase();
+          const allowedHosts = [forwardedHost, appUrlHost, vercelHost].filter(Boolean);
+          if (allowedHosts.length > 0 && !allowedHosts.includes(originHost)) {
+            res.status(403).json({ error: "Cross-origin request blocked." });
+            return;
+          }
+        } catch {
+          res.status(403).json({ error: "Invalid Origin header." });
           return;
         }
-      } catch {
-        res.status(403).json({ error: "Invalid Origin header." });
-        return;
       }
     }
+    next();
+  });
+  function signSessionToken(payload, ttlMs = 24 * 60 * 60 * 1e3) {
+    const fullPayload = {
+      ...payload,
+      exp: Date.now() + ttlMs
+    };
+    const encoded = Buffer.from(JSON.stringify(fullPayload), "utf8").toString("base64url");
+    const sig = crypto.createHmac("sha256", SESSION_SIGNING_SECRET).update(encoded).digest("base64url");
+    return `${encoded}.${sig}`;
   }
-  next();
-});
-var SESSION_SIGNING_SECRET = (process.env.SESSION_SECRET || "").trim() || crypto.randomBytes(32).toString("hex");
-function signSessionToken(payload, ttlMs = 24 * 60 * 60 * 1e3) {
-  const fullPayload = {
-    ...payload,
-    exp: Date.now() + ttlMs
+  function verifySessionToken(token) {
+    if (!token || typeof token !== "string") return null;
+    const parts = token.trim().split(".");
+    if (parts.length !== 2) return null;
+    const [encoded, providedSig] = parts;
+    if (!encoded || !providedSig) return null;
+    const expectedSig = crypto.createHmac("sha256", SESSION_SIGNING_SECRET).update(encoded).digest("base64url");
+    const a = Buffer.from(providedSig, "utf8");
+    const b = Buffer.from(expectedSig, "utf8");
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    try {
+      const parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+      if (!parsed || typeof parsed.exp !== "number" || Date.now() > parsed.exp) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+  function extractBearerToken(req) {
+    const auth = req.get("authorization");
+    if (!auth || !auth.toLowerCase().startsWith("bearer ")) return void 0;
+    return auth.slice(7).trim();
+  }
+  let claimedMasterHash = null;
+  function hashScryptPasscode(plain) {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const derived = crypto.scryptSync(plain, salt, 64).toString("hex");
+    return `${salt}:${derived}`;
+  }
+  function verifyScryptPasscode(plain, storedHash) {
+    const parts = storedHash.split(":");
+    if (parts.length !== 2) return false;
+    const [salt, expectedHex] = parts;
+    if (!salt || !expectedHex) return false;
+    const actualBuf = crypto.scryptSync(plain, salt, 64);
+    const expectedBuf = Buffer.from(expectedHex, "hex");
+    return actualBuf.length === expectedBuf.length && crypto.timingSafeEqual(actualBuf, expectedBuf);
+  }
+  function verifyEnvPasscode(plain, envPasscode) {
+    const a = crypto.createHash("sha256").update(plain).digest();
+    const b = crypto.createHash("sha256").update(envPasscode).digest();
+    return crypto.timingSafeEqual(a, b);
+  }
+  const authAttemptMap = /* @__PURE__ */ new Map();
+  function checkAuthRateLimit(ip) {
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1e3;
+    const rec = authAttemptMap.get(ip);
+    if (!rec || now - rec.windowStart > windowMs) {
+      return true;
+    }
+    return rec.failures < 12;
+  }
+  function recordAuthFailure(ip) {
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1e3;
+    const rec = authAttemptMap.get(ip);
+    if (!rec || now - rec.windowStart > windowMs) {
+      authAttemptMap.set(ip, { failures: 1, windowStart: now });
+    } else {
+      rec.failures += 1;
+    }
+  }
+  function clearAuthFailures(ip) {
+    authAttemptMap.delete(ip);
+  }
+  app2.get("/api/auth/master/status", (_req, res) => {
+    const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || "").trim();
+    if (envPasscode) {
+      res.json({ configured: true, source: "env" });
+      return;
+    }
+    if (claimedMasterHash) {
+      res.json({ configured: true, source: "claimed" });
+      return;
+    }
+    res.json({ configured: false, source: "unset" });
+  });
+  app2.post("/api/auth/master/claim", (req, res) => {
+    const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || "").trim();
+    if (envPasscode || claimedMasterHash) {
+      res.status(409).json({
+        success: false,
+        message: "Master Admin passcode is already configured and locked."
+      });
+      return;
+    }
+    const passcode = typeof req.body?.passcode === "string" ? req.body.passcode.trim() : "";
+    if (passcode.length < 8) {
+      res.status(400).json({
+        success: false,
+        message: "Master Admin passcode must be at least 8 characters long."
+      });
+      return;
+    }
+    claimedMasterHash = hashScryptPasscode(passcode);
+    const token = signSessionToken({ sub: "usr-admin-1", scope: "master", tenantId: "tenant-apex-main" });
+    res.json({
+      success: true,
+      token,
+      message: "Master Admin security passcode claimed and hashed on server."
+    });
+  });
+  app2.post("/api/auth/master/verify", (req, res) => {
+    const ip = String(req.ip || "unknown");
+    if (!checkAuthRateLimit(ip)) {
+      res.status(429).json({
+        valid: false,
+        message: "Too many failed authentication attempts. Please wait 15 minutes and try again."
+      });
+      return;
+    }
+    const passcode = typeof req.body?.passcode === "string" ? req.body.passcode.trim() : "";
+    if (!passcode) {
+      res.status(400).json({ valid: false, message: "Passcode is required." });
+      return;
+    }
+    const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || "").trim();
+    if (!envPasscode && !claimedMasterHash) {
+      res.status(409).json({
+        valid: false,
+        needsSetup: true,
+        message: "Master Admin passcode has not been configured yet. Please complete first-run setup."
+      });
+      return;
+    }
+    const isMatch = envPasscode ? verifyEnvPasscode(passcode, envPasscode) : verifyScryptPasscode(passcode, claimedMasterHash);
+    if (!isMatch) {
+      recordAuthFailure(ip);
+      res.status(401).json({ valid: false, message: "Invalid Master Admin credentials." });
+      return;
+    }
+    clearAuthFailures(ip);
+    const token = signSessionToken({ sub: "usr-admin-1", scope: "master", tenantId: "tenant-apex-main" });
+    res.json({ valid: true, token });
+  });
+  app2.post("/api/auth/workspace-session", (req, res) => {
+    const userId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "";
+    const tenantId = typeof req.body?.tenantId === "string" ? req.body.tenantId.trim() : "";
+    if (!userId || !tenantId || userId === "usr-admin-1") {
+      res.status(400).json({ error: "Valid non-master workspace userId and tenantId are required." });
+      return;
+    }
+    const token = signSessionToken({ sub: userId, scope: "workspace", tenantId });
+    res.json({ token });
+  });
+  const getAiClient = () => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return null;
+    return new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build"
+        }
+      }
+    });
   };
-  const encoded = Buffer.from(JSON.stringify(fullPayload), "utf8").toString("base64url");
-  const sig = crypto.createHmac("sha256", SESSION_SIGNING_SECRET).update(encoded).digest("base64url");
-  return `${encoded}.${sig}`;
-}
-function verifySessionToken(token) {
-  if (!token || typeof token !== "string") return null;
-  const parts = token.trim().split(".");
-  if (parts.length !== 2) return null;
-  const [encoded, providedSig] = parts;
-  if (!encoded || !providedSig) return null;
-  const expectedSig = crypto.createHmac("sha256", SESSION_SIGNING_SECRET).update(encoded).digest("base64url");
-  const a = Buffer.from(providedSig, "utf8");
-  const b = Buffer.from(expectedSig, "utf8");
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
-    if (!parsed || typeof parsed.exp !== "number" || Date.now() > parsed.exp) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-function extractBearerToken(req) {
-  const auth = req.get("authorization");
-  if (!auth || !auth.toLowerCase().startsWith("bearer ")) return void 0;
-  return auth.slice(7).trim();
-}
-var claimedMasterHash = null;
-function hashScryptPasscode(plain) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const derived = crypto.scryptSync(plain, salt, 64).toString("hex");
-  return `${salt}:${derived}`;
-}
-function verifyScryptPasscode(plain, storedHash) {
-  const parts = storedHash.split(":");
-  if (parts.length !== 2) return false;
-  const [salt, expectedHex] = parts;
-  if (!salt || !expectedHex) return false;
-  const actualBuf = crypto.scryptSync(plain, salt, 64);
-  const expectedBuf = Buffer.from(expectedHex, "hex");
-  return actualBuf.length === expectedBuf.length && crypto.timingSafeEqual(actualBuf, expectedBuf);
-}
-function verifyEnvPasscode(plain, envPasscode) {
-  const a = crypto.createHash("sha256").update(plain).digest();
-  const b = crypto.createHash("sha256").update(envPasscode).digest();
-  return crypto.timingSafeEqual(a, b);
-}
-var authAttemptMap = /* @__PURE__ */ new Map();
-function checkAuthRateLimit(ip) {
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1e3;
-  const rec = authAttemptMap.get(ip);
-  if (!rec || now - rec.windowStart > windowMs) {
-    return true;
-  }
-  return rec.failures < 12;
-}
-function recordAuthFailure(ip) {
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1e3;
-  const rec = authAttemptMap.get(ip);
-  if (!rec || now - rec.windowStart > windowMs) {
-    authAttemptMap.set(ip, { failures: 1, windowStart: now });
-  } else {
-    rec.failures += 1;
-  }
-}
-function clearAuthFailures(ip) {
-  authAttemptMap.delete(ip);
-}
-app.get("/api/auth/master/status", (_req, res) => {
-  const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || "").trim();
-  if (envPasscode) {
-    res.json({ configured: true, source: "env" });
-    return;
-  }
-  if (claimedMasterHash) {
-    res.json({ configured: true, source: "claimed" });
-    return;
-  }
-  res.json({ configured: false, source: "unset" });
-});
-app.post("/api/auth/master/claim", (req, res) => {
-  const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || "").trim();
-  if (envPasscode || claimedMasterHash) {
-    res.status(409).json({
-      success: false,
-      message: "Master Admin passcode is already configured and locked."
-    });
-    return;
-  }
-  const passcode = typeof req.body?.passcode === "string" ? req.body.passcode.trim() : "";
-  if (passcode.length < 8) {
-    res.status(400).json({
-      success: false,
-      message: "Master Admin passcode must be at least 8 characters long."
-    });
-    return;
-  }
-  claimedMasterHash = hashScryptPasscode(passcode);
-  const token = signSessionToken({ sub: "usr-admin-1", scope: "master", tenantId: "tenant-apex-main" });
-  res.json({
-    success: true,
-    token,
-    message: "Master Admin security passcode claimed and hashed on server."
-  });
-});
-app.post("/api/auth/master/verify", (req, res) => {
-  const ip = String(req.ip || "unknown");
-  if (!checkAuthRateLimit(ip)) {
-    res.status(429).json({
-      valid: false,
-      message: "Too many failed authentication attempts. Please wait 15 minutes and try again."
-    });
-    return;
-  }
-  const passcode = typeof req.body?.passcode === "string" ? req.body.passcode.trim() : "";
-  if (!passcode) {
-    res.status(400).json({ valid: false, message: "Passcode is required." });
-    return;
-  }
-  const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || "").trim();
-  if (!envPasscode && !claimedMasterHash) {
-    res.status(409).json({
-      valid: false,
-      needsSetup: true,
-      message: "Master Admin passcode has not been configured yet. Please complete first-run setup."
-    });
-    return;
-  }
-  const isMatch = envPasscode ? verifyEnvPasscode(passcode, envPasscode) : verifyScryptPasscode(passcode, claimedMasterHash);
-  if (!isMatch) {
-    recordAuthFailure(ip);
-    res.status(401).json({ valid: false, message: "Invalid Master Admin credentials." });
-    return;
-  }
-  clearAuthFailures(ip);
-  const token = signSessionToken({ sub: "usr-admin-1", scope: "master", tenantId: "tenant-apex-main" });
-  res.json({ valid: true, token });
-});
-app.post("/api/auth/workspace-session", (req, res) => {
-  const userId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "";
-  const tenantId = typeof req.body?.tenantId === "string" ? req.body.tenantId.trim() : "";
-  if (!userId || !tenantId || userId === "usr-admin-1") {
-    res.status(400).json({ error: "Valid non-master workspace userId and tenantId are required." });
-    return;
-  }
-  const token = signSessionToken({ sub: userId, scope: "workspace", tenantId });
-  res.json({ token });
-});
-var getAiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build"
-      }
-    }
-  });
-};
-var SYSTEM_KNOWLEDGE_PROMPT = `You are the official Chat System Support Assistant for the "Apex Stock & Site Management System" (Enterprise Warehouse, Branch Yard, Field Team Dispatch, Project & New Section Registry, and Material Usage ERP).
+  const SYSTEM_KNOWLEDGE_PROMPT = `You are the official Chat System Support Assistant for the "Apex Stock & Site Management System" (Enterprise Warehouse, Branch Yard, Field Team Dispatch, Project & New Section Registry, and Material Usage ERP).
 
 Your job is to help system users solve problems, understand every feature and workflow inside the system, and troubleshoot issues clearly, accurately, and politely.
 
@@ -1344,224 +1355,234 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
    - **Audit Trail & Recycle Bin**: Filterable chronological history with isolated A4 Print & CSV export; restore or permanently delete soft-deleted records.
    - **Automatic Email Verification & Support**: Clicking **"Send Verification Email"** sends a Firebase link from **apexstox.com**; clicking the email link verifies the account automatically. Official domain: **apexstox.com** | Support email: **support@apexstox.com**.
    - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change theme/company settings, or use **Admin View-As Mode**.`;
-var responseCache = /* @__PURE__ */ new Map();
-var MAX_CACHE_ENTRIES = 300;
-var CACHE_TTL_MS = 30 * 60 * 1e3;
-function getNormalizedCacheKey(message, langPref, currentTab, userRole) {
-  const cleanMsg = message.trim().toLowerCase().replace(/\s+/g, " ");
-  return `${langPref}|${userRole}|${currentTab}|${cleanMsg}`;
-}
-function getCachedResponse(key) {
-  const entry = responseCache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-    responseCache.delete(key);
-    return null;
+  const responseCache = /* @__PURE__ */ new Map();
+  const MAX_CACHE_ENTRIES = 300;
+  const CACHE_TTL_MS = 30 * 60 * 1e3;
+  function getNormalizedCacheKey(message, langPref, currentTab, userRole) {
+    const cleanMsg = message.trim().toLowerCase().replace(/\s+/g, " ");
+    return `${langPref}|${userRole}|${currentTab}|${cleanMsg}`;
   }
-  return entry;
-}
-function setCachedResponse(key, entry) {
-  if (responseCache.size >= MAX_CACHE_ENTRIES) {
-    const oldestKey = responseCache.keys().next().value;
-    if (oldestKey) responseCache.delete(oldestKey);
+  function getCachedResponse(key) {
+    const entry = responseCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+      responseCache.delete(key);
+      return null;
+    }
+    return entry;
   }
-  responseCache.set(key, entry);
-}
-var inFlightRequests = /* @__PURE__ */ new Map();
-var activeAiCalls = 0;
-var HIGH_LOAD_THRESHOLD = 4;
-var clientBurstMap = /* @__PURE__ */ new Map();
-function checkClientFairRate(clientId) {
-  const now = Date.now();
-  const windowMs = 1e4;
-  const maxPerWindow = 12;
-  const record = clientBurstMap.get(clientId);
-  if (!record || now - record.windowStart > windowMs) {
-    clientBurstMap.set(clientId, { count: 1, windowStart: now });
+  function setCachedResponse(key, entry) {
+    if (responseCache.size >= MAX_CACHE_ENTRIES) {
+      const oldestKey = responseCache.keys().next().value;
+      if (oldestKey) responseCache.delete(oldestKey);
+    }
+    responseCache.set(key, entry);
+  }
+  const inFlightRequests = /* @__PURE__ */ new Map();
+  let activeAiCalls = 0;
+  const HIGH_LOAD_THRESHOLD = 4;
+  const clientBurstMap = /* @__PURE__ */ new Map();
+  function checkClientFairRate(clientId) {
+    const now = Date.now();
+    const windowMs = 1e4;
+    const maxPerWindow = 12;
+    const record = clientBurstMap.get(clientId);
+    if (!record || now - record.windowStart > windowMs) {
+      clientBurstMap.set(clientId, { count: 1, windowStart: now });
+      return true;
+    }
+    if (record.count >= maxPerWindow) {
+      return false;
+    }
+    record.count += 1;
     return true;
   }
-  if (record.count >= maxPerWindow) {
-    return false;
+  function detectSuggestedModule(text) {
+    const lower = text.toLowerCase();
+    if (lower.includes("format setting") || lower.includes("document template") || lower.includes("letterhead") || lower.includes("digital signature") || lower.includes("signature") || lower.includes("signer") || lower.includes("iso 9001") || lower.includes("section format")) {
+      return "templates";
+    }
+    if (lower.includes("stock to return") || lower.includes("temporary assigned") || lower.includes("team transfer") || lower.includes("transfer team") || lower.includes("team in-hand") || lower.includes("team inhand")) {
+      return "team-stock";
+    }
+    if (lower.includes("section registry") || lower.includes("project section") || lower.includes("material template") || lower.includes("bom") || lower.includes("register project") || lower.includes("project registry") || lower.includes("main project") || lower.includes("major project") || lower.includes("sub project") || lower.includes("sub-project") || lower.includes("individual project")) {
+      return "projects";
+    }
+    if (lower.includes("material usage") || lower.includes("daily progress") || lower.includes("project usage") || lower.includes("wastage") || lower.includes("full report") || lower.includes("full site") || lower.includes("usage vouchers") || lower.includes("reconciliation") || lower.includes("reconcile") || lower.includes("boq")) {
+      return "project-usage";
+    }
+    if (lower.includes("client free") || lower.includes("free stock") || lower.includes("foc")) return "client-free-stock";
+    if (lower.includes("transfer") || lower.includes("request") || lower.includes("requisition")) return "requests";
+    if (lower.includes("grn") || lower.includes("main stock") || lower.includes("main central stock")) return "main-stock";
+    if (lower.includes("supplier") || lower.includes("purchase order") || lower.includes("debit note")) return "procurement";
+    if (lower.includes("issue to team") || lower.includes("dispatch")) return "dispatch";
+    if (lower.includes("team return")) return "returns";
+    if (lower.includes("branch return")) return "branch-returns";
+    if (lower.includes("user") || lower.includes("login") || lower.includes("password") || lower.includes("role")) return "manage-users";
+    if (lower.includes("team")) return "teams";
+    if (lower.includes("site") || lower.includes("branch")) return "site-stock";
+    if (lower.includes("recycle") || lower.includes("delete")) return "recycle-bin";
+    if (lower.includes("item") || lower.includes("barcode") || lower.includes("excel") || lower.includes("print with image")) return "items";
+    return void 0;
   }
-  record.count += 1;
-  return true;
-}
-function detectSuggestedModule(text) {
-  const lower = text.toLowerCase();
-  if (lower.includes("format setting") || lower.includes("document template") || lower.includes("letterhead") || lower.includes("digital signature") || lower.includes("signature") || lower.includes("signer") || lower.includes("iso 9001") || lower.includes("section format")) {
-    return "templates";
-  }
-  if (lower.includes("stock to return") || lower.includes("temporary assigned") || lower.includes("team transfer") || lower.includes("transfer team") || lower.includes("team in-hand") || lower.includes("team inhand")) {
-    return "team-stock";
-  }
-  if (lower.includes("section registry") || lower.includes("project section") || lower.includes("material template") || lower.includes("bom") || lower.includes("register project") || lower.includes("project registry") || lower.includes("main project") || lower.includes("major project") || lower.includes("sub project") || lower.includes("sub-project") || lower.includes("individual project")) {
-    return "projects";
-  }
-  if (lower.includes("material usage") || lower.includes("daily progress") || lower.includes("project usage") || lower.includes("wastage") || lower.includes("full report") || lower.includes("full site") || lower.includes("usage vouchers") || lower.includes("reconciliation") || lower.includes("reconcile") || lower.includes("boq")) {
-    return "project-usage";
-  }
-  if (lower.includes("client free") || lower.includes("free stock") || lower.includes("foc")) return "client-free-stock";
-  if (lower.includes("transfer") || lower.includes("request") || lower.includes("requisition")) return "requests";
-  if (lower.includes("grn") || lower.includes("main stock") || lower.includes("main central stock")) return "main-stock";
-  if (lower.includes("supplier") || lower.includes("purchase order") || lower.includes("debit note")) return "procurement";
-  if (lower.includes("issue to team") || lower.includes("dispatch")) return "dispatch";
-  if (lower.includes("team return")) return "returns";
-  if (lower.includes("branch return")) return "branch-returns";
-  if (lower.includes("user") || lower.includes("login") || lower.includes("password") || lower.includes("role")) return "manage-users";
-  if (lower.includes("team")) return "teams";
-  if (lower.includes("site") || lower.includes("branch")) return "site-stock";
-  if (lower.includes("recycle") || lower.includes("delete")) return "recycle-bin";
-  if (lower.includes("item") || lower.includes("barcode") || lower.includes("excel") || lower.includes("print with image")) return "items";
-  return void 0;
-}
-async function queryGeminiWithFallback(userMessage, history, context) {
-  const ai = getAiClient();
-  if (!ai) {
-    const localAns2 = resolveSmartSystemSupportAnswer(userMessage, context);
-    return { ...localAns2, modelUsed: "system-expert-kb" };
-  }
-  const recentHistory = Array.isArray(history) ? history.slice(-6) : [];
-  const contextLine = `
+  async function queryGeminiWithFallback(userMessage, history, context) {
+    const ai = getAiClient();
+    if (!ai) {
+      const localAns2 = resolveSmartSystemSupportAnswer(userMessage, context);
+      return { ...localAns2, modelUsed: "system-expert-kb" };
+    }
+    const recentHistory = Array.isArray(history) ? history.slice(-6) : [];
+    const contextLine = `
 [Current Live User Context: User="${context.userName || "User"}", Role="${context.userRole || "Staff"}", ActiveScreen="${context.currentTab || "dashboard"}", AssignedBranch="${context.branchName || "All Branches"}", LanguagePreference="${context.language || "en"}", ActiveItems=${context.activeItemsCount ?? 0}, LowStockItems=${context.lowStockItemsCount ?? 0}, ActiveBranches=${context.activeSitesCount ?? 0}, ActiveTeams=${context.activeTeamsCount ?? 0}, ActiveProjects=${context.activeProjectsCount ?? 0}, ActiveProjectSections=${context.activeProjectSectionsCount ?? 0}, PendingRequests=${context.pendingRequestsCount ?? 0}]`;
-  const conversationTranscript = recentHistory.map((m) => `${m.role === "user" ? "User" : "Support Agent"}: ${m.text}`).join("\n");
-  const fullPrompt = `${contextLine}
+    const conversationTranscript = recentHistory.map((m) => `${m.role === "user" ? "User" : "Support Agent"}: ${m.text}`).join("\n");
+    const fullPrompt = `${contextLine}
 ${conversationTranscript ? `Recent Chat:
 ${conversationTranscript}
 
 ` : ""}User Question: ${userMessage}`;
-  const primaryModel = activeAiCalls >= HIGH_LOAD_THRESHOLD ? "gemini-3.1-flash-lite" : "gemini-4-hydrogen";
-  const fallbackModel = primaryModel === "gemini-4-hydrogen" ? "gemini-3.1-flash-lite" : "gemini-4-hydrogen";
-  const modelsToTry = [primaryModel, fallbackModel];
-  activeAiCalls += 1;
-  try {
-    for (let i = 0; i < modelsToTry.length; i++) {
-      const modelName = modelsToTry[i];
-      try {
-        const configObj = {
-          systemInstruction: SYSTEM_KNOWLEDGE_PROMPT
-        };
-        if (modelName === "gemini-4-hydrogen") {
-          configObj.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
-        }
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: fullPrompt,
-          config: configObj
-        });
-        const replyText = (response.text || "").trim();
-        if (replyText) {
-          return {
-            reply: replyText,
-            suggestedTab: detectSuggestedModule(`${userMessage} ${replyText}`),
-            modelUsed: modelName
+    const primaryModel = activeAiCalls >= HIGH_LOAD_THRESHOLD ? "gemini-3.1-flash-lite" : "gemini-4-hydrogen";
+    const fallbackModel = primaryModel === "gemini-4-hydrogen" ? "gemini-3.1-flash-lite" : "gemini-4-hydrogen";
+    const modelsToTry = [primaryModel, fallbackModel];
+    activeAiCalls += 1;
+    try {
+      for (let i = 0; i < modelsToTry.length; i++) {
+        const modelName = modelsToTry[i];
+        try {
+          const configObj = {
+            systemInstruction: SYSTEM_KNOWLEDGE_PROMPT
           };
-        }
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.warn(`[Chat System Support] Model ${modelName} attempt failed:`, errMsg);
-        if (i < modelsToTry.length - 1) {
-          await new Promise((r) => setTimeout(r, 200));
+          if (modelName === "gemini-4-hydrogen") {
+            configObj.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+          }
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: fullPrompt,
+            config: configObj
+          });
+          const replyText = (response.text || "").trim();
+          if (replyText) {
+            return {
+              reply: replyText,
+              suggestedTab: detectSuggestedModule(`${userMessage} ${replyText}`),
+              modelUsed: modelName
+            };
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.warn(`[Chat System Support] Model ${modelName} attempt failed:`, errMsg);
+          if (i < modelsToTry.length - 1) {
+            await new Promise((r) => setTimeout(r, 200));
+          }
         }
       }
+    } finally {
+      activeAiCalls = Math.max(0, activeAiCalls - 1);
     }
-  } finally {
-    activeAiCalls = Math.max(0, activeAiCalls - 1);
+    const localAns = resolveSmartSystemSupportAnswer(userMessage, context);
+    return { ...localAns, modelUsed: "system-expert-kb" };
   }
-  const localAns = resolveSmartSystemSupportAnswer(userMessage, context);
-  return { ...localAns, modelUsed: "system-expert-kb" };
-}
-app.post("/api/support-chat", async (req, res) => {
-  try {
-    const bearer = extractBearerToken(req);
-    const session = verifySessionToken(bearer);
-    if (!session) {
-      res.status(401).json({ error: "Authentication session required." });
-      return;
-    }
-    const { message, history = [], context = {}, clientId = "anon" } = req.body || {};
-    if (!message || typeof message !== "string" || !message.trim()) {
-      res.status(400).json({ error: "Message is required." });
-      return;
-    }
-    const trimmedMessage = message.trim().slice(0, 1200);
-    const ipOrClient = `${session.tenantId}:${session.sub}:${String(clientId || req.ip || "anon")}`;
-    const safeContext = {
-      userName: context?.userName || "User",
-      userRole: context?.userRole || "Staff",
-      currentTab: context?.currentTab || "dashboard",
-      branchName: context?.branchName || "All Branches",
-      language: context?.language === "si" ? "si" : "en",
-      activeItemsCount: Number(context?.activeItemsCount || 0),
-      lowStockItemsCount: Number(context?.lowStockItemsCount || 0),
-      lowStockItemNames: Array.isArray(context?.lowStockItemNames) ? context.lowStockItemNames : [],
-      activeSitesCount: Number(context?.activeSitesCount || 0),
-      activeTeamsCount: Number(context?.activeTeamsCount || 0),
-      activeProjectsCount: Number(context?.activeProjectsCount || 0),
-      activeProjectSectionsCount: Number(context?.activeProjectSectionsCount || 0),
-      projectSectionNames: Array.isArray(context?.projectSectionNames) ? context.projectSectionNames : [],
-      pendingRequestsCount: Number(context?.pendingRequestsCount || 0)
-    };
-    if (!checkClientFairRate(ipOrClient)) {
-      res.status(429).json({
-        reply: safeContext.language === "si" ? "\u0D94\u0DB6 \u0D89\u0DAD\u0DCF \u0DC0\u0DDA\u0D9C\u0DBA\u0DD9\u0DB1\u0DCA \u0DB4\u0DAB\u0DD2\u0DC0\u0DD2\u0DA9 \u0DBA\u0DC0\u0DB8\u0DD2\u0DB1\u0DCA \u0DC3\u0DD2\u0DA7\u0DD3. \u0D9A\u0DBB\u0DD4\u0DAB\u0DCF\u0D9A\u0DBB \u0DAD\u0DAD\u0DCA\u0DB4\u0DBB \u0D9A\u0DD2\u0DC4\u0DD2\u0DB4\u0DBA\u0D9A\u0DCA \u0DBB\u0DD0\u0DB3\u0DD3 \u0DB1\u0DD0\u0DC0\u0DAD \u0D8B\u0DAD\u0DCA\u0DC3\u0DCF\u0DC4 \u0D9A\u0DBB\u0DB1\u0DCA\u0DB1." : "You are sending messages too quickly. Please wait a few seconds and try again.",
-        modelUsed: "rate-guard"
-      });
-      return;
-    }
-    const cacheKey = getNormalizedCacheKey(
-      trimmedMessage,
-      safeContext.language,
-      String(safeContext.currentTab || ""),
-      String(safeContext.userRole || "")
-    );
-    if (!Array.isArray(history) || history.length <= 2) {
-      const cached = getCachedResponse(cacheKey);
-      if (cached) {
-        res.json({
-          reply: cached.reply,
-          suggestedTab: cached.suggestedTab,
-          modelUsed: `${cached.modelUsed} (cached)`,
-          cached: true
+  app2.post("/api/support-chat", async (req, res) => {
+    try {
+      const bearer = extractBearerToken(req);
+      const session = verifySessionToken(bearer);
+      if (!session) {
+        res.status(401).json({ error: "Authentication session required." });
+        return;
+      }
+      const { message, history = [], context = {}, clientId = "anon" } = req.body || {};
+      if (!message || typeof message !== "string" || !message.trim()) {
+        res.status(400).json({ error: "Message is required." });
+        return;
+      }
+      const trimmedMessage = message.trim().slice(0, 1200);
+      const ipOrClient = `${session.tenantId}:${session.sub}:${String(clientId || req.ip || "anon")}`;
+      const safeContext = {
+        userName: context?.userName || "User",
+        userRole: context?.userRole || "Staff",
+        currentTab: context?.currentTab || "dashboard",
+        branchName: context?.branchName || "All Branches",
+        language: context?.language === "si" ? "si" : "en",
+        activeItemsCount: Number(context?.activeItemsCount || 0),
+        lowStockItemsCount: Number(context?.lowStockItemsCount || 0),
+        lowStockItemNames: Array.isArray(context?.lowStockItemNames) ? context.lowStockItemNames : [],
+        activeSitesCount: Number(context?.activeSitesCount || 0),
+        siteNames: Array.isArray(context?.siteNames) ? context.siteNames : [],
+        activeTeamsCount: Number(context?.activeTeamsCount || 0),
+        teamNames: Array.isArray(context?.teamNames) ? context.teamNames : [],
+        activeProjectsCount: Number(context?.activeProjectsCount || 0),
+        activeProjectSectionsCount: Number(context?.activeProjectSectionsCount || 0),
+        projectSectionNames: Array.isArray(context?.projectSectionNames) ? context.projectSectionNames : [],
+        pendingRequestsCount: Number(context?.pendingRequestsCount || 0)
+      };
+      if (!checkClientFairRate(ipOrClient)) {
+        res.status(429).json({
+          reply: safeContext.language === "si" ? "\u0D94\u0DB6 \u0D89\u0DAD\u0DCF \u0DC0\u0DDA\u0D9C\u0DBA\u0DD9\u0DB1\u0DCA \u0DB4\u0DAB\u0DD2\u0DC0\u0DD2\u0DA9 \u0DBA\u0DC0\u0DB8\u0DD2\u0DB1\u0DCA \u0DC3\u0DD2\u0DA7\u0DD3. \u0D9A\u0DBB\u0DD4\u0DAB\u0DCF\u0D9A\u0DBB \u0DAD\u0DAD\u0DCA\u0DB4\u0DBB \u0D9A\u0DD2\u0DC4\u0DD2\u0DB4\u0DBA\u0D9A\u0DCA \u0DBB\u0DD0\u0DB3\u0DD3 \u0DB1\u0DD0\u0DC0\u0DAD \u0D8B\u0DAD\u0DCA\u0DC3\u0DCF\u0DC4 \u0D9A\u0DBB\u0DB1\u0DCA\u0DB1." : "You are sending messages too quickly. Please wait a few seconds and try again.",
+          modelUsed: "rate-guard"
         });
         return;
       }
-    }
-    let pendingPromise = inFlightRequests.get(cacheKey);
-    if (!pendingPromise) {
-      pendingPromise = queryGeminiWithFallback(trimmedMessage, history, safeContext).finally(() => {
-        inFlightRequests.delete(cacheKey);
+      const cacheKey = getNormalizedCacheKey(
+        trimmedMessage,
+        safeContext.language,
+        String(safeContext.currentTab || ""),
+        String(safeContext.userRole || "")
+      );
+      if (!Array.isArray(history) || history.length <= 2) {
+        const cached = getCachedResponse(cacheKey);
+        if (cached) {
+          res.json({
+            reply: cached.reply,
+            suggestedTab: cached.suggestedTab,
+            modelUsed: `${cached.modelUsed} (cached)`,
+            cached: true
+          });
+          return;
+        }
+      }
+      let pendingPromise = inFlightRequests.get(cacheKey);
+      if (!pendingPromise) {
+        pendingPromise = queryGeminiWithFallback(trimmedMessage, history, safeContext).finally(() => {
+          inFlightRequests.delete(cacheKey);
+        });
+        inFlightRequests.set(cacheKey, pendingPromise);
+      }
+      const result = await pendingPromise;
+      setCachedResponse(cacheKey, {
+        reply: result.reply,
+        suggestedTab: result.suggestedTab,
+        modelUsed: result.modelUsed,
+        timestamp: Date.now()
       });
-      inFlightRequests.set(cacheKey, pendingPromise);
+      res.json(result);
+    } catch (error) {
+      console.error("[Chat System Support Route Error]:", error);
+      const fallbackCtx = {
+        language: req.body?.context?.language === "si" ? "si" : "en",
+        userRole: req.body?.context?.userRole,
+        currentTab: req.body?.context?.currentTab,
+        branchName: req.body?.context?.branchName
+      };
+      const fallback = resolveSmartSystemSupportAnswer(String(req.body?.message || ""), fallbackCtx);
+      res.json({ ...fallback, modelUsed: "system-expert-kb" });
     }
-    const result = await pendingPromise;
-    setCachedResponse(cacheKey, {
-      reply: result.reply,
-      suggestedTab: result.suggestedTab,
-      modelUsed: result.modelUsed,
-      timestamp: Date.now()
-    });
-    res.json(result);
-  } catch (error) {
-    console.error("[Chat System Support Route Error]:", error);
-    const fallbackCtx = {
-      language: req.body?.context?.language === "si" ? "si" : "en",
-      userRole: req.body?.context?.userRole,
-      currentTab: req.body?.context?.currentTab,
-      branchName: req.body?.context?.branchName
-    };
-    const fallback = resolveSmartSystemSupportAnswer(String(req.body?.message || ""), fallbackCtx);
-    res.json({ ...fallback, modelUsed: "system-expert-kb" });
-  }
-});
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    uptime: process.uptime(),
-    activeAiCalls,
-    cacheSize: responseCache.size,
-    timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
-});
+  app2.get("/api/health", (_req, res) => {
+    res.json({
+      status: "ok",
+      uptime: process.uptime(),
+      activeAiCalls,
+      cacheSize: responseCache.size,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  });
+  return app2;
+}
+
+// server.ts
+var __filename = fileURLToPath(import.meta.url);
+var __dirname = path.dirname(__filename);
+var app = createApiApp();
+var PORT = Number(process.env.PORT || 3e3);
 async function startServer() {
   const distPath = path.join(__dirname, "dist");
   const isProd = process.env.NODE_ENV === "production";
@@ -1578,7 +1599,7 @@ async function startServer() {
     }
   }
   if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath));
+    app.use(express2.static(distPath));
   }
   app.get("*", (_req, res) => {
     const indexPath = path.join(distPath, "index.html");
@@ -1592,4 +1613,10 @@ async function startServer() {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 }
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+var server_default = app;
+export {
+  server_default as default
+};

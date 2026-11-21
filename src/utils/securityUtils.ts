@@ -107,7 +107,10 @@ export async function getMasterAuthStatus(): Promise<MasterAuthStatusResponse> {
       method: 'GET',
       headers: { Accept: 'application/json' },
     });
-    if (!res.ok) return { configured: true, source: 'env' };
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok || !contentType.includes('application/json')) {
+      return { configured: true, source: 'env' };
+    }
     return (await res.json()) as MasterAuthStatusResponse;
   } catch {
     return { configured: true, source: 'env' };
@@ -128,6 +131,13 @@ export async function claimMasterAdminPasscode(passcode: string): Promise<{
       },
       body: JSON.stringify({ passcode }),
     });
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return {
+        success: false,
+        message: 'Authentication API route is not active on this host. Please deploy the latest backend API update.',
+      };
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data?.success) {
       return {
@@ -166,6 +176,14 @@ export async function verifyMasterAdminPasscode(passcode: string): Promise<{
       },
       body: JSON.stringify({ passcode }),
     });
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return {
+        valid: false,
+        message:
+          'Authentication API (/api/auth/master/verify) is not deployed or was rewritten to HTML on this domain. Push the latest update including /api serverless routes and set MASTER_ADMIN_PASSCODE in your hosting Environment Variables.',
+      };
+    }
     const data = await res.json().catch(() => ({}));
     if (res.ok && data?.valid) {
       if (typeof data.token === 'string' && data.token) {
