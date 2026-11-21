@@ -2463,6 +2463,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ): Promise<{ success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] }> => {
     let matchedTenant: Tenant | undefined;
     let matchedUser: User | undefined;
+    let masterAuthAlreadyVerified = false;
 
     // Ensure we have the latest tenants list (including remote Firebase saasTenants if needed)
     let allTenants = tenantsRef.current.length > 0 ? tenantsRef.current : getAllSavedTenants();
@@ -2601,11 +2602,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           };
         }
       } else {
-        // No explicit workspace code: Check the CURRENT active tenant first before scanning other tenants!
         const activeTenObj = allTenants.find((t) => t.id === currentTenantIdRef.current) || DEFAULT_TENANT;
         const activeFound = await findUserInTenant(activeTenObj, term);
         if (activeFound) {
-          if (!inputPass || (await verifyCandidatePassword(activeTenObj, activeFound, inputPass))) {
+          if (isCandidateMasterAdmin(activeTenObj, activeFound) && inputPass) {
+            const masterRes = await verifyMasterAdminPasscode(inputPass);
+            if (masterRes.valid) {
+              matchedTenant = activeTenObj;
+              matchedUser = activeFound;
+              masterAuthAlreadyVerified = true;
+            } else {
+              return {
+                success: false,
+                message: masterRes.message || 'Invalid master administrator credentials. Access restricted.',
+              };
+            }
+          } else if (!inputPass || (await verifyCandidatePassword(activeTenObj, activeFound, inputPass))) {
             matchedTenant = activeTenObj;
             matchedUser = activeFound;
           }
@@ -2714,12 +2726,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const inputPass = password.trim();
 
       if (isMasterAdminTarget) {
-        const serverAuthRes = await verifyMasterAdminPasscode(inputPass);
-        if (!serverAuthRes.valid) {
-          return {
-            success: false,
-            message: serverAuthRes.message || 'Invalid master administrator credentials. Access restricted.',
-          };
+        if (!masterAuthAlreadyVerified) {
+          const serverAuthRes = await verifyMasterAdminPasscode(inputPass);
+          if (!serverAuthRes.valid) {
+            return {
+              success: false,
+              message: serverAuthRes.message || 'Invalid master administrator credentials. Access restricted.',
+            };
+          }
         }
       } else {
         const storedMatch = await verifyStoredPassword(inputPass, matchedUser.password);
