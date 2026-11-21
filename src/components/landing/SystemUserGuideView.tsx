@@ -1482,20 +1482,20 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <button
               type="button"
               onClick={onBackToOverview}
-              className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] backdrop-blur-xl text-white border border-white/15 text-xs font-bold flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm cursor-pointer transition whitespace-nowrap"
+              className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/[0.09] hover:bg-white/[0.16] backdrop-blur-xl text-white border border-amber-300/35 text-xs font-extrabold flex items-center justify-center gap-1.5 sm:gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] cursor-pointer transition whitespace-nowrap"
             >
-              <ArrowLeft className="w-4 h-4 text-emerald-400" />
+              <ArrowLeft className="w-4 h-4 text-amber-400" />
               <span>{guideLang === 'si' ? 'ප්‍රධාන පිටුවට (Overview)' : 'Back to Platform Overview'}</span>
             </button>
 
             {/* 2-TAB LANGUAGE SWITCHER: ENGLISH GUIDE vs SINHALA GUIDE */}
-            <div className="bg-white/[0.06] backdrop-blur-xl p-1 rounded-xl border border-white/15 flex items-center gap-1 shadow-md">
+            <div className="bg-[#08122b]/75 backdrop-blur-xl p-1 rounded-xl border border-white/15 flex items-center gap-1 shadow-md">
               <button
                 type="button"
                 onClick={() => setGuideLang('en')}
-                className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
+                className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
                   guideLang === 'en'
-                    ? 'bg-emerald-500 text-slate-950 font-black shadow-xs'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-300 text-[#071026] shadow-xs'
                     : 'text-slate-200 hover:text-white hover:bg-white/10'
                 }`}
               >
@@ -1506,9 +1506,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               <button
                 type="button"
                 onClick={() => setGuideLang('si')}
-                className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
+                className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
                   guideLang === 'si'
-                    ? 'bg-emerald-500 text-slate-950 font-black shadow-xs'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-300 text-[#071026] shadow-xs'
                     : 'text-slate-200 hover:text-white hover:bg-white/10'
                 }`}
               >
@@ -1523,7 +1523,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               type="button"
               onClick={handlePrintPdfManual}
               disabled={isDownloadingPdf}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer transition whitespace-nowrap disabled:opacity-60"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 text-[#071026] font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 ring-1 ring-white/40 cursor-pointer transition whitespace-nowrap disabled:opacity-60"
             >
               <Download className="w-4 h-4" />
               <span>
@@ -1542,12 +1542,12 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             <button
               type="button"
               onClick={onOpenSignup}
-              className="w-full sm:w-auto px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] backdrop-blur-xl text-white border border-white/15 font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-md cursor-pointer transition whitespace-nowrap"
+              className="w-full sm:w-auto px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] backdrop-blur-xl text-white border border-white/18 font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] cursor-pointer transition whitespace-nowrap"
             >
-              <span className="text-emerald-300 font-black">
+              <span className="text-amber-300 font-black">
                 {guideLang === 'si' ? 'දින 7ක නොමිලේ ගිණුම අරඹන්න' : 'Start 7-Day Free Trial'}
               </span>
-              <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+              <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
             </button>
           </div>
         </div>
@@ -1578,19 +1578,19 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
 
           {/* Hero Banner of the User Guide Tab */}
           <div className="rounded-2xl sm:rounded-[28px] landing-glass-card-light p-4 sm:p-10 relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-sky-400 to-indigo-500 no-print" />
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#09132c] via-amber-400 to-[#09132c] no-print" />
 
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="max-w-3xl">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-700 mb-2">
-                  <BookOpen className="w-4 h-4 text-emerald-600" />
+                <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 mb-2">
+                  <BookOpen className="w-4 h-4 text-amber-600" />
                   <span>
                     {guideLang === 'si'
                       ? 'සම්පූර්ණ පද්ධති ක්‍රියාවලිය පැහැදිලි කරන සරල සිංහල අත්පොත'
                       : 'Complete System Documentation & Client Handbook'}
                   </span>
                 </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight text-balance">
+                <h1 className="text-2xl sm:text-4xl font-black text-[#081024] tracking-tight leading-tight text-balance">
                   {guideLang === 'si'
                     ? 'Apex Stock ක්‍රියාත්මක වන ආකාරය: පියවරෙන් පියවර සරල සිංහල උපදෙස් මාලාව'
                     : 'How Apex Stock Works: Step-by-Step User Guide, Document Format Studio & Features'}
@@ -1603,11 +1603,11 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               </div>
 
               {/* Quick PDF & Language Switch Box */}
-              <div className="no-print shrink-0 landing-glass-card text-white rounded-2xl p-5 lg:w-80 shadow-xl bg-slate-950/90">
-                <div className="text-xs font-bold text-emerald-300">
+              <div className="no-print shrink-0 landing-glass-card text-white rounded-2xl p-5 lg:w-80 shadow-xl">
+                <div className="text-xs font-bold text-amber-300">
                   {guideLang === 'si' ? 'PDF අත්පොතක් ලෙස බාගත කරගන්න' : 'Share with Your Team or Management'}
                 </div>
-                <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                <p className="text-[11px] text-slate-200 mt-1 leading-relaxed">
                   {guideLang === 'si'
                     ? 'මෙම සම්පූර්ණ සිංහල උපදෙස් මාලාව A4 PDF ගොනුවක් ලෙස ඔබේ දුරකථනයට හෝ පරිගණකයට බාගත කර කාර්ය මණ්ඩලය සමඟ බෙදාගන්න.'
                     : 'Save this complete guide as a clean A4 PDF document to review offline with project managers, engineers, or storekeepers.'}
@@ -1616,7 +1616,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   type="button"
                   onClick={handlePrintPdfManual}
                   disabled={isDownloadingPdf}
-                  className="mt-3.5 w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap disabled:opacity-60"
+                  className="mt-3.5 w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 text-[#071026] font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap disabled:opacity-60 shadow-md shadow-amber-500/20"
                 >
                   <Download className="w-4 h-4" />
                   <span>
@@ -1636,8 +1636,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
 
             {/* ==================== 6-STAGE VISUAL STOCK FLOW ("AT A GLANCE") ==================== */}
             <div className="mt-8 pt-7 border-t border-slate-200/80">
-              <div className="text-xs font-extrabold text-slate-900 mb-4 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-600" />
+              <div className="text-xs font-extrabold text-[#081024] mb-4 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-amber-600" />
                 <span>
                   {guideLang === 'si'
                     ? 'පද්ධතියේ සමස්ත ක්‍රියාවලිය කෙටියෙන් (ප්‍රධාන පියවර 6)'
@@ -1728,16 +1728,16 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   return (
                     <div
                       key={item.stage}
-                      className="rounded-2xl bg-white/85 backdrop-blur-md border border-slate-200/80 p-4 flex flex-col justify-between shadow-xs"
+                      className="rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 p-4 flex flex-col justify-between shadow-2xs"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-[11px] font-mono font-extrabold text-emerald-700">
+                          <span className="text-[11px] font-mono font-extrabold text-amber-700">
                             {item.stage}
                           </span>
-                          <StageIcon className="w-4 h-4 text-sky-600 shrink-0" />
+                          <StageIcon className="w-4 h-4 text-[#081024] shrink-0" />
                         </div>
-                        <h3 className="text-xs sm:text-sm font-black text-slate-900">{item.title}</h3>
+                        <h3 className="text-xs sm:text-sm font-black text-[#081024]">{item.title}</h3>
                         <p className="text-[11px] text-slate-600 mt-1 leading-relaxed font-medium">
                           {item.desc}
                         </p>
@@ -1779,8 +1779,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   onClick={() => setSelectedCategory(tab.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
                     selectedCategory === tab.id
-                      ? 'bg-slate-950 text-emerald-400 shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-900/5 hover:text-slate-950'
+                      ? 'bg-[#081024] text-amber-300 shadow-xs'
+                      : 'text-[#081024] hover:bg-amber-400/20'
                   }`}
                 >
                   {tab.label}
@@ -1800,7 +1800,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     ? 'උපදෙස් සොයන්න (උදා: Format, GRN, Team)...'
                     : 'Search guide (e.g. Format, GRN, Team, RTV)...'
                 }
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/85 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
@@ -1820,7 +1820,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     setSearchQuery('');
                     setSelectedCategory('all');
                   }}
-                  className="mt-3 px-4 py-2 rounded-xl bg-slate-950 text-white text-xs font-bold cursor-pointer"
+                  className="mt-3 px-4 py-2 rounded-xl bg-[#081024] text-white text-xs font-bold cursor-pointer"
                 >
                   {guideLang === 'si' ? 'සියලුම පරිච්ඡේද පෙන්වන්න' : 'Show All Guide Chapters'}
                 </button>
@@ -1836,18 +1836,18 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     {/* Chapter Header */}
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-slate-200/80">
                       <div className="flex items-start gap-3.5">
-                        <div className="w-11 h-11 rounded-xl bg-slate-950 text-emerald-400 flex items-center justify-center shrink-0 shadow-xs no-print">
+                        <div className="w-11 h-11 rounded-xl bg-[#081024] text-amber-400 flex items-center justify-center shrink-0 shadow-xs no-print">
                           <ChapterIcon className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2 text-xs font-bold">
-                            <span className="font-mono font-extrabold text-emerald-700">
+                            <span className="font-mono font-extrabold text-amber-700">
                               {chapter.number}
                             </span>
                             <span aria-hidden="true" className="text-slate-300">·</span>
                             <span className="text-slate-500">{chapter.categoryLabel}</span>
                           </div>
-                          <h2 className="text-lg sm:text-2xl font-black text-slate-950 mt-1 tracking-tight">
+                          <h2 className="text-lg sm:text-2xl font-black text-[#081024] mt-1 tracking-tight">
                             {chapter.title}
                           </h2>
                           <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed font-medium max-w-3xl">
@@ -1862,9 +1862,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       {chapter.steps.map((st) => (
                         <div
                           key={st.stepTitle}
-                          className="rounded-2xl bg-white/85 border border-slate-200/80 p-4 shadow-2xs"
+                          className="rounded-2xl bg-white/90 border border-slate-200/80 p-4 shadow-2xs"
                         >
-                          <h3 className="text-xs sm:text-sm font-extrabold text-slate-900">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-[#081024]">
                             {st.stepTitle}
                           </h3>
                           <p className="text-xs text-slate-600 mt-1.5 leading-relaxed font-medium">
@@ -1876,15 +1876,15 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
 
                     {/* Key Documents / Outputs Footer */}
                     <div className="mt-5 pt-4 border-t border-slate-200/80 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-                      <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="font-extrabold text-[#081024] flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-amber-600" />
                         <span>
                           {guideLang === 'si' ? 'ප්‍රධාන ප්‍රතිඵල සහ පාලනයන්:' : 'Key Outputs & Controls:'}
                         </span>
                       </span>
                       {chapter.keyOutputs.map((out) => (
                         <span key={out} className="flex items-center gap-1.5 font-bold text-slate-700">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                           <span>{out}</span>
                         </span>
                       ))}
@@ -1899,15 +1899,15 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           <div className="rounded-[24px] landing-glass-card-light p-6 sm:p-8 break-inside-avoid">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-200/80">
               <div>
-                <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-700 mb-1.5">
-                  <Award className="w-4 h-4 text-emerald-600" />
+                <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 mb-1.5">
+                  <Award className="w-4 h-4 text-amber-600" />
                   <span>
                     {guideLang === 'si'
                       ? 'ආයතනයේ Document Formats (PDF / Image) Upload කරන ආකාරය පිළිබඳ විශේෂ මාර්ගෝපදේශය'
                       : 'Standard Document Format Reference Guide (PDF / Image Upload)'}
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black text-[#081024] tracking-tight">
                   {guideLang === 'si'
                     ? 'Company Format Upload කිරීම සහ "This Format Affects To" ක්‍රියාත්මක වන ආකාරය'
                     : 'How Company Document Format Upload & "This Format Affects To" Works'}
@@ -1925,7 +1925,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   )}
                 </p>
               </div>
-              <div className="shrink-0 bg-slate-950 text-emerald-400 px-4 py-2.5 rounded-xl text-xs font-extrabold border border-emerald-500/30">
+              <div className="shrink-0 bg-[#081024] text-amber-300 px-4 py-2.5 rounded-xl text-xs font-extrabold border border-amber-400/35">
                 {guideLang === 'si'
                   ? 'PDF (.pdf) සහ Images (.png, .jpg, .webp) සඳහා සහය දක්වයි'
                   : 'Supports PDF (.pdf) & Images (.png, .jpg, .webp)'}
@@ -1937,32 +1937,32 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               {activeFormatMatrix.map((slot) => (
                 <div
                   key={slot.code}
-                  className="rounded-2xl bg-white/85 border border-slate-200/80 p-4 flex flex-col justify-between shadow-2xs"
+                  className="rounded-2xl bg-white/90 border border-slate-200/80 p-4 flex flex-col justify-between shadow-2xs"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="px-2.5 py-0.5 rounded-md bg-slate-950 text-emerald-400 font-mono text-[11px] font-black">
+                      <span className="px-2.5 py-0.5 rounded-md bg-[#081024] text-amber-300 font-mono text-[11px] font-black">
                         {slot.code}
                       </span>
-                      <span className="text-[11px] font-bold text-emerald-700">
+                      <span className="text-[11px] font-bold text-amber-700">
                         {guideLang === 'si' ? 'PDF / Image Upload කාණ්ඩය' : 'PDF / Image Upload Slot'}
                       </span>
                     </div>
-                    <h3 className="text-sm font-black text-slate-950">{slot.title}</h3>
+                    <h3 className="text-sm font-black text-[#081024]">{slot.title}</h3>
                     <p className="text-[11px] text-slate-600 mt-1 font-medium">
                       {slot.structure}
                     </p>
                   </div>
 
                   <div className="mt-3.5 pt-3 border-t border-slate-200/80">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-sky-700 mb-1.5">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 mb-1.5">
                       {guideLang === 'si'
                         ? 'මෙම Format එක බලපාන Sections (This Format Affects To):'
                         : 'This Format Affects To (Printed Sections):'}
                     </div>
                     <div className="space-y-1">
                       {slot.affectsTo.map((sec) => (
-                        <div key={sec} className="flex items-start gap-1.5 text-xs text-slate-800 font-semibold">
+                        <div key={sec} className="flex items-start gap-1.5 text-xs text-[#081024] font-semibold">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                           <span>{sec}</span>
                         </div>
@@ -1975,8 +1975,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
 
             {/* 3 Render Modes Explanation */}
             <div className="mt-5 pt-4 border-t border-slate-200/80 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <div className="rounded-xl bg-white/85 border border-slate-200/80 p-3.5">
-                <div className="font-extrabold text-slate-950">
+              <div className="rounded-xl bg-white/90 border border-slate-200/80 p-3.5">
+                <div className="font-extrabold text-[#081024]">
                   {guideLang === 'si'
                     ? 'ක්‍රමය A: Extracted Header Banner + System Table'
                     : 'Mode A: Extracted Header Banner + System Table'}
@@ -1987,8 +1987,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     : 'Crops your uploaded PDF/Image letterhead banner at the top (adjustable 10%–45% crop height) and renders a crisp, brand-colored system table and 3-column signature block below.'}
                 </p>
               </div>
-              <div className="rounded-xl bg-white/85 border border-slate-200/80 p-3.5">
-                <div className="font-extrabold text-slate-950">
+              <div className="rounded-xl bg-white/90 border border-slate-200/80 p-3.5">
+                <div className="font-extrabold text-[#081024]">
                   {guideLang === 'si'
                     ? 'ක්‍රමය B: Full Uploaded Form Background Watermark'
                     : 'Mode B: Full Uploaded Form Background Watermark'}
@@ -1999,8 +1999,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     : 'Uses your entire uploaded A4 page as the background stationery/watermark and overlays live system data, tables, and signature blocks cleanly on top.'}
                 </p>
               </div>
-              <div className="rounded-xl bg-white/85 border border-slate-200/80 p-3.5">
-                <div className="font-extrabold text-slate-950">
+              <div className="rounded-xl bg-white/90 border border-slate-200/80 p-3.5">
+                <div className="font-extrabold text-[#081024]">
                   {guideLang === 'si'
                     ? 'ක්‍රමය C: Smart Reconstructed Digital Grid'
                     : 'Mode C: Smart Reconstructed Digital Grid'}
@@ -2018,15 +2018,15 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 break-inside-avoid">
             {/* Complete Platform Features Overview */}
             <div className="lg:col-span-7 rounded-[24px] landing-glass-card-light p-6 sm:p-8">
-              <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-700 mb-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 mb-2">
+                <FileSpreadsheet className="w-4 h-4 text-amber-600" />
                 <span>
                   {guideLang === 'si'
                     ? 'සම්පූර්ණ පද්ධති විශේෂාංග ලැයිස්තුව'
                     : 'Complete Module & Feature Checklist'}
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-black text-[#081024] tracking-tight">
                 {guideLang === 'si'
                   ? 'සෑම ආයතන ගිණුමකටම ඇතුළත් සියලුම පහසුකම්'
                   : 'Everything Included in Every Workspace'}
@@ -2040,11 +2040,11 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               <div className="mt-5 space-y-5">
                 {activeFeatureList.map((sec) => (
                   <div key={sec.group} className="pt-4 first:pt-0 border-t first:border-t-0 border-slate-200/80">
-                    <h3 className="text-xs font-black text-slate-950 mb-2.5">{sec.group}</h3>
+                    <h3 className="text-xs font-black text-[#081024] mb-2.5">{sec.group}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {sec.items.map((item) => (
                         <div key={item} className="flex items-start gap-2 text-xs text-slate-700 font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                           <span>{item}</span>
                         </div>
                       ))}
@@ -2057,13 +2057,13 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
             {/* Staff Role & Branch-Lock Guide */}
             <div className="lg:col-span-5 rounded-[24px] landing-glass-card-light p-6 sm:p-8 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-700 mb-2">
-                  <Lock className="w-4 h-4 text-emerald-600" />
+                <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 mb-2">
+                  <Lock className="w-4 h-4 text-amber-600" />
                   <span>
                     {guideLang === 'si' ? 'නිලධාරී බලතල සහ ආරක්ෂාව' : 'Staff Access Control Guide'}
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black text-[#081024] tracking-tight">
                   {guideLang === 'si' ? 'නිලධාරී ගිණුම් ක්‍රියාත්මක වන ආකාරය' : 'How Staff Roles Work'}
                 </h2>
                 <p className="text-xs text-slate-600 mt-1 font-medium">
@@ -2073,9 +2073,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                 </p>
 
                 <div className="mt-5 space-y-4">
-                  <div className="rounded-2xl bg-white/85 border border-slate-200/80 p-4 shadow-2xs">
-                    <div className="flex items-center gap-2 text-xs font-black text-slate-950">
-                      <UserCheck className="w-4 h-4 text-emerald-600" />
+                  <div className="rounded-2xl bg-white/90 border border-slate-200/80 p-4 shadow-2xs">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#081024]">
+                      <UserCheck className="w-4 h-4 text-amber-600" />
                       <span>
                         {guideLang === 'si'
                           ? 'ප්‍රධාන කාර්යාල පරිපාලක (Central HQ Admin / Store Manager)'
@@ -2089,9 +2089,9 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-white/85 border border-slate-200/80 p-4 shadow-2xs">
-                    <div className="flex items-center gap-2 text-xs font-black text-slate-950">
-                      <Truck className="w-4 h-4 text-sky-600" />
+                  <div className="rounded-2xl bg-white/90 border border-slate-200/80 p-4 shadow-2xs">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#081024]">
+                      <Truck className="w-4 h-4 text-sky-700" />
                       <span>
                         {guideLang === 'si'
                           ? 'ශාඛා වැඩබිම් පරීක්ෂක / ගබඩා භාරකරු (Site Branch Supervisor)'
@@ -2113,7 +2113,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   <button
                     type="button"
                     onClick={onOpenSignup}
-                    className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-slate-950 hover:bg-slate-900 text-emerald-400 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap shadow-sm"
+                    className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-[#081024] hover:bg-[#0f1d3d] text-amber-300 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap shadow-sm"
                   >
                     <span>
                       {guideLang === 'si' ? 'දින 7ක නොමිලේ ගිණුම අරඹන්න' : 'Start 7-Day Free Trial'}
@@ -2123,7 +2123,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                   <button
                     type="button"
                     onClick={onOpenLogin}
-                    className="w-full sm:w-auto py-3 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-900 border border-slate-300 font-bold text-xs cursor-pointer transition whitespace-nowrap"
+                    className="w-full sm:w-auto py-3 px-4 rounded-xl bg-white hover:bg-slate-50 text-[#081024] border border-slate-300 font-bold text-xs cursor-pointer transition whitespace-nowrap"
                   >
                     {guideLang === 'si' ? 'පද්ධතියට පිවිසෙන්න (Login)' : 'Client Login'}
                   </button>

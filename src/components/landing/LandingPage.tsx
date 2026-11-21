@@ -743,42 +743,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
   ];
 
+  const isPolicyTabActive =
+    activeLandingTab === 'privacy' || activeLandingTab === 'refund' || activeLandingTab === 'terms';
+
   return (
-    <div className="min-h-screen construction-blueprint-canvas text-white flex flex-col font-sans selection:bg-emerald-400 selection:text-slate-950 overflow-x-hidden relative">
-      {/* Crisp Luminous Sky & Emerald Glass Refraction Glows (Zero Dusty Haze) */}
+    <div className="min-h-screen construction-blueprint-canvas text-white flex flex-col font-sans selection:bg-amber-400 selection:text-[#071026] overflow-x-hidden relative">
+      {/* Crisp Luminous Sapphire & Soft Gold Glass Refraction Glows (Zero Dusty Haze) */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 no-print">
-        <div className="absolute -top-32 -left-24 w-[560px] h-[560px] rounded-full bg-gradient-to-br from-sky-400/20 via-cyan-500/8 to-transparent blur-[130px]" />
-        <div className="absolute top-1/5 -right-28 w-[540px] h-[540px] rounded-full bg-gradient-to-bl from-emerald-400/18 via-teal-500/10 to-transparent blur-[130px]" />
-        <div className="absolute bottom-1/6 left-1/4 w-[520px] h-[520px] rounded-full bg-gradient-to-tr from-indigo-500/16 via-sky-400/8 to-transparent blur-[135px]" />
+        <div className="absolute -top-32 -left-24 w-[560px] h-[560px] rounded-full bg-gradient-to-br from-sky-400/16 via-blue-500/8 to-transparent blur-[130px]" />
+        <div className="absolute top-1/5 -right-28 w-[520px] h-[520px] rounded-full bg-gradient-to-bl from-amber-400/12 via-yellow-400/6 to-transparent blur-[130px]" />
+        <div className="absolute bottom-1/6 left-1/4 w-[540px] h-[540px] rounded-full bg-gradient-to-tr from-blue-600/16 via-sky-400/8 to-transparent blur-[135px]" />
       </div>
 
-      {/* Top Specular Glass Light Rule */}
-      <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-emerald-400/80 to-transparent relative z-50 no-print" />
+      {/* Top Specular Gold Crystal Rule */}
+      <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400/85 to-transparent relative z-50 no-print" />
 
-      {/* Sticky Translucent Crystal Glass Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-[#070b14]/72 backdrop-blur-2xl border-b border-white/12 shadow-[0_12px_36px_-12px_rgba(0,0,0,0.6)] no-print">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-6">
-          {/* Zone 1: Clean Brand Wordmark */}
+      {/* Sticky Translucent Frosted Sapphire Glass Navigation Bar */}
+      <header className="sticky top-0 z-40 bg-[#060c1d]/78 backdrop-blur-2xl border-b border-white/12 shadow-[0_14px_38px_-12px_rgba(2,6,18,0.72)] no-print">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+          {/* Zone 1: Brand Wordmark */}
           <button
             type="button"
             onClick={() => handleSwitchToOverviewSection()}
             className="flex items-center gap-2 sm:gap-2.5 whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-1 ring-white/40">
-              <Boxes className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950 stroke-[2.25]" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/25 ring-1 ring-white/45">
+              <Boxes className="w-4 h-4 sm:w-5 sm:h-5 text-[#071026] stroke-[2.25]" />
             </div>
             <span className="font-black text-base sm:text-lg text-white tracking-tight">Apex Stock</span>
           </button>
 
-          {/* Zone 2: Primary Top Tabs & Concise Section Links */}
-          <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-200">
+          {/* Zone 2: Primary Top Tabs & Section Links */}
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-xs font-bold text-slate-200">
             <button
               type="button"
               onClick={() => handleSwitchToOverviewSection()}
               className={`transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1 ${
                 activeLandingTab === 'overview'
-                  ? 'text-emerald-300 border-b-2 border-emerald-400 font-extrabold'
-                  : 'hover:text-emerald-300'
+                  ? 'text-amber-300 border-b-2 border-amber-400 font-extrabold'
+                  : 'hover:text-amber-300'
               }`}
             >
               Overview
@@ -789,27 +792,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               onClick={handleOpenGuideTab}
               className={`flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1 ${
                 activeLandingTab === 'guide'
-                  ? 'text-emerald-300 border-b-2 border-emerald-400 font-extrabold'
-                  : 'text-slate-200 hover:text-emerald-300'
+                  ? 'text-amber-300 border-b-2 border-amber-400 font-extrabold'
+                  : 'text-slate-200 hover:text-amber-300'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
               <span>User Guide & Features</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSwitchToOverviewSection('intro-video')}
-              className="flex items-center gap-1.5 hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
+              className="flex items-center gap-1.5 hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
             >
-              <Play className="w-3.5 h-3.5 text-sky-400 fill-sky-400" />
+              <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
               <span>Intro Video</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSwitchToOverviewSection('industries')}
-              className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
+              className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
             >
               Industries
             </button>
@@ -817,7 +820,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             <button
               type="button"
               onClick={() => handleSwitchToOverviewSection('features')}
-              className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
+              className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
             >
               Capabilities
             </button>
@@ -825,9 +828,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             <button
               type="button"
               onClick={() => handleSwitchToOverviewSection('pricing')}
-              className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
+              className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1"
             >
               Pricing
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOpenPolicyTab('privacy')}
+              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-1 ${
+                isPolicyTabActive
+                  ? 'text-amber-300 border-b-2 border-amber-400 font-extrabold'
+                  : 'text-slate-200 hover:text-amber-300'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span>Our Policy</span>
             </button>
           </nav>
 
@@ -838,18 +854,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-white bg-white/[0.08] hover:bg-white/[0.15] backdrop-blur-xl border border-white/20 rounded-xl transition flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
               title="Client Login"
             >
-              <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+              <LogIn className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden sm:inline">Client </span>
               <span>Login</span>
             </button>
 
             <button
               onClick={() => setIsSignupOpen(true)}
-              className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1 sm:gap-1.5 shadow-lg shadow-emerald-500/25 ring-1 ring-white/40 transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-[#071026] font-black rounded-xl text-xs flex items-center gap-1 sm:gap-1.5 shadow-lg shadow-amber-500/25 ring-1 ring-white/45 transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             >
               <span className="hidden sm:inline">Start {pricingMetrics.trialDays}-Day </span>
               <span>Free Trial</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#071026] stroke-[2.5]" />
             </button>
           </div>
         </div>
@@ -857,35 +873,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
       {/* Mobile / Tablet Quick Top Tab Switcher (Visible below lg breakpoint) */}
       <div className="lg:hidden relative z-30 max-w-7xl w-full mx-auto px-3 sm:px-4 pt-2 sm:pt-3 no-print">
-        <div className="grid grid-cols-2 gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-white/[0.06] backdrop-blur-2xl border border-white/15 shadow-lg">
+        <div className="grid grid-cols-3 gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-[#08122b]/75 backdrop-blur-2xl border border-white/15 shadow-lg">
           <button
             type="button"
             onClick={() => handleSwitchToOverviewSection()}
             className={`py-1.5 sm:py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-extrabold transition cursor-pointer whitespace-nowrap text-center ${
               activeLandingTab === 'overview'
-                ? 'bg-emerald-400 text-slate-950 shadow-sm'
+                ? 'bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] shadow-sm'
                 : 'text-slate-200 hover:text-white'
             }`}
           >
-            Platform Overview
+            Overview
           </button>
           <button
             type="button"
             onClick={handleOpenGuideTab}
             className={`py-1.5 sm:py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition cursor-pointer whitespace-nowrap ${
               activeLandingTab === 'guide'
-                ? 'bg-emerald-400 text-slate-950 shadow-sm'
+                ? 'bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] shadow-sm'
                 : 'text-slate-200 hover:text-white'
             }`}
           >
-            <BookOpen className={`w-3.5 h-3.5 ${activeLandingTab === 'guide' ? 'text-slate-950' : 'text-emerald-400'}`} />
-            <span>User Guide & PDF</span>
+            <BookOpen className={`w-3.5 h-3.5 shrink-0 ${activeLandingTab === 'guide' ? 'text-[#071026]' : 'text-amber-400'}`} />
+            <span>User Guide</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenPolicyTab('privacy')}
+            className={`py-1.5 sm:py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-extrabold flex items-center justify-center gap-1 sm:gap-1.5 transition cursor-pointer whitespace-nowrap ${
+              isPolicyTabActive
+                ? 'bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] shadow-sm'
+                : 'text-slate-200 hover:text-white'
+            }`}
+          >
+            <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isPolicyTabActive ? 'text-[#071026]' : 'text-amber-400'}`} />
+            <span>Our Policy</span>
           </button>
         </div>
       </div>
 
       {/* ==================== CONDITIONAL VIEW: LEGAL POLICIES, USER GUIDE TAB OR MAIN OVERVIEW ==================== */}
-      {activeLandingTab === 'privacy' || activeLandingTab === 'refund' || activeLandingTab === 'terms' ? (
+      {isPolicyTabActive ? (
         <LegalPoliciesView
           activePolicy={activeLandingTab}
           onSelectPolicy={handleOpenPolicyTab}
@@ -900,28 +928,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
         />
       ) : (
         <>
-          {/* ==================== HERO SECTION (CRYSTAL FROSTED LIQUID GLASS STAGE) ==================== */}
+          {/* ==================== HERO SECTION (FROSTED ROYAL SAPPHIRE LIQUID GLASS STAGE) ==================== */}
           <section className="relative pt-6 pb-14 sm:pt-12 sm:pb-20 z-10">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 text-center">
-              {/* Frosted Smoked Crystal Glass Stage */}
+              {/* Smoked Royal Sapphire Frosted Glass Stage */}
               <div className="relative rounded-2xl sm:rounded-[32px] landing-glass-card p-4 sm:p-10 lg:p-14 overflow-hidden">
-                {/* Specular Top Prism Highlight & Subtle Interior Glass Reflections */}
-                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-300/80 to-transparent" />
-                <div className="absolute -top-24 left-1/5 w-96 h-96 rounded-full bg-gradient-to-br from-sky-400/18 via-cyan-300/6 to-transparent blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-24 right-1/5 w-96 h-96 rounded-full bg-gradient-to-tl from-emerald-400/18 via-teal-400/8 to-transparent blur-3xl pointer-events-none" />
+                {/* Specular Top Gold-Sapphire Prism Highlight */}
+                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
+                <div className="absolute -top-24 left-1/5 w-96 h-96 rounded-full bg-gradient-to-br from-sky-400/14 via-blue-400/6 to-transparent blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-24 right-1/5 w-96 h-96 rounded-full bg-gradient-to-tl from-amber-400/14 via-yellow-300/6 to-transparent blur-3xl pointer-events-none" />
 
                 {/* Clean Editorial Kicker */}
                 <div className="relative z-10 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-bold text-slate-200 tracking-wide mb-4 sm:mb-5">
-                  <HardHat className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                  <HardHat className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
                   <span>Built for Construction, EPC, Telecom & Multi-Site Contractors</span>
                   <span aria-hidden="true" className="text-white/35">·</span>
-                  <span className="text-emerald-300 font-extrabold">{pricingMetrics.trialDays}-Day Unrestricted Free Trial</span>
+                  <span className="text-amber-300 font-extrabold">{pricingMetrics.trialDays}-Day Unrestricted Free Trial</span>
                 </div>
 
                 {/* High-Impact Display Headline */}
                 <h1 className="relative z-10 text-2xl sm:text-5xl lg:text-[54px] font-black text-white tracking-tight leading-[1.18] sm:leading-[1.13] max-w-4xl mx-auto text-balance">
                   Complete Inventory Control Across All Your{' '}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-sky-300">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-200">
                     Warehouses, Project Sites & Field Teams
                   </span>
                 </h1>
@@ -931,7 +959,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   Stop losing track of construction materials, tools, and site stock across spreadsheets. Manage your{' '}
                   <strong className="text-white font-bold">Central Warehouse</strong>,{' '}
                   <strong className="text-white font-bold">Regional Site Branches</strong>,{' '}
-                  <strong className="text-emerald-300 font-bold">Client-Supplied Free Materials</strong>,{' '}
+                  <strong className="text-amber-300 font-bold">Client-Supplied Free Materials</strong>,{' '}
                   <strong className="text-white font-bold">Heavy Machinery Fleets</strong>, and{' '}
                   <strong className="text-white font-bold">Daily Crew Dispatches</strong> in one real-time cloud workspace.
                 </p>
@@ -939,22 +967,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 {/* 4 Core Operational Pillars (Clean Unboxed Strip) */}
                 <div className="relative z-10 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-white/12 flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-2 max-w-4xl mx-auto text-[11px] sm:text-xs font-bold text-slate-200">
                   <span className="flex items-center gap-1.5">
-                    <Warehouse className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400" />
+                    <Warehouse className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
                     <span>Central & Branch Warehouses</span>
                   </span>
                   <span aria-hidden="true" className="hidden sm:inline text-white/30">·</span>
                   <span className="flex items-center gap-1.5">
-                    <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                    <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-300" />
                     <span>Client-Supplied Free Materials</span>
                   </span>
                   <span aria-hidden="true" className="hidden sm:inline text-white/30">·</span>
                   <span className="flex items-center gap-1.5">
-                    <Users2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400" />
+                    <Users2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
                     <span>Field Crew In-Hand Tracking</span>
                   </span>
                   <span aria-hidden="true" className="hidden sm:inline text-white/30">·</span>
                   <span className="flex items-center gap-1.5">
-                    <FolderKanban className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                    <FolderKanban className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-300" />
                     <span>Project Usage Reconciliation</span>
                   </span>
                 </div>
@@ -963,40 +991,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <div className="relative z-10 mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3.5 max-w-md sm:max-w-none mx-auto">
                   <button
                     onClick={() => setIsSignupOpen(true)}
-                    className="w-full sm:w-auto px-5 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 sm:gap-2.5 shadow-xl shadow-emerald-500/25 ring-1 ring-white/40 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                    className="w-full sm:w-auto px-5 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-[#071026] font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 sm:gap-2.5 shadow-xl shadow-amber-500/25 ring-1 ring-white/45 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                   >
                     <span>Start {pricingMetrics.trialDays}-Day Free Trial</span>
-                    <span className="text-slate-900/80 font-bold text-[11px] sm:text-xs">($0 Today)</span>
-                    <ArrowRight className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+                    <span className="text-[#071026]/75 font-bold text-[11px] sm:text-xs">($0 Today)</span>
+                    <ArrowRight className="w-4 h-4 text-[#071026] stroke-[2.5]" />
                   </button>
 
                   <button
                     onClick={onOpenLogin}
                     className="w-full sm:w-auto px-4 sm:px-6 py-3 sm:py-3.5 bg-white/[0.08] hover:bg-white/[0.15] backdrop-blur-xl text-white border border-white/25 font-extrabold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] cursor-pointer whitespace-nowrap"
                   >
-                    <LogIn className="w-4 h-4 text-emerald-400" />
+                    <LogIn className="w-4 h-4 text-amber-400" />
                     <span>Client Sign In / Workspace Login</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleOpenGuideTab}
-                    className="w-full sm:w-auto px-4 sm:px-5 py-3 sm:py-3.5 bg-sky-400/12 hover:bg-sky-400/20 backdrop-blur-xl text-sky-200 border border-sky-300/30 font-extrabold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer whitespace-nowrap"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-3 sm:py-3.5 bg-amber-400/12 hover:bg-amber-400/20 backdrop-blur-xl text-amber-200 border border-amber-300/35 font-extrabold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer whitespace-nowrap"
                   >
-                    <BookOpen className="w-4 h-4 text-sky-300" />
+                    <BookOpen className="w-4 h-4 text-amber-300" />
                     <span>Read Full User Guide & PDF</span>
                   </button>
                 </div>
 
-                {/* Trust Guarantees (Clean Editorial Inline Metadata) */}
+                {/* Trust Guarantees */}
                 <div className="relative z-10 mt-5 sm:mt-6 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-[11px] sm:text-xs font-semibold text-slate-300">
                   <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
                     <span>60-Second Workspace Setup</span>
                   </span>
                   <span aria-hidden="true" className="text-slate-500">·</span>
                   <span className="flex items-center gap-1.5 text-white font-bold">
-                    <CreditCard className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <CreditCard className="w-3.5 h-3.5 text-sky-300 shrink-0" />
                     <span>No Credit Card Required</span>
                   </span>
                   <span aria-hidden="true" className="text-slate-500">·</span>
@@ -1010,14 +1038,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 {/* Official Landscape Introduction Video Showcase */}
                 <div
                   id="intro-video"
-                  className="relative z-10 mt-8 sm:mt-10 rounded-2xl sm:rounded-[26px] bg-white/[0.06] backdrop-blur-xl p-2 sm:p-3 border border-white/20 shadow-[0_24px_60px_-14px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.22)] max-w-4xl mx-auto scroll-mt-24"
+                  className="relative z-10 mt-8 sm:mt-10 rounded-2xl sm:rounded-[26px] bg-white/[0.06] backdrop-blur-xl p-2 sm:p-3 border border-white/20 shadow-[0_24px_60px_-14px_rgba(2,6,18,0.8),inset_0_1px_0_rgba(255,255,255,0.22)] max-w-4xl mx-auto scroll-mt-24"
                 >
-                  <div className="bg-[#080d1a]/90 rounded-xl sm:rounded-[20px] border border-white/12 overflow-hidden">
+                  <div className="bg-[#060c1d]/95 rounded-xl sm:rounded-[20px] border border-white/12 overflow-hidden">
                     {/* Video Frame Top Header Bar */}
                     <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-white/[0.04] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 text-left">
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-400 text-slate-950">
-                          <Play className="w-3.5 h-3.5 fill-slate-950" />
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026]">
+                          <Play className="w-3.5 h-3.5 fill-[#071026]" />
                         </span>
                         <div>
                           <span className="text-xs sm:text-sm font-extrabold text-white tracking-tight">
@@ -1028,13 +1056,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                           </span>
                         </div>
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-sky-300">
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-300">
                         16:9 HD Landscape
                       </span>
                     </div>
 
                     {/* 16:9 Landscape Video Container */}
-                    <div className="relative aspect-video w-full bg-[#050811] overflow-hidden">
+                    <div className="relative aspect-video w-full bg-[#040814] overflow-hidden">
                       {!isIntroVideoPlaying ? (
                         <button
                           type="button"
@@ -1054,13 +1082,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                             className="w-full h-full object-cover opacity-85 group-hover:scale-[1.02] group-hover:opacity-95 transition-all duration-300"
                           />
 
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#050811]/85 via-[#090f1e]/35 to-[#050811]/40 transition-opacity group-hover:opacity-75" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#040814]/85 via-[#09132c]/35 to-[#040814]/40 transition-opacity group-hover:opacity-75" />
 
                           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 group-hover:from-emerald-300 group-hover:to-teal-300 text-slate-950 flex items-center justify-center shadow-[0_0_45px_rgba(16,185,129,0.55)] ring-4 ring-white/30 group-hover:scale-110 transition-all duration-200">
-                              <Play className="w-7 h-7 sm:w-9 sm:h-9 fill-slate-950 text-slate-950 ml-1" />
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 group-hover:from-amber-200 group-hover:to-amber-400 text-[#071026] flex items-center justify-center shadow-[0_0_45px_rgba(251,191,36,0.5)] ring-4 ring-white/35 group-hover:scale-110 transition-all duration-200">
+                              <Play className="w-7 h-7 sm:w-9 sm:h-9 fill-[#071026] text-[#071026] ml-1" />
                             </div>
-                            <span className="mt-3 sm:mt-4 px-4 py-1.5 rounded-full bg-slate-950/75 backdrop-blur-xl border border-white/25 text-white text-xs sm:text-sm font-extrabold tracking-wide shadow-lg">
+                            <span className="mt-3 sm:mt-4 px-4 py-1.5 rounded-full bg-[#060c1d]/80 backdrop-blur-xl border border-amber-300/40 text-white text-xs sm:text-sm font-extrabold tracking-wide shadow-lg">
                               Click to Play Introduction Video
                             </span>
                           </div>
@@ -1079,16 +1107,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </div>
                 </div>
 
-                {/* Executive Site Operations Preview Console (Frosted Obsidian Glass) */}
-                <div className="relative z-10 mt-6 sm:mt-8 rounded-2xl sm:rounded-[24px] bg-white/[0.05] backdrop-blur-xl p-2 sm:p-3 border border-white/18 shadow-[0_24px_56px_-14px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.2)] max-w-5xl mx-auto">
-                  <div className="bg-gradient-to-br from-[#090f1d]/95 via-[#0c1426]/95 to-[#070b15]/95 rounded-xl sm:rounded-[18px] border border-white/10 p-3.5 sm:p-6 text-left relative overflow-hidden">
-                    <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-sky-400/12 blur-3xl pointer-events-none" />
+                {/* Executive Site Operations Preview Console (Frosted Royal Sapphire Glass) */}
+                <div className="relative z-10 mt-6 sm:mt-8 rounded-2xl sm:rounded-[24px] bg-white/[0.06] backdrop-blur-xl p-2 sm:p-3 border border-white/18 shadow-[0_24px_56px_-14px_rgba(2,6,18,0.75),inset_0_1px_0_rgba(255,255,255,0.2)] max-w-5xl mx-auto">
+                  <div className="bg-gradient-to-br from-[#071026]/95 via-[#0b1838]/95 to-[#060d20]/95 rounded-xl sm:rounded-[18px] border border-white/10 p-3.5 sm:p-6 text-left relative overflow-hidden">
+                    <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
                     {/* Top window bar */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 sm:pb-4 border-b border-white/10 mb-4 sm:mb-5 relative z-10">
                       <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-white/25" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-sky-300/60" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-400/85" />
                         <span className="text-[11px] sm:text-xs text-slate-300 font-mono ml-1.5 sm:ml-2 truncate max-w-[200px] sm:max-w-none">
                           apex-stock-cloud / site-operations-control
                         </span>
@@ -1096,40 +1124,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-semibold text-slate-300">
                         <span>Client Stock Synced</span>
                         <span aria-hidden="true" className="text-slate-500">·</span>
-                        <span className="text-emerald-300">Multi-Site Active</span>
+                        <span className="text-amber-300">Multi-Site Active</span>
                       </div>
                     </div>
 
                     {/* Live Preview KPIs */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-3.5 sm:mb-4 relative z-10">
-                      <div className="bg-white/[0.05] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                      <div className="bg-white/[0.06] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
                         <div className="text-[11px] text-slate-300 font-semibold">Central Warehouse Stock</div>
                         <div className="text-lg sm:text-xl font-black text-white mt-0.5 font-mono tabular-nums">
                           24,580 <span className="text-xs font-normal text-slate-300">units</span>
                         </div>
-                        <div className="text-[10px] text-sky-300 font-semibold mt-1">Materials & Machinery Fleet</div>
+                        <div className="text-[10px] text-amber-300 font-semibold mt-1">Materials & Machinery Fleet</div>
                       </div>
-                      <div className="bg-white/[0.05] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                      <div className="bg-white/[0.06] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
                         <div className="text-[11px] text-slate-300 font-semibold">Client-Supplied Stock</div>
-                        <div className="text-lg sm:text-xl font-black text-emerald-300 mt-0.5 font-mono tabular-nums">12,400 m</div>
+                        <div className="text-lg sm:text-xl font-black text-amber-300 mt-0.5 font-mono tabular-nums">12,400 m</div>
                         <div className="text-[10px] text-slate-300 mt-1">Free-Issue Project Materials</div>
                       </div>
-                      <div className="bg-white/[0.05] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                      <div className="bg-white/[0.06] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
                         <div className="text-[11px] text-slate-300 font-semibold">Active Sites & Crews</div>
                         <div className="text-lg sm:text-xl font-black text-white mt-0.5 font-mono tabular-nums">6 Sites · 18 Crews</div>
-                        <div className="text-[10px] text-emerald-400 font-semibold mt-1">Live In-Hand Custody</div>
+                        <div className="text-[10px] text-sky-300 font-semibold mt-1">Live In-Hand Custody</div>
                       </div>
-                      <div className="bg-white/[0.05] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                      <div className="bg-white/[0.06] border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
                         <div className="text-[11px] text-slate-300 font-semibold">Project Reconciliations</div>
-                        <div className="text-lg sm:text-xl font-black text-sky-300 mt-0.5 font-mono tabular-nums">100% Audited</div>
+                        <div className="text-lg sm:text-xl font-black text-amber-300 mt-0.5 font-mono tabular-nums">100% Audited</div>
                         <div className="text-[10px] text-slate-300 mt-1">Multi-Crew BOQ & WBS</div>
                       </div>
                     </div>
 
                     {/* Smart Priority Strip */}
-                    <div className="bg-white/[0.04] border border-emerald-400/25 rounded-xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-xs relative z-10">
+                    <div className="bg-white/[0.045] border border-amber-400/25 rounded-xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-xs relative z-10">
                       <div className="flex items-start sm:items-center gap-2">
-                        <span className="text-[11px] font-extrabold text-emerald-300 shrink-0">
+                        <span className="text-[11px] font-extrabold text-amber-300 shrink-0">
                           Smart Stock Deduction:
                         </span>
                         <span className="text-slate-200 text-[11px]">
@@ -1146,19 +1174,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             </div>
           </section>
 
-          {/* ==================== SECTION 1: WHO IS THIS BUILT FOR? (#industries — ARCTIC FROSTED PORCELAIN GLASS BAND) ==================== */}
+          {/* ==================== SECTION 1: WHO IS THIS BUILT FOR? (#industries — CRISP PEARL PORCELAIN GLASS BAND) ==================== */}
           <section
             id="industries"
-            className="py-12 sm:py-22 relative z-10 bg-gradient-to-b from-[#edf4fb] via-[#f5f9fe] to-[#eaf6f3] text-slate-900 border-y border-white/80"
+            className="py-12 sm:py-22 relative z-10 bg-gradient-to-b from-[#f3f6fc] via-[#ffffff] to-[#eff4fb] text-slate-900 border-y border-white/80"
           >
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
               {/* Section Header */}
               <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
-                <div className="text-xs font-extrabold text-emerald-700 tracking-wide mb-2 flex items-center justify-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-emerald-600" />
+                <div className="text-xs font-extrabold text-amber-700 tracking-wide mb-2 flex items-center justify-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-amber-600" />
                   <span>Target Construction & Engineering Sectors</span>
                 </div>
-                <h2 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight text-balance">
+                <h2 className="text-2xl sm:text-4xl font-black text-[#081024] tracking-tight text-balance">
                   Built for Multi-Site Contractors, Civil Engineering & Warehousing
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 mt-2.5 font-semibold">
@@ -1177,15 +1205,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       onClick={() => setSelectedIndustryIdx(idx)}
                       className={`group relative overflow-hidden rounded-2xl sm:rounded-[24px] p-4 sm:p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                         isSelected
-                          ? 'bg-gradient-to-br from-[#070b14]/96 via-[#0c1426]/96 to-[#08151d]/96 backdrop-blur-2xl text-white border border-emerald-400/50 shadow-[0_24px_54px_-14px_rgba(16,185,129,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] -translate-y-0.5'
-                          : 'landing-glass-card-light hover:bg-white/95 text-slate-900 hover:border-emerald-400/50'
+                          ? 'bg-gradient-to-br from-[#071026]/98 via-[#0d1b3e]/98 to-[#060d20]/98 backdrop-blur-2xl text-white border border-amber-400/55 shadow-[0_24px_54px_-14px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.22)] -translate-y-0.5'
+                          : 'landing-glass-card-light hover:bg-white text-slate-900 hover:border-amber-400/55'
                       }`}
                     >
                       <div
                         className={`absolute top-0 inset-x-0 h-[2px] ${
                           isSelected
-                            ? 'bg-gradient-to-r from-emerald-400 via-sky-400 to-emerald-400'
-                            : 'bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent'
+                            ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300'
+                            : 'bg-gradient-to-r from-transparent via-amber-400/50 to-transparent'
                         }`}
                       />
 
@@ -1194,15 +1222,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                           <div
                             className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm ${
                               isSelected
-                                ? 'bg-gradient-to-br from-emerald-400 to-teal-400 text-slate-950'
-                                : 'bg-slate-900 text-emerald-400'
+                                ? 'bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026]'
+                                : 'bg-[#081024] text-amber-400'
                             }`}
                           >
                             <IconComponent className="w-5 h-5" />
                           </div>
                           <span
                             className={`text-[11px] font-bold ${
-                              isSelected ? 'text-emerald-300' : 'text-slate-500'
+                              isSelected ? 'text-amber-300' : 'text-slate-500'
                             }`}
                           >
                             {ind.badge}
@@ -1211,14 +1239,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                         <h3
                           className={`text-base font-black tracking-tight leading-snug ${
-                            isSelected ? 'text-white' : 'text-slate-950'
+                            isSelected ? 'text-white' : 'text-[#081024]'
                           }`}
                         >
                           {ind.title}
                         </h3>
                         <p
                           className={`text-[11px] font-bold mt-1 ${
-                            isSelected ? 'text-sky-300' : 'text-emerald-700'
+                            isSelected ? 'text-amber-200' : 'text-amber-700'
                           }`}
                         >
                           {ind.subtitle}
@@ -1241,12 +1269,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                           <div
                             key={feat}
                             className={`flex items-center gap-2 text-[11px] font-bold ${
-                              isSelected ? 'text-white' : 'text-slate-800'
+                              isSelected ? 'text-white' : 'text-[#081024]'
                             }`}
                           >
                             <CheckCircle2
                               className={`w-3.5 h-3.5 shrink-0 ${
-                                isSelected ? 'text-emerald-400' : 'text-emerald-600'
+                                isSelected ? 'text-amber-400' : 'text-amber-600'
                               }`}
                             />
                             <span>{feat}</span>
@@ -1260,14 +1288,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             </div>
           </section>
 
-          {/* ==================== SECTION 2: SYSTEM CAPABILITIES & 4-STEP WORKFLOW (#features — OBSIDIAN CRYSTAL GLASS) ==================== */}
+          {/* ==================== SECTION 2: SYSTEM CAPABILITIES & 4-STEP WORKFLOW (#features — FROSTED ROYAL SAPPHIRE GLASS) ==================== */}
           <section
             id="features"
             className="py-12 sm:py-22 relative z-10"
           >
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
               <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
-                <div className="text-xs font-extrabold text-emerald-300 tracking-wide mb-2">
+                <div className="text-xs font-extrabold text-amber-300 tracking-wide mb-2">
                   End-to-End Site & Warehouse Capabilities
                 </div>
                 <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight text-balance">
@@ -1308,7 +1336,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-mono font-bold text-emerald-300">
+                        <span className="text-[11px] font-mono font-bold text-amber-300">
                           {item.step}
                         </span>
                         <span className="text-xs font-mono text-slate-400 tabular-nums">0{idx + 1}/04</span>
@@ -1322,8 +1350,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
               {/* 6 Detailed Frosted Crystal Feature Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="landing-glass-card hover:bg-white/[0.09] hover:border-emerald-400/45 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-400 text-slate-950 flex items-center justify-center mb-4 shadow-md shadow-emerald-500/20">
+                <div className="landing-glass-card hover:bg-white/[0.08] hover:border-amber-400/50 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] flex items-center justify-center mb-4 shadow-md shadow-amber-500/20">
                     <Gift className="w-5 h-5" />
                   </div>
                   <h3 className="font-extrabold text-base text-white">
@@ -1334,7 +1362,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="landing-glass-card hover:bg-white/[0.09] hover:border-sky-400/45 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
+                <div className="landing-glass-card hover:bg-white/[0.08] hover:border-amber-400/50 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-white/[0.08] border border-sky-400/35 text-sky-300 flex items-center justify-center mb-4">
                     <FolderKanban className="w-5 h-5" />
                   </div>
@@ -1346,8 +1374,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="landing-glass-card hover:bg-white/[0.09] hover:border-emerald-400/45 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-400 to-cyan-400 text-slate-950 flex items-center justify-center mb-4 shadow-md shadow-sky-500/20">
+                <div className="landing-glass-card hover:bg-white/[0.08] hover:border-amber-400/50 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] flex items-center justify-center mb-4 shadow-md shadow-amber-500/20">
                     <Truck className="w-5 h-5" />
                   </div>
                   <h3 className="font-extrabold text-base text-white">
@@ -1358,8 +1386,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="landing-glass-card hover:bg-white/[0.09] hover:border-emerald-400/45 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
-                  <div className="w-11 h-11 rounded-xl bg-white/[0.08] border border-emerald-400/35 text-emerald-300 flex items-center justify-center mb-4">
+                <div className="landing-glass-card hover:bg-white/[0.08] hover:border-amber-400/50 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
+                  <div className="w-11 h-11 rounded-xl bg-white/[0.08] border border-amber-400/35 text-amber-300 flex items-center justify-center mb-4">
                     <Send className="w-5 h-5" />
                   </div>
                   <h3 className="font-extrabold text-base text-white">
@@ -1370,8 +1398,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="landing-glass-card hover:bg-white/[0.09] hover:border-sky-400/45 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-400 text-slate-950 flex items-center justify-center mb-4 shadow-md shadow-emerald-500/20">
+                <div className="landing-glass-card hover:bg-white/[0.08] hover:border-amber-400/50 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] flex items-center justify-center mb-4 shadow-md shadow-amber-500/20">
                     <Users2 className="w-5 h-5" />
                   </div>
                   <h3 className="font-extrabold text-base text-white">
@@ -1382,7 +1410,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </p>
                 </div>
 
-                <div className="landing-glass-card hover:bg-white/[0.09] hover:border-sky-400/45 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
+                <div className="landing-glass-card hover:bg-white/[0.08] hover:border-amber-400/50 rounded-2xl sm:rounded-[22px] p-5 sm:p-6 transition duration-200">
                   <div className="w-11 h-11 rounded-xl bg-white/[0.08] border border-sky-400/35 text-sky-300 flex items-center justify-center mb-4">
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
@@ -1395,17 +1423,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
               </div>
 
-              {/* Crisp Luminous Emerald Glass Callout Banner */}
-              <div className="mt-10 sm:mt-12 rounded-2xl bg-gradient-to-r from-emerald-400/90 via-teal-300/90 to-sky-300/90 backdrop-blur-xl text-slate-950 p-5 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl border border-white/60">
+              {/* Luminous Gold Crystal Callout Banner */}
+              <div className="mt-10 sm:mt-12 rounded-2xl bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 text-[#071026] p-5 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl border border-white/60">
                 <div className="flex items-start sm:items-center gap-3.5 text-left">
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-950 text-emerald-400 flex items-center justify-center shrink-0 shadow-md">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#071026] text-amber-300 flex items-center justify-center shrink-0 shadow-md">
                     <BookOpen className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm sm:text-base font-black text-slate-950">
+                    <h4 className="text-sm sm:text-base font-black text-[#071026]">
                       Want to see step-by-step how every module works in practice?
                     </h4>
-                    <p className="text-xs text-slate-900 font-semibold mt-0.5">
+                    <p className="text-xs text-[#071026]/85 font-semibold mt-0.5">
                       Explore our complete client-friendly System User Guide & Feature Handbook—or download it as an A4 PDF for your team.
                     </p>
                   </div>
@@ -1414,7 +1442,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <button
                   type="button"
                   onClick={handleOpenGuideTab}
-                  className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-emerald-300 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap shrink-0 shadow-md"
+                  className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-[#071026] hover:bg-[#0d1b3e] text-amber-300 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition whitespace-nowrap shrink-0 shadow-md"
                 >
                   <span>Open Full User Guide & PDF</span>
                   <ArrowRight className="w-4 h-4" />
@@ -1427,12 +1455,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           <section id="architecture" className="py-12 sm:py-20 relative z-10">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
               <div className="landing-glass-card rounded-2xl sm:rounded-[28px] p-4 sm:p-10 lg:p-12 text-white relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-sky-400/75 to-transparent" />
-                <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/75 to-transparent" />
+                <div className="absolute top-0 right-0 w-96 h-96 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative z-10">
                   <div>
-                    <div className="flex items-center gap-2 text-sky-300 text-xs font-bold mb-3">
+                    <div className="flex items-center gap-2 text-amber-300 text-xs font-bold mb-3">
                       <Database className="w-4 h-4" />
                       <span>Enterprise Multi-Tenancy & Data Security</span>
                     </div>
@@ -1445,7 +1473,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                     <div className="mt-7 space-y-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-lg bg-emerald-400/15 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-6 h-6 rounded-lg bg-amber-400/15 border border-amber-400/35 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
                           <CheckCheck className="w-4 h-4" />
                         </div>
                         <div>
@@ -1457,7 +1485,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
 
                       <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-lg bg-emerald-400/15 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-6 h-6 rounded-lg bg-amber-400/15 border border-amber-400/35 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
                           <CheckCheck className="w-4 h-4" />
                         </div>
                         <div>
@@ -1469,7 +1497,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
 
                       <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-lg bg-emerald-400/15 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-6 h-6 rounded-lg bg-amber-400/15 border border-amber-400/35 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
                           <CheckCheck className="w-4 h-4" />
                         </div>
                         <div>
@@ -1485,7 +1513,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   {/* Architecture Diagram Card */}
                   <div className="bg-white/[0.05] backdrop-blur-xl border border-white/15 rounded-2xl p-6 shadow-xl">
                     <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-                      <span className="text-xs font-mono text-emerald-300 font-bold flex items-center gap-2">
+                      <span className="text-xs font-mono text-amber-300 font-bold flex items-center gap-2">
                         <Layers className="w-4 h-4" />
                         <span>Tenant Data Isolation Model</span>
                       </span>
@@ -1493,7 +1521,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
 
                     <div className="space-y-3.5">
-                      <div className="p-4 rounded-xl bg-slate-950/70 border border-emerald-400/40">
+                      <div className="p-4 rounded-xl bg-[#050a18]/80 border border-amber-400/45">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white">Your Company Tenant Partition</span>
                           <span className="text-[10px] font-mono text-emerald-400 font-bold">
@@ -1508,7 +1536,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-slate-950/45 border border-white/10 opacity-75">
+                      <div className="p-4 rounded-xl bg-[#050a18]/45 border border-white/10 opacity-75">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-slate-300">Other Enterprise Client Partition</span>
                           <span className="text-[10px] font-mono text-slate-300">
@@ -1520,10 +1548,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                     <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
                       <span className="flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-sky-400" />
+                        <ShieldCheck className="w-4 h-4 text-amber-400" />
                         <span>Role-Based Access Control (RBAC)</span>
                       </span>
-                      <span className="text-emerald-300 font-bold">100% Protected</span>
+                      <span className="text-emerald-400 font-bold">100% Protected</span>
                     </div>
                   </div>
                 </div>
@@ -1531,17 +1559,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             </div>
           </section>
 
-          {/* ==================== SECTION 4: PRICING PLANS (#pricing — ARCTIC FROSTED GLASS BAND + OBSIDIAN CRYSTAL VIP CARD) ==================== */}
+          {/* ==================== SECTION 4: PRICING PLANS (#pricing — CRISP PEARL PORCELAIN GLASS BAND + SAPPHIRE VIP CARD) ==================== */}
           <section
             id="pricing"
-            className="py-12 sm:py-24 relative z-10 bg-gradient-to-b from-[#edf4fb] via-[#f6fafe] to-[#eaf6f3] text-slate-900 border-y border-white/80"
+            className="py-12 sm:py-24 relative z-10 bg-gradient-to-b from-[#f3f6fc] via-[#ffffff] to-[#eff4fb] text-slate-900 border-y border-white/80"
           >
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10">
               <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
-                <div className="text-xs font-extrabold text-emerald-700 tracking-wide mb-2">
+                <div className="text-xs font-extrabold text-amber-700 tracking-wide mb-2">
                   Clear & Transparent Enterprise Pricing
                 </div>
-                <h2 className="text-2xl sm:text-5xl font-black text-slate-950 tracking-tight text-balance">
+                <h2 className="text-2xl sm:text-5xl font-black text-[#081024] tracking-tight text-balance">
                   Choose the Plan That Fits Your Operations
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 mt-2.5 sm:mt-3 max-w-xl mx-auto font-semibold">
@@ -1552,29 +1580,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               {/* 3-Step Onboarding Strip */}
               <div className="max-w-4xl mx-auto mb-10 sm:mb-12 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 landing-glass-card-light rounded-2xl p-3 sm:p-4">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <span className="w-7 h-7 rounded-lg bg-slate-950 text-emerald-400 font-mono text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
+                  <span className="w-7 h-7 rounded-lg bg-[#081024] text-amber-300 font-mono text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
                     01
                   </span>
                   <div className="text-xs">
-                    <div className="font-extrabold text-slate-950">Sign Up in 60 Seconds</div>
+                    <div className="font-extrabold text-[#081024]">Sign Up in 60 Seconds</div>
                     <div className="text-[11px] text-slate-600">No credit card required</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 px-3 py-2 sm:border-x sm:border-slate-200/90">
-                  <span className="w-7 h-7 rounded-lg bg-slate-950 text-emerald-400 font-mono text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
+                  <span className="w-7 h-7 rounded-lg bg-[#081024] text-amber-300 font-mono text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
                     02
                   </span>
                   <div className="text-xs">
-                    <div className="font-extrabold text-slate-950">Test Everything for {pricingMetrics.trialDays} Days</div>
+                    <div className="font-extrabold text-[#081024]">Test Everything for {pricingMetrics.trialDays} Days</div>
                     <div className="text-[11px] text-slate-600">100% full modules unlocked</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <span className="w-7 h-7 rounded-lg bg-slate-950 text-emerald-400 font-mono text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
+                  <span className="w-7 h-7 rounded-lg bg-[#081024] text-amber-300 font-mono text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
                     03
                   </span>
                   <div className="text-xs">
-                    <div className="font-extrabold text-slate-950">Easy QR / Wire Activation</div>
+                    <div className="font-extrabold text-[#081024]">Easy QR / Wire Activation</div>
                     <div className="text-[11px] text-slate-600">All trial data stays intact</div>
                   </div>
                 </div>
@@ -1583,10 +1611,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               {/* 3 Pricing Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto items-stretch pt-2 sm:pt-4">
                 {/* Card 1: Free Trial */}
-                <div className="landing-glass-card-light hover:bg-white/95 rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col relative transition-all duration-200">
+                <div className="landing-glass-card-light hover:bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col relative transition-all duration-200">
                   <div className="mb-5 sm:mb-6">
                     <div className="text-xs font-bold text-slate-500">Risk-Free Evaluation</div>
-                    <h3 className="text-xl sm:text-2xl font-black text-slate-950 mt-1.5 sm:mt-2">
+                    <h3 className="text-xl sm:text-2xl font-black text-[#081024] mt-1.5 sm:mt-2">
                       {pricingMetrics.trialDays}-Day Free Trial
                     </h3>
                     <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">
@@ -1596,56 +1624,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                   <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl sm:text-5xl font-black text-slate-950 tabular-nums">$0</span>
+                      <span className="text-4xl sm:text-5xl font-black text-[#081024] tabular-nums">$0</span>
                       <span className="text-xs font-bold text-slate-500">/ {pricingMetrics.trialDays} days free</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-extrabold mt-2">
-                      <CreditCard className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-extrabold mt-2">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span>No credit card required to start</span>
                     </div>
                   </div>
 
                   <div className="space-y-3 sm:space-y-3.5 mb-6 sm:mb-8 flex-1 text-xs text-slate-800 font-semibold">
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Full access to all Enterprise modules</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Unlimited Site Branches & Field Teams</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Client-Supplied Free Stock & Client Register</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Excel & CSV bulk catalog import</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Official PDF Issue, DN & Requisition Notes</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Isolated private tenant database</span>
                     </div>
                   </div>
 
                   <button
                     onClick={() => setIsSignupOpen(true)}
-                    className="w-full py-3.5 bg-slate-950 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 shadow-sm whitespace-nowrap"
+                    className="w-full py-3.5 bg-[#081024] hover:bg-[#0f1d3d] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 shadow-sm whitespace-nowrap"
                   >
                     <span>Start {pricingMetrics.trialDays}-Day Free Trial</span>
-                    <ArrowRight className="w-4 h-4 text-emerald-400" />
+                    <ArrowRight className="w-4 h-4 text-amber-400" />
                   </button>
                 </div>
 
                 {/* Card 2: Pro Monthly Plan */}
-                <div className="landing-glass-card-light hover:bg-white/95 border-2 border-slate-900/20 rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col relative transition-all duration-200 shadow-[0_20px_48px_-14px_rgba(15,23,42,0.14)]">
+                <div className="landing-glass-card-light hover:bg-white border-2 border-[#081024]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col relative transition-all duration-200 shadow-[0_20px_48px_-14px_rgba(8,16,36,0.16)]">
                   <div className="mb-5 sm:mb-6">
                     <div className="text-xs font-extrabold text-sky-700">Standard Monthly Plan</div>
-                    <h3 className="text-xl sm:text-2xl font-black text-slate-950 mt-1.5 sm:mt-2">Pro Monthly</h3>
+                    <h3 className="text-xl sm:text-2xl font-black text-[#081024] mt-1.5 sm:mt-2">Pro Monthly</h3>
                     <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">
                       Ideal for growing contractors requiring monthly flexibility and continuous multi-site control.
                     </p>
@@ -1653,7 +1681,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                   <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl sm:text-5xl font-black text-slate-950 tabular-nums">
+                      <span className="text-4xl sm:text-5xl font-black text-[#081024] tabular-nums">
                         ${pricingMetrics.monthlyPriceFormatted}
                       </span>
                       <span className="text-xs font-bold text-slate-500">/ month</span>
@@ -1665,52 +1693,52 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                   <div className="space-y-3 sm:space-y-3.5 mb-6 sm:mb-8 flex-1 text-xs text-slate-800 font-semibold">
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-sky-600 shrink-0 stroke-[2.5]" />
-                      <span className="font-extrabold text-slate-950">All Free Trial features included</span>
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
+                      <span className="font-extrabold text-[#081024]">All Free Trial features included</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-sky-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Unlimited site requisitions & dispatches</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-sky-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Multi-Team Project Usage & Templates</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-sky-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Supplier Purchase Orders & GRN Receipts</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-sky-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Priority technical email support</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-sky-600 shrink-0 stroke-[2.5]" />
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                       <span>Cancel or upgrade subscription anytime</span>
                     </div>
                   </div>
 
                   <button
                     onClick={() => setIsSignupOpen(true)}
-                    className="w-full py-3.5 bg-slate-950 hover:bg-slate-800 text-emerald-300 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-slate-950/15 transition cursor-pointer active:scale-95 whitespace-nowrap"
+                    className="w-full py-3.5 bg-[#081024] hover:bg-[#0f1d3d] text-amber-300 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#081024]/15 transition cursor-pointer active:scale-95 whitespace-nowrap"
                   >
                     <span>Select Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
 
-                {/* Card 3: Pro Annual Plan (SMOKED OBSIDIAN CRYSTAL GLASS VIP CARD) */}
+                {/* Card 3: Pro Annual Plan (FROSTED ROYAL SAPPHIRE & GOLD VIP CARD) */}
                 <div className="relative group flex flex-col transition-all duration-200">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-400 via-sky-400 to-emerald-400 rounded-2xl sm:rounded-[28px] blur-xs opacity-80 group-hover:opacity-100 transition duration-300" />
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 rounded-2xl sm:rounded-[28px] blur-xs opacity-85 group-hover:opacity-100 transition duration-300" />
 
-                  <div className="relative h-full bg-gradient-to-b from-[#080d1a]/98 via-[#0b1323]/98 to-[#070b14]/98 backdrop-blur-2xl rounded-2xl sm:rounded-[26px] p-5 sm:p-8 flex flex-col border border-white/25 shadow-[0_28px_64px_-16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.22)]">
+                  <div className="relative h-full bg-gradient-to-b from-[#071026]/98 via-[#0c1a3a]/98 to-[#060c1d]/98 backdrop-blur-2xl rounded-2xl sm:rounded-[26px] p-5 sm:p-8 flex flex-col border border-amber-300/45 shadow-[0_28px_64px_-16px_rgba(3,7,18,0.65),inset_0_1px_0_rgba(255,255,255,0.22)]">
                     <div className="mb-5 sm:mb-6 relative z-10">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-extrabold text-emerald-300 flex items-center gap-1.5">
-                          <Crown className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+                        <span className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
+                          <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                           <span>Flagship Enterprise VIP</span>
                         </span>
-                        <span className="text-xs font-black text-sky-300">
+                        <span className="text-xs font-black text-amber-200">
                           Save {pricingMetrics.annualSavingsPercent}%
                         </span>
                       </div>
@@ -1724,13 +1752,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                     <div className="mb-6 sm:mb-8 relative z-10">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-sky-300 tabular-nums">
+                        <span className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-200 tabular-nums">
                           ${pricingMetrics.annualPriceFormatted}
                         </span>
                         <span className="text-xs font-bold text-slate-300">/ year</span>
                       </div>
-                      <div className="mt-2 flex items-center gap-1.5 text-emerald-200 text-[11px] font-bold tabular-nums">
-                        <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+                      <div className="mt-2 flex items-center gap-1.5 text-amber-200 text-[11px] font-bold tabular-nums">
+                        <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                         <span>
                           Only ~${pricingMetrics.annualMonthlyEquivalentFormatted}/month · Save ${pricingMetrics.annualSavingsFormatted} every year
                         </span>
@@ -1739,38 +1767,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                     <div className="space-y-3.5 mb-8 flex-1 text-xs text-slate-200 relative z-10">
                       <div className="flex items-center gap-2.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[2.5]" />
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
                         <span className="font-bold text-white">All Pro Monthly features included</span>
                       </div>
                       <div className="flex items-center gap-2.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[2.5]" />
-                        <span className="text-emerald-200 font-semibold">
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                        <span className="text-amber-200 font-semibold">
                           Save {pricingMetrics.annualSavingsPercent}% compared to monthly billing
                         </span>
                       </div>
                       <div className="flex items-center gap-2.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[2.5]" />
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
                         <span>VIP Dedicated Engineering & Priority Setup</span>
                       </div>
                       <div className="flex items-center gap-2.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[2.5]" />
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
                         <span>Free white-glove Excel/CSV catalog migration</span>
                       </div>
                       <div className="flex items-center gap-2.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[2.5]" />
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
                         <span>Bank QR / Wire Transfer Slip instant approval</span>
                       </div>
                       <div className="flex items-center gap-2.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[2.5]" />
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
                         <span>Custom corporate branding & locked-in renewal rate</span>
                       </div>
                     </div>
 
                     <button
                       onClick={() => setIsSignupOpen(true)}
-                      className="w-full py-4 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 ring-1 ring-white/40 transition-all duration-200 cursor-pointer active:scale-95 relative z-10 whitespace-nowrap"
+                      className="w-full py-4 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-[#071026] font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-xl shadow-amber-500/25 ring-1 ring-white/45 transition-all duration-200 cursor-pointer active:scale-95 relative z-10 whitespace-nowrap"
                     >
-                      <Crown className="w-4 h-4 fill-slate-950" />
+                      <Crown className="w-4 h-4 fill-[#071026]" />
                       <span>Select Pro Annual (Save {pricingMetrics.annualSavingsPercent}%)</span>
                       <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                     </button>
@@ -1781,14 +1809,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               {/* ==================== GLOBAL COMPETITOR & ALL-FEATURES COMPARISON MATRIX ==================== */}
               <div
                 id="global-comparison"
-                className="mt-14 sm:mt-20 rounded-2xl sm:rounded-[30px] bg-gradient-to-br from-[#070b14] via-[#0b1323] to-[#070d18] text-white border border-white/18 shadow-[0_32px_80px_-20px_rgba(7,11,20,0.75)] p-4 sm:p-8 lg:p-10 relative overflow-hidden"
+                className="mt-14 sm:mt-20 rounded-2xl sm:rounded-[30px] bg-gradient-to-br from-[#060c1d] via-[#0b1736] to-[#071026] text-white border border-white/18 shadow-[0_32px_80px_-20px_rgba(3,7,18,0.8)] p-4 sm:p-8 lg:p-10 relative overflow-hidden"
               >
-                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-400/80 to-transparent" />
+                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
 
                 {/* Executive Header */}
                 <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
-                  <div className="inline-flex items-center gap-2 text-xs font-extrabold text-emerald-300 tracking-wide mb-2.5">
-                    <Crown className="w-4 h-4 text-emerald-400 fill-emerald-400" />
+                  <div className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300 tracking-wide mb-2.5">
+                    <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
                     <span>Global Market &amp; Feature-by-Feature Comparison ({comparisonRows.length} Built-In Capabilities)</span>
                   </div>
                   <h3 className="text-2xl sm:text-4xl lg:text-[40px] font-black text-white tracking-tight leading-tight text-balance">
@@ -1796,7 +1824,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-300 mt-3 leading-relaxed max-w-3xl mx-auto font-medium">
                     Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH / water / electrical / solar projects, client free-issue stock (FOC), or site-separated field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today.{' '}
-                    <strong className="text-emerald-300">
+                    <strong className="text-amber-300">
                       Apex Stock gives you 100% of these specialized field &amp; warehouse features for one flat ${pricingMetrics.monthlyPriceFormatted}/mo (${pricingMetrics.annualPriceClean}/year).
                     </strong>
                   </p>
@@ -1805,20 +1833,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 {/* Visual Annual Cost Comparison Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-3.5 mb-8 sm:mb-10">
                   {/* Apex Stock Winner Card */}
-                  <div className="lg:col-span-1 rounded-2xl bg-gradient-to-b from-emerald-400 to-teal-500 text-slate-950 p-4 shadow-xl border border-white/60 flex flex-col justify-between">
+                  <div className="lg:col-span-1 rounded-2xl bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 text-[#071026] p-4 shadow-xl border border-white/60 flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-950/80">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-[#071026]/80">
                         ★ Best Value Worldwide
                       </div>
-                      <div className="text-base font-black text-slate-950 mt-0.5">Apex Stock VIP</div>
-                      <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-slate-950 mt-2">
+                      <div className="text-base font-black text-[#071026] mt-0.5">Apex Stock VIP</div>
+                      <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#071026] mt-2">
                         ${pricingMetrics.annualPriceClean}<span className="text-xs font-extrabold">/yr</span>
                       </div>
-                      <div className="text-[11px] font-extrabold text-slate-950/90 font-mono tabular-nums">
+                      <div className="text-[11px] font-extrabold text-[#071026]/90 font-mono tabular-nums">
                         (~${pricingMetrics.annualMonthlyEquivalentFormatted}/mo or ${pricingMetrics.monthlyPriceFormatted} monthly)
                       </div>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-slate-950/20 text-[11px] font-bold text-slate-950 space-y-1">
+                    <div className="mt-3 pt-2.5 border-t border-[#071026]/20 text-[11px] font-bold text-[#071026] space-y-1">
                       <div>✓ Unlimited Users &amp; Branches</div>
                       <div>✓ All {comparisonRows.length} Field &amp; ERP Modules</div>
                       <div>✓ $0 Setup · {pricingMetrics.trialDays}-Day Free Trial</div>
@@ -1924,7 +1952,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                         }
                         className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap shrink-0 ${
                           comparisonCategory === tab.id
-                            ? 'bg-emerald-400 text-slate-950 shadow-sm'
+                            ? 'bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] shadow-sm'
                             : 'bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/12'
                         }`}
                       >
@@ -1935,16 +1963,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Responsive Comparison Table */}
-                <div className="overflow-x-auto rounded-2xl border border-white/15 bg-[#050811]/85 shadow-inner">
+                <div className="overflow-x-auto rounded-2xl border border-white/15 bg-[#040917]/90 shadow-inner">
                   <table className="w-full text-left border-collapse min-w-[880px]">
                     <thead>
                       <tr className="bg-white/[0.06] border-b border-white/15 text-[11px] font-black text-slate-200">
                         <th className="py-3.5 px-4 w-[34%]">
                           System Capability / Specialized Feature ({filteredComparisonRows.length})
                         </th>
-                        <th className="py-3.5 px-4 w-[18%] bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black">
+                        <th className="py-3.5 px-4 w-[18%] bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] font-black">
                           <div className="flex items-center gap-1.5">
-                            <Crown className="w-3.5 h-3.5 fill-slate-950" />
+                            <Crown className="w-3.5 h-3.5 fill-[#071026]" />
                             <span>Apex Stock (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                           </div>
                         </th>
@@ -2025,7 +2053,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                                 {row.isSpecialHighlight && (
                                   <>
                                     <span aria-hidden="true">·</span>
-                                    <span className="text-emerald-400 font-extrabold">★ Exclusive Advantage</span>
+                                    <span className="text-amber-300 font-extrabold">★ Exclusive Advantage</span>
                                   </>
                                 )}
                               </div>
@@ -2038,7 +2066,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                             </td>
 
                             {/* Apex Stock Highlighted Column */}
-                            <td className="py-3 px-4 align-middle bg-emerald-500/12 border-x border-emerald-400/25 font-extrabold text-emerald-300 text-xs">
+                            <td className="py-3 px-4 align-middle bg-amber-400/12 border-x border-amber-400/30 font-extrabold text-amber-200 text-xs">
                               {row.apex}
                             </td>
 
@@ -2066,7 +2094,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 {/* 12 Small-Yet-Special Micro-Features Spotlight Grid */}
                 <div className="mt-8 sm:mt-10 pt-7 border-t border-white/15">
                   <div className="text-center max-w-3xl mx-auto mb-6">
-                    <div className="text-xs font-extrabold text-emerald-300 mb-1">
+                    <div className="text-xs font-extrabold text-amber-300 mb-1">
                       Thoughtful Field-Engineered Details You Won&apos;t Find Anywhere Else
                     </div>
                     <h4 className="text-lg sm:text-2xl font-black text-white tracking-tight">
@@ -2081,10 +2109,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     {microFeaturesSpotlight.map((mf, i) => (
                       <div
                         key={mf.title}
-                        className="rounded-xl bg-white/[0.05] border border-white/14 p-3.5 text-left hover:border-emerald-400/50 hover:bg-white/[0.08] transition"
+                        className="rounded-xl bg-white/[0.05] border border-white/14 p-3.5 text-left hover:border-amber-400/50 hover:bg-white/[0.08] transition"
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[11px] font-mono font-black text-emerald-400 tabular-nums">
+                          <span className="text-[11px] font-mono font-black text-amber-400 tabular-nums">
                             {String(i + 1).padStart(2, '0')}.
                           </span>
                           <h5 className="text-xs font-extrabold text-white leading-snug">
@@ -2100,12 +2128,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Bottom Decision Banner inside Comparison */}
-                <div className="mt-8 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-300 to-sky-300 text-slate-950 p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+                <div className="mt-8 rounded-2xl bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 text-[#071026] p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
                   <div className="text-center md:text-left">
-                    <div className="text-sm sm:text-lg font-black text-slate-950">
+                    <div className="text-sm sm:text-lg font-black text-[#071026]">
                       Get Every Single Feature Above for $0 Today ({pricingMetrics.trialDays}-Day Unrestricted Free Trial)
                     </div>
-                    <div className="text-xs font-bold text-slate-900 mt-0.5">
+                    <div className="text-xs font-bold text-[#071026]/90 mt-0.5">
                       Then just <span className="underline font-black">${pricingMetrics.monthlyPriceFormatted}/month</span> or <span className="underline font-black">${pricingMetrics.annualPriceClean}/year</span> for your entire company — Unlimited Users, Unlimited Sites &amp; Zero Per-Seat Fees.
                     </div>
                   </div>
@@ -2113,7 +2141,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <button
                       type="button"
                       onClick={() => setIsSignupOpen(true)}
-                      className="px-5 py-3 rounded-xl bg-slate-950 hover:bg-slate-900 text-emerald-300 font-black text-xs flex items-center gap-2 shadow-md transition cursor-pointer whitespace-nowrap"
+                      className="px-5 py-3 rounded-xl bg-[#071026] hover:bg-[#0d1b3e] text-amber-300 font-black text-xs flex items-center gap-2 shadow-md transition cursor-pointer whitespace-nowrap"
                     >
                       <span>Start Your {pricingMetrics.trialDays}-Day Free Trial Now</span>
                       <ArrowRight className="w-4 h-4" />
@@ -2121,7 +2149,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <button
                       type="button"
                       onClick={handleOpenGuideTab}
-                      className="px-4 py-3 rounded-xl bg-white/90 hover:bg-white text-slate-950 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+                      className="px-4 py-3 rounded-xl bg-white/95 hover:bg-white text-[#071026] font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>View Full User Guide</span>
@@ -2133,17 +2161,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               {/* Payment Method Notice */}
               <div className="mt-10 max-w-2xl mx-auto landing-glass-card-light rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-700 text-center sm:text-left">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-emerald-400 shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#081024] flex items-center justify-center text-amber-400 shrink-0">
                     <QrCode className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-extrabold text-slate-950 block">Easy Bank Payments & QR Wire Transfer</span>
+                    <span className="font-extrabold text-[#081024] block">Easy Bank Payments & QR Wire Transfer</span>
                     <span className="font-medium">Instant activation via Bank QR or direct wire transfer slip upload.</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsSignupOpen(true)}
-                  className="px-4 py-2.5 bg-slate-950 hover:bg-slate-800 text-emerald-300 rounded-xl font-bold text-xs shrink-0 transition cursor-pointer whitespace-nowrap"
+                  className="px-4 py-2.5 bg-[#081024] hover:bg-[#0f1d3d] text-amber-300 rounded-xl font-bold text-xs shrink-0 transition cursor-pointer whitespace-nowrap"
                 >
                   Start Free Trial First
                 </button>
@@ -2151,14 +2179,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             </div>
           </section>
 
-          {/* ==================== SECTION 5: FAQ (#faq — CRYSTAL OBSIDIAN GLASS) ==================== */}
+          {/* ==================== SECTION 5: FAQ (#faq — FROSTED ROYAL SAPPHIRE GLASS) ==================== */}
           <section
             id="faq"
             className="py-12 sm:py-22 relative z-10"
           >
             <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8">
               <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
-                <div className="text-xs font-extrabold text-emerald-300 tracking-wide mb-2">
+                <div className="text-xs font-extrabold text-amber-300 tracking-wide mb-2">
                   Frequently Asked Questions
                 </div>
                 <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
@@ -2177,12 +2205,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   >
                     <button
                       onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                      className="w-full px-4 sm:px-6 py-3.5 sm:py-4 text-left font-extrabold text-xs sm:text-sm text-white flex justify-between items-center gap-3 sm:gap-4 cursor-pointer hover:text-emerald-300 transition"
+                      className="w-full px-4 sm:px-6 py-3.5 sm:py-4 text-left font-extrabold text-xs sm:text-sm text-white flex justify-between items-center gap-3 sm:gap-4 cursor-pointer hover:text-amber-300 transition"
                     >
                       <span className="leading-snug">{faq.q}</span>
                       <div className="w-7 h-7 rounded-xl bg-white/[0.08] border border-white/15 flex items-center justify-center shrink-0">
                         {activeFaq === idx ? (
-                          <ChevronUp className="w-4 h-4 text-emerald-400" />
+                          <ChevronUp className="w-4 h-4 text-amber-400" />
                         ) : (
                           <ChevronDown className="w-4 h-4 text-slate-300" />
                         )}
@@ -2209,17 +2237,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <button
                     type="button"
                     onClick={handleOpenGuideTab}
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer transition shadow-md shadow-emerald-500/20"
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 text-[#071026] text-xs font-black flex items-center gap-1.5 cursor-pointer transition shadow-md shadow-amber-500/20"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     <span>Open User Guide & PDF</span>
                   </button>
                   <a
                     href="mailto:support@apexstox.com"
-                    className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-100 hover:text-emerald-300 transition-colors"
+                    className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-100 hover:text-amber-300 transition-colors"
                   >
                     <span>Contact Support: support@apexstox.com</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+                    <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
                   </a>
                 </div>
               </div>
@@ -2228,13 +2256,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
         </>
       )}
 
-      {/* ==================== FOOTER (FROSTED CRYSTAL GLASS) ==================== */}
-      <footer className="mt-auto border-t border-white/12 bg-[#060913]/80 backdrop-blur-2xl py-8 sm:py-10 px-3 sm:px-6 lg:px-8 relative z-10 no-print">
+      {/* ==================== FOOTER (FROSTED ROYAL SAPPHIRE GLASS) ==================== */}
+      <footer className="mt-auto border-t border-white/12 bg-[#050a18]/85 backdrop-blur-2xl py-8 sm:py-10 px-3 sm:px-6 lg:px-8 relative z-10 no-print">
         <div className="max-w-7xl mx-auto flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm shrink-0">
-                <Boxes className="w-4 h-4 text-slate-950 stroke-[2.25]" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 flex items-center justify-center shadow-sm shrink-0">
+                <Boxes className="w-4 h-4 text-[#071026] stroke-[2.25]" />
               </div>
               <div>
                 <span className="font-black text-sm text-white">Apex Stock Enterprise SaaS</span>
@@ -2252,15 +2280,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               <button
                 type="button"
                 onClick={handleOpenGuideTab}
-                className="hover:text-emerald-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap"
+                className="hover:text-amber-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap"
               >
                 User Guide
               </button>
               <button
                 type="button"
                 onClick={() => handleOpenPolicyTab('privacy')}
-                className={`hover:text-emerald-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
-                  activeLandingTab === 'privacy' ? 'text-emerald-300 underline' : ''
+                className={`hover:text-amber-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
+                  activeLandingTab === 'privacy' ? 'text-amber-300 underline' : ''
                 }`}
               >
                 Privacy Policy
@@ -2268,8 +2296,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               <button
                 type="button"
                 onClick={() => handleOpenPolicyTab('refund')}
-                className={`hover:text-emerald-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
-                  activeLandingTab === 'refund' ? 'text-emerald-300 underline' : ''
+                className={`hover:text-amber-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
+                  activeLandingTab === 'refund' ? 'text-amber-300 underline' : ''
                 }`}
               >
                 Refund Policy
@@ -2277,15 +2305,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               <button
                 type="button"
                 onClick={() => handleOpenPolicyTab('terms')}
-                className={`hover:text-emerald-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
-                  activeLandingTab === 'terms' ? 'text-emerald-300 underline' : ''
+                className={`hover:text-amber-300 hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
+                  activeLandingTab === 'terms' ? 'text-amber-300 underline' : ''
                 }`}
               >
                 Terms &amp; Conditions
               </button>
               <a
                 href="mailto:support@apexstox.com"
-                className="hover:text-emerald-300 hover:underline underline-offset-4 transition whitespace-nowrap"
+                className="hover:text-amber-300 hover:underline underline-offset-4 transition whitespace-nowrap"
               >
                 support@apexstox.com
               </a>
@@ -2296,7 +2324,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             <div className="font-semibold text-slate-300">
               Apex Stock SaaS © {new Date().getFullYear()} · All Rights Reserved
             </div>
-            <div className="text-[11px] text-emerald-300 font-extrabold">
+            <div className="text-[11px] text-amber-300 font-extrabold">
               Apex Developer | System Developed By Sasith Dissanayake
             </div>
           </div>
