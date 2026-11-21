@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import {
   resolveSmartSystemSupportAnswer,
@@ -14,7 +15,244 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
+
+// ============================================================================
+// SECURITY HEADERS, ORIGIN GUARD & SERVER-SIDE SESSION / CREDENTIAL ENGINE
+// ============================================================================
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production' || req.secure) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// Reject cross-origin state-changing API calls (no wildcard CORS)
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const originHeader = req.get('origin');
+    if (originHeader) {
+      try {
+        const originHost = new URL(originHeader).host.toLowerCase();
+        const forwardedHost = (req.get('x-forwarded-host') || req.get('host') || '')
+          .split(',')[0]
+          .trim()
+          .toLowerCase();
+        let appUrlHost = '';
+        if (process.env.APP_URL) {
+          try {
+            appUrlHost = new URL(process.env.APP_URL).host.toLowerCase();
+          } catch {
+            appUrlHost = '';
+          }
+        }
+        const allowedHosts = [forwardedHost, appUrlHost].filter(Boolean);
+        if (allowedHosts.length > 0 && !allowedHosts.includes(originHost)) {
+          res.status(403).json({ error: 'Cross-origin request blocked.' });
+          return;
+        }
+      } catch {
+        res.status(403).json({ error: 'Invalid Origin header.' });
+        return;
+      }
+    }
+  }
+  next();
+});
+
+const SESSION_SIGNING_SECRET =
+  (process.env.SESSION_SECRET || '').trim() || crypto.randomBytes(32).toString('hex');
+
+interface SessionTokenPayload {
+  sub: string;
+  scope: 'master' | 'workspace';
+  tenantId: string;
+  exp: number;
+}
+
+function signSessionToken(payload: Omit<SessionTokenPayload, 'exp'>, ttlMs = 24 * 60 * 60 * 1000): string {
+  const fullPayload: SessionTokenPayload = {
+    ...payload,
+    exp: Date.now() + ttlMs,
+  };
+  const encoded = Buffer.from(JSON.stringify(fullPayload), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SIGNING_SECRET).update(encoded).digest('base64url');
+  return `${encoded}.${sig}`;
+}
+
+function verifySessionToken(token: string | undefined): SessionTokenPayload | null {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.trim().split('.');
+  if (parts.length !== 2) return null;
+  const [encoded, providedSig] = parts;
+  if (!encoded || !providedSig) return null;
+  const expectedSig = crypto
+    .createHmac('sha256', SESSION_SIGNING_SECRET)
+    .update(encoded)
+    .digest('base64url');
+  const a = Buffer.from(providedSig, 'utf8');
+  const b = Buffer.from(expectedSig, 'utf8');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as SessionTokenPayload;
+    if (!parsed || typeof parsed.exp !== 'number' || Date.now() > parsed.exp) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function extractBearerToken(req: express.Request): string | undefined {
+  const auth = req.get('authorization');
+  if (!auth || !auth.toLowerCase().startsWith('bearer ')) return undefined;
+  return auth.slice(7).trim();
+}
+
+// Server-side Master Admin passcode (env MASTER_ADMIN_PASSCODE overrides any claimed scrypt fallback hash)
+let claimedMasterHash: string | null = null;
+
+function hashScryptPasscode(plain: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(plain, salt, 64).toString('hex');
+  return `${salt}:${derived}`;
+}
+
+function verifyScryptPasscode(plain: string, storedHash: string): boolean {
+  const parts = storedHash.split(':');
+  if (parts.length !== 2) return false;
+  const [salt, expectedHex] = parts;
+  if (!salt || !expectedHex) return false;
+  const actualBuf = crypto.scryptSync(plain, salt, 64);
+  const expectedBuf = Buffer.from(expectedHex, 'hex');
+  return actualBuf.length === expectedBuf.length && crypto.timingSafeEqual(actualBuf, expectedBuf);
+}
+
+function verifyEnvPasscode(plain: string, envPasscode: string): boolean {
+  const a = crypto.createHash('sha256').update(plain).digest();
+  const b = crypto.createHash('sha256').update(envPasscode).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+const authAttemptMap = new Map<string, { failures: number; windowStart: number }>();
+function checkAuthRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  const rec = authAttemptMap.get(ip);
+  if (!rec || now - rec.windowStart > windowMs) {
+    return true;
+  }
+  return rec.failures < 12;
+}
+function recordAuthFailure(ip: string) {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  const rec = authAttemptMap.get(ip);
+  if (!rec || now - rec.windowStart > windowMs) {
+    authAttemptMap.set(ip, { failures: 1, windowStart: now });
+  } else {
+    rec.failures += 1;
+  }
+}
+function clearAuthFailures(ip: string) {
+  authAttemptMap.delete(ip);
+}
+
+app.get('/api/auth/master/status', (_req, res) => {
+  const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || '').trim();
+  if (envPasscode) {
+    res.json({ configured: true, source: 'env' });
+    return;
+  }
+  if (claimedMasterHash) {
+    res.json({ configured: true, source: 'claimed' });
+    return;
+  }
+  res.json({ configured: false, source: 'unset' });
+});
+
+app.post('/api/auth/master/claim', (req, res) => {
+  const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || '').trim();
+  if (envPasscode || claimedMasterHash) {
+    res.status(409).json({
+      success: false,
+      message: 'Master Admin passcode is already configured and locked.',
+    });
+    return;
+  }
+  const passcode = typeof req.body?.passcode === 'string' ? req.body.passcode.trim() : '';
+  if (passcode.length < 8) {
+    res.status(400).json({
+      success: false,
+      message: 'Master Admin passcode must be at least 8 characters long.',
+    });
+    return;
+  }
+  claimedMasterHash = hashScryptPasscode(passcode);
+  const token = signSessionToken({ sub: 'usr-admin-1', scope: 'master', tenantId: 'tenant-apex-main' });
+  res.json({
+    success: true,
+    token,
+    message: 'Master Admin security passcode claimed and hashed on server.',
+  });
+});
+
+app.post('/api/auth/master/verify', (req, res) => {
+  const ip = String(req.ip || 'unknown');
+  if (!checkAuthRateLimit(ip)) {
+    res.status(429).json({
+      valid: false,
+      message: 'Too many failed authentication attempts. Please wait 15 minutes and try again.',
+    });
+    return;
+  }
+
+  const passcode = typeof req.body?.passcode === 'string' ? req.body.passcode.trim() : '';
+  if (!passcode) {
+    res.status(400).json({ valid: false, message: 'Passcode is required.' });
+    return;
+  }
+
+  const envPasscode = (process.env.MASTER_ADMIN_PASSCODE || '').trim();
+  if (!envPasscode && !claimedMasterHash) {
+    res.status(409).json({
+      valid: false,
+      needsSetup: true,
+      message: 'Master Admin passcode has not been configured yet. Please complete first-run setup.',
+    });
+    return;
+  }
+
+  const isMatch = envPasscode
+    ? verifyEnvPasscode(passcode, envPasscode)
+    : verifyScryptPasscode(passcode, claimedMasterHash!);
+
+  if (!isMatch) {
+    recordAuthFailure(ip);
+    res.status(401).json({ valid: false, message: 'Invalid Master Admin credentials.' });
+    return;
+  }
+
+  clearAuthFailures(ip);
+  const token = signSessionToken({ sub: 'usr-admin-1', scope: 'master', tenantId: 'tenant-apex-main' });
+  res.json({ valid: true, token });
+});
+
+app.post('/api/auth/workspace-session', (req, res) => {
+  const userId = typeof req.body?.userId === 'string' ? req.body.userId.trim() : '';
+  const tenantId = typeof req.body?.tenantId === 'string' ? req.body.tenantId.trim() : '';
+  if (!userId || !tenantId || userId === 'usr-admin-1') {
+    res.status(400).json({ error: 'Valid non-master workspace userId and tenantId are required.' });
+    return;
+  }
+  const token = signSessionToken({ sub: userId, scope: 'workspace', tenantId });
+  res.json({ token });
+});
 
 // ============================================================================
 // HIGH-CONCURRENCY, NON-BLOCKING GEMINI AI SUPPORT AGENT ENGINE
@@ -298,9 +536,16 @@ async function queryGeminiWithFallback(
   return { ...localAns, modelUsed: 'system-expert-kb' };
 }
 
-// POST /api/support-chat
+// POST /api/support-chat (Protected by authenticated Bearer session token)
 app.post('/api/support-chat', async (req, res) => {
   try {
+    const bearer = extractBearerToken(req);
+    const session = verifySessionToken(bearer);
+    if (!session) {
+      res.status(401).json({ error: 'Authentication session required.' });
+      return;
+    }
+
     const { message, history = [], context = {}, clientId = 'anon' } = req.body || {};
 
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -309,7 +554,7 @@ app.post('/api/support-chat', async (req, res) => {
     }
 
     const trimmedMessage = message.trim().slice(0, 1200);
-    const ipOrClient = String(clientId || req.ip || 'anon');
+    const ipOrClient = `${session.tenantId}:${session.sub}:${String(clientId || req.ip || 'anon')}`;
     const safeContext: SupportWorkspaceContext = {
       userName: context?.userName || 'User',
       userRole: context?.userRole || 'Staff',

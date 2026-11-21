@@ -14,6 +14,7 @@ import {
   resolveSmartSystemSupportAnswer,
   SupportWorkspaceContext,
 } from '../../utils/supportKnowledgeEngine';
+import { getApiSessionToken } from '../../utils/securityUtils';
 
 interface ChatMessage {
   id: string;
@@ -306,9 +307,13 @@ export const AiSupportChatWidget: React.FC<{ currentTab?: string }> = ({ current
         .slice(-6)
         .map((m) => ({ role: m.role, text: m.text }));
 
+      const authToken = getApiSessionToken();
       const response = await fetch('/api/support-chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         signal: controller.signal,
         body: JSON.stringify({
           message: trimmed,

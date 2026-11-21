@@ -7,12 +7,16 @@
       ".write": false,
       "$tenantId": {
         ".read": true,
-        ".write": true
+        ".write": true,
+        ".validate": "!newData.exists() || newData.hasChildren()"
       }
     },
     "saasTenants": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || newData.hasChildren(['id', 'companyName'])"
+      }
     },
     "saasDeletedTenants": {
       ".read": true,

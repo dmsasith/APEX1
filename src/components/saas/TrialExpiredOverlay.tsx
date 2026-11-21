@@ -1,31 +1,44 @@
 import React, { useState } from 'react';
 import {
   Lock,
-  Zap,
   ShieldCheck,
   CreditCard,
-  Building2,
-  Upload,
   CheckCircle2,
   Clock,
-  HelpCircle,
-  FileText,
-  AlertCircle,
-  ArrowRight,
+  LogOut,
+  Copy,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { computePlatformPricingMetrics, getSubscriptionStatusSummary } from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 
 export const TrialExpiredOverlay: React.FC = () => {
-  const { currentTenant, updateTenantSubscription, platformPricing, config } = useStock();
+  const { currentTenant, updateTenantSubscription, platformPricing, config, logout } = useStock();
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
-  const usdRate = config?.usdToLkrRate || 332.64;
-  const [bankSlipRef, setBankSlipRef] = useState('');
-  const [showSlipSuccess, setShowSlipSuccess] = useState(false);
-  const [isUpgrading, setIsUpgrading] = useState(false);
 
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
+  const masterBankConfig = (() => {
+    try {
+      const raw = localStorage.getItem('apex_master_bank_config_v1');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const activeBankName = config?.bankName || masterBankConfig?.bankName || 'Commercial Bank PLC / Sampath Bank';
+  const activeBankAccountName = config?.bankAccountName || masterBankConfig?.bankAccountName || 'Apex Developer (Pvt) Ltd';
+  const activeBankAccountNumber = config?.bankAccountNumber || masterBankConfig?.bankAccountNumber || '1000 4829 5012';
+  const activeBankBranchSwift = config?.bankBranchSwift || masterBankConfig?.bankBranchSwift || 'Mulleriyawa Branch / CCBLLKLX';
+  const activeBankQrImage = config?.bankQrImage || masterBankConfig?.bankQrImage || '';
+  const usdRate = config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64;
+
+  const [bankSlipRef, setBankSlipRef] = useState('');
+  const [bankNotes, setBankNotes] = useState('');
+  const [showSlipSuccess, setShowSlipSuccess] = useState(false);
+  const [copyNotice, setCopyNotice] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>(
+    currentTenant?.subscription?.billingCycle || 'annual'
+  );
 
   if (!currentTenant || currentTenant.id === 'tenant-apex-main') return null;
 
@@ -33,42 +46,41 @@ export const TrialExpiredOverlay: React.FC = () => {
   const subSummary = getSubscriptionStatusSummary(sub);
   const isTrialExpired = subSummary.isTrial && subSummary.isExpired;
 
-  // If trial is NOT expired and status is active, do not block UI
-  if (!isTrialExpired && sub.status !== 'canceled') {
+  // If trial is NOT expired and status is active/trialing, do not block UI
+  if (!isTrialExpired && sub.status !== 'canceled' && sub.status !== 'past_due') {
     return null;
   }
 
-  const handleSimulatePayment = () => {
-    setIsUpgrading(true);
-    setTimeout(() => {
-      const isAnnual = selectedPlan === 'annual';
-      const nextBilling = new Date(Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString();
-      updateTenantSubscription(currentTenant.id, {
-        plan: isAnnual ? 'pro_annual' : 'pro_monthly',
-        status: 'active',
-        monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
-        annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
-        billingCycle: selectedPlan,
-        paymentMethodStatus: 'active',
-        lastBillingDate: new Date().toISOString(),
-        nextBillingDate: nextBilling,
-        trialEndsAt: nextBilling,
-      });
-      setIsUpgrading(false);
-    }, 1000);
-  };
+  const isAnnual = selectedPlan === 'annual';
+  const selectedUsdAmount = isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice;
+  const selectedUsdFormatted = isAnnual ? pricingMetrics.annualPriceFormatted : pricingMetrics.monthlyPriceFormatted;
+  const selectedLkrAmount = Math.round(selectedUsdAmount * usdRate);
+  const existingPending = sub.pendingBankPayment?.status === 'pending' ? sub.pendingBankPayment : null;
 
-  const handleExtendTrialDemo = () => {
-    const newExpiry = new Date(Date.now() + pricingMetrics.trialDays * 24 * 60 * 60 * 1000).toISOString();
-    updateTenantSubscription(currentTenant.id, {
-      status: 'trialing',
-      trialEndsAt: newExpiry,
-    });
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopyNotice(`${label} copied`);
+    setTimeout(() => setCopyNotice(null), 2000);
   };
 
   const handleSubmitBankSlip = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bankSlipRef.trim()) return;
+    const cleanedRef = bankSlipRef.trim();
+    if (!cleanedRef) return;
+
+    updateTenantSubscription(currentTenant.id, {
+      billingCycle: selectedPlan,
+      pendingBankPayment: {
+        submittedAt: new Date().toISOString(),
+        referenceNo: cleanedRef,
+        amount: selectedUsdAmount,
+        billingCycle: selectedPlan,
+        notes: bankNotes.trim() || 'Submitted from Workspace Lock Screen',
+        slipName: 'Bank_Transfer_Reference',
+        status: 'pending',
+      },
+    });
+
     setShowSlipSuccess(true);
   };
 
@@ -82,15 +94,18 @@ export const TrialExpiredOverlay: React.FC = () => {
           </div>
 
           <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            {pricingMetrics.trialDays}-Day Free Trial Ended
+            {sub.status === 'canceled'
+              ? 'Workspace Subscription Inactive'
+              : `${pricingMetrics.trialDays}-Day Free Trial Ended`}
           </span>
 
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-2">
-            Your Free Test Period Has Expired
+            Subscription Renewal Required
           </h2>
 
           <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
-            Workspace: <strong className="text-white">{currentTenant.companyName}</strong> · Expired on {formatDateTime(subSummary.expiryDateIso || sub.trialEndsAt)}
+            Workspace: <strong className="text-white">{currentTenant.companyName}</strong> · Expired on{' '}
+            {formatDateTime(subSummary.expiryDateIso || sub.trialEndsAt)}
           </p>
         </div>
 
@@ -101,13 +116,12 @@ export const TrialExpiredOverlay: React.FC = () => {
             <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
             <div className="text-xs text-slate-300 leading-relaxed">
               <strong className="text-white block">Your Records Are 100% Safe:</strong>
-              All your sites, items, team issues, and requisition notes are securely preserved. Select a plan below to unlock full commercial access immediately.
+              All your sites, items, team issues, and requisition notes are securely preserved. Select a plan and submit your bank transfer reference below to reactivate commercial access.
             </div>
           </div>
 
           {/* Pricing Plan Selection: Monthly vs Annual */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Monthly Option */}
             <button
               type="button"
               onClick={() => setSelectedPlan('monthly')}
@@ -129,7 +143,6 @@ export const TrialExpiredOverlay: React.FC = () => {
               </div>
             </button>
 
-            {/* Annual Option (Best Value) */}
             <button
               type="button"
               onClick={() => setSelectedPlan('annual')}
@@ -157,79 +170,137 @@ export const TrialExpiredOverlay: React.FC = () => {
             </button>
           </div>
 
-          {/* Bank Payment Info or Direct Card Upgrade */}
-          {showSlipSuccess ? (
-            <div className="p-4 bg-emerald-950/80 border border-emerald-700/80 rounded-xl text-xs text-emerald-300 flex items-start gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-white block">Payment Verification Submitted!</strong>
-                Thank you! Our platform administrator is verifying your transfer reference (Ref: {bankSlipRef}) for the {selectedPlan === 'annual' ? `Annual Plan ($${pricingMetrics.annualPriceFormatted})` : `Monthly Plan ($${pricingMetrics.monthlyPriceFormatted})`}. Your workspace will be unlocked shortly.
+          {/* Pending Verification Status or Bank Transfer Submission Form */}
+          {showSlipSuccess || existingPending ? (
+            <div className="p-4 bg-emerald-950/70 border border-emerald-700/80 rounded-xl text-xs text-emerald-200 space-y-2">
+              <div className="flex items-start gap-2.5">
+                {showSlipSuccess ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <strong className="text-white block">
+                    {showSlipSuccess
+                      ? 'Payment Reference Submitted for Verification'
+                      : 'Pending Master Admin Verification'}
+                  </strong>
+                  <p className="mt-1 text-emerald-200/90 leading-relaxed">
+                    Reference No:{' '}
+                    <strong className="text-white font-mono">
+                      {existingPending?.referenceNo || bankSlipRef}
+                    </strong>{' '}
+                    · Plan Amount:{' '}
+                    <strong className="text-amber-300">
+                      ${(existingPending?.amount ?? selectedUsdAmount).toFixed(2)}
+                    </strong>
+                    {existingPending?.submittedAt && (
+                      <span className="block text-[11px] text-slate-300 mt-0.5">
+                        Submitted: {formatDateTime(existingPending.submittedAt)}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-slate-300">
+                    Once the platform administrator approves this transfer, your workspace will unlock automatically.
+                  </p>
+                </div>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmitBankSlip} className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
-              <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                <CreditCard className="w-4 h-4 text-emerald-400" />
-                <span>Bank Transfer Payment Verification</span>
-              </div>
-
-              <div className="text-[11px] text-slate-400 space-y-1 bg-slate-900/80 p-2.5 rounded-lg font-mono">
-                <div>Bank: <strong className="text-slate-200">Commercial Bank / Sampath Bank</strong></div>
-                <div>Account Name: <strong className="text-slate-200">Sasith Dissanayake (Apex SaaS)</strong></div>
-                <div>Account No: <strong className="text-emerald-400 font-bold">800-12345-6789</strong></div>
-                <div>
-                  Amount to Transfer:{' '}
-                  <strong className="text-amber-400 font-bold">
-                    {selectedPlan === 'annual'
-                      ? `$${pricingMetrics.annualPriceFormatted} / Rs. ${Math.round(pricingMetrics.annualPrice * usdRate).toLocaleString()}`
-                      : `$${pricingMetrics.monthlyPriceFormatted} / Rs. ${Math.round(pricingMetrics.monthlyPrice * usdRate).toLocaleString()}`}
-                  </strong>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-emerald-400" />
+                  <span>Bank Transfer / LankaQR Payment Verification</span>
                 </div>
+                {copyNotice && (
+                  <span className="text-[10px] font-bold text-emerald-400">{copyNotice}</span>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex flex-col sm:flex-row gap-3 items-start bg-slate-900/80 p-3 rounded-lg">
+                <div className="flex-1 text-[11px] text-slate-300 space-y-1 font-mono">
+                  <div>
+                    Bank: <strong className="text-slate-100">{activeBankName}</strong>
+                  </div>
+                  <div>
+                    Account Name: <strong className="text-slate-100">{activeBankAccountName}</strong>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span>Account No:</span>
+                    <strong className="text-emerald-400 font-bold">{activeBankAccountNumber}</strong>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(activeBankAccountNumber, 'Account No')}
+                      className="text-slate-400 hover:text-white p-0.5 cursor-pointer"
+                      title="Copy Account Number"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div>
+                    Branch / SWIFT: <strong className="text-slate-200">{activeBankBranchSwift}</strong>
+                  </div>
+                  <div>
+                    Amount to Transfer:{' '}
+                    <strong className="text-amber-400 font-bold">
+                      ${selectedUsdFormatted} / Rs. {selectedLkrAmount.toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+
+                {activeBankQrImage && (
+                  <div className="shrink-0 bg-white p-1.5 rounded-lg border border-slate-700 self-center">
+                    <img
+                      src={activeBankQrImage}
+                      alt="Bank Payment QR"
+                      className="w-20 h-20 object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 pt-1">
                 <input
                   type="text"
                   required
                   placeholder="Enter Bank Deposit / Transfer Reference No..."
                   value={bankSlipRef}
                   onChange={(e) => setBankSlipRef(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                 />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition cursor-pointer"
-                >
-                  Submit
-                </button>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Optional note (Bank branch, depositor name)..."
+                    value={bankNotes}
+                    onChange={(e) => setBankNotes(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition cursor-pointer shrink-0"
+                  >
+                    Submit Reference
+                  </button>
+                </div>
               </div>
             </form>
           )}
 
-          {/* Action CTAs */}
+          {/* Footer */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800">
-            {/* Demo extend button for testing */}
-            <button
-              type="button"
-              onClick={handleExtendTrialDemo}
-              className="text-amber-400 hover:text-amber-300 text-xs font-bold underline cursor-pointer"
-            >
-              ⚡ Extend Trial +{pricingMetrics.trialDays} Days (Testing Demo)
-            </button>
+            <span className="text-[11px] text-slate-400">
+              Need assistance? Contact platform billing support with your reference number.
+            </span>
 
             <button
               type="button"
-              onClick={handleSimulatePayment}
-              disabled={isUpgrading}
-              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              onClick={logout}
+              className="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <Zap className="w-4 h-4" />
-              <span>
-                {isUpgrading
-                  ? 'Upgrading Workspace...'
-                  : `Activate Pro Subscription Now ($${selectedPlan === 'annual' ? pricingMetrics.annualPriceFormatted : pricingMetrics.monthlyPriceFormatted})`}
-              </span>
-              <ArrowRight className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Log Out</span>
             </button>
           </div>
         </div>

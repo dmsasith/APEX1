@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { verifyFirebaseResetCode } from '../../firebase';
+import { getMasterAuthStatus, claimMasterAdminPasscode } from '../../utils/securityUtils';
 import { TenantSignupModal } from '../landing/TenantSignupModal';
 import { TermsConditionsModal } from '../landing/TermsConditionsModal';
 import { LegalDocId } from '../landing/legalPoliciesData';
@@ -86,6 +87,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   const [newPassInput, setNewPassInput] = useState('');
   const [confirmNewPassInput, setConfirmNewPassInput] = useState('');
   const [showNewPass, setShowNewPass] = useState(false);
+
+  // First-run Master Admin claim state (used only when MASTER_ADMIN_PASSCODE env secret is unset)
+  const [masterNeedsClaim, setMasterNeedsClaim] = useState(false);
+  const [claimPassInput, setClaimPassInput] = useState('');
+  const [claimConfirmInput, setClaimConfirmInput] = useState('');
+  const [claimingMaster, setClaimingMaster] = useState(false);
+
+  useEffect(() => {
+    getMasterAuthStatus().then((st) => {
+      if (!st.configured && st.source === 'unset') {
+        setMasterNeedsClaim(true);
+      }
+    });
+  }, []);
 
   // Handle Firebase password reset return parameters (?mode=resetPassword&oobCode=... or ?resetEmail=...)
   useEffect(() => {
@@ -244,6 +259,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
     const iconObj = PRESET_ICONS.find((p) => p.id === config.logoIcon) || PRESET_ICONS[0];
     const IconComp = iconObj.icon;
     return <IconComp className="w-8 h-8 text-emerald-600" />;
+  };
+
+  const handleClaimMasterPasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    if (claimPassInput.trim().length < 8) {
+      setErrorMessage('Master Admin passcode must be at least 8 characters long.');
+      return;
+    }
+    if (claimPassInput !== claimConfirmInput) {
+      setErrorMessage('Master Admin passcodes do not match.');
+      return;
+    }
+    setClaimingMaster(true);
+    const claimRes = await claimMasterAdminPasscode(claimPassInput.trim());
+    if (!claimRes.success) {
+      setClaimingMaster(false);
+      setErrorMessage(claimRes.message);
+      return;
+    }
+    setMasterNeedsClaim(false);
+    const loginRes = await login('admin', claimPassInput.trim());
+    setClaimingMaster(false);
+    if (!loginRes.success) {
+      setErrorMessage(loginRes.message);
+    }
   };
 
   const handleFormLogin = async (e: React.FormEvent) => {
@@ -520,23 +561,51 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                   <span>{isSubmitting ? 'Signing In...' : 'Log In to Workspace'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
-
-                {/* Demo Quick Fill */}
-                <div className="pt-3 flex items-center justify-between text-xs text-slate-500 border-t border-slate-200/70">
-                  <span className="font-medium">Demo Workspace Access:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername('admin');
-                      setPassword('password123');
-                      setErrorMessage(null);
-                    }}
-                    className="text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
-                  >
-                    Fill Demo Admin Credentials
-                  </button>
-                </div>
               </form>
+
+              {masterNeedsClaim && (
+                <form
+                  onSubmit={handleClaimMasterPasscode}
+                  className="mt-5 p-4 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-3 shadow-2xs"
+                >
+                  <div className="flex items-start gap-2 text-xs font-extrabold text-amber-950">
+                    <KeyRound className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div>First-Run Owner Setup: Claim Master Admin Passcode</div>
+                      <p className="text-[11px] font-medium text-amber-800 mt-0.5">
+                        Set the initial Master Admin password on the server (minimum 8 characters), or configure <code className="font-mono font-bold">MASTER_ADMIN_PASSCODE</code> in environment secrets.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={claimPassInput}
+                      onChange={(e) => setClaimPassInput(e.target.value)}
+                      placeholder="New Master Passcode (8+ chars)"
+                      className="px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-600"
+                    />
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={claimConfirmInput}
+                      onChange={(e) => setClaimConfirmInput(e.target.value)}
+                      placeholder="Confirm Passcode"
+                      className="px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-600"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={claimingMaster}
+                    className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
+                  >
+                    {claimingMaster ? 'Securing Master Account...' : 'Claim & Sign In as Master Admin'}
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* New Company Workspace Link */}

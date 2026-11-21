@@ -65,6 +65,15 @@ import {
   getTeamInitialBaseSite,
 } from '../utils/teamAssignmentUtils';
 import {
+  hashPasswordForStorage,
+  verifyStoredPassword,
+  isHashedPassword,
+  verifyMasterAdminPasscode,
+  issueWorkspaceSessionToken,
+  getApiSessionToken,
+  clearApiSessionToken,
+} from '../utils/securityUtils';
+import {
   INITIAL_CONFIG,
   INITIAL_SITES,
   INITIAL_USERS,
@@ -199,6 +208,9 @@ interface StockContextType {
     workspaceSlug?: string;
   }>;
   logout: () => void;
+  verifyAdminActionPassword: (
+    adminPassword: string
+  ) => Promise<{ valid: boolean; message?: string }>;
   activeSite: Site | null; // null if Main or All Sites
 
   // Entities (All and Active)
@@ -1202,20 +1214,21 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
     seenUsernames.add(norm);
     recovered.push({
       ...u,
+      password: isCoreAdmin ? '' : u.password,
       tenantId: u.tenantId || DEFAULT_TENANT.id,
       role: normalizeRole(u.role),
       isDeleted: isCoreAdmin ? false : (u.isDeleted ?? false),
     });
   };
 
-  // 1. Always ensure Master Super Admin is present
+  // 1. Always ensure Master Super Admin is present (credential verified exclusively server-side)
   const adminUser: User = {
     id: 'usr-admin-1',
     username: 'admin',
     fullName: 'Sasith Dissanayake',
     siteId: 'all',
     role: 'Super Admin Central',
-    password: 'sasith@123',
+    password: '',
     createdAt: '2026-11-01T00:00:00.000Z',
     isDeleted: false,
     tenantId: DEFAULT_TENANT.id,
@@ -1941,6 +1954,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     if (!activeTenantId || !isAuthenticated) return;
 
+    // Ensure an in-memory Bearer token exists for protected backend API routes (e.g. /api/support-chat)
+    if (
+      !getApiSessionToken() &&
+      currentUser?.id &&
+      currentUser.id !== 'usr-admin-1' &&
+      currentUser.username !== 'admin'
+    ) {
+      issueWorkspaceSessionToken(currentUser.id, activeTenantId).catch(() => undefined);
+    }
+
     // 1. One-time get() fetch for Master/Static/Heavy Reference collections (with 5-min session cache)
     syncTenantCollectionsFromFirebase(activeTenantId);
 
@@ -2522,15 +2545,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
 
+      const isCandidateMasterAdmin = (t: Tenant, u: User) =>
+        t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
+
+      const verifyCandidatePassword = async (t: Tenant, u: User, pass: string): Promise<boolean> => {
+        if (!pass) return false;
+        if (isCandidateMasterAdmin(t, u)) {
+          const serverRes = await verifyMasterAdminPasscode(pass);
+          return serverRes.valid;
+        }
+        return verifyStoredPassword(pass, u.password);
+      };
+
       // If a specific workspace was designated, check ONLY tenants matching that slug/id first (Strict Per-Tenant Isolation)
       if (matchingTenants.length > 0) {
-        const slugCandidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
+        const slugCandidates: { tenant: Tenant; user: User }[] = [];
         for (const t of matchingTenants) {
           const u = await findUserInTenant(t, term);
           if (u) {
-            const isMaster = t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
-            const expected = isMaster ? 'sasith@123' : (u.password || 'password123').trim();
-            slugCandidates.push({ tenant: t, user: u, expectedPass: expected });
+            slugCandidates.push({ tenant: t, user: u });
           }
         }
 
@@ -2541,9 +2574,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           for (const t of matchingTenants) {
             const u = await findUserInTenant(t, term);
             if (u) {
-              const isMaster = t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
-              const expected = isMaster ? 'sasith@123' : (u.password || 'password123').trim();
-              slugCandidates.push({ tenant: t, user: u, expectedPass: expected });
+              slugCandidates.push({ tenant: t, user: u });
             }
           }
         }
@@ -2552,8 +2583,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           matchedTenant = slugCandidates[0].tenant;
           matchedUser = slugCandidates[0].user;
         } else if (slugCandidates.length > 1) {
-          const passMatched = inputPass ? slugCandidates.filter((c) => c.expectedPass === inputPass) : slugCandidates;
-          const chosen = passMatched[0] || slugCandidates[0];
+          let chosen = slugCandidates[0];
+          if (inputPass) {
+            for (const c of slugCandidates) {
+              if (await verifyCandidatePassword(c.tenant, c.user, inputPass)) {
+                chosen = c;
+                break;
+              }
+            }
+          }
           matchedTenant = chosen.tenant;
           matchedUser = chosen.user;
         } else {
@@ -2567,9 +2605,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const activeTenObj = allTenants.find((t) => t.id === currentTenantIdRef.current) || DEFAULT_TENANT;
         const activeFound = await findUserInTenant(activeTenObj, term);
         if (activeFound) {
-          const isMaster = activeTenObj.id === DEFAULT_TENANT.id && (activeFound.username === 'admin' || activeFound.id === 'usr-admin-1');
-          const expected = isMaster ? 'sasith@123' : (activeFound.password || 'password123').trim();
-          if (!inputPass || inputPass === expected) {
+          if (!inputPass || (await verifyCandidatePassword(activeTenObj, activeFound, inputPass))) {
             matchedTenant = activeTenObj;
             matchedUser = activeFound;
           }
@@ -2578,20 +2614,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Only if the user was NOT found (or password didn't match) in the current active tenant, search remaining tenants
         if (!matchedUser || !matchedTenant) {
           await refreshTenantsFromCloud();
-          const candidates: { tenant: Tenant; user: User; expectedPass: string }[] = [];
+          const candidates: { tenant: Tenant; user: User }[] = [];
           if (activeFound) {
-            const isMaster = activeTenObj.id === DEFAULT_TENANT.id && (activeFound.username === 'admin' || activeFound.id === 'usr-admin-1');
-            const expected = isMaster ? 'sasith@123' : (activeFound.password || 'password123').trim();
-            candidates.push({ tenant: activeTenObj, user: activeFound, expectedPass: expected });
+            candidates.push({ tenant: activeTenObj, user: activeFound });
           }
 
           for (const t of allTenants) {
             if (t.id === activeTenObj.id) continue;
             const found = await findUserInTenant(t, term);
             if (found) {
-              const isMaster = t.id === DEFAULT_TENANT.id && (found.username === 'admin' || found.id === 'usr-admin-1');
-              const expected = isMaster ? 'sasith@123' : (found.password || 'password123').trim();
-              candidates.push({ tenant: t, user: found, expectedPass: expected });
+              candidates.push({ tenant: t, user: found });
             }
           }
 
@@ -2603,9 +2635,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             matchedTenant = candidates[0].tenant;
             matchedUser = candidates[0].user;
           } else {
-            const passwordMatched = inputPass
-              ? candidates.filter((c) => c.expectedPass === inputPass)
-              : [];
+            const passwordMatched: { tenant: Tenant; user: User }[] = [];
+            if (inputPass) {
+              for (const c of candidates) {
+                if (await verifyCandidatePassword(c.tenant, c.user, inputPass)) {
+                  passwordMatched.push(c);
+                }
+              }
+            }
 
             if (passwordMatched.length === 1) {
               matchedTenant = passwordMatched[0].tenant;
@@ -2668,21 +2705,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: false, message: 'User account not found. Please verify your username.' };
     }
 
-    // Password verification (supports both local/RTDB credential and synced Firebase Auth password resets)
+    // Password verification (Master Admin verified on server; Tenant users via salted hash + Firebase reset fallback)
+    const isMasterAdminTarget =
+      matchedTenant.id === 'tenant-apex-main' &&
+      (matchedUser.username === 'admin' || matchedUser.id === 'usr-admin-1');
+
     if (password !== undefined) {
       const inputPass = password.trim();
-      const isMasterAdminTarget =
-        matchedTenant.id === 'tenant-apex-main' &&
-        (matchedUser.username === 'admin' || matchedUser.id === 'usr-admin-1');
 
       if (isMasterAdminTarget) {
-        const secureDeveloperPassword = 'sasith@123';
-        if (inputPass !== secureDeveloperPassword) {
-          return { success: false, message: 'Invalid master administrator credentials. Access restricted.' };
+        const serverAuthRes = await verifyMasterAdminPasscode(inputPass);
+        if (!serverAuthRes.valid) {
+          return {
+            success: false,
+            message: serverAuthRes.message || 'Invalid master administrator credentials. Access restricted.',
+          };
         }
       } else {
-        const expectedPass = (matchedUser.password || 'password123').trim();
-        if (inputPass !== expectedPass) {
+        const storedMatch = await verifyStoredPassword(inputPass, matchedUser.password);
+        if (!storedMatch) {
           const candidateEmail =
             (matchedUser.email && matchedUser.email.includes('@') ? matchedUser.email : '') ||
             (matchedUser.username.includes('@') ? matchedUser.username : '') ||
@@ -2698,10 +2739,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return { success: false, message: 'Invalid password. Please check your credentials.' };
           }
 
-          // User completed a password reset via Firebase email link — sync their new password into tenant users
+          // User completed a password reset via Firebase email link — store salted hash into tenant users
+          const hashedNewPass = await hashPasswordForStorage(inputPass);
           const updatedUserRecord: User = {
             ...matchedUser,
-            password: inputPass,
+            password: hashedNewPass,
             updatedAt: new Date().toISOString(),
           };
           matchedUser = updatedUserRecord;
@@ -2714,8 +2756,30 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             u.id === updatedUserRecord.id ? updatedUserRecord : u
           );
           saveTenantData(matchedTenant.id, 'users', nextTenantUsers);
+        } else if (matchedUser.password && !isHashedPassword(matchedUser.password)) {
+          // Transparently upgrade legacy unhashed user password to salted SHA-256 hash
+          const hashedPass = await hashPasswordForStorage(inputPass);
+          const upgradedUser: User = {
+            ...matchedUser,
+            password: hashedPass,
+            updatedAt: new Date().toISOString(),
+          };
+          matchedUser = upgradedUser;
+          const existingTenantUsers = loadTenantData<User[]>(
+            matchedTenant.id,
+            'users',
+            matchedTenant.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+          );
+          const nextTenantUsers = existingTenantUsers.map((u) =>
+            u.id === upgradedUser.id ? upgradedUser : u
+          );
+          saveTenantData(matchedTenant.id, 'users', nextTenantUsers);
         }
       }
+    }
+
+    if (!isMasterAdminTarget) {
+      issueWorkspaceSessionToken(matchedUser.id, matchedTenant.id).catch(() => undefined);
     }
 
     // Clear any preview mode and switch tenant context
@@ -2747,6 +2811,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const logout = () => {
+    clearApiSessionToken();
     setIsAuthenticated(false);
     try {
       localStorage.setItem(STORAGE_KEY_PREFIX + 'is_authenticated', 'false');
@@ -2754,6 +2819,52 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (e) {
       console.warn('Could not save logout state:', e);
     }
+  };
+
+  const verifyAdminActionPassword = async (
+    adminPassword: string
+  ): Promise<{ valid: boolean; message?: string }> => {
+    const trimmed = (adminPassword || '').trim();
+    if (!trimmed) {
+      return { valid: false, message: 'Please enter the Admin Password to authorize this action.' };
+    }
+
+    const activeTid = currentTenantIdRef.current;
+    const isMasterCtx = activeTid === DEFAULT_TENANT.id || activeTid === 'tenant-apex-main';
+
+    // 1. Verify against server-side Master Admin passcode when in Master workspace
+    if (isMasterCtx) {
+      const serverCheck = await verifyMasterAdminPasscode(trimmed);
+      if (serverCheck.valid) {
+        return { valid: true };
+      }
+    }
+
+    // 2. Verify against current logged-in user (when they hold Admin / Super Admin role)
+    if (
+      currentUser &&
+      (isSuperAdmin(currentUser.role) || currentUser.username === 'admin') &&
+      currentUser.password &&
+      (await verifyStoredPassword(trimmed, currentUser.password))
+    ) {
+      return { valid: true };
+    }
+
+    // 3. Verify against any active Super Admin / Central Admin account in current workspace
+    const adminUsers = (users || []).filter(
+      (u) =>
+        !u.isDeleted &&
+        u.id !== 'usr-admin-1' &&
+        (isSuperAdmin(u.role) || u.role === 'All Site Branch Admin')
+    );
+
+    for (const admin of adminUsers) {
+      if (admin.password && (await verifyStoredPassword(trimmed, admin.password))) {
+        return { valid: true };
+      }
+    }
+
+    return { valid: false, message: 'Incorrect Admin Password. Action blocked.' };
   };
 
   // Standard Tenant Forgot Password: Looks up tenant user by work email & sends Firebase password reset link
@@ -2949,6 +3060,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         allTenants
       );
 
+      const hashedResetPass = await hashPasswordForStorage(cleanNewPass);
       let modified = false;
       const nextUsers = mergedUsers.map((u) => {
         if (u.isDeleted) return u;
@@ -2968,7 +3080,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           if (!updatedSlug) updatedSlug = t.slug;
           return {
             ...u,
-            password: cleanNewPass,
+            password: hashedResetPass,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -3214,7 +3326,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       // Load clean tenant state into memory
       loadTenantStateIntoMemory(newTenant.id);
 
-      // Log in automatically
+      // Log in automatically & immediately upgrade stored password to salted SHA-256 hash
       setCurrentUser(newAdminUser);
       setIsAuthenticated(true);
       try {
@@ -3223,6 +3335,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       } catch (e) {
         console.warn('Could not save auth state:', e);
       }
+
+      hashPasswordForStorage(form.adminPassword).then((hashed) => {
+        if (!hashed) return;
+        const securedAdmin = { ...newAdminUser, password: hashed };
+        saveTenantData(tenantId, 'users', [securedAdmin]);
+        if (currentTenantIdRef.current === tenantId) {
+          setUsers([securedAdmin]);
+          setCurrentUser(securedAdmin);
+        }
+      });
+      issueWorkspaceSessionToken(newAdminUser.id, tenantId).catch(() => undefined);
 
       return {
         success: true,
@@ -4663,7 +4786,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       fullName: 'System Super Admin',
       siteId: 'all',
       role: 'Super Admin Central',
-      password: 'password123',
+      password: '',
       createdAt: new Date().toISOString(),
     };
 
@@ -4848,6 +4971,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return updated;
     });
+
+    if (newUser.password && !isHashedPassword(newUser.password)) {
+      hashPasswordForStorage(newUser.password).then((hashed) => {
+        if (!hashed) return;
+        setUsers((prev) => {
+          const updated = prev.map((u) => (u.id === newUser.id ? { ...u, password: hashed } : u));
+          saveTenantData(activeTenantId, 'users', updated);
+          if (isMaster) {
+            writeUsersToFirebase(updated).catch(console.warn);
+          }
+          return updated;
+        });
+      });
+    }
 
     // Bi-directional sync: if assigned to site(s) that currently have placeholder/unassigned supervisor, link this user
     if (cleanSpecificIds.length > 0) {
@@ -5474,6 +5611,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return updated;
     });
+
+    if (
+      updates.password &&
+      updates.password.trim() &&
+      id !== 'usr-admin-1' &&
+      !isHashedPassword(updates.password)
+    ) {
+      hashPasswordForStorage(updates.password).then((hashed) => {
+        if (!hashed) return;
+        setUsers((prev) => {
+          const updated = prev.map((u) => (u.id === id ? { ...u, password: hashed } : u));
+          saveTenantData(activeTenantId, 'users', updated);
+          if (isMaster) {
+            writeUsersToFirebase(updated).catch(console.warn);
+          }
+          return updated;
+        });
+      });
+    }
 
     // Bi-directional sync: keep Site supervisorName & supervisorUserId consistent with User changes
     setSites((prevSites) => {
@@ -8720,15 +8876,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
     }
     const trimmedPw = (adminPassword || '').trim();
-    const validPasswords = [
-      currentUser?.password,
-      'password123',
-      'admin',
-      'admin123',
-      'flush2026',
-    ].filter(Boolean);
+    const isMasterFlush =
+      (currentTenantIdRef.current === DEFAULT_TENANT.id ||
+        currentTenantIdRef.current === 'tenant-apex-main') &&
+      (currentUser?.username === 'admin' || currentUser?.id === 'usr-admin-1');
 
-    if (!validPasswords.includes(trimmedPw)) {
+    let pwAuthorized = false;
+    if (isMasterFlush) {
+      const serverCheck = await verifyMasterAdminPasscode(trimmedPw);
+      pwAuthorized = serverCheck.valid;
+    } else if (currentUser?.password) {
+      pwAuthorized = await verifyStoredPassword(trimmedPw, currentUser.password);
+    }
+
+    if (!pwAuthorized) {
       return { success: false, message: 'Invalid Admin Password! System flush cancelled.' };
     }
 
@@ -8803,7 +8964,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       fullName: currentUser?.fullName || `${activeTenant.companyName} Super Admin`,
       siteId: 'all',
       role: 'Super Admin Central',
-      password: currentUser?.password || 'password123',
+      password: isMaster ? '' : (currentUser?.password || ''),
       createdAt: flushIso,
       isDeleted: false,
       tenantId: targetTenantId,
@@ -9565,6 +9726,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isAuthenticated,
         login,
         logout,
+        verifyAdminActionPassword,
         activeSite,
         sites,
         activeSites,

@@ -78,7 +78,7 @@ export const INITIAL_USERS: User[] = [
     fullName: 'System Super Admin',
     siteId: 'all',
     role: 'Super Admin Central',
-    password: 'sasith@123',
+    password: '',
     createdAt: new Date().toISOString(),
   },
 ];

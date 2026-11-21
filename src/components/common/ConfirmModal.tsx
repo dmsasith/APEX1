@@ -28,10 +28,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onClose,
   onCancel,
 }) => {
-  const { currentUser, users, currentTenant } = useStock();
+  const { verifyAdminActionPassword } = useStock();
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const needsPassword = requireAdminPassword ?? isDestructive;
 
@@ -40,53 +41,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       setAdminPassword('');
       setShowPassword(false);
       setErrorMsg(null);
+      setIsVerifying(false);
     }
   }, [isOpen, title]);
 
   const handleClose = onClose || onCancel || (() => {});
   if (!isOpen) return null;
 
-  const verifyAdminPassword = (input: string): boolean => {
-    const trimmed = input.trim();
-    if (!trimmed) return false;
-
-    // 1. Check if master workspace default admin password matches
-    if (
-      currentTenant?.id === 'tenant-apex-main' &&
-      (currentUser?.username === 'admin' || currentUser?.id === 'usr-admin-1')
-    ) {
-      if (trimmed === 'sasith@123') return true;
-    }
-
-    // 2. Check current logged-in user's password
-    if (currentUser?.password && trimmed === currentUser.password.trim()) {
-      return true;
-    }
-
-    // 3. Check any active Super Admin / Central Admin account password in the current workspace
-    const adminUsers = (users || []).filter(
-      (u) =>
-        !u.isDeleted &&
-        (isSuperAdmin(u.role) || isCentralOrAllSiteAdmin(u.role) || u.username === 'admin')
-    );
-
-    for (const admin of adminUsers) {
-      const isMasterDefault =
-        currentTenant?.id === 'tenant-apex-main' &&
-        (admin.username === 'admin' || admin.id === 'usr-admin-1');
-      if (isMasterDefault && trimmed === 'sasith@123') {
-        return true;
-      }
-      const expected = (admin.password || 'password123').trim();
-      if (trimmed === expected) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  const handleConfirmSubmit = (e?: React.FormEvent) => {
+  const handleConfirmSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (needsPassword) {
@@ -94,8 +56,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         setErrorMsg('Please enter the Admin Password to authorize this deletion.');
         return;
       }
-      if (!verifyAdminPassword(adminPassword)) {
-        setErrorMsg('Incorrect Admin Password. Deletion blocked.');
+      setIsVerifying(true);
+      const checkRes = await verifyAdminActionPassword(adminPassword);
+      setIsVerifying(false);
+      if (!checkRes.valid) {
+        setErrorMsg(checkRes.message || 'Incorrect Admin Password. Deletion blocked.');
         return;
       }
     }
@@ -183,14 +148,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={needsPassword && !adminPassword.trim()}
+              disabled={isVerifying || (needsPassword && !adminPassword.trim())}
               className={`px-4 py-2 rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 isDestructive
                   ? 'bg-rose-600 hover:bg-rose-700 text-white'
                   : 'bg-slate-900 hover:bg-slate-800 text-white'
               }`}
             >
-              {confirmLabel}
+              {isVerifying ? 'Verifying...' : confirmLabel}
             </button>
           </div>
         </form>
