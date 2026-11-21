@@ -19,9 +19,7 @@ import {
   FileSpreadsheet,
   Eye,
   HardDrive,
-  Laptop,
   FolderDown,
-  FolderCheck,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { StockBackup, isSuperAdmin } from '../../types';
@@ -39,12 +37,9 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
     config,
     currentUser,
     backups,
-    createBackup,
     restoreBackup,
     deleteBackup,
     flushSystemWithBackup,
-    lastAutoBackupTime,
-    triggerDailyBackupNow,
     items,
     sites,
     teams,
@@ -64,7 +59,7 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
     digitalSignatures,
   } = useStock();
 
-  const [activeTab, setActiveTab] = useState<'flush' | 'backups' | 'manual'>('backups');
+  const [activeTab, setActiveTab] = useState<'flush' | 'backups'>('backups');
   const [showOfflineViewer, setShowOfflineViewer] = useState(false);
   const [viewerBackupData, setViewerBackupData] = useState<StockBackup | null>(null);
 
@@ -75,39 +70,10 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
   const [flushStatus, setFlushStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Manual Backup states
-  const [manualName, setManualName] = useState('');
-  const [manualNote, setManualNote] = useState('');
-
   // Selected backup for preview/restore/delete
   const [restoreConfirmBackup, setRestoreConfirmBackup] = useState<StockBackup | null>(null);
   const [deleteConfirmBackup, setDeleteConfirmBackup] = useState<StockBackup | null>(null);
   const [restoreSuccessMsg, setRestoreSuccessMsg] = useState<string | null>(null);
-
-  // Auto-download to PC Hard Drive toggle state
-  const [autoDownloadToPc, setAutoDownloadToPc] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(`apex_auto_download_daily_pc_${currentTenant.id}`) === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleAutoDownloadToPc = () => {
-    const nextVal = !autoDownloadToPc;
-    setAutoDownloadToPc(nextVal);
-    try {
-      localStorage.setItem(`apex_auto_download_daily_pc_${currentTenant.id}`, String(nextVal));
-      if (nextVal) {
-        setRestoreSuccessMsg('Auto-download to PC Hard Drive enabled! Daily auto-backups will download directly to your computer.');
-      } else {
-        setRestoreSuccessMsg('Auto-download to PC Hard Drive disabled.');
-      }
-      setTimeout(() => setRestoreSuccessMsg(null), 4000);
-    } catch (e) {
-      console.warn('Could not save auto download setting:', e);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -200,20 +166,9 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
     }
   };
 
-  const handleCreateManualBackup = (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalName = manualName.trim() || `Manual Snapshot #${backups.length + 1}`;
-    createBackup(finalName, manualNote.trim() || 'Manual user-triggered snapshot');
-    setManualName('');
-    setManualNote('');
-    setActiveTab('backups');
-    setRestoreSuccessMsg(`Snapshot "${finalName}" saved successfully.`);
-    setTimeout(() => setRestoreSuccessMsg(null), 4000);
-  };
-
   const handleConfirmRestore = (b: StockBackup) => {
     try {
-      restoreBackup(b.id);
+      restoreBackup(b);
       setRestoreConfirmBackup(null);
       setRestoreSuccessMsg(`System restored successfully to "${b.name}" (Backup #${b.backupNumber}).`);
       setTimeout(() => setRestoreSuccessMsg(null), 5000);
@@ -352,18 +307,31 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
           alert('Invalid backup file format. Expected StockBackup JSON structure.');
           return;
         }
-        createBackup(
-          `Imported: ${json.name || file.name.replace('.json', '')}`,
-          `Imported from external file on ${new Date().toLocaleDateString()}`
-        );
-        setActiveTab('backups');
-        setRestoreSuccessMsg('External backup file imported and saved to your backup library.');
-        setTimeout(() => setRestoreSuccessMsg(null), 4000);
+        const importedBackup: StockBackup = {
+          id: json.id || `imported-${Date.now()}`,
+          backupNumber: json.backupNumber || 1,
+          name: json.name || file.name.replace('.json', ''),
+          createdAt: json.createdAt || new Date().toISOString(),
+          createdBy: json.createdBy || 'Imported JSON File',
+          reason: json.reason || `Imported from ${file.name}`,
+          itemCount: json.itemCount ?? json.snapshot.items?.length ?? 0,
+          transactionCount:
+            json.transactionCount ??
+            (json.snapshot.mainStockEntries?.length || 0) +
+              (json.snapshot.stockRequests?.length || 0) +
+              (json.snapshot.teamIssues?.length || 0) +
+              (json.snapshot.teamReturns?.length || 0) +
+              (json.snapshot.projectUsages?.length || 0) +
+              (json.snapshot.branchReturns?.length || 0),
+          snapshot: json.snapshot,
+        };
+        setRestoreConfirmBackup(importedBackup);
       } catch {
         alert('Failed to parse JSON backup file.');
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   return (
@@ -401,19 +369,7 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
             }`}
           >
             <History className="w-4 h-4" />
-            <span>Backup History ({backups.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('manual')}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'manual'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Snapshot Current</span>
+            <span>Pre-Flush Backups & PC Export ({backups.length})</span>
           </button>
 
           <button
@@ -429,31 +385,17 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
           </button>
         </div>
 
-        {/* Daily Auto-Backup Status Bar */}
+        {/* Cloud Storage Optimization Bar */}
         <div className="bg-slate-900 text-white px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-            <span className="font-bold text-emerald-400">LocalStorage Daily Auto-Backup: Active</span>
-            <span className="text-slate-400 text-[11px] hidden sm:inline">
-              {lastAutoBackupTime ? `· Last auto-saved: ${new Date(lastAutoBackupTime).toLocaleString()}` : '· Automatically snapshots every 24h'}
+            <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="font-bold text-emerald-400">Cloud Storage Saver:</span>
+            <span className="text-slate-300 text-[11px]">
+              Cloud backups are saved only during System Flush (daily auto-backups disabled).
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                triggerDailyBackupNow();
-                setRestoreSuccessMsg('Daily Local Storage snapshot updated successfully!');
-                setTimeout(() => setRestoreSuccessMsg(null), 3500);
-              }}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold transition cursor-pointer flex items-center gap-1"
-              title="Force an immediate automated snapshot into LocalStorage"
-            >
-              <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Snapshot to LocalStorage</span>
-            </button>
-
             <button
               type="button"
               onClick={() => {
@@ -593,13 +535,13 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
           {/* TAB 2: BACKUP HISTORY & RESTORATION */}
           {activeTab === 'backups' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Saved System Snapshots ({backups.length})
+                    Saved Pre-Flush Archives ({backups.length})
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Unlimited versioned archives. Click restore anytime to revert data state.
+                    Cloud backups are created strictly on System Flush. Use PC exports below for zero-cloud-cost offline backups.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -613,9 +555,9 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                     <span>Download Live Backup (.json)</span>
                   </button>
 
-                  <label className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer">
+                  <label className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer" title="Import an offline .json backup file to restore">
                     <Upload className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Import JSON</span>
+                    <span>Import & Restore JSON</span>
                     <input
                       type="file"
                       accept=".json"
@@ -626,29 +568,19 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                 </div>
               </div>
 
-              {/* PC Hard Drive Direct Backup & Sync Card */}
-              <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-4 rounded-xl border border-slate-800 shadow-sm space-y-3">
+              {/* PC Hard Drive Direct Backup Card */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-4 rounded-xl border border-slate-800 shadow-sm">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
-                      <Laptop className="w-4 h-4" />
+                      <HardDrive className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-white flex items-center gap-2 flex-wrap">
-                        <span>Admin PC Hard Drive Auto-Backup & Storage</span>
-                        {autoDownloadToPc ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            Auto-Download to PC: Active
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-400 border border-slate-700">
-                            Auto-Download to PC: Off
-                          </span>
-                        )}
+                      <h4 className="font-bold text-xs text-white">
+                        Save Offline Copy Directly to PC Hard Drive
                       </h4>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Save complete offline database files directly to your computer's local storage or a synced Google Drive / OneDrive folder.
+                        Export a full <code className="text-emerald-300">.json</code> database file to your PC or synced Google Drive / OneDrive folder without consuming Firebase storage.
                       </p>
                     </div>
                   </div>
@@ -665,32 +597,14 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                     </button>
                   </div>
                 </div>
-
-                <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={autoDownloadToPc}
-                      onChange={toggleAutoDownloadToPc}
-                      className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-700 bg-slate-800 cursor-pointer"
-                    />
-                    <span className="text-slate-300 text-[11px]">
-                      <strong>Auto-Download Copy to PC:</strong> Automatically download a <code className="text-emerald-300">.json</code> backup file into your PC Downloads folder every 24 hours when system loads.
-                    </span>
-                  </label>
-
-                  <div className="text-[10px] text-amber-300 font-medium shrink-0 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md">
-                    💡 <strong>Pro Tip:</strong> Select your local <strong>Google Drive</strong> or <strong>OneDrive</strong> folder for automatic cloud backup!
-                  </div>
-                </div>
               </div>
 
               {backups.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
                   <Database className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-slate-600">No prior backups saved yet.</p>
+                  <p className="text-xs font-semibold text-slate-600">No Pre-Flush backups saved in Cloud yet.</p>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    When you perform a Full System Flush or take a manual snapshot, versioned archives will appear here.
+                    When you perform an Admin System Flush, a Pre-Flush archive will be saved here automatically. For daily copies, export directly to your PC above.
                   </p>
                 </div>
               ) : (
@@ -774,60 +688,6 @@ export const SystemBackupModal: React.FC<SystemBackupModalProps> = ({ isOpen, on
                 </div>
               )}
             </div>
-          )}
-
-          {/* TAB 3: MANUAL SNAPSHOT */}
-          {activeTab === 'manual' && (
-            <form onSubmit={handleCreateManualBackup} className="space-y-4">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-xs text-emerald-950 space-y-1">
-                <p className="font-bold text-sm text-emerald-900">
-                  Create Instant System Snapshot (Backup #{backups.length + 1})
-                </p>
-                <p>
-                  Freezes your current database state (items, central warehouse stock, branches, teams, projects, transactions) into a permanent named version without clearing any live data.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Snapshot Name / Purpose *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={manualName}
-                  onChange={(e) => setManualName(e.target.value)}
-                  placeholder="e.g. End of Month Stock Count / Pre-Audit Check"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Notes / Description (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={manualNote}
-                  onChange={(e) => setManualNote(e.target.value)}
-                  placeholder="e.g. Saved before importing 200 new telecommunication equipment parts."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 flex items-center justify-between font-mono">
-                <span>Active records captured:</span>
-                <span className="font-bold text-slate-900">{totalCurrentRecords} entities</span>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-colors"
-              >
-                <FileArchive className="w-4 h-4" />
-                <span>Save Version #{backups.length + 1} Now</span>
-              </button>
-            </form>
           )}
         </div>
 

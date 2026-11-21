@@ -511,16 +511,13 @@ interface StockContextType {
     hasActivity: boolean;
   };
 
-  // Versioned Backups & Admin System Flush
-  createBackup: (name: string, reason?: string) => StockBackup;
-  restoreBackup: (backupId: string) => void;
+  // Versioned Pre-Flush Backups & Admin System Flush
+  restoreBackup: (backupOrId: string | StockBackup) => void;
   deleteBackup: (backupId: string) => void;
   flushSystemWithBackup: (
     adminPassword: string,
     backupName: string
   ) => Promise<{ success: boolean; message: string; backupNumber?: number }>;
-  lastAutoBackupTime: string | null;
-  triggerDailyBackupNow: () => StockBackup;
 
   // Inventory Calculations
   getMainWarehouseStock: (itemId: string) => {
@@ -860,6 +857,13 @@ export function filterPostFlushRecords<T>(tenantId: string, key: string, list: T
 
   return list.filter((rec: any) => {
     if (!rec) return false;
+    if (key === 'backups') {
+      const idStr = String(rec.id || '');
+      const nameStr = String(rec.name || '');
+      if (idStr.startsWith('auto-backup-') || nameStr.startsWith('[Daily Auto-Backup]')) {
+        return false;
+      }
+    }
     if (isProtectedCoreRecord(key, rec)) return true;
     if (rec.id && deletedRecordIds.has(rec.id)) return false;
     if (flushMeta && flushMeta.flushedAtMs) {
@@ -1866,7 +1870,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         syncCollection<DigitalSignature>('digitalSignatures', setDigitalSignatures),
       ];
 
-      // Only download heavy full-workspace backups or operational collections via get() when explicitly forced (e.g. Manual Cloud Sync button)
+      // Clean up any legacy daily auto-backup localStorage artifacts to free browser storage
+      try {
+        localStorage.removeItem(`apex_daily_auto_snapshot_${targetTenantId}`);
+        localStorage.removeItem(`apex_last_daily_backup_date_${targetTenantId}`);
+        localStorage.removeItem(`apex_last_daily_backup_time_${targetTenantId}`);
+        localStorage.removeItem(`apex_auto_download_daily_pc_${targetTenantId}`);
+      } catch {}
+
+      const autoBackupPruneFlag = `apex_pruned_autobackups_v1_${targetTenantId}`;
+      const needsAutoBackupPrune = (() => {
+        try {
+          return sessionStorage.getItem(autoBackupPruneFlag) !== '1';
+        } catch {
+          return false;
+        }
+      })();
+
+      // Only download heavy operational collections via get() when explicitly forced (e.g. Manual Cloud Sync button),
+      // or perform a one-time-per-session prune check on `backups` to reclaim any legacy [Daily Auto-Backup] space in Firebase.
       if (forceFullRefresh) {
         tasks.push(
           syncCollection<Team>('teams', setTeams),
@@ -1882,7 +1904,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           syncCollection<DamagedStockRestoration>('damagedRestorations', setDamagedRestorations),
           syncCollection<PurchaseOrder>('purchaseOrders', setPurchaseOrders),
           syncCollection<SupplierReturn>('supplierReturns', setSupplierReturns),
-          syncCollection<StockBackup>('backups', setBackups)
+          syncCollection<StockBackup>('backups', setBackups).then(() => {
+            try {
+              sessionStorage.setItem(autoBackupPruneFlag, '1');
+            } catch {}
+          })
+        );
+      } else if (needsAutoBackupPrune) {
+        tasks.push(
+          syncCollection<StockBackup>('backups', setBackups).then(() => {
+            try {
+              sessionStorage.setItem(autoBackupPruneFlag, '1');
+            } catch {}
+          })
         );
       }
 
@@ -2183,13 +2217,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [backups, setBackups] = useState<StockBackup[]>(() =>
     loadTenantData(currentTenantId, 'backups', isDefaultTenant ? INITIAL_BACKUPS : [])
   );
-  const [lastAutoBackupTime, setLastAutoBackupTime] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(`apex_last_daily_backup_time_${currentTenantId}`) || null;
-    } catch {
-      return null;
-    }
-  });
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() =>
     loadTenantData(currentTenantId, 'auditLogs', isDefaultTenant ? INITIAL_AUDIT_LOGS : [])
   );
@@ -8528,175 +8555,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   };
 
-  // Versioned Backups & Admin Password Protected Full System Flush
-  const createBackup = (name: string, reason?: string): StockBackup => {
-    const backupNumber = backups.length + 1;
-    const finalName = name?.trim() || `Backup #${backupNumber}`;
-    const newBackup: StockBackup = {
-      id: `backup-${Date.now()}`,
-      backupNumber,
-      name: finalName,
-      createdAt: new Date().toISOString(),
-      createdBy: currentUser?.fullName || 'System Administrator',
-      itemCount: items.length,
-      transactionCount:
-        mainStockEntries.length +
-        stockRequests.length +
-        teamIssues.length +
-        teamReturns.length +
-        projectUsages.length +
-        clientFreeIssues.length +
-        branchReturns.length +
-        damagedRestorations.length +
-        purchaseOrders.length +
-        supplierReturns.length,
-      reason: reason || 'Manual user backup',
-      snapshot: {
-        config,
-        sites,
-        users,
-        items,
-        teams,
-        projects,
-        projectTypes,
-        mainStockEntries,
-        stockRequests,
-        teamIssues,
-        teamReturns,
-        projectUsages,
-        crossProjectRequests,
-        clientFreeIssues,
-        branchReturns,
-        damagedRestorations,
-        suppliers,
-        clients,
-        purchaseOrders,
-        supplierReturns,
-        auditLogs,
-      },
-    };
-
-    const updated = [newBackup, ...backups];
-    setBackups(updated);
-    saveToStorage('backups', updated);
-    saveTenantData(currentTenantIdRef.current, 'backups', updated);
-    addAuditLog(
-      'BACKUP_CREATED',
-      `BACKUP-#${backupNumber}`,
-      'Main Central Warehouse',
-      `Created full system snapshot: "${finalName}" (Backup #${backupNumber}) with ${newBackup.itemCount} items.`
-    );
-    return newBackup;
-  };
-
-  const triggerDailyBackupNow = (): StockBackup => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const nowIso = new Date().toISOString();
-    const backupNumber = backups.length + 1;
-    const finalName = `[Daily Auto-Backup] ${todayStr}`;
-    const autoBackup: StockBackup = {
-      id: `auto-backup-${Date.now()}`,
-      backupNumber,
-      name: finalName,
-      createdAt: nowIso,
-      createdBy: currentUser?.fullName || 'System (Daily Auto-Persistence)',
-      itemCount: items.length,
-      transactionCount:
-        mainStockEntries.length +
-        stockRequests.length +
-        teamIssues.length +
-        teamReturns.length +
-        projectUsages.length +
-        clientFreeIssues.length +
-        branchReturns.length +
-        damagedRestorations.length +
-        purchaseOrders.length +
-        supplierReturns.length,
-      reason: 'Daily automated background snapshot for disaster recovery and offline access',
-      snapshot: {
-        config,
-        sites,
-        users,
-        items,
-        teams,
-        projects,
-        projectTypes,
-        mainStockEntries,
-        stockRequests,
-        teamIssues,
-        teamReturns,
-        projectUsages,
-        crossProjectRequests,
-        clientFreeIssues,
-        branchReturns,
-        damagedRestorations,
-        suppliers,
-        clients,
-        purchaseOrders,
-        supplierReturns,
-        auditLogs,
-      },
-    };
-
-    try {
-      localStorage.setItem(`apex_daily_auto_snapshot_${currentTenantIdRef.current}`, JSON.stringify(autoBackup));
-      localStorage.setItem(`apex_last_daily_backup_date_${currentTenantIdRef.current}`, todayStr);
-      localStorage.setItem(`apex_last_daily_backup_time_${currentTenantIdRef.current}`, nowIso);
-
-      // If user enabled automatic file download to PC Hard Drive / Downloads folder
-      const autoDownloadKey = `apex_auto_download_daily_pc_${currentTenantIdRef.current}`;
-      if (typeof window !== 'undefined' && localStorage.getItem(autoDownloadKey) === 'true') {
-        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(autoBackup, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute('href', dataStr);
-        downloadAnchor.setAttribute('download', `Apex_Daily_AutoBackup_${todayStr}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-      }
-    } catch (e) {
-      console.warn('Auto-backup local storage quota or auto-download notice:', e);
-    }
-
-    setBackups((prev) => {
-      const filtered = prev.filter((b) => !b.name.includes(`[Daily Auto-Backup] ${todayStr}`));
-      const updated = [autoBackup, ...filtered];
-      saveToStorage('backups', updated);
-      saveTenantData(currentTenantIdRef.current, 'backups', updated);
-      return updated;
-    });
-
-    setLastAutoBackupTime(nowIso);
-    return autoBackup;
-  };
-
-  // Automated Daily Backup background trigger (only runs when genuine inventory/transaction data exists, NOT just empty default site)
-  useEffect(() => {
-    if (isFlushingRef.current) return;
-    const todayStr = new Date().toISOString().split('T')[0];
-    let lastBackupDate: string | null = null;
-    try {
-      lastBackupDate = localStorage.getItem(`apex_last_daily_backup_date_${currentTenantId}`);
-    } catch {
-      // ignore
-    }
-
-    if (lastBackupDate !== todayStr && (items.length > 0 || mainStockEntries.length > 0 || projects.length > 0)) {
-      const timer = setTimeout(() => {
-        if (!isFlushingRef.current) {
-          triggerDailyBackupNow();
-        }
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentTenantId, items.length, mainStockEntries.length, projects.length]);
-
-  const restoreBackup = (backupId: string) => {
+  // Versioned Pre-Flush Backups & Admin Password Protected Full System Flush
+  const restoreBackup = (backupOrId: string | StockBackup) => {
     if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
       throw new Error('Access Denied: Restoring backups is strictly restricted to Central Super Admin.');
     }
-    const backup = backups.find((b) => b.id === backupId);
-    if (!backup) {
+    const backup =
+      typeof backupOrId === 'string'
+        ? backups.find((b) => b.id === backupOrId)
+        : backupOrId;
+    if (!backup || !backup.snapshot) {
       throw new Error('Backup not found');
     }
 
@@ -9795,12 +9663,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         damagedRestorations,
         restoreDamagedStockToMain,
         getDamagedStock,
-        createBackup,
         restoreBackup,
         deleteBackup,
         flushSystemWithBackup,
-        lastAutoBackupTime,
-        triggerDailyBackupNow,
         getMainWarehouseStock,
         getSiteItemStock,
         getTeamInHandStock,

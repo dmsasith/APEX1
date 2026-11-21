@@ -95,17 +95,15 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
     reader.readAsText(file);
   };
 
-  // Try to find auto-saved browser snapshot in localStorage
+  // Try to find saved Pre-Flush backup in browser localStorage cache
   const handleLoadAutoSavedBrowserBackup = () => {
     try {
       setParseError(null);
-      // Look for daily auto snapshot or any active backups in local storage
       let foundData: StockBackup | null = null;
 
-      // Check all keys matching apex_daily_auto_snapshot_
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('apex_daily_auto_snapshot_') || key.endsWith('_backups') || key === `${STORAGE_KEY_PREFIX}backups`)) {
+        if (key && (key.endsWith('_backups') || key === `${STORAGE_KEY_PREFIX}backups`)) {
           const raw = localStorage.getItem(key);
           if (raw) {
             const parsed = JSON.parse(raw);
@@ -123,10 +121,10 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
       if (foundData) {
         setBackup(foundData);
       } else {
-        setParseError('No auto-saved local database snapshots found in this browser cache. Please upload a saved .json backup file.');
+        setParseError('No saved Pre-Flush backup archives found in this browser cache. Please upload a saved .json backup file.');
       }
     } catch {
-      setParseError('Failed to read auto-saved local data from browser storage.');
+      setParseError('Failed to read saved backup data from browser storage.');
     }
   };
 
@@ -275,7 +273,7 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
                     className="px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
                   >
                     <HardDrive className="w-4 h-4 text-emerald-600" />
-                    <span>Load Auto-Saved Browser Local Cache</span>
+                    <span>Load Cached Pre-Flush Backup</span>
                   </button>
                 </div>
 
