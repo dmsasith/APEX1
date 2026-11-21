@@ -147,6 +147,9 @@ import {
   firebaseConfig,
   checkRealFirebaseEmailVerified,
   applyEmailVerificationCodeFromUrl,
+  sendRealFirebasePasswordResetEmail,
+  confirmFirebasePasswordReset,
+  verifyFirebasePasswordSignIn,
   OFFICIAL_SUPPORT_EMAIL,
   OFFICIAL_SYSTEM_URL,
 } from '../firebase';
@@ -174,6 +177,26 @@ interface StockContextType {
     password?: string,
     workspaceSlugOrId?: string
   ) => Promise<{ success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] }>;
+  requestTenantPasswordReset: (
+    email: string,
+    workspaceSlugOrId?: string
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    resolvedWorkspaceSlug?: string;
+    resolvedCompanyName?: string;
+    collisionCompanies?: { id: string; name: string; slug: string }[];
+  }>;
+  completeTenantPasswordReset: (
+    oobCode: string,
+    newPassword: string,
+    workspaceSlugOrId?: string
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    email?: string;
+    workspaceSlug?: string;
+  }>;
   logout: () => void;
   activeSite: Site | null; // null if Main or All Sites
 
@@ -2412,15 +2435,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const findUserInTenant = async (t: Tenant, termLower: string): Promise<User | undefined> => {
+      const matchesUserTerm = (u: User) => {
+        if (u.isDeleted) return false;
+        if (u.username.trim().toLowerCase() === termLower) return true;
+        if (u.email && u.email.trim().toLowerCase() === termLower) return true;
+        if (u.id === t.ownerUserId && t.contactEmail && t.contactEmail.trim().toLowerCase() === termLower) return true;
+        if (u.fullName.trim().toLowerCase() === termLower) return true;
+        return false;
+      };
+
       const localUsers = loadTenantData<User[]>(
         t.id,
         'users',
         t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
       );
       const cleanLocal = sanitizeTenantUsers(t.id, localUsers, allTenants);
-      let found = cleanLocal.find(
-        (u) => !u.isDeleted && (u.username.trim().toLowerCase() === termLower || u.fullName.trim().toLowerCase() === termLower)
-      );
+      let found = cleanLocal.find(matchesUserTerm);
 
       // Verify/fetch from Firebase RTDB for the target tenant so newly created users or updated passwords/sites are never missed
       const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
@@ -2434,9 +2464,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           allTenants
         );
         saveTenantDataLocalOnly(t.id, 'users', cleanRemote);
-        const remoteMatch = cleanRemote.find(
-          (u) => !u.isDeleted && (u.username.trim().toLowerCase() === termLower || u.fullName.trim().toLowerCase() === termLower)
-        );
+        const remoteMatch = cleanRemote.find(matchesUserTerm);
         if (remoteMatch) {
           found = remoteMatch;
         }
@@ -2566,6 +2594,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 })),
               };
             } else {
+              if (term.includes('@') && inputPass && (await verifyFirebasePasswordSignIn(term, inputPass))) {
+                return {
+                  success: false,
+                  message: `Password verified! Your email (${term}) is linked to multiple company workspaces. Please choose your workspace below:`,
+                  collisionCompanies: candidates.map((c) => ({
+                    id: c.tenant.id,
+                    name: c.tenant.companyName,
+                    slug: c.tenant.slug,
+                  })),
+                };
+              }
               const currentTenantCandidate = candidates.find((c) => c.tenant.id === currentTenantIdRef.current);
               if (currentTenantCandidate) {
                 matchedTenant = currentTenantCandidate.tenant;
@@ -2601,7 +2640,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: false, message: 'User account not found. Please verify your username.' };
     }
 
-    // Password verification
+    // Password verification (supports both local/RTDB credential and synced Firebase Auth password resets)
     if (password !== undefined) {
       const inputPass = password.trim();
       const isMasterAdminTarget =
@@ -2616,7 +2655,37 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       } else {
         const expectedPass = (matchedUser.password || 'password123').trim();
         if (inputPass !== expectedPass) {
-          return { success: false, message: 'Invalid password. Please check your credentials.' };
+          const candidateEmail =
+            (matchedUser.email && matchedUser.email.includes('@') ? matchedUser.email : '') ||
+            (matchedUser.username.includes('@') ? matchedUser.username : '') ||
+            (matchedUser.id === matchedTenant.ownerUserId && matchedTenant.contactEmail?.includes('@')
+              ? matchedTenant.contactEmail
+              : '');
+
+          const firebaseResetVerified = candidateEmail
+            ? await verifyFirebasePasswordSignIn(candidateEmail, inputPass)
+            : false;
+
+          if (!firebaseResetVerified) {
+            return { success: false, message: 'Invalid password. Please check your credentials.' };
+          }
+
+          // User completed a password reset via Firebase email link — sync their new password into tenant users
+          const updatedUserRecord: User = {
+            ...matchedUser,
+            password: inputPass,
+            updatedAt: new Date().toISOString(),
+          };
+          matchedUser = updatedUserRecord;
+          const existingTenantUsers = loadTenantData<User[]>(
+            matchedTenant.id,
+            'users',
+            matchedTenant.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+          );
+          const nextTenantUsers = existingTenantUsers.map((u) =>
+            u.id === updatedUserRecord.id ? updatedUserRecord : u
+          );
+          saveTenantData(matchedTenant.id, 'users', nextTenantUsers);
         }
       }
     }
@@ -2657,6 +2726,238 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (e) {
       console.warn('Could not save logout state:', e);
     }
+  };
+
+  // Standard Tenant Forgot Password: Looks up tenant user by work email & sends Firebase password reset link
+  const requestTenantPasswordReset = async (
+    email: string,
+    workspaceSlugOrId?: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    resolvedWorkspaceSlug?: string;
+    resolvedCompanyName?: string;
+    collisionCompanies?: { id: string; name: string; slug: string }[];
+  }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return { success: false, message: 'Please enter a valid registered email address.' };
+    }
+
+    let allTenants = tenantsRef.current.length > 0 ? tenantsRef.current : getAllSavedTenants();
+    const remoteTenants = await fetchTenantsFromFirebase();
+    if (remoteTenants && remoteTenants.length > 0) {
+      const deletedIds = getDeletedTenantIds();
+      const map = new Map<string, Tenant>();
+      allTenants.forEach((t) => {
+        if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+      });
+      remoteTenants.forEach((t) => {
+        if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+      });
+      allTenants = persistTenantsLocal(Array.from(map.values()));
+      tenantsRef.current = allTenants;
+      setTenants(allTenants);
+    }
+
+    const explicitSlug = workspaceSlugOrId?.trim().toLowerCase();
+    const candidateTenants = explicitSlug
+      ? findMatchingTenantsBySlug(allTenants, explicitSlug)
+      : allTenants;
+
+    if (explicitSlug && candidateTenants.length === 0) {
+      return {
+        success: false,
+        message: `Company workspace "${workspaceSlugOrId}" was not found. Leave Workspace Code blank to search all workspaces.`,
+      };
+    }
+
+    const matches: { tenant: Tenant; user: User }[] = [];
+    for (const t of candidateTenants) {
+      if (!t.isActive) continue;
+      const localUsers = loadTenantData<User[]>(
+        t.id,
+        'users',
+        t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+      );
+      const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
+      const mergedUsers = sanitizeTenantUsers(
+        t.id,
+        remoteUsers && remoteUsers.length > 0
+          ? mergeListsById(
+              filterPostFlushRecords(t.id, 'users', localUsers),
+              filterPostFlushRecords(t.id, 'users', remoteUsers)
+            )
+          : localUsers,
+        allTenants
+      );
+      if (mergedUsers.length > 0) {
+        saveTenantDataLocalOnly(t.id, 'users', mergedUsers);
+      }
+
+      const foundUser = mergedUsers.find((u) => {
+        if (u.isDeleted) return false;
+        const isMasterDevAccount =
+          t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
+        if (isMasterDevAccount) return false;
+        if (u.email && u.email.trim().toLowerCase() === cleanEmail) return true;
+        if (u.username.trim().toLowerCase() === cleanEmail) return true;
+        if (
+          u.id === t.ownerUserId &&
+          t.contactEmail &&
+          t.contactEmail.trim().toLowerCase() === cleanEmail
+        ) {
+          return true;
+        }
+        return false;
+      });
+
+      if (foundUser) {
+        matches.push({ tenant: t, user: foundUser });
+      }
+    }
+
+    if (matches.length === 0) {
+      return {
+        success: false,
+        message:
+          'No tenant login account is associated with that email address. Please verify your registered Work Email or contact your Company Administrator.',
+      };
+    }
+
+    if (matches.length > 1 && !explicitSlug) {
+      return {
+        success: false,
+        message: `This email (${cleanEmail}) is linked to multiple company workspaces. Select your workspace below to send the reset email:`,
+        collisionCompanies: matches.map((m) => ({
+          id: m.tenant.id,
+          name: m.tenant.companyName,
+          slug: m.tenant.slug,
+        })),
+      };
+    }
+
+    const chosen = matches[0];
+    const sendRes = await sendRealFirebasePasswordResetEmail(
+      cleanEmail,
+      chosen.tenant.slug,
+      chosen.user.password
+    );
+
+    if (sendRes.status !== 'sent') {
+      return {
+        success: false,
+        message: sendRes.message,
+      };
+    }
+
+    return {
+      success: true,
+      message: sendRes.message,
+      resolvedWorkspaceSlug: chosen.tenant.slug,
+      resolvedCompanyName: chosen.tenant.companyName,
+    };
+  };
+
+  // Completes in-app Firebase oobCode reset & syncs the new password directly to matching tenant user(s)
+  const completeTenantPasswordReset = async (
+    oobCode: string,
+    newPassword: string,
+    workspaceSlugOrId?: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    email?: string;
+    workspaceSlug?: string;
+  }> => {
+    const cleanNewPass = newPassword.trim();
+    if (cleanNewPass.length < 6) {
+      return { success: false, message: 'New password must be at least 6 characters long.' };
+    }
+
+    const confirmRes = await confirmFirebasePasswordReset(oobCode, cleanNewPass);
+    if (!confirmRes.success || !confirmRes.email) {
+      return { success: false, message: confirmRes.message };
+    }
+
+    const cleanEmail = confirmRes.email;
+    let allTenants = tenantsRef.current.length > 0 ? tenantsRef.current : getAllSavedTenants();
+    const remoteTenants = await fetchTenantsFromFirebase();
+    if (remoteTenants && remoteTenants.length > 0) {
+      const deletedIds = getDeletedTenantIds();
+      const map = new Map<string, Tenant>();
+      allTenants.forEach((t) => {
+        if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+      });
+      remoteTenants.forEach((t) => {
+        if (t && t.id && (t.id === DEFAULT_TENANT.id || !deletedIds.has(t.id))) map.set(t.id, t);
+      });
+      allTenants = persistTenantsLocal(Array.from(map.values()));
+      tenantsRef.current = allTenants;
+      setTenants(allTenants);
+    }
+
+    const explicitSlug = workspaceSlugOrId?.trim().toLowerCase();
+    const targetTenants = explicitSlug
+      ? findMatchingTenantsBySlug(allTenants, explicitSlug)
+      : allTenants;
+
+    let updatedSlug: string | undefined;
+    for (const t of targetTenants) {
+      const localUsers = loadTenantData<User[]>(
+        t.id,
+        'users',
+        t.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+      );
+      const remoteUsers = await fetchTenantDataFromFirebase<User[]>(t.id, 'users');
+      const mergedUsers = sanitizeTenantUsers(
+        t.id,
+        remoteUsers && remoteUsers.length > 0
+          ? mergeListsById(
+              filterPostFlushRecords(t.id, 'users', localUsers),
+              filterPostFlushRecords(t.id, 'users', remoteUsers)
+            )
+          : localUsers,
+        allTenants
+      );
+
+      let modified = false;
+      const nextUsers = mergedUsers.map((u) => {
+        if (u.isDeleted) return u;
+        const isMasterDev =
+          t.id === DEFAULT_TENANT.id && (u.username === 'admin' || u.id === 'usr-admin-1');
+        if (isMasterDev) return u;
+
+        const matchesEmail =
+          (u.email && u.email.trim().toLowerCase() === cleanEmail) ||
+          u.username.trim().toLowerCase() === cleanEmail ||
+          (u.id === t.ownerUserId &&
+            t.contactEmail &&
+            t.contactEmail.trim().toLowerCase() === cleanEmail);
+
+        if (matchesEmail) {
+          modified = true;
+          if (!updatedSlug) updatedSlug = t.slug;
+          return {
+            ...u,
+            password: cleanNewPass,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return u;
+      });
+
+      if (modified) {
+        saveTenantData(t.id, 'users', nextUsers);
+      }
+    }
+
+    return {
+      success: true,
+      email: cleanEmail,
+      workspaceSlug: updatedSlug || workspaceSlugOrId,
+      message: confirmRes.message,
+    };
   };
 
   const previewTenant = useMemo(() => {
@@ -2789,6 +3090,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const newAdminUser: User = {
         id: `usr-${slug}-admin`,
         username: form.adminEmail.trim(),
+        email: form.adminEmail.trim().toLowerCase(),
         fullName: form.adminFullName.trim() || `${cleanName} Admin`,
         siteId: 'all',
         role: 'Super Admin Central',
@@ -9580,6 +9882,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         platformPricing,
         updatePlatformPricing,
         getWorkspaceLoginUrl,
+        requestTenantPasswordReset,
+        completeTenantPasswordReset,
       }}
     >
       {children}

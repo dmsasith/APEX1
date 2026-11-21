@@ -26,6 +26,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
   const [fullName, setFullName] = useState(currentUser.fullName);
   const [username, setUsername] = useState(currentUser.username);
+  const [userEmail, setUserEmail] = useState(
+    currentUser.email || (currentUser.username.includes('@') ? currentUser.username : '')
+  );
   const [password, setPassword] = useState(currentUser.password || 'password123');
   const [showPassword, setShowPassword] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -34,6 +37,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     if (isOpen) {
       setFullName(currentUser.fullName);
       setUsername(currentUser.username);
+      setUserEmail(
+        currentUser.email || (currentUser.username.includes('@') ? currentUser.username : '')
+      );
       setPassword(currentUser.password || 'password123');
       setStatusMsg(null);
     }
@@ -48,9 +54,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       return;
     }
 
+    const normalizedEmail = userEmail.trim().toLowerCase();
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setStatusMsg('Please enter a valid Recovery / Work Email address or leave it blank.');
+      return;
+    }
+
     const updated = {
       fullName: fullName.trim(),
       username: username.trim(),
+      email: normalizedEmail || undefined,
       password: password.trim() || 'password123',
     };
 
@@ -122,19 +135,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               </div>
             </div>
 
-            {/* Username / Email */}
+            {/* Username */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                Username or Work Email *
+                Username *
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <UserIcon className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. support@apexstox.com"
+                  placeholder="e.g. admin or yourname@company.com"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            {/* Recovery / Work Email */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">
+                Recovery / Work Email <span className="text-slate-500 font-normal">(Used for Forgot Password)</span>
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  placeholder="e.g. name@company.com"
                   className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>

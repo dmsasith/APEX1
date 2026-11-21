@@ -343,8 +343,14 @@ function AppRoot() {
   const { isAuthenticated, authUser, currentTenant, exitTenantPreview, exitViewAsMode, switchToMasterStock } = useStock();
   const [unauthView, setUnauthView] = useState<'landing' | 'login'>(() => {
     if (typeof window !== 'undefined') {
-      const urlWs = new URLSearchParams(window.location.search).get('workspace')?.trim();
-      if (urlWs) return 'login';
+      const params = new URLSearchParams(window.location.search);
+      const urlWs = params.get('workspace')?.trim();
+      const mode = params.get('mode')?.trim();
+      const oobCode = params.get('oobCode')?.trim();
+      const resetEmail = params.get('resetEmail')?.trim();
+      if (urlWs || (mode === 'resetPassword' && oobCode) || resetEmail) {
+        return 'login';
+      }
     }
     return 'landing';
   });

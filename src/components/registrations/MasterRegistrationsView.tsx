@@ -352,6 +352,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const defaultInitialBranchId =
     activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id || '';
   const [username, setUsername] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [userSiteScope, setUserSiteScope] = useState<'all' | 'specific'>('specific');
   const [userSelectedSiteIds, setUserSelectedSiteIds] = useState<string[]>(
@@ -379,6 +380,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       return;
     }
 
+    const normalizedEmail = userEmail.trim().toLowerCase();
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      showToast('Please enter a valid Recovery / Work Email address or leave it blank.');
+      return;
+    }
+
     const isAllSitesSelected = userSiteScope === 'all' || isSuperAdmin(userRole);
     if (!isAllSitesSelected && userSelectedSiteIds.length === 0) {
       showToast('Please select at least one site branch or switch to "All Sites / Central HQ".');
@@ -390,6 +397,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
     addUser({
       username: normalizedUsername,
+      email: normalizedEmail || (normalizedUsername.includes('@') ? normalizedUsername : undefined),
       fullName: fullName.trim(),
       siteId: finalPrimarySiteId,
       siteIds: finalSiteIds,
@@ -402,6 +410,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       : `${userSelectedSiteIds.length} assigned site(s)`;
     showToast(`User "${normalizedUsername}" created (${countMsg})!`);
     setUsername('');
+    setUserEmail('');
     setFullName('');
     setPassword('pass123');
   };
@@ -595,6 +604,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleClearUserForm = () => {
     const firstBranch = activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id || '';
     setUsername('');
+    setUserEmail('');
     setFullName('');
     setUserSiteScope('specific');
     setUserSelectedSiteIds(firstBranch ? [firstBranch] : []);
@@ -636,7 +646,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleSaveUserEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    updateUser(editingUser.id, editingUser);
+    const cleanedEmail = editingUser.email?.trim().toLowerCase() || '';
+    if (cleanedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedEmail)) {
+      showToast('Please enter a valid Recovery / Work Email address or leave it blank.');
+      return;
+    }
+    updateUser(editingUser.id, {
+      ...editingUser,
+      email: cleanedEmail || undefined,
+    });
     showToast(`User "${editingUser.fullName}" settings & site assignments synchronized.`);
     setEditingUser(null);
   };
@@ -2457,6 +2475,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Recovery / Work Email <span className="text-slate-400 font-normal">(For Forgot Password)</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. jason@company.com (optional)"
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">User Role *</label>
                 <select
                   value={userRole}
@@ -2722,6 +2753,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         <td className="py-3 px-3 align-top">
                           <div className="text-slate-900 dark:text-white font-bold">{u.fullName}</div>
                           <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">@{u.username}</div>
+                          {u.email && (
+                            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 truncate max-w-[210px] mt-0.5">
+                              {u.email}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-3 align-top">
                           {isAll ? (
@@ -4592,6 +4628,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       required
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Recovery / Work Email <span className="text-slate-400 font-normal">(Used for Forgot Password)</span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="e.g. staff@company.com (optional)"
+                    value={editingUser.email ?? ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
+                  />
                 </div>
 
                 <div>

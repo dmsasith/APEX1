@@ -4,8 +4,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
   applyActionCode,
   reload,
+  signOut,
 } from 'firebase/auth';
 import {
   getDatabase,
@@ -244,6 +248,160 @@ export async function checkRealFirebaseEmailVerified(
       verified: false,
       message: err?.message || 'Could not check email verification status.',
     };
+  }
+}
+
+/**
+ * Ensures the tenant account email exists in Firebase Auth (only called for verified RTDB tenant accounts)
+ * and sends an official Firebase Password Reset Email to the user's inbox.
+ */
+export async function sendRealFirebasePasswordResetEmail(
+  email: string,
+  workspaceSlug?: string,
+  seedPassword?: string
+): Promise<{
+  status: 'sent' | 'error';
+  message: string;
+  errorCode?: string;
+}> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return {
+      status: 'error',
+      message: 'Please enter a valid work email address.',
+    };
+  }
+
+  // Only used if this tenant user hasn't provisioned a Firebase Auth record yet; immediately reset by user via email link
+  const initialSeed =
+    seedPassword && seedPassword.trim().length >= 6
+      ? seedPassword.trim()
+      : buildVerificationAuthPassword(cleanEmail);
+
+  try {
+    // Ensure a Firebase Auth account exists for this email before dispatching reset email
+    // (protects against newer Firebase projects with Email Enumeration Protection or unverified signups)
+    try {
+      await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, initialSeed);
+      await signOut(firebaseAuth).catch(() => undefined);
+    } catch (createErr: any) {
+      if (createErr?.code !== 'auth/email-already-in-use') {
+        console.warn('Password reset auth record check note:', createErr?.code || createErr?.message);
+      }
+    }
+
+    const baseOrigin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : OFFICIAL_SYSTEM_URL;
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const continueParams = new URLSearchParams();
+    if (workspaceSlug) continueParams.set('workspace', workspaceSlug);
+    continueParams.set('resetEmail', cleanEmail);
+    const continueUrl = `${baseOrigin}${pathname}?${continueParams.toString()}`;
+
+    try {
+      await sendPasswordResetEmail(firebaseAuth, cleanEmail, {
+        url: continueUrl,
+        handleCodeInApp: false,
+      });
+    } catch (urlErr: any) {
+      // Fallback to Firebase's authorized domain hosted reset flow if preview domain isn't whitelisted yet
+      if (
+        urlErr?.code === 'auth/unauthorized-continue-uri' ||
+        urlErr?.code === 'auth/invalid-continue-uri'
+      ) {
+        await sendPasswordResetEmail(firebaseAuth, cleanEmail);
+      } else {
+        throw urlErr;
+      }
+    }
+
+    return {
+      status: 'sent',
+      message: `Password reset email sent to "${cleanEmail}". Please check your Inbox (and Spam/Junk folder), click the reset link to set your new password, and then sign in here.`,
+    };
+  } catch (err: any) {
+    const code = err?.code || '';
+    if (code === 'auth/too-many-requests') {
+      return {
+        status: 'error',
+        errorCode: code,
+        message:
+          'Too many reset requests were sent recently. Please check your Inbox / Spam folder or wait a couple of minutes before trying again.',
+      };
+    }
+    if (code === 'auth/invalid-email') {
+      return {
+        status: 'error',
+        errorCode: code,
+        message: 'The entered email address format is invalid.',
+      };
+    }
+    return {
+      status: 'error',
+      errorCode: code,
+      message: err?.message || 'Unable to send password reset email right now.',
+    };
+  }
+}
+
+/**
+ * Verifies an incoming Firebase Password Reset oobCode from URL (?mode=resetPassword&oobCode=...)
+ */
+export async function verifyFirebaseResetCode(
+  oobCode: string
+): Promise<{ valid: boolean; email?: string; message?: string }> {
+  try {
+    const email = await verifyPasswordResetCode(firebaseAuth, oobCode);
+    return { valid: true, email: email.trim().toLowerCase() };
+  } catch (err: any) {
+    return {
+      valid: false,
+      message: err?.message || 'This password reset link is invalid or has expired.',
+    };
+  }
+}
+
+/**
+ * Completes an in-app Firebase Password Reset using oobCode + newPassword
+ */
+export async function confirmFirebasePasswordReset(
+  oobCode: string,
+  newPassword: string
+): Promise<{ success: boolean; email?: string; message: string }> {
+  try {
+    const email = await verifyPasswordResetCode(firebaseAuth, oobCode);
+    await confirmPasswordReset(firebaseAuth, oobCode, newPassword);
+    return {
+      success: true,
+      email: email.trim().toLowerCase(),
+      message: 'Your password has been reset successfully! You can now sign in with your new password.',
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || 'Failed to reset password. The link may have expired.',
+    };
+  }
+}
+
+/**
+ * Verifies if an email + password pair is valid in Firebase Auth
+ * (used when a user completes reset via Firebase's hosted email action page and returns to log in)
+ */
+export async function verifyFirebasePasswordSignIn(
+  email: string,
+  password: string
+): Promise<boolean> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@') || !password) return false;
+  try {
+    await signInWithEmailAndPassword(firebaseAuth, cleanEmail, password);
+    await signOut(firebaseAuth).catch(() => undefined);
+    return true;
+  } catch {
+    return false;
   }
 }
 

@@ -83,6 +83,7 @@ export interface Site {
 export interface User {
   id: string;
   username: string;
+  email?: string;
   fullName: string;
   siteId: string; // 'all', 'unassigned', or primary assigned site id (kept synced with siteIds[0])
   siteIds?: string[]; // ['all'], ['unassigned'], or array of 1+ assigned site IDs

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Lock,
   User as UserIcon,
@@ -17,8 +17,14 @@ import {
   AlertCircle,
   LogIn,
   ChevronLeft,
+  Mail,
+  KeyRound,
+  CheckCircle2,
+  X,
+  RefreshCw,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
+import { verifyFirebaseResetCode } from '../../firebase';
 import { TenantSignupModal } from '../landing/TenantSignupModal';
 
 const PRESET_ICONS = [
@@ -36,7 +42,13 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => {
-  const { config, currentTenant, tenants, login } = useStock();
+  const {
+    config,
+    tenants,
+    login,
+    requestTenantPasswordReset,
+    completeTenantPasswordReset,
+  } = useStock();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -50,9 +62,163 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [resetNoticeMsg, setResetNoticeMsg] = useState<string | null>(null);
   const [collisionCompanies, setCollisionCompanies] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+
+  // Forgot Password modal state
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotStep, setForgotStep] = useState<'request' | 'sent' | 'confirm-reset'>('request');
+  const [resetEmailInput, setResetEmailInput] = useState('');
+  const [resetWorkspaceCode, setResetWorkspaceCode] = useState('');
+  const [resetSending, setResetSending] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null);
+  const [resetResolvedCompany, setResetResolvedCompany] = useState<{ name?: string; slug?: string } | null>(null);
+  const [resetCollisions, setResetCollisions] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [resetOobCode, setResetOobCode] = useState('');
+  const [resetVerifiedEmail, setResetVerifiedEmail] = useState('');
+  const [resetVerifyingCode, setResetVerifyingCode] = useState(false);
+  const [newPassInput, setNewPassInput] = useState('');
+  const [confirmNewPassInput, setConfirmNewPassInput] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
+
+  // Handle Firebase password reset return parameters (?mode=resetPassword&oobCode=... or ?resetEmail=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode')?.trim();
+    const oobCode = params.get('oobCode')?.trim();
+    const resetEmail = params.get('resetEmail')?.trim();
+    const urlWs = params.get('workspace')?.trim();
+
+    if (mode === 'resetPassword' && oobCode) {
+      setForgotOpen(true);
+      setForgotStep('confirm-reset');
+      setResetOobCode(oobCode);
+      setResetWorkspaceCode(urlWs || '');
+      setResetVerifyingCode(true);
+      setResetError(null);
+
+      // Clean one-time Firebase action params from URL while keeping workspace if present
+      const cleanParams = new URLSearchParams();
+      if (urlWs) cleanParams.set('workspace', urlWs);
+      const nextUrl = cleanParams.toString()
+        ? `${window.location.pathname}?${cleanParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, document.title, nextUrl);
+
+      verifyFirebaseResetCode(oobCode).then((res) => {
+        setResetVerifyingCode(false);
+        if (res.valid && res.email) {
+          setResetVerifiedEmail(res.email);
+          setResetEmailInput(res.email);
+        } else {
+          setResetError(
+            res.message || 'This password reset link is invalid or has expired. Please request a new reset email.'
+          );
+        }
+      });
+    } else if (resetEmail) {
+      setUsername(resetEmail);
+      if (urlWs) setWorkspaceCode(urlWs);
+      setResetNoticeMsg(
+        `Password reset link completed for ${resetEmail}. Enter your new password below to sign in to your workspace.`
+      );
+
+      const cleanParams = new URLSearchParams();
+      if (urlWs) cleanParams.set('workspace', urlWs);
+      const nextUrl = cleanParams.toString()
+        ? `${window.location.pathname}?${cleanParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, document.title, nextUrl);
+    }
+  }, []);
+
+  const openForgotPasswordModal = () => {
+    setResetError(null);
+    setResetSuccessMsg(null);
+    setResetCollisions([]);
+    setResetResolvedCompany(null);
+    setResetVerifiedEmail('');
+    setResetOobCode('');
+    setNewPassInput('');
+    setConfirmNewPassInput('');
+    setForgotStep('request');
+    setResetEmailInput(username.includes('@') ? username.trim() : '');
+    setResetWorkspaceCode(workspaceCode.trim());
+    setForgotOpen(true);
+  };
+
+  const handleSendResetEmail = async (overrideSlug?: string) => {
+    setResetError(null);
+    setResetSuccessMsg(null);
+    const targetEmail = resetEmailInput.trim();
+    if (!targetEmail) {
+      setResetError('Please enter your registered Work Email address.');
+      return;
+    }
+
+    const effectiveSlug = (overrideSlug ?? resetWorkspaceCode).trim() || undefined;
+    setResetSending(true);
+    const res = await requestTenantPasswordReset(targetEmail, effectiveSlug);
+    setResetSending(false);
+
+    if (!res.success) {
+      setResetError(res.message);
+      if (res.collisionCompanies && res.collisionCompanies.length > 0) {
+        setResetCollisions(res.collisionCompanies);
+      } else {
+        setResetCollisions([]);
+      }
+      return;
+    }
+
+    setResetCollisions([]);
+    setResetResolvedCompany({
+      name: res.resolvedCompanyName,
+      slug: res.resolvedWorkspaceSlug,
+    });
+    if (res.resolvedWorkspaceSlug) {
+      setResetWorkspaceCode(res.resolvedWorkspaceSlug);
+    }
+    setResetSuccessMsg(res.message);
+    setForgotStep('sent');
+  };
+
+  const handleCompleteInAppReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    if (newPassInput.trim().length < 6) {
+      setResetError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassInput !== confirmNewPassInput) {
+      setResetError('Passwords do not match. Please enter the same password twice.');
+      return;
+    }
+
+    setResetSending(true);
+    const res = await completeTenantPasswordReset(
+      resetOobCode,
+      newPassInput,
+      resetWorkspaceCode.trim() || undefined
+    );
+    setResetSending(false);
+
+    if (!res.success) {
+      setResetError(res.message);
+      return;
+    }
+
+    if (res.email) setUsername(res.email);
+    if (res.workspaceSlug) setWorkspaceCode(res.workspaceSlug);
+    setPassword('');
+    setErrorMessage(null);
+    setResetNoticeMsg(res.message);
+    setForgotOpen(false);
+  };
 
   // Render the Company Logo (matches Header)
   const renderLogo = () => {
@@ -165,6 +331,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
             </div>
 
             <div className="p-7">
+              {resetNoticeMsg && (
+                <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-start gap-2.5 shadow-2xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{resetNoticeMsg}</span>
+                </div>
+              )}
+
               {errorMessage && (
                 <div className="mb-5 p-3.5 rounded-2xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2.5 shadow-2xs">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -267,9 +440,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
 
                 {/* Password Input */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={openForgotPasswordModal}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline transition cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <Lock className="w-4 h-4 text-emerald-600" />
@@ -386,6 +568,336 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
         isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
       />
+
+      {/* Tenant Forgot Password & In-App Reset Modal */}
+      {forgotOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white/95 backdrop-blur-2xl border border-white rounded-[28px] max-w-md w-full shadow-[0_24px_60px_-15px_rgba(15,23,42,0.28)] overflow-hidden my-auto">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-200/70 bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/70 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900 leading-tight">
+                    {forgotStep === 'confirm-reset'
+                      ? 'Set New Workspace Password'
+                      : forgotStep === 'sent'
+                      ? 'Password Reset Email Sent'
+                      : 'Reset Workspace Password'}
+                  </h2>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    {forgotStep === 'confirm-reset'
+                      ? 'Create a strong new password for your account'
+                      : 'Verified email recovery for tenant accounts'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForgotOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close Forgot Password modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {resetError && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{resetError}</span>
+                </div>
+              )}
+
+              {forgotStep === 'request' && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendResetEmail();
+                  }}
+                  className="space-y-4"
+                >
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Enter the <strong>Work Email address</strong> registered on your company workspace account. We will send a secure password reset link directly to your inbox.
+                  </p>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Registered Work Email *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Mail className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <input
+                        type="email"
+                        required
+                        value={resetEmailInput}
+                        onChange={(e) => setResetEmailInput(e.target.value)}
+                        placeholder="e.g. admin@yourcompany.com"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Company Workspace Code <span className="text-slate-400 font-normal">(Optional)</span>
+                      </label>
+                      {resetWorkspaceCode && (
+                        <button
+                          type="button"
+                          onClick={() => setResetWorkspaceCode('')}
+                          className="text-[11px] font-semibold text-emerald-700 hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Building2 className="w-4 h-4 text-slate-400" />
+                      </div>
+                      <input
+                        type="text"
+                        value={resetWorkspaceCode}
+                        onChange={(e) => setResetWorkspaceCode(e.target.value)}
+                        placeholder="e.g. apex-telecom (optional)"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-2xl text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Multi-Workspace Collision Picker for Reset */}
+                  {resetCollisions.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+                      <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Select Your Company Workspace:</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {resetCollisions.map((comp) => (
+                          <button
+                            key={comp.id}
+                            type="button"
+                            disabled={resetSending}
+                            onClick={() => {
+                              setResetWorkspaceCode(comp.slug);
+                              handleSendResetEmail(comp.slug);
+                            }}
+                            className="w-full p-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 flex items-center justify-between text-left transition cursor-pointer"
+                          >
+                            <span className="text-xs font-bold text-slate-900">{comp.name}</span>
+                            <span className="text-[10px] font-mono font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                              {comp.slug}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-1 flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setForgotOpen(false)}
+                      className="px-4 py-2.5 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={resetSending}
+                      className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-md transition cursor-pointer disabled:opacity-50"
+                    >
+                      {resetSending ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Sending Reset Email...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>Send Reset Email</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {forgotStep === 'sent' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-xs">
+                      <div className="font-extrabold text-emerald-900">Reset Email Dispatched!</div>
+                      <p className="text-emerald-800 leading-relaxed">
+                        {resetSuccessMsg}
+                      </p>
+                    </div>
+                  </div>
+
+                  {resetResolvedCompany && (resetResolvedCompany.name || resetResolvedCompany.slug) && (
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                      <span className="text-slate-600 font-semibold">Workspace:</span>
+                      <span className="font-extrabold text-slate-900">
+                        {resetResolvedCompany.name}{' '}
+                        {resetResolvedCompany.slug && (
+                          <span className="font-mono text-emerald-700">({resetResolvedCompany.slug})</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
+                    <strong>Tip:</strong> If you do not see the email within 1 minute, check your <strong>Spam / Junk</strong> folder. Click the link inside the email to set a new password, then return to sign in.
+                  </div>
+
+                  <div className="flex items-center gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetError(null);
+                        setForgotStep('request');
+                      }}
+                      className="px-4 py-2.5 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Send Again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUsername(resetEmailInput.trim());
+                        if (resetResolvedCompany?.slug) {
+                          setWorkspaceCode(resetResolvedCompany.slug);
+                        }
+                        setForgotOpen(false);
+                      }}
+                      className="flex-1 py-2.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
+                    >
+                      <span>Back to Sign In</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {forgotStep === 'confirm-reset' && (
+                <div>
+                  {resetVerifyingCode ? (
+                    <div className="py-8 flex flex-col items-center justify-center gap-3 text-xs text-slate-600 font-semibold">
+                      <RefreshCw className="w-6 h-6 text-emerald-600 animate-spin" />
+                      <span>Verifying your secure password reset link...</span>
+                    </div>
+                  ) : !resetVerifiedEmail ? (
+                    <div className="space-y-4">
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        You can request a fresh password reset link for your registered Work Email below.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResetError(null);
+                          setForgotStep('request');
+                        }}
+                        className="w-full py-2.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition cursor-pointer"
+                      >
+                        Request New Reset Email
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleCompleteInAppReset} className="space-y-4">
+                      <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs flex items-center justify-between">
+                        <span className="text-emerald-800 font-semibold">Verified Account:</span>
+                        <span className="font-mono font-bold text-emerald-950">{resetVerifiedEmail}</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                          New Password * <span className="text-slate-400 font-normal">(min 6 characters)</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <Lock className="w-4 h-4 text-emerald-600" />
+                          </div>
+                          <input
+                            type={showNewPass ? 'text' : 'password'}
+                            required
+                            minLength={6}
+                            value={newPassInput}
+                            onChange={(e) => setNewPassInput(e.target.value)}
+                            placeholder="Enter new password"
+                            className="w-full pl-10 pr-10 py-2.5 bg-slate-50/70 border border-slate-200 rounded-2xl text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPass(!showNewPass)}
+                            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 cursor-pointer"
+                          >
+                            {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                          Confirm New Password *
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <Lock className="w-4 h-4 text-emerald-600" />
+                          </div>
+                          <input
+                            type={showNewPass ? 'text' : 'password'}
+                            required
+                            minLength={6}
+                            value={confirmNewPassInput}
+                            onChange={(e) => setConfirmNewPassInput(e.target.value)}
+                            placeholder="Confirm new password"
+                            className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-2xl text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-1 flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setForgotOpen(false)}
+                          className="px-4 py-2.5 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={resetSending}
+                          className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-md transition cursor-pointer disabled:opacity-50"
+                        >
+                          {resetSending ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Updating Password...</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="w-4 h-4" />
+                              <span>Save New Password</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
