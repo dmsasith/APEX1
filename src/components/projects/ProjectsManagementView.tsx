@@ -27,6 +27,9 @@ import {
   FolderTree,
   Gift,
   CornerDownRight,
+  Eye,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -178,6 +181,7 @@ export const ProjectsManagementView: React.FC = () => {
   const [sectionFilter, setSectionFilter] = useState('all');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'main' | 'sub' | 'individual'>('all');
   const [parentFilterId, setParentFilterId] = useState<string>('all');
+  const [expandedMainProjectIds, setExpandedMainProjectIds] = useState<Record<string, boolean>>({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1786,23 +1790,20 @@ export const ProjectsManagementView: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
+              <table className="w-full text-xs text-left border-collapse">
                 <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                   <tr>
-                    <th className="py-3 px-3">Project ID & Structure</th>
-                    <th className="py-3 px-4">Project / Main & Sub-Project Details</th>
-                    <th className="py-3 px-3">Assigned Site Branch</th>
-                    <th className="py-3 px-3">Section / Type</th>
-                    <th className="py-3 px-3">Reference No</th>
-                    <th className="py-3 px-3">District & Area</th>
-                    <th className="py-3 px-3 text-center">Usages & Free Stock Pool</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Project ID &amp; Scope</th>
+                    <th className="py-2.5 px-3">Project &amp; Sub-Project Hierarchy</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Branch, Section &amp; Area</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Usages &amp; FOC Pool</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredProjects.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={5} className="py-12 text-center text-slate-400">
                         <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                         <div>No projects match your filter.</div>
                         <div className="text-[11px] text-slate-400 mt-1">
@@ -1835,22 +1836,26 @@ export const ProjectsManagementView: React.FC = () => {
 
                       const freeStockPool = getProjectFreeStockList(p.id);
                       const matchedType = activeProjectTypes.find((pt) => pt.id === p.projectTypeId);
+                      const isExpanded = !!expandedMainProjectIds[p.id];
+                      const visibleSubs = isExpanded ? childSubs : childSubs.slice(0, 2);
+                      const hiddenSubsCount = Math.max(0, childSubs.length - visibleSubs.length);
 
                       return (
                         <tr
                           key={p.id}
-                          className={`transition-colors ${
+                          className={`transition-colors align-top ${
                             effScope === 'main'
-                              ? 'bg-indigo-100/70 hover:bg-indigo-100 border-l-4 border-l-indigo-700 border-t-2 border-t-indigo-300'
+                              ? 'bg-indigo-50/80 hover:bg-indigo-100/70 border-l-4 border-l-indigo-700 border-t-2 border-t-indigo-200'
                               : effScope === 'sub'
                               ? 'bg-teal-50/35 hover:bg-teal-50/75 border-l-4 border-l-teal-500'
-                              : 'hover:bg-slate-50/70 border-l-4 border-l-slate-300'
+                              : 'hover:bg-slate-50/80 border-l-4 border-l-slate-300'
                           }`}
                         >
-                          <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                            <div className={`flex flex-col gap-1 ${effScope === 'sub' ? 'pl-4 border-l-2 border-teal-500' : ''}`}>
+                          {/* 1. Project ID, Scope & Ref No */}
+                          <td className="py-2.5 px-3 font-mono whitespace-nowrap">
+                            <div className={`flex flex-col gap-1 ${effScope === 'sub' ? 'pl-3 border-l-2 border-teal-500' : ''}`}>
                               <span
-                                className={`px-2 py-0.5 rounded border w-fit shadow-2xs ${
+                                className={`px-2 py-0.5 rounded border w-fit shadow-2xs font-bold ${
                                   effScope === 'main'
                                     ? 'bg-indigo-950 text-amber-300 border-indigo-800 font-black'
                                     : 'bg-white text-slate-800 border-slate-200'
@@ -1859,191 +1864,247 @@ export const ProjectsManagementView: React.FC = () => {
                                 {p.projectId}
                               </span>
                               {effScope === 'main' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-indigo-700 text-white w-fit shadow-2xs">
-                                  <FolderTree className="w-2.5 h-2.5" />
-                                  <span>MAIN PROJECT ({childSubs.length} Sub)</span>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-700 text-white w-fit shadow-2xs font-sans">
+                                  <FolderTree className="w-2.5 h-2.5 shrink-0" />
+                                  <span>MAIN ({childSubs.length} Sub)</span>
                                 </span>
                               )}
                               {effScope === 'sub' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-teal-600 text-white w-fit">
-                                  <CornerDownRight className="w-2.5 h-2.5" />
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-teal-600 text-white w-fit font-sans">
+                                  <CornerDownRight className="w-2.5 h-2.5 shrink-0" />
                                   <span>SUB-PROJECT</span>
                                 </span>
                               )}
                               {effScope === 'individual' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 w-fit">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 w-fit font-sans">
                                   <span>INDIVIDUAL</span>
+                                </span>
+                              )}
+                              {p.referenceNo && (
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  Ref: <strong className="text-slate-700">{p.referenceNo}</strong>
                                 </span>
                               )}
                             </div>
                           </td>
 
-                          <td className="py-3 px-4">
+                          {/* 2. Project Details & Sub-Project List */}
+                          <td className="py-2.5 px-3 min-w-[260px]">
                             {effScope === 'sub' && (parentProj || p.parentProjectName) && (
                               <div className="mb-1">
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200 text-[10px] font-bold">
-                                  <FolderTree className="w-2.5 h-2.5 text-indigo-600" />
+                                  <FolderTree className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
                                   <span>
-                                    Under Main Project: [{parentProj?.projectId || p.parentProjectCode}] {parentProj?.projectName || p.parentProjectName}
+                                    Main: [{parentProj?.projectId || p.parentProjectCode}] {parentProj?.projectName || p.parentProjectName}
                                   </span>
                                 </span>
                               </div>
                             )}
 
-                            <div className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
-                              <span>{p.projectName}</span>
+                            <div className="font-bold text-slate-900 text-xs sm:text-[13px] leading-snug">
+                              {p.projectName}
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px]">
-                              {(p.ncNumber || p.siteIdentifier) && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-mono font-semibold border border-blue-200">
-                                  <Hash className="w-2.5 h-2.5" />
-                                  <span>{p.ncNumber ? `FTTH/NC: ${p.ncNumber}` : `Site: ${p.siteIdentifier}`}</span>
-                                </span>
-                              )}
-                              {p.ontSerialNo && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 font-mono font-semibold border border-teal-200">
-                                  <span>ONT S/N: {p.ontSerialNo}</span>
-                                </span>
-                              )}
-                              {p.customerPhone && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-mono font-semibold border border-purple-200">
-                                  <Phone className="w-2.5 h-2.5" />
-                                  <span>Tel: {p.customerPhone}</span>
-                                </span>
-                              )}
-                              {p.customerAddress && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium border border-slate-200">
-                                  <MapPin className="w-2.5 h-2.5 text-slate-500" />
-                                  <span>Addr: {p.customerAddress}</span>
-                                </span>
-                              )}
-                              {p.exchangeArea && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold border border-amber-200">
-                                  <span>Exchange: {p.exchangeArea}</span>
-                                </span>
-                              )}
-                              {p.customerName && p.customerName !== p.projectName && (
-                                <span className="text-slate-600 font-medium text-[11px]">
-                                  Client: <strong>{p.customerName}</strong>
-                                </span>
-                              )}
-                              {p.customFieldValues &&
-                                Object.entries(p.customFieldValues).map(([k, v]) =>
-                                  v ? (
-                                    <span
-                                      key={k}
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 font-medium border border-indigo-200 text-[10px]"
-                                    >
-                                      <span className="text-indigo-500 font-bold">{k}:</span>
-                                      <span className="font-mono font-bold">{v}</span>
-                                    </span>
-                                  ) : null
+                            {(p.ncNumber ||
+                              p.siteIdentifier ||
+                              p.ontSerialNo ||
+                              p.customerPhone ||
+                              p.customerAddress ||
+                              p.exchangeArea ||
+                              (p.customerName && p.customerName !== p.projectName) ||
+                              (p.customFieldValues && Object.values(p.customFieldValues).some(Boolean))) && (
+                              <div className="flex flex-wrap items-center gap-1 mt-1 text-[10px]">
+                                {(p.ncNumber || p.siteIdentifier) && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-mono font-semibold border border-blue-200">
+                                    <Hash className="w-2.5 h-2.5" />
+                                    <span>{p.ncNumber ? `FTTH/NC: ${p.ncNumber}` : `Site: ${p.siteIdentifier}`}</span>
+                                  </span>
                                 )}
-                            </div>
+                                {p.ontSerialNo && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 font-mono font-semibold border border-teal-200">
+                                    <span>ONT S/N: {p.ontSerialNo}</span>
+                                  </span>
+                                )}
+                                {p.customerPhone && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-mono font-semibold border border-purple-200">
+                                    <Phone className="w-2.5 h-2.5" />
+                                    <span>{p.customerPhone}</span>
+                                  </span>
+                                )}
+                                {p.customerAddress && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium border border-slate-200">
+                                    <MapPin className="w-2.5 h-2.5 text-slate-500" />
+                                    <span>{p.customerAddress}</span>
+                                  </span>
+                                )}
+                                {p.exchangeArea && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold border border-amber-200">
+                                    <span>Exchange: {p.exchangeArea}</span>
+                                  </span>
+                                )}
+                                {p.customerName && p.customerName !== p.projectName && (
+                                  <span className="text-slate-600 font-medium">
+                                    Client: <strong>{p.customerName}</strong>
+                                  </span>
+                                )}
+                                {p.customFieldValues &&
+                                  Object.entries(p.customFieldValues).map(([k, v]) =>
+                                    v ? (
+                                      <span
+                                        key={k}
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 font-medium border border-indigo-200"
+                                      >
+                                        <span className="text-indigo-500 font-bold">{k}:</span>
+                                        <span className="font-mono font-bold">{v}</span>
+                                      </span>
+                                    ) : null
+                                  )}
+                              </div>
+                            )}
 
-                            {/* If Main Project has sub-projects, list quick pills */}
+                            {/* Clear, compact Sub-Project list under Main Project */}
                             {effScope === 'main' && childSubs.length > 0 && (
-                              <div className="mt-2 pt-1.5 border-t border-indigo-100 flex flex-wrap items-center gap-1.5">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">
-                                  Sub-Projects ({childSubs.length}):
-                                </span>
-                                {childSubs.map((sp) => (
-                                  <button
-                                    key={sp.id}
-                                    type="button"
-                                    onClick={() => setViewingProjectUsages(sp)}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border border-slate-200 hover:border-teal-300 text-[10px] font-semibold transition cursor-pointer shadow-2xs"
-                                    title="Click to inspect this Sub-Project's usage details"
-                                  >
-                                    <CornerDownRight className="w-2.5 h-2.5 text-teal-600" />
-                                    <span className="font-mono font-bold">{sp.projectId}:</span>
-                                    <span>{sp.projectName}</span>
-                                  </button>
-                                ))}
+                              <div className="mt-1.5 pt-1.5 border-t border-indigo-200/70 space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-800 flex items-center gap-1">
+                                    <GitBranch className="w-3 h-3 text-indigo-600" />
+                                    <span>Sub-Projects ({childSubs.length})</span>
+                                    <span className="font-normal normal-case tracking-normal text-slate-500">
+                                      • Click to inspect usage
+                                    </span>
+                                  </span>
+                                  {childSubs.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedMainProjectIds((prev) => ({ ...prev, [p.id]: !prev[p.id] }))
+                                      }
+                                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/80 hover:bg-white text-indigo-700 border border-indigo-200 text-[10px] font-bold cursor-pointer"
+                                    >
+                                      {isExpanded ? (
+                                        <>
+                                          <ChevronUp className="w-3 h-3" />
+                                          <span>Less</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="w-3 h-3" />
+                                          <span>+{hiddenSubsCount} more</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {visibleSubs.map((sp) => {
+                                    const spUsageCount = projectUsages.filter(
+                                      (pu) => pu.projectId === sp.id && !pu.isDeleted
+                                    ).length;
+                                    const spBranch = resolveProjectSite(sp).siteName;
+                                    return (
+                                      <button
+                                        key={sp.id}
+                                        type="button"
+                                        onClick={() => setViewingProjectUsages(sp)}
+                                        className="group inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 hover:border-teal-400 text-[11px] transition cursor-pointer shadow-2xs whitespace-nowrap"
+                                        title={`Sub-Project ID: ${sp.projectId} | Name: ${sp.projectName}${
+                                          spBranch ? ` | Branch: ${spBranch}` : ''
+                                        } — Click to inspect material usages`}
+                                      >
+                                        <CornerDownRight className="w-3 h-3 text-teal-600 shrink-0" />
+                                        <span className="text-[9px] font-bold uppercase text-slate-400">ID</span>
+                                        <span className="font-mono font-bold text-teal-800 bg-teal-50 px-1 py-0.5 rounded border border-teal-200/80">
+                                          {sp.projectId}
+                                        </span>
+                                        <span className="text-slate-300 font-bold">•</span>
+                                        <span className="font-bold text-slate-800">{sp.projectName}</span>
+                                        {spBranch && (
+                                          <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                            {spBranch}
+                                          </span>
+                                        )}
+                                        {spUsageCount > 0 && (
+                                          <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            {spUsageCount} use
+                                          </span>
+                                        )}
+                                        <Eye className="w-3 h-3 text-slate-400 group-hover:text-teal-700 shrink-0" />
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             )}
                           </td>
 
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            {resolvedSite.siteId === 'ALL_AREAS' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-100 text-sky-950 border border-sky-400 text-xs font-extrabold shadow-2xs">
-                                <Building2 className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-                                <span>🌐 ALL AREAS (All Sites)</span>
-                              </span>
-                            ) : resolvedSite.siteName ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-300 text-xs font-extrabold shadow-2xs">
-                                <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                <span>{resolvedSite.siteName}</span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditModal(p)}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-bold cursor-pointer"
-                                title="Click to assign a Site Branch to this project"
-                              >
-                                <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                <span>Assign Branch</span>
-                              </button>
-                            )}
-                          </td>
-
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            {matchedType ? (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${getColorBadge(
-                                  matchedType.color
-                                )}`}
-                              >
-                                {matchedType.name}
-                              </span>
-                            ) : p.projectTypeName ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                                {p.projectTypeName}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 text-[11px] italic">General Project</span>
-                            )}
-                          </td>
-
-                          <td className="py-3 px-3 font-mono text-slate-600 whitespace-nowrap">
-                            {p.referenceNo || '—'}
-                          </td>
-
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            {p.district ? (
-                              <div className="flex flex-col">
-                                <span className="inline-flex items-center gap-1 text-slate-800 font-semibold">
-                                  <MapPin className="w-3 h-3 text-emerald-600" />
-                                  <span>{p.district}</span>
+                          {/* 3. Branch, Section & Location */}
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <div className="flex flex-col gap-1 items-start">
+                              {resolvedSite.siteId === 'ALL_AREAS' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100 text-sky-950 border border-sky-400 text-[11px] font-extrabold shadow-2xs">
+                                  <Building2 className="w-3 h-3 text-sky-700 shrink-0" />
+                                  <span>ALL AREAS (All Sites)</span>
                                 </span>
-                                {p.subArea && (
-                                  <span className="text-[11px] text-slate-500 pl-4">{p.subArea}</span>
-                                )}
-                              </div>
-                            ) : (
-                              p.subArea || '—'
-                            )}
+                              ) : resolvedSite.siteName ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-300 text-[11px] font-extrabold shadow-2xs">
+                                  <Building2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span>{resolvedSite.siteName}</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(p)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-bold cursor-pointer"
+                                  title="Click to assign a Site Branch to this project"
+                                >
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span>Assign Branch</span>
+                                </button>
+                              )}
+
+                              {matchedType ? (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${getColorBadge(
+                                    matchedType.color
+                                  )}`}
+                                >
+                                  {matchedType.name}
+                                </span>
+                              ) : p.projectTypeName ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                  {p.projectTypeName}
+                                </span>
+                              ) : null}
+
+                              {(p.district || p.subArea) && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-slate-600 font-medium">
+                                  <MapPin className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                  <span>
+                                    {[p.district, p.subArea].filter(Boolean).join(' • ')}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
                           </td>
 
-                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                          {/* 4. Usages & Free Stock Pool */}
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <div className="flex flex-col items-center gap-1">
                               {familyUsagesCount > 0 || freeStockPool.length > 0 ? (
                                 <button
                                   type="button"
                                   onClick={() => setViewingProjectUsages(p)}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer border ${
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer border ${
                                     effScope === 'main'
                                       ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200'
                                       : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
                                   }`}
                                 >
-                                  <Package className="w-3 h-3" />
+                                  <Package className="w-3 h-3 shrink-0" />
                                   <span>
                                     {effScope === 'main'
-                                      ? `${familyUsagesCount} Total Usages (Reconcile)`
-                                      : `${directUsagesCount} Usage Voucher(s)`}
+                                      ? `${familyUsagesCount} Total Usages`
+                                      : `${directUsagesCount} Usage(s)`}
                                   </span>
                                 </button>
                               ) : (
@@ -2051,11 +2112,11 @@ export const ProjectsManagementView: React.FC = () => {
                               )}
 
                               {freeStockPool.length > 0 && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
-                                  <Gift className="w-2.5 h-2.5 text-indigo-600" />
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
+                                  <Gift className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
                                   <span>
                                     {effScope === 'sub'
-                                      ? `Main Pool: ${freeStockPool.length} FOC items`
+                                      ? `Main Pool: ${freeStockPool.length} FOC`
                                       : `FOC Stock: ${freeStockPool.length} items`}
                                   </span>
                                 </span>
@@ -2063,23 +2124,24 @@ export const ProjectsManagementView: React.FC = () => {
                             </div>
                           </td>
 
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1.5">
+                          {/* 5. Actions — comfortably inside table */}
+                          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center justify-end gap-1">
                               {(effScope === 'main' || effScope === 'individual') && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenAddModal(p.projectTypeId, 'sub', p)}
-                                  className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                  className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-[11px] font-bold transition-colors inline-flex items-center gap-1 cursor-pointer shrink-0"
                                   title={`Add a Sub-Project under "${p.projectName}"`}
                                 >
-                                  <Plus className="w-3 h-3 text-teal-600" />
+                                  <Plus className="w-3 h-3 text-teal-600 shrink-0" />
                                   <span>Sub-Project</span>
                                 </button>
                               )}
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditModal(p)}
-                                className="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg hover:bg-slate-200/80 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
                                 title="Edit project details, scope, or parent Main Project"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -2087,7 +2149,7 @@ export const ProjectsManagementView: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirmProject(p)}
-                                className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
                                 title="Move project to Recycle Bin"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
