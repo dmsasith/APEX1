@@ -90,20 +90,38 @@ export const SiteInventoriesView: React.FC = () => {
     );
   }, [stockRequests, selectedSiteId]);
 
-  // Site-Specific Direct or Assigned FOC Client Materials Vouchers
+  // Site-Specific Direct or Actually-Issued FOC Client Materials Vouchers
   const siteFocMaterials = useMemo(() => {
     if (!selectedSite) return [];
+    const issuedProjectFamilyIds = new Set<string>();
+    siteFocRequests.forEach((req) => {
+      if (req.focProjectId) {
+        issuedProjectFamilyIds.add(req.focProjectId);
+        const p = (projects || []).find((pr) => pr.id === req.focProjectId);
+        if (p?.parentProjectId) issuedProjectFamilyIds.add(p.parentProjectId);
+        (projects || [])
+          .filter((sp) => !sp.isDeleted && sp.parentProjectId === (p?.parentProjectId || req.focProjectId))
+          .forEach((sp) => issuedProjectFamilyIds.add(sp.id));
+      }
+    });
+
     return (clientFreeIssues || []).filter((v) => {
       if (v.isDeleted) return false;
-      const matchAssignedSite = v.assignedSiteId === selectedSite.id;
       const matchLocation =
-        v.storageLocation &&
-        v.storageLocation.trim().toLowerCase() === selectedSite.name.trim().toLowerCase();
-      const proj = (projects || []).find((p) => p.id === v.projectId || p.id === v.parentProjectId);
-      const matchProjectSite = proj?.siteId === selectedSite.id;
-      return matchAssignedSite || matchLocation || matchProjectSite;
+        Boolean(v.storageLocation) &&
+        v.storageLocation!.trim().toLowerCase() === selectedSite.name.trim().toLowerCase();
+      if (matchLocation) return true;
+
+      if (issuedProjectFamilyIds.size > 0) {
+        return (
+          issuedProjectFamilyIds.has(v.projectId) ||
+          Boolean(v.parentProjectId && issuedProjectFamilyIds.has(v.parentProjectId))
+        );
+      }
+
+      return false;
     });
-  }, [clientFreeIssues, selectedSite, projects]);
+  }, [clientFreeIssues, selectedSite, projects, siteFocRequests]);
 
   const totalSiteFocRecordsCount = siteFocRequests.length + siteFocMaterials.length;
 
@@ -135,51 +153,81 @@ export const SiteInventoriesView: React.FC = () => {
 
     if (!selectedSiteId) return map;
 
-    const siteProjects = (projects || []).filter((p) => !p.isDeleted && p.siteId === selectedSiteId);
-    const siteProjectFamilyIds = new Set<string>(siteProjects.map((p) => p.id));
-    (projects || [])
-      .filter((p) => !p.isDeleted && p.parentProjectId && siteProjectFamilyIds.has(p.parentProjectId))
-      .forEach((sp) => siteProjectFamilyIds.add(sp.id));
+    const selectedSiteNameLower = (selectedSite?.name || '').trim().toLowerCase();
 
     activeItems.forEach((item) => {
       const sStock = getSiteItemStock(selectedSiteId, item.id);
-
-      // 1. Initial FOC Receipt at Central Stock for projects allocated to this site
-      let stage1InitialCentralFoc = 0;
-      let primaryFocProjectId: string | undefined;
-      let primaryFocProjectName: string | undefined;
-
-      (clientFreeIssues || [])
-        .filter((f) => {
-          if (f.isDeleted) return false;
-          const hasItm = (f.items || []).some((i) => i.itemId === item.id && Number(i.quantity) > 0);
-          if (!hasItm) return false;
-          const fProj = (projects || []).find((p) => p.id === f.projectId || p.id === f.parentProjectId);
-          const effectiveSiteId = f.assignedSiteId || fProj?.siteId;
-          if (effectiveSiteId === selectedSiteId || siteProjectFamilyIds.has(f.projectId)) return true;
-          return siteFocRequests.some(
-            (req) =>
-              (req.focProjectId === f.projectId ||
-                (f.parentProjectId && req.focProjectId === f.parentProjectId) ||
-                req.requestCategory === 'foc') &&
-              req.items.some((ri) => ri.itemId === item.id)
-          );
-        })
-        .forEach((f) => {
-          const row = (f.items || []).find((i) => i.itemId === item.id);
-          if (row && Number(row.quantity) > 0) {
-            stage1InitialCentralFoc += Number(row.quantity);
-            if (!primaryFocProjectId) {
-              primaryFocProjectId = f.projectId;
-              primaryFocProjectName = f.projectName;
-            }
-          }
-        });
 
       // 2. Site Issue (Central -> Site)
       const stage2SiteFocIssued = sStock.focReceived;
       const stage2SiteNormalIssued = sStock.normalReceived;
       const stage2TotalSiteReceived = sStock.received;
+
+      // 1. Initial FOC Receipt at Central Stock: ONLY match FOC projects actually issued to THIS site branch
+      let stage1InitialCentralFoc = 0;
+      let primaryFocProjectId: string | undefined;
+      let primaryFocProjectName: string | undefined;
+
+      if (stage2SiteFocIssued > 0) {
+        const focReqsForItem = siteFocRequests.filter((req) =>
+          (req.items || []).some((ri) => ri.itemId === item.id)
+        );
+        const issuedProjectFamilyIds = new Set<string>();
+        focReqsForItem.forEach((req) => {
+          if (req.focProjectId) {
+            issuedProjectFamilyIds.add(req.focProjectId);
+            const p = (projects || []).find((pr) => pr.id === req.focProjectId);
+            const rootId = p?.parentProjectId || req.focProjectId;
+            issuedProjectFamilyIds.add(rootId);
+            (projects || [])
+              .filter((sp) => !sp.isDeleted && sp.parentProjectId === rootId)
+              .forEach((sp) => issuedProjectFamilyIds.add(sp.id));
+          }
+        });
+
+        (clientFreeIssues || [])
+          .filter((f) => {
+            if (f.isDeleted) return false;
+            const hasItm = (f.items || []).some((i) => i.itemId === item.id && Number(i.quantity) > 0);
+            if (!hasItm) return false;
+
+            const isStoredAtThisSite =
+              Boolean(selectedSiteNameLower) &&
+              Boolean(f.storageLocation) &&
+              f.storageLocation!.trim().toLowerCase() === selectedSiteNameLower;
+            if (isStoredAtThisSite) return true;
+
+            if (issuedProjectFamilyIds.size > 0) {
+              return (
+                issuedProjectFamilyIds.has(f.projectId) ||
+                Boolean(f.parentProjectId && issuedProjectFamilyIds.has(f.parentProjectId))
+              );
+            }
+
+            // Legacy FOC request without focProjectId: only match vouchers explicitly assigned to THIS site
+            const fProj = (projects || []).find((p) => p.id === f.projectId || p.id === f.parentProjectId);
+            const effectiveSiteId = f.assignedSiteId || fProj?.siteId;
+            return effectiveSiteId === selectedSiteId;
+          })
+          .forEach((f) => {
+            const row = (f.items || []).find((i) => i.itemId === item.id);
+            if (row && Number(row.quantity) > 0) {
+              stage1InitialCentralFoc += Number(row.quantity);
+              if (!primaryFocProjectId) {
+                primaryFocProjectId = f.projectId;
+                primaryFocProjectName = f.projectName;
+              }
+            }
+          });
+
+        if (!primaryFocProjectName) {
+          const reqWithProj = focReqsForItem.find((r) => r.focProjectName);
+          if (reqWithProj) {
+            primaryFocProjectId = reqWithProj.focProjectId;
+            primaryFocProjectName = reqWithProj.focProjectName;
+          }
+        }
+      }
 
       if (stage2SiteFocIssued > 0 && stage1InitialCentralFoc === 0) {
         stage1InitialCentralFoc = stage2SiteFocIssued;
@@ -230,7 +278,7 @@ export const SiteInventoriesView: React.FC = () => {
       const normalConsumedAtSite = Math.max(0, stage4TotalConsumed - focConsumedAtSite);
       const stage5SiteNormalBalance = Math.max(0, stage2SiteNormalIssued - normalConsumedAtSite);
 
-      const hasCentralFoc = stage2SiteFocIssued > 0 || stage1InitialCentralFoc > 0;
+      const hasCentralFoc = stage2SiteFocIssued > 0;
 
       map.set(item.id, {
         stage1InitialCentralFoc,
@@ -257,6 +305,7 @@ export const SiteInventoriesView: React.FC = () => {
     return map;
   }, [
     selectedSiteId,
+    selectedSite,
     projects,
     activeItems,
     getSiteItemStock,
@@ -586,7 +635,7 @@ export const SiteInventoriesView: React.FC = () => {
             }`}
           >
             <span>🎁</span>
-            <span>Central FOC Materials ({siteCentralFocItemsCount || totalSiteFocRecordsCount})</span>
+            <span>Central FOC Materials ({siteCentralFocItemsCount})</span>
           </button>
 
           <button
@@ -853,15 +902,17 @@ export const SiteInventoriesView: React.FC = () => {
                     <span>from full master catalog</span>
                   )}
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-900 border border-indigo-200 font-bold text-[11px]">
-                  <span className="px-1.5 py-0.2 rounded bg-indigo-600 text-white text-[9px] font-extrabold uppercase">
-                    Central FOC
+                {siteCentralFocItemsCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-900 border border-indigo-200 font-bold text-[11px]">
+                    <span className="px-1.5 py-0.2 rounded bg-indigo-600 text-white text-[9px] font-extrabold uppercase">
+                      Central FOC
+                    </span>
+                    Rows highlighted in indigo indicate materials supplied from Central FOC Stock
                   </span>
-                  Rows highlighted in indigo indicate materials supplied from Central FOC Stock
-                </span>
+                )}
               </div>
               <span className="font-mono text-[11px] text-slate-500">
-                1. Central FOC → 2. Site Issue → 3. Team Issue → 4. Usage &amp; Wastage → 5. Balance / Returnable
+                1. Central Stock → 2. Site Issue → 3. Team Issue → 4. Usage &amp; Wastage → 5. Balance / Returnable
               </span>
             </div>
 
@@ -872,7 +923,7 @@ export const SiteInventoriesView: React.FC = () => {
                     <th className="py-3.5 px-3.5">Item &amp; Source Tag</th>
                     <th className="py-3.5 px-3.5">Material Description</th>
                     <th className="py-3.5 px-3 text-right bg-indigo-50/60 text-indigo-950">
-                      1. FOC Central Receipt
+                      {siteCentralFocItemsCount > 0 ? '1. FOC Central Receipt' : '1. Central HQ Source'}
                     </th>
                     <th className="py-3.5 px-3.5 text-right">
                       2. Site Issue (HQ → Site)
@@ -980,7 +1031,7 @@ export const SiteInventoriesView: React.FC = () => {
                               )}
                             </td>
 
-                            {/* STAGE 1: FOC CENTRAL STOCK RECEIPT */}
+                            {/* STAGE 1: CENTRAL STOCK RECEIPT (FOC ONLY IF ISSUED TO THIS SITE) */}
                             <td className="py-3.5 px-3 text-right font-mono bg-indigo-50/30 whitespace-nowrap">
                               {hasCentralFoc ? (
                                 <div>
@@ -992,7 +1043,7 @@ export const SiteInventoriesView: React.FC = () => {
                                   </div>
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-400 font-sans">—</span>
+                                <span className="text-[11px] text-slate-500 font-sans">Central HQ</span>
                               )}
                             </td>
 

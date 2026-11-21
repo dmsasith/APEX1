@@ -157,6 +157,31 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
       remarks?: string;
     }> = [];
 
+    const siteStockForSite = mode === 'site' && siteId ? getSiteItemStock(siteId, item.id) : null;
+    const siteFocReqsForItem =
+      mode === 'site' && siteId
+        ? stockRequests.filter(
+            (req) =>
+              req.siteId === siteId &&
+              (req.status === 'Accepted' || req.status === 'Approved / In-Transit') &&
+              (req.requestCategory === 'foc' || Boolean(req.focProjectId)) &&
+              (req.items || []).some((ri) => ri.itemId === item.id)
+          )
+        : [];
+    const siteIssuedProjectFamilyIds = new Set<string>();
+    siteFocReqsForItem.forEach((req) => {
+      if (req.focProjectId) {
+        siteIssuedProjectFamilyIds.add(req.focProjectId);
+        const p = projects.find((pr) => pr.id === req.focProjectId);
+        const rootId = p?.parentProjectId || req.focProjectId;
+        siteIssuedProjectFamilyIds.add(rootId);
+        projects
+          .filter((sp) => !sp.isDeleted && sp.parentProjectId === rootId)
+          .forEach((sp) => siteIssuedProjectFamilyIds.add(sp.id));
+      }
+    });
+    const targetSiteNameLower = (targetSite?.name || '').trim().toLowerCase();
+
     clientFreeIssues
       .filter((f) => {
         if (f.isDeleted) return false;
@@ -171,21 +196,26 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
         }
 
         if (mode === 'site' && siteId) {
+          // Only show Central FOC at a Site Branch IF there is an actual FOC issue to THIS site
+          if (!siteStockForSite || siteStockForSite.focReceived <= 0) return false;
+
+          const isStoredAtThisSite =
+            Boolean(targetSiteNameLower) &&
+            Boolean(f.storageLocation) &&
+            f.storageLocation!.trim().toLowerCase() === targetSiteNameLower;
+          if (isStoredAtThisSite) return true;
+
+          if (siteIssuedProjectFamilyIds.size > 0) {
+            return (
+              siteIssuedProjectFamilyIds.has(f.projectId) ||
+              Boolean(f.parentProjectId && siteIssuedProjectFamilyIds.has(f.parentProjectId))
+            );
+          }
+
+          // Legacy fallback without focProjectId: strictly match vouchers explicitly assigned to THIS site
           const fProj = projects.find((p) => p.id === f.projectId || p.id === f.parentProjectId);
           const effectiveSiteId = f.assignedSiteId || fProj?.siteId;
-          if (effectiveSiteId === siteId) return true;
-          if (focProjectFamily.familyIds.has(f.projectId)) return true;
-          // Also check if any stockRequest for this project was sent to siteId
-          const sentToThisSite = stockRequests.some(
-            (req) =>
-              req.siteId === siteId &&
-              (req.status === 'Accepted' || req.status === 'Approved / In-Transit') &&
-              (req.focProjectId === f.projectId ||
-                (f.parentProjectId && req.focProjectId === f.parentProjectId) ||
-                req.requestCategory === 'foc') &&
-              req.items.some((ri) => ri.itemId === item.id)
-          );
-          return sentToThisSite;
+          return effectiveSiteId === siteId;
         }
 
         return true;
@@ -229,6 +259,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
     stockRequests,
     sites,
     targetSite,
+    getSiteItemStock,
   ]);
 
   // 2. INBOUND SOURCES TO CENTRAL STOCK (POs, Manual Entries, Client FOC, Branch Returns)
@@ -466,7 +497,10 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
       .reduce((sum, e) => sum + Number(e.quantity || 0), 0);
 
     const totalInitialFocQty = initialCentralFocReceipts.reduce((s, r) => s + r.qty, 0);
-    const isExclusiveFocItem = totalInitialFocQty > 0 && companyGrnReceivedForItem === 0;
+    const hasSiteFocForThisSite =
+      mode === 'central' || (siteId ? getSiteItemStock(siteId, item.id).focReceived > 0 : false);
+    const isExclusiveFocItem =
+      hasSiteFocForThisSite && totalInitialFocQty > 0 && companyGrnReceivedForItem === 0;
 
     stockRequests
       .filter(
@@ -569,6 +603,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
     item.id,
     siteId,
     mode,
+    getSiteItemStock,
   ]);
 
   // STAGE 3: FIELD TEAMS BREAKDOWN (Issued, Used, Wasted, Returned, Team In-Hand)
@@ -875,8 +910,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
 
     const hasFocFlow =
       Boolean(focProjectId) ||
-      stage1InitialCentralFoc > 0 ||
-      effectiveSiteFocIssued > 0;
+      (mode === 'site' ? effectiveSiteFocIssued > 0 : stage1InitialCentralFoc > 0 || effectiveSiteFocIssued > 0);
 
     return {
       centralInHand: mainStock.availableBalance,
@@ -1066,17 +1100,38 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
         {grandTotals.hasFocFlow || mode === 'site' ? (
           <div className="space-y-2.5">
             {/* Flow Pipeline Header Strip */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-indigo-950 text-white border border-indigo-800">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-white border ${
+                grandTotals.hasFocFlow
+                  ? 'bg-indigo-950 border-indigo-800'
+                  : 'bg-slate-900 border-slate-800'
+              }`}
+            >
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500 text-white font-extrabold uppercase tracking-wider">
-                  <Gift className="w-3 h-3" />
-                  Standard Reconciliation Flow
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-white font-extrabold uppercase tracking-wider ${
+                    grandTotals.hasFocFlow ? 'bg-indigo-500' : 'bg-emerald-600'
+                  }`}
+                >
+                  {grandTotals.hasFocFlow ? (
+                    <>
+                      <Gift className="w-3 h-3" />
+                      Standard FOC Reconciliation Flow
+                    </>
+                  ) : (
+                    <>
+                      <Boxes className="w-3 h-3" />
+                      Standard Site Material Flow
+                    </>
+                  )}
                 </span>
-                <span className="text-indigo-200">
-                  1. FOC Central Stock Receipt → 2. Site Issue → 3. Team Issue → 4. Usage &amp; Wastage → 5. Balance / Returnable Stock
+                <span className={grandTotals.hasFocFlow ? 'text-indigo-200' : 'text-slate-300'}>
+                  {grandTotals.hasFocFlow
+                    ? '1. FOC Central Stock Receipt → 2. Site Issue → 3. Team Issue → 4. Usage & Wastage → 5. Balance / Returnable Stock'
+                    : '1. Central HQ Pool → 2. Site Issue → 3. Team Issue → 4. Usage & Wastage → 5. Site Yard Balance'}
                 </span>
               </div>
-              {grandTotals.effectiveSiteNormalIssued > 0 && !focProjectId && (
+              {grandTotals.hasFocFlow && grandTotals.effectiveSiteNormalIssued > 0 && !focProjectId && (
                 <span className="text-[11px] font-mono bg-white/10 px-2.5 py-0.5 rounded text-emerald-300 border border-white/15">
                   Central FOC &amp; Normal HQ Stock Separated Below
                 </span>
@@ -1084,75 +1139,114 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {/* STAGE 1: FOC CENTRAL STOCK RECEIPT (Initial FOC Receipt at Central) */}
-              <div className="bg-indigo-50/80 p-3.5 rounded-xl border-2 border-indigo-400/70 shadow-2xs relative">
-                <div className="flex items-center justify-between text-[11px] font-extrabold text-indigo-950 uppercase">
-                  <span>1. FOC Central Receipt</span>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-600 text-white">
-                    Central FOC
-                  </span>
-                </div>
-                <div className="text-2xl font-black font-mono tabular-nums text-indigo-900 mt-1">
-                  {formatNumber(grandTotals.stage1InitialCentralFoc)}{' '}
-                  <span className="text-xs font-semibold text-indigo-700">{item.unit}</span>
-                </div>
-                <div className="mt-2 pt-1.5 border-t border-indigo-200/80 space-y-0.5 text-[11px] text-indigo-900">
-                  <div className="flex justify-between">
-                    <span>Initial Receipt at HQ:</span>
-                    <strong className="font-mono tabular-nums">
-                      {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
-                    </strong>
+              {/* STAGE 1: FOC CENTRAL RECEIPT (ONLY IF SITE HAS FOC) OR CENTRAL HQ POOL */}
+              {grandTotals.hasFocFlow ? (
+                <div className="bg-indigo-50/80 p-3.5 rounded-xl border-2 border-indigo-400/70 shadow-2xs relative">
+                  <div className="flex items-center justify-between text-[11px] font-extrabold text-indigo-950 uppercase">
+                    <span>1. FOC Central Receipt</span>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-600 text-white">
+                      Central FOC
+                    </span>
                   </div>
-                  <div className="flex justify-between text-indigo-700">
-                    <span>Issued to Site(s):</span>
-                    <strong className="font-mono tabular-nums">
-                      -{formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}
-                    </strong>
+                  <div className="text-2xl font-black font-mono tabular-nums text-indigo-900 mt-1">
+                    {formatNumber(grandTotals.stage1InitialCentralFoc)}{' '}
+                    <span className="text-xs font-semibold text-indigo-700">{item.unit}</span>
                   </div>
-                  <div className="flex justify-between font-bold text-emerald-800">
-                    <span>Central FOC Balance:</span>
-                    <strong className="font-mono tabular-nums">
-                      {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
-                    </strong>
+                  <div className="mt-2 pt-1.5 border-t border-indigo-200/80 space-y-0.5 text-[11px] text-indigo-900">
+                    <div className="flex justify-between">
+                      <span>Initial Receipt at HQ:</span>
+                      <strong className="font-mono tabular-nums">
+                        {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between text-indigo-700">
+                      <span>Issued to Site(s):</span>
+                      <strong className="font-mono tabular-nums">
+                        -{formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between font-bold text-emerald-800">
+                      <span>Central FOC Balance:</span>
+                      <strong className="font-mono tabular-nums">
+                        {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
+                      </strong>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-300 shadow-2xs relative">
+                  <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-800 uppercase">
+                    <span>1. Central HQ Pool</span>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">
+                      Normal HQ
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black font-mono tabular-nums text-slate-900 mt-1">
+                    {formatNumber(mainStock.companyReceived)}{' '}
+                    <span className="text-xs font-semibold text-slate-500">{item.unit}</span>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 space-y-0.5 text-[11px] text-slate-700">
+                    <div className="flex justify-between">
+                      <span>HQ Available:</span>
+                      <strong className="font-mono tabular-nums">
+                        {formatNumber(grandTotals.centralNormalInHand)} {item.unit}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between text-emerald-800 font-semibold">
+                      <span>Issued to This Site:</span>
+                      <strong className="font-mono tabular-nums">
+                        {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* STAGE 2: SITE ISSUE (Central -> Site Branch) */}
-              <div className="bg-white p-3.5 rounded-xl border-2 border-indigo-300 shadow-2xs">
+              <div
+                className={`bg-white p-3.5 rounded-xl border-2 shadow-2xs ${
+                  grandTotals.hasFocFlow ? 'border-indigo-300' : 'border-slate-300'
+                }`}
+              >
                 <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-800 uppercase">
                   <span>2. Site Issue (HQ → Site)</span>
-                  <Truck className="w-3.5 h-3.5 text-indigo-600" />
+                  <Truck className={`w-3.5 h-3.5 ${grandTotals.hasFocFlow ? 'text-indigo-600' : 'text-emerald-700'}`} />
                 </div>
-                <div className="text-2xl font-black font-mono tabular-nums text-indigo-700 mt-1">
+                <div
+                  className={`text-2xl font-black font-mono tabular-nums mt-1 ${
+                    grandTotals.hasFocFlow ? 'text-indigo-700' : 'text-slate-900'
+                  }`}
+                >
                   {formatNumber(
                     focProjectId
                       ? grandTotals.effectiveSiteFocIssued
-                      : grandTotals.effectiveSiteFocIssued > 0
+                      : grandTotals.hasFocFlow
                       ? grandTotals.effectiveSiteFocIssued
                       : grandTotals.siteSpecificStock?.received || 0
                   )}{' '}
                   <span className="text-xs font-semibold text-slate-500">{item.unit}</span>
                 </div>
                 <div className="mt-2 pt-1.5 border-t border-slate-100 space-y-0.5 text-[11px]">
-                  <div className="flex justify-between items-center text-indigo-800 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                      Central FOC Issue:
-                    </span>
-                    <strong className="font-mono tabular-nums">
-                      {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}
-                    </strong>
-                  </div>
+                  {grandTotals.hasFocFlow && (
+                    <div className="flex justify-between items-center text-indigo-800 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                        Central FOC Issue:
+                      </span>
+                      <strong className="font-mono tabular-nums">
+                        {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}
+                      </strong>
+                    </div>
+                  )}
                   {(!focProjectId || grandTotals.effectiveSiteNormalIssued > 0) && (
-                    <div className="flex justify-between text-slate-600 px-1.5">
+                    <div className="flex justify-between text-slate-700 font-semibold px-1.5">
                       <span>Normal HQ Issue:</span>
                       <strong className="font-mono tabular-nums">
                         {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
                       </strong>
                     </div>
                   )}
-                  {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
+                  {!focProjectId && grandTotals.effectiveSiteFocIssued > 0 && grandTotals.effectiveSiteNormalIssued > 0 && (
                     <div className="flex justify-between text-slate-800 font-semibold px-1.5">
                       <span>Total Site Inbound:</span>
                       <strong className="font-mono tabular-nums">
@@ -2100,94 +2194,164 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
             </div>
 
             <div className="overflow-x-auto bg-white">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-emerald-50/70 text-emerald-950 uppercase border-b border-emerald-200 font-bold">
-                  <tr>
-                    <th className="py-2.5 px-3">1. FOC Central Receipt</th>
-                    <th className="py-2.5 px-3">2. Site Issue (Central → Site)</th>
-                    <th className="py-2.5 px-3">3. Team Issue (Site → Teams)</th>
-                    <th className="py-2.5 px-3">4. Usage &amp; Wastage</th>
-                    <th className="py-2.5 px-3 text-right bg-indigo-50 text-indigo-950">
-                      5a. Site FOC Balance / Returnable
-                    </th>
-                    <th className="py-2.5 px-3 text-right bg-emerald-100/80 text-emerald-950">
-                      5b. Total Client Returnable (Site + Central)
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="divide-x divide-slate-200">
-                    <td className="py-3 px-3 font-mono">
-                      <div className="text-sm font-black text-indigo-900">
-                        {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
-                      </div>
-                      <div className="text-[11px] text-slate-600 mt-0.5">
-                        Central FOC Pool Rem:{' '}
-                        <strong className="text-emerald-700">
-                          {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
-                        </strong>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-mono">
-                      <div className="text-sm font-black text-indigo-700">
-                        {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}{' '}
-                        <span className="text-[10px] font-sans font-extrabold px-1.5 py-0.5 rounded bg-indigo-600 text-white">
-                          Central FOC
-                        </span>
-                      </div>
-                      {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
+              {grandTotals.hasFocFlow ? (
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-emerald-50/70 text-emerald-950 uppercase border-b border-emerald-200 font-bold">
+                    <tr>
+                      <th className="py-2.5 px-3">1. FOC Central Receipt</th>
+                      <th className="py-2.5 px-3">2. Site Issue (Central → Site)</th>
+                      <th className="py-2.5 px-3">3. Team Issue (Site → Teams)</th>
+                      <th className="py-2.5 px-3">4. Usage &amp; Wastage</th>
+                      <th className="py-2.5 px-3 text-right bg-indigo-50 text-indigo-950">
+                        5a. Site FOC Balance / Returnable
+                      </th>
+                      <th className="py-2.5 px-3 text-right bg-emerald-100/80 text-emerald-950">
+                        5b. Total Client Returnable (Site + Central)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="divide-x divide-slate-200">
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-indigo-900">
+                          {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
+                        </div>
                         <div className="text-[11px] text-slate-600 mt-0.5">
-                          + Normal HQ: <strong>{formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}</strong>
+                          Central FOC Pool Rem:{' '}
+                          <strong className="text-emerald-700">
+                            {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
+                          </strong>
                         </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 font-mono">
-                      <div className="text-sm font-black text-blue-800">
-                        {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
-                      </div>
-                      <div className="text-[11px] text-slate-600 mt-0.5">
-                        Returned Good: <strong className="text-emerald-700">+{formatNumber(grandTotals.stage3TeamReturnedGood)}</strong> • Team In-Hand:{' '}
-                        <strong>{formatNumber(grandTotals.allTeamsInHand)}</strong>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-mono">
-                      <div className="text-sm font-black text-slate-900">
-                        {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit}
-                      </div>
-                      <div className="text-[11px] mt-0.5">
-                        <span className="text-teal-700 font-bold">
-                          Used: {formatNumber(grandTotals.stage4Used)}
-                        </span>{' '}
-                        •{' '}
-                        <span className="text-rose-600 font-bold">
-                          Wastage: {formatNumber(grandTotals.stage4Wastage)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono bg-indigo-50/50">
-                      <div className="text-base font-black text-indigo-900">
-                        {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
-                      </div>
-                      <div className="text-[10px] font-sans text-indigo-700 font-semibold">
-                        Site Issue ({formatNumber(grandTotals.effectiveSiteFocIssued)}) − Consumed ({formatNumber(Math.min(grandTotals.effectiveSiteFocIssued, grandTotals.stage4TotalConsumed))})
-                      </div>
-                      {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
-                        <div className="text-[10px] font-sans text-slate-600 mt-0.5">
-                          + Normal HQ Site Bal: <strong>{formatNumber(grandTotals.siteNormalRemainingBalance)} {item.unit}</strong>
+                      </td>
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-indigo-700">
+                          {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}{' '}
+                          <span className="text-[10px] font-sans font-extrabold px-1.5 py-0.5 rounded bg-indigo-600 text-white">
+                            Central FOC
+                          </span>
                         </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono bg-emerald-50/70">
-                      <div className="text-base font-black text-emerald-800">
-                        {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
-                      </div>
-                      <div className="text-[10px] font-sans text-emerald-800 font-semibold">
-                        Central Pool ({formatNumber(grandTotals.centralFocPoolRemaining)}) + Site FOC Bal ({formatNumber(grandTotals.stage5SiteFocReturnableBalance)})
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                        {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
+                          <div className="text-[11px] text-slate-600 mt-0.5">
+                            + Normal HQ: <strong>{formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}</strong>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-blue-800">
+                          {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-0.5">
+                          Returned Good: <strong className="text-emerald-700">+{formatNumber(grandTotals.stage3TeamReturnedGood)}</strong> • Team In-Hand:{' '}
+                          <strong>{formatNumber(grandTotals.allTeamsInHand)}</strong>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-slate-900">
+                          {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit}
+                        </div>
+                        <div className="text-[11px] mt-0.5">
+                          <span className="text-teal-700 font-bold">
+                            Used: {formatNumber(grandTotals.stage4Used)}
+                          </span>{' '}
+                          •{' '}
+                          <span className="text-rose-600 font-bold">
+                            Wastage: {formatNumber(grandTotals.stage4Wastage)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono bg-indigo-50/50">
+                        <div className="text-base font-black text-indigo-900">
+                          {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
+                        </div>
+                        <div className="text-[10px] font-sans text-indigo-700 font-semibold">
+                          Site Issue ({formatNumber(grandTotals.effectiveSiteFocIssued)}) − Consumed ({formatNumber(Math.min(grandTotals.effectiveSiteFocIssued, grandTotals.stage4TotalConsumed))})
+                        </div>
+                        {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
+                          <div className="text-[10px] font-sans text-slate-600 mt-0.5">
+                            + Normal HQ Site Bal: <strong>{formatNumber(grandTotals.siteNormalRemainingBalance)} {item.unit}</strong>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono bg-emerald-50/70">
+                        <div className="text-base font-black text-emerald-800">
+                          {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
+                        </div>
+                        <div className="text-[10px] font-sans text-emerald-700 font-semibold">
+                          Central Pool ({formatNumber(grandTotals.centralFocPoolRemaining)}) + Site Bal ({formatNumber(grandTotals.stage5SiteFocReturnableBalance)})
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-emerald-50/70 text-emerald-950 uppercase border-b border-emerald-200 font-bold">
+                    <tr>
+                      <th className="py-2.5 px-3">1. Central HQ Stock</th>
+                      <th className="py-2.5 px-3">2. Site Issue (Central → Site)</th>
+                      <th className="py-2.5 px-3">3. Team Issue (Site → Teams)</th>
+                      <th className="py-2.5 px-3">4. Usage &amp; Wastage</th>
+                      <th className="py-2.5 px-3 text-right bg-emerald-100/80 text-emerald-950">
+                        5. Available Site Balance
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="divide-x divide-slate-200">
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-slate-900">
+                          {formatNumber(mainStock.companyReceived)} {item.unit}
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-0.5">
+                          HQ In-Hand:{' '}
+                          <strong className="text-emerald-700">
+                            {formatNumber(grandTotals.centralNormalInHand)} {item.unit}
+                          </strong>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-slate-900">
+                          {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}{' '}
+                          <span className="text-[10px] font-sans font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                            Normal HQ
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-blue-800">
+                          {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-0.5">
+                          Returned Good: <strong className="text-emerald-700">+{formatNumber(grandTotals.stage3TeamReturnedGood)}</strong> • Team In-Hand:{' '}
+                          <strong>{formatNumber(grandTotals.allTeamsInHand)}</strong>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-sm font-black text-slate-900">
+                          {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit}
+                        </div>
+                        <div className="text-[11px] mt-0.5">
+                          <span className="text-teal-700 font-bold">
+                            Used: {formatNumber(grandTotals.stage4Used)}
+                          </span>{' '}
+                          •{' '}
+                          <span className="text-rose-600 font-bold">
+                            Wastage: {formatNumber(grandTotals.stage4Wastage)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono bg-emerald-50/70">
+                        <div className="text-base font-black text-emerald-800">
+                          {formatNumber(grandTotals.siteSpecificStock?.availableBalance ?? 0)} {item.unit}
+                        </div>
+                        <div className="text-[10px] font-sans text-emerald-700 font-semibold">
+                          Physical Site Yard Stock Remaining
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         )}
@@ -2215,7 +2379,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
             </div>
             <div className="text-right text-xs space-y-0.5 font-mono">
               <div>
-                <strong>Doc Ref:</strong> FOC-REC-{item.itemCode}-{new Date().getFullYear()}
+                <strong>Doc Ref:</strong> {grandTotals.hasFocFlow ? 'FOC-REC' : 'STD-REC'}-{item.itemCode}-{new Date().getFullYear()}
               </div>
               <div>
                 <strong>Printed:</strong> {formatDateTime(new Date().toISOString())}
@@ -2262,28 +2426,53 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
 
           {/* 5-Stage Standard Reconciliation KPI Grid */}
           <div className="grid grid-cols-5 gap-2 text-center border-2 border-slate-800 p-2.5 bg-white">
-            <div className="border-r border-slate-300 pr-2">
-              <div className="text-[10px] font-extrabold uppercase text-indigo-900">
-                1. FOC Central Receipt
+            {grandTotals.hasFocFlow ? (
+              <div className="border-r border-slate-300 pr-2">
+                <div className="text-[10px] font-extrabold uppercase text-indigo-900">
+                  1. FOC Central Receipt
+                </div>
+                <div className="text-sm font-black font-mono text-indigo-900 mt-0.5">
+                  {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
+                </div>
+                <div className="text-[9px] text-slate-600">
+                  Central Pool Rem: {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
+                </div>
               </div>
-              <div className="text-sm font-black font-mono text-indigo-900 mt-0.5">
-                {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
+            ) : (
+              <div className="border-r border-slate-300 pr-2">
+                <div className="text-[10px] font-extrabold uppercase text-slate-800">
+                  1. Central HQ Pool
+                </div>
+                <div className="text-sm font-black font-mono text-slate-900 mt-0.5">
+                  {formatNumber(mainStock.companyReceived)} {item.unit}
+                </div>
+                <div className="text-[9px] text-slate-600">
+                  HQ In-Hand: {formatNumber(grandTotals.centralNormalInHand)} {item.unit}
+                </div>
               </div>
-              <div className="text-[9px] text-slate-600">
-                Central Pool Rem: {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
-              </div>
-            </div>
+            )}
             <div className="border-r border-slate-300 pr-2">
               <div className="text-[10px] font-extrabold uppercase text-slate-800">
                 2. Site Issue (HQ → Site)
               </div>
-              <div className="text-sm font-black font-mono text-indigo-800 mt-0.5">
-                {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit} (FOC)
-              </div>
-              {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
-                <div className="text-[9px] text-slate-600">
-                  + Normal HQ: {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
-                </div>
+              {grandTotals.hasFocFlow ? (
+                <>
+                  <div className="text-sm font-black font-mono text-indigo-800 mt-0.5">
+                    {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit} (FOC)
+                  </div>
+                  {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
+                    <div className="text-[9px] text-slate-600">
+                      + Normal HQ: {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="text-sm font-black font-mono text-slate-900 mt-0.5">
+                    {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
+                  </div>
+                  <div className="text-[9px] text-slate-600">Normal HQ Issue</div>
+                </>
               )}
             </div>
             <div className="border-r border-slate-300 pr-2">
@@ -2308,17 +2497,31 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                 Used: {formatNumber(grandTotals.stage4Used)} | Waste: {formatNumber(grandTotals.stage4Wastage)}
               </div>
             </div>
-            <div>
-              <div className="text-[10px] font-extrabold uppercase text-emerald-900">
-                5. Balance / Returnable
+            {grandTotals.hasFocFlow ? (
+              <div>
+                <div className="text-[10px] font-extrabold uppercase text-emerald-900">
+                  5. Balance / Returnable
+                </div>
+                <div className="text-sm font-black font-mono text-emerald-800 mt-0.5">
+                  Site FOC: {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
+                </div>
+                <div className="text-[9px] font-bold text-emerald-900">
+                  Total Client Returnable: {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
+                </div>
               </div>
-              <div className="text-sm font-black font-mono text-emerald-800 mt-0.5">
-                Site FOC: {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
+            ) : (
+              <div>
+                <div className="text-[10px] font-extrabold uppercase text-emerald-900">
+                  5. Available Site Balance
+                </div>
+                <div className="text-sm font-black font-mono text-emerald-800 mt-0.5">
+                  {formatNumber(grandTotals.siteSpecificStock?.availableBalance ?? grandTotals.centralInHand)} {item.unit}
+                </div>
+                <div className="text-[9px] font-bold text-emerald-900">
+                  Physical Site Yard Stock
+                </div>
               </div>
-              <div className="text-[9px] font-bold text-emerald-900">
-                Total Client Returnable: {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Print Table 1: Initial FOC Receipt at Central Stock */}
@@ -2546,46 +2749,81 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           {/* Print Table 5: Balance / Returnable Stock on Project Completion */}
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider bg-emerald-50 px-2.5 py-1.5 border border-slate-300">
-              5. Balance / Returnable Stock on Project Completion
+              {grandTotals.hasFocFlow
+                ? '5. Balance / Returnable Stock on Project Completion'
+                : '5. Site Material Balance & Reconciliation Statement'}
             </h3>
-            <table className="w-full text-[11px] border-collapse border border-slate-300">
-              <thead>
-                <tr className="bg-slate-50">
-                  <th className="border border-slate-300 p-1.5 text-right">1. Central FOC Receipt</th>
-                  <th className="border border-slate-300 p-1.5 text-right">2. Site Issue (FOC)</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Central Pool Rem.</th>
-                  <th className="border border-slate-300 p-1.5 text-right">3. Team Issue</th>
-                  <th className="border border-slate-300 p-1.5 text-right">4. Usage + Wastage</th>
-                  <th className="border border-slate-300 p-1.5 text-right">5a. Site FOC Returnable</th>
-                  <th className="border border-slate-300 p-1.5 text-right">5b. Total Client Returnable</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
-                    {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
-                  </td>
-                  <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
-                    {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}
-                  </td>
-                  <td className="border border-slate-300 p-1.5 text-right font-mono">
-                    {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
-                  </td>
-                  <td className="border border-slate-300 p-1.5 text-right font-mono">
-                    {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
-                  </td>
-                  <td className="border border-slate-300 p-1.5 text-right font-mono">
-                    {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit} ({formatNumber(grandTotals.stage4Used)} + {formatNumber(grandTotals.stage4Wastage)})
-                  </td>
-                  <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
-                    {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
-                  </td>
-                  <td className="border border-slate-300 p-1.5 text-right font-mono font-black">
-                    {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            {grandTotals.hasFocFlow ? (
+              <table className="w-full text-[11px] border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="border border-slate-300 p-1.5 text-right">1. Central FOC Receipt</th>
+                    <th className="border border-slate-300 p-1.5 text-right">2. Site Issue (FOC)</th>
+                    <th className="border border-slate-300 p-1.5 text-right">Central Pool Rem.</th>
+                    <th className="border border-slate-300 p-1.5 text-right">3. Team Issue</th>
+                    <th className="border border-slate-300 p-1.5 text-right">4. Usage + Wastage</th>
+                    <th className="border border-slate-300 p-1.5 text-right">5a. Site FOC Returnable</th>
+                    <th className="border border-slate-300 p-1.5 text-right">5b. Total Client Returnable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                      {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                      {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                      {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit} ({formatNumber(grandTotals.stage4Used)} + {formatNumber(grandTotals.stage4Wastage)})
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono font-black">
+                      {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-[11px] border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="border border-slate-300 p-1.5 text-right">1. Central HQ Stock</th>
+                    <th className="border border-slate-300 p-1.5 text-right">2. Site Issue (Normal HQ)</th>
+                    <th className="border border-slate-300 p-1.5 text-right">3. Team Issue</th>
+                    <th className="border border-slate-300 p-1.5 text-right">4. Usage + Wastage</th>
+                    <th className="border border-slate-300 p-1.5 text-right">5. Available Site Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      {formatNumber(mainStock.companyReceived)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                      {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                      {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit} ({formatNumber(grandTotals.stage4Used)} + {formatNumber(grandTotals.stage4Wastage)})
+                    </td>
+                    <td className="border border-slate-300 p-1.5 text-right font-mono font-black">
+                      {formatNumber(grandTotals.siteSpecificStock?.availableBalance ?? grandTotals.centralInHand)} {item.unit}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
           </div>
 
           {/* ISO Sign-off Footer */}
