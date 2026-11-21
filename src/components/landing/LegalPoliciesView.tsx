@@ -55,23 +55,23 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
   return (
     <div className="relative z-10 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Top Action & Segmented Policy Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-8 border-b border-[#dc9750]/25 no-print">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/15 no-print">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={onBackToOverview}
-            className="px-3.5 py-2 rounded-xl bg-[#25304f]/90 hover:bg-[#2d3a5e] border border-[#dc9750]/35 text-xs font-bold text-slate-100 flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] backdrop-blur-xl border border-white/20 text-xs font-bold text-slate-100 flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-[#dc9750]" />
+            <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
             <span>Back to Overview</span>
           </button>
 
           <button
             type="button"
             onClick={() => window.print()}
-            className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-bold text-slate-100 flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] backdrop-blur-xl border border-white/20 text-xs font-bold text-slate-100 flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
           >
-            <Printer className="w-3.5 h-3.5 text-[#dc9750]" />
+            <Printer className="w-3.5 h-3.5 text-sky-400" />
             <span>Print Document</span>
           </button>
         </div>
@@ -80,7 +80,7 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
         <div
           role="tablist"
           aria-label="Legal Policy Documents"
-          className="flex flex-wrap items-center gap-1.5 p-1 bg-[#141a2e]/90 border border-[#dc9750]/30 rounded-xl"
+          className="flex flex-wrap items-center gap-1.5 p-1 bg-white/[0.06] backdrop-blur-2xl border border-white/15 rounded-xl"
         >
           {policyTabs.map((tab) => {
             const Icon = tab.icon;
@@ -94,11 +94,11 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
                 onClick={() => onSelectPolicy(tab.id)}
                 className={`px-3.5 py-2 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
-                    ? 'bg-[#dc9750] text-[#1e2640] shadow-xs'
-                    : 'text-slate-200 hover:text-white hover:bg-white/5'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                    : 'text-slate-200 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#1e2640]' : 'text-[#dc9750]'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-slate-950' : 'text-emerald-400'}`} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -110,8 +110,8 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Sticky Sidebar: Table of Contents & Official Compliance Info */}
         <aside className="lg:col-span-4 lg:sticky lg:top-24 space-y-6 no-print">
-          <div className="rounded-2xl bg-[#161d33]/95 border border-[#dc9750]/30 p-5 sm:p-6">
-            <div className="text-xs font-extrabold text-[#e8ac6e] tracking-wide mb-1">
+          <div className="rounded-2xl landing-glass-card p-5 sm:p-6">
+            <div className="text-xs font-extrabold text-emerald-300 tracking-wide mb-1">
               Document Contents
             </div>
             <h2 className="text-base font-black text-white tracking-tight mb-4">
@@ -124,9 +124,9 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
                   key={sec.id}
                   type="button"
                   onClick={() => handleJumpToSection(sec.id)}
-                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition flex items-baseline gap-2.5 cursor-pointer"
+                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition flex items-baseline gap-2.5 cursor-pointer"
                 >
-                  <span className="font-mono font-bold text-[#dc9750] tabular-nums shrink-0">
+                  <span className="font-mono font-bold text-emerald-400 tabular-nums shrink-0">
                     {sec.number}.
                   </span>
                   <span className="leading-snug">{sec.title}</span>
@@ -136,21 +136,21 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
           </div>
 
           {/* Official Compliance & Support Card */}
-          <div className="rounded-2xl bg-[#161d33]/95 border border-white/12 p-5 sm:p-6 space-y-3 text-xs text-slate-300">
+          <div className="rounded-2xl landing-glass-card p-5 sm:p-6 space-y-3 text-xs text-slate-300">
             <div className="font-extrabold text-white text-sm">
               Legal &amp; Billing Inquiries
             </div>
             <p className="leading-relaxed text-slate-300">
               Official operator for Apex Stock Enterprise SaaS workspaces, multi-tenant cloud storage, and billing settlements:
             </p>
-            <div className="pt-2 border-t border-white/10 space-y-2">
+            <div className="pt-2 border-t border-white/15 space-y-2">
               <div className="flex items-center gap-2 text-slate-200 font-semibold">
-                <Globe className="w-3.5 h-3.5 text-[#dc9750] shrink-0" />
+                <Globe className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                 <span>https://apexstox.com</span>
               </div>
               <a
                 href="mailto:support@apexstox.com"
-                className="flex items-center gap-2 text-[#e8ac6e] hover:underline font-bold"
+                className="flex items-center gap-2 text-emerald-300 hover:underline font-bold"
               >
                 <Mail className="w-3.5 h-3.5 shrink-0" />
                 <span>support@apexstox.com</span>
@@ -160,7 +160,7 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenSignup}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#dc9750] hover:bg-[#e7a662] text-[#1e2640] font-black text-xs transition cursor-pointer whitespace-nowrap"
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition cursor-pointer whitespace-nowrap shadow-md shadow-emerald-500/20"
               >
                 Start {pricingMetrics.trialDays}-Day Free Trial
               </button>

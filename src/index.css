@@ -47,19 +47,39 @@
       linear-gradient(145deg, #e3eff8 0%, #eef2ff 36%, #e8faef 70%, #f4f7fb 100%);
   }
 
-  /* Desert Sun (#dc9750) & Architectural Dark Blue (#1e2640) Construction Canvas */
+  /* Neat Liquid Crystal Glass Canvas for Landing & Auth Portal */
   .construction-blueprint-canvas {
-    background-color: #1e2640;
+    background-color: #070b14;
     background-image:
-      linear-gradient(to right, rgba(220, 151, 80, 0.065) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(220, 151, 80, 0.065) 1px, transparent 1px),
-      radial-gradient(circle at 12% 10%, rgba(220, 151, 80, 0.22), transparent 42%),
-      radial-gradient(circle at 88% 14%, rgba(220, 151, 80, 0.18), transparent 40%),
-      radial-gradient(circle at 50% 48%, rgba(44, 56, 94, 0.55), transparent 52%),
-      radial-gradient(circle at 16% 82%, rgba(220, 151, 80, 0.16), transparent 44%),
-      linear-gradient(145deg, #181f36 0%, #1e2640 45%, #242e4d 78%, #192038 100%);
-    background-size: 52px 52px, 52px 52px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      radial-gradient(circle at 12% 8%, rgba(56, 189, 248, 0.16), transparent 44%),
+      radial-gradient(circle at 86% 12%, rgba(16, 185, 129, 0.14), transparent 42%),
+      radial-gradient(circle at 50% 48%, rgba(99, 102, 241, 0.09), transparent 54%),
+      radial-gradient(circle at 18% 84%, rgba(20, 184, 166, 0.12), transparent 45%),
+      linear-gradient(155deg, #060913 0%, #0a101e 48%, #0c1426 78%, #070b15 100%);
+    background-size: 56px 56px, 56px 56px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
     background-attachment: fixed;
+  }
+
+  .landing-glass-card {
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.025) 100%);
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+      0 20px 50px -18px rgba(0, 0, 0, 0.65),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .landing-glass-card-light {
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.68) 100%);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow:
+      0 14px 36px -14px rgba(15, 23, 42, 0.09),
+      inset 0 1px 0 0 rgba(255, 255, 255, 1);
   }
 
   /* 1. Dark Emerald Hero Banners Across All Modules (Zero :has() Subtree Scanning) */
