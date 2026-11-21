@@ -843,7 +843,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Our Policy</span>
+              <span>Our Policies</span>
             </button>
           </nav>
 
@@ -907,7 +907,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             }`}
           >
             <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isPolicyTabActive ? 'text-[#071026]' : 'text-amber-400'}`} />
-            <span>Our Policy</span>
+            <span>Our Policies</span>
           </button>
         </div>
       </div>
