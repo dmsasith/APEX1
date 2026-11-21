@@ -17,6 +17,7 @@ import {
 import { useStock } from '../../context/StockContext';
 import { TenantRegistrationForm, computePlatformPricingMetrics } from '../../types';
 import { TermsConditionsModal } from './TermsConditionsModal';
+import { LegalDocId } from './legalPoliciesData';
 import {
   COUNTRY_PHONE_RULES,
   detectActivePhoneCountry,
@@ -58,6 +59,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [legalDocTab, setLegalDocTab] = useState<LegalDocId>('terms');
 
   if (!isOpen) return null;
 
@@ -415,16 +417,49 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                 </div>
               </div>
               
-              <div className="flex items-center gap-2 px-1">
+              <div className="flex items-start gap-2 px-1">
                 <input
                   type="checkbox"
                   id="terms"
                   checked={agreedToTerms}
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-950 checked:bg-emerald-500 focus:ring-emerald-500"
+                  className="w-4 h-4 mt-0.5 rounded border-slate-700 bg-slate-950 checked:bg-emerald-500 focus:ring-emerald-500 cursor-pointer shrink-0"
                 />
-                <label htmlFor="terms" className="text-xs text-slate-400">
-                  I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-emerald-400 hover:underline font-bold">Terms & Conditions</button>
+                <label htmlFor="terms" className="text-xs text-slate-400 leading-relaxed">
+                  I agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalDocTab('terms');
+                      setShowTermsModal(true);
+                    }}
+                    className="text-emerald-400 hover:underline font-bold cursor-pointer"
+                  >
+                    Terms &amp; Conditions
+                  </button>
+                  ,{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalDocTab('privacy');
+                      setShowTermsModal(true);
+                    }}
+                    className="text-emerald-400 hover:underline font-bold cursor-pointer"
+                  >
+                    Privacy Policy
+                  </button>
+                  , and{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalDocTab('refund');
+                      setShowTermsModal(true);
+                    }}
+                    className="text-emerald-400 hover:underline font-bold cursor-pointer"
+                  >
+                    Refund Policy
+                  </button>
+                  .
                 </label>
               </div>
             </div>
@@ -458,7 +493,11 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
       </div>
     </div>
     
-    <TermsConditionsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
+    <TermsConditionsModal
+      isOpen={showTermsModal}
+      onClose={() => setShowTermsModal(false)}
+      initialDoc={legalDocTab}
+    />
     </>
   );
 };

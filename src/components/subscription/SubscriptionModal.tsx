@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { computePlatformPricingMetrics } from '../../types';
+import { TermsConditionsModal } from '../landing/TermsConditionsModal';
+import { LegalDocId } from '../landing/legalPoliciesData';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
 import { EmailVerificationModal } from '../auth/EmailVerificationModal';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -52,6 +54,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64
   );
   const [isLiveRate, setIsLiveRate] = useState<boolean>(false);
+  const [legalDocModal, setLegalDocModal] = useState<LegalDocId | null>(null);
 
   // Auto-fetch real-time USD to LKR Exchange Rate
   useEffect(() => {
@@ -484,8 +487,29 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
           {/* Action Footer */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-            <div className="text-xs text-slate-500">
-              Need assistance? Email support: <a href="mailto:support@apexstox.com" className="font-bold text-slate-800 underline hover:text-emerald-700">support@apexstox.com</a>
+            <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>
+                Need assistance? Email{' '}
+                <a href="mailto:support@apexstox.com" className="font-bold text-slate-800 underline hover:text-emerald-700">
+                  support@apexstox.com
+                </a>
+              </span>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => setLegalDocModal('refund')}
+                className="font-bold text-slate-700 hover:text-emerald-700 underline cursor-pointer"
+              >
+                Refund Policy
+              </button>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => setLegalDocModal('terms')}
+                className="font-bold text-slate-700 hover:text-emerald-700 underline cursor-pointer"
+              >
+                Terms &amp; Conditions
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -540,6 +564,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           ]}
         />
       )}
+      <TermsConditionsModal
+        isOpen={legalDocModal !== null}
+        onClose={() => setLegalDocModal(null)}
+        initialDoc={legalDocModal || 'refund'}
+        agreeLabel="Close"
+      />
     </>
   );
 };

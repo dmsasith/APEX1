@@ -26,6 +26,8 @@ import {
 import { useStock } from '../../context/StockContext';
 import { verifyFirebaseResetCode } from '../../firebase';
 import { TenantSignupModal } from '../landing/TenantSignupModal';
+import { TermsConditionsModal } from '../landing/TermsConditionsModal';
+import { LegalDocId } from '../landing/legalPoliciesData';
 
 const PRESET_ICONS = [
   { id: 'building', icon: Building2 },
@@ -66,6 +68,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   const [collisionCompanies, setCollisionCompanies] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [legalModalDoc, setLegalModalDoc] = useState<LegalDocId | null>(null);
 
   // Forgot Password modal state
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -558,7 +561,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
         </div>
 
         {/* Bottom Footer Details */}
-        <div className="relative z-10 max-w-6xl w-full mx-auto text-center py-2 text-xs font-medium text-slate-500">
+        <div className="relative z-10 max-w-6xl w-full mx-auto text-center py-2 text-xs font-medium text-slate-500 space-y-1.5">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] font-semibold text-slate-600">
+            <button
+              type="button"
+              onClick={() => setLegalModalDoc('privacy')}
+              className="hover:text-emerald-700 hover:underline transition cursor-pointer"
+            >
+              Privacy Policy
+            </button>
+            <span aria-hidden="true" className="text-slate-300">·</span>
+            <button
+              type="button"
+              onClick={() => setLegalModalDoc('refund')}
+              className="hover:text-emerald-700 hover:underline transition cursor-pointer"
+            >
+              Refund Policy
+            </button>
+            <span aria-hidden="true" className="text-slate-300">·</span>
+            <button
+              type="button"
+              onClick={() => setLegalModalDoc('terms')}
+              className="hover:text-emerald-700 hover:underline transition cursor-pointer"
+            >
+              Terms &amp; Conditions
+            </button>
+          </div>
           <p>© {new Date().getFullYear()} {config.companyName}. All rights reserved.</p>
         </div>
       </div>
@@ -567,6 +595,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
       <TenantSignupModal
         isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
+      />
+
+      <TermsConditionsModal
+        isOpen={legalModalDoc !== null}
+        onClose={() => setLegalModalDoc(null)}
+        initialDoc={legalModalDoc || 'privacy'}
+        agreeLabel="Close"
       />
 
       {/* Tenant Forgot Password & In-App Reset Modal */}

@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 import { SystemUserGuideView } from './SystemUserGuideView';
+import { LegalPoliciesView } from './LegalPoliciesView';
+import { LegalDocId } from './legalPoliciesData';
 import { useStock } from '../../context/StockContext';
 import { computePlatformPricingMetrics } from '../../types';
 
@@ -45,7 +47,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
   const [isSignupOpen, setIsSignupOpen] = useState(false);
-  const [activeLandingTab, setActiveLandingTab] = useState<'overview' | 'guide'>('overview');
+  const [activeLandingTab, setActiveLandingTab] = useState<
+    'overview' | 'guide' | 'privacy' | 'refund' | 'terms'
+  >(() => {
+    if (typeof window !== 'undefined') {
+      const pageParam = new URLSearchParams(window.location.search).get('page')?.trim().toLowerCase();
+      const hashParam = window.location.hash.replace('#', '').trim().toLowerCase();
+      const target = pageParam || hashParam;
+      if (target === 'privacy' || target === 'privacy-policy') return 'privacy';
+      if (target === 'refund' || target === 'refund-policy') return 'refund';
+      if (target === 'terms' || target === 'terms-and-conditions') return 'terms';
+      if (target === 'guide' || target === 'user-guide') return 'guide';
+    }
+    return 'overview';
+  });
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [selectedIndustryIdx, setSelectedIndustryIdx] = useState<number>(0);
   const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState<boolean>(false);
@@ -53,13 +68,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     'all' | 'pricing' | 'warehouse' | 'field' | 'projects' | 'security'
   >('all');
 
+  const syncPageParamInUrl = (slug: string | null) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      if (slug) {
+        url.searchParams.set('page', slug);
+      } else {
+        url.searchParams.delete('page');
+      }
+      window.history.replaceState({}, document.title, url.toString());
+    } catch {
+      // ignore history errors
+    }
+  };
+
   const handleOpenGuideTab = () => {
     setActiveLandingTab('guide');
+    syncPageParamInUrl('user-guide');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenPolicyTab = (policy: LegalDocId) => {
+    const slugMap: Record<LegalDocId, string> = {
+      privacy: 'privacy-policy',
+      refund: 'refund-policy',
+      terms: 'terms-and-conditions',
+    };
+    setActiveLandingTab(policy);
+    syncPageParamInUrl(slugMap[policy]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSwitchToOverviewSection = (sectionId?: string) => {
     setActiveLandingTab('overview');
+    syncPageParamInUrl(null);
     if (sectionId) {
       setTimeout(() => {
         const el = document.getElementById(sectionId);
@@ -841,8 +884,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
         </div>
       </div>
 
-      {/* ==================== CONDITIONAL VIEW: DEDICATED USER GUIDE TAB OR MAIN OVERVIEW ==================== */}
-      {activeLandingTab === 'guide' ? (
+      {/* ==================== CONDITIONAL VIEW: LEGAL POLICIES, USER GUIDE TAB OR MAIN OVERVIEW ==================== */}
+      {activeLandingTab === 'privacy' || activeLandingTab === 'refund' || activeLandingTab === 'terms' ? (
+        <LegalPoliciesView
+          activePolicy={activeLandingTab}
+          onSelectPolicy={handleOpenPolicyTab}
+          onBackToOverview={() => handleSwitchToOverviewSection()}
+          onOpenSignup={() => setIsSignupOpen(true)}
+        />
+      ) : activeLandingTab === 'guide' ? (
         <SystemUserGuideView
           onBackToOverview={() => handleSwitchToOverviewSection()}
           onOpenSignup={() => setIsSignupOpen(true)}
@@ -2185,21 +2235,70 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
       {/* ==================== FOOTER ==================== */}
       <footer className="mt-auto border-t border-[#dc9750]/25 bg-[#141a2e]/95 backdrop-blur-2xl py-8 sm:py-10 px-3 sm:px-6 lg:px-8 relative z-10 no-print">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#dc9750] flex items-center justify-center shadow-sm">
-              <Boxes className="w-4 h-4 text-[#1e2640] stroke-[2.25]" />
+        <div className="max-w-7xl mx-auto flex flex-col gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#dc9750] flex items-center justify-center shadow-sm shrink-0">
+                <Boxes className="w-4 h-4 text-[#1e2640] stroke-[2.25]" />
+              </div>
+              <div>
+                <span className="font-black text-sm text-white">Apex Stock Enterprise SaaS</span>
+                <span className="text-[11px] text-slate-300 block font-medium">
+                  Centralized Multi-Site Inventory, Project Materials &amp; Field Crew Dispatch
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="font-black text-sm text-white">Apex Stock Enterprise SaaS</span>
-              <span className="text-[11px] text-slate-300 block font-medium">
-                Centralized Multi-Site Inventory, Project Materials & Field Crew Dispatch
-              </span>
-            </div>
+
+            {/* Standard Legal & Documentation Links */}
+            <nav
+              aria-label="Footer Legal & Documentation Links"
+              className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-semibold text-slate-200"
+            >
+              <button
+                type="button"
+                onClick={handleOpenGuideTab}
+                className="hover:text-[#dc9750] hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap"
+              >
+                User Guide
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenPolicyTab('privacy')}
+                className={`hover:text-[#dc9750] hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
+                  activeLandingTab === 'privacy' ? 'text-[#dc9750] underline' : ''
+                }`}
+              >
+                Privacy Policy
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenPolicyTab('refund')}
+                className={`hover:text-[#dc9750] hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
+                  activeLandingTab === 'refund' ? 'text-[#dc9750] underline' : ''
+                }`}
+              >
+                Refund Policy
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenPolicyTab('terms')}
+                className={`hover:text-[#dc9750] hover:underline underline-offset-4 transition cursor-pointer whitespace-nowrap ${
+                  activeLandingTab === 'terms' ? 'text-[#dc9750] underline' : ''
+                }`}
+              >
+                Terms &amp; Conditions
+              </button>
+              <a
+                href="mailto:support@apexstox.com"
+                className="hover:text-[#dc9750] hover:underline underline-offset-4 transition whitespace-nowrap"
+              >
+                support@apexstox.com
+              </a>
+            </nav>
           </div>
 
-          <div className="flex flex-col items-center md:items-end gap-1">
-            <div className="text-xs font-bold text-slate-300">
+          <div className="pt-5 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+            <div className="font-semibold text-slate-300">
               Apex Stock SaaS © {new Date().getFullYear()} · All Rights Reserved
             </div>
             <div className="text-[11px] text-[#e5a460] font-extrabold">
