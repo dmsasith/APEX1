@@ -7,14 +7,17 @@ import {
   detectSuggestedModule,
 } from '../../server/supportShared';
 
-interface CloudflareEnv {
+export interface CloudflareEnv {
   MASTER_ADMIN_PASSCODE?: string;
   SESSION_SECRET?: string;
   GEMINI_API_KEY?: string;
   APP_URL?: string;
+  ASSETS?: {
+    fetch: (request: Request) => Promise<Response>;
+  };
 }
 
-interface CfEventContext {
+export interface CfEventContext {
   request: Request;
   env: CloudflareEnv;
 }
