@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { computePlatformPricingMetrics } from '../../types';
+import { computePlatformPricingMetrics, getSubscriptionStatusSummary } from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 
 export const TrialExpiredOverlay: React.FC = () => {
@@ -27,12 +27,11 @@ export const TrialExpiredOverlay: React.FC = () => {
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
 
-  if (!currentTenant) return null;
+  if (!currentTenant || currentTenant.id === 'tenant-apex-main') return null;
 
   const sub = currentTenant.subscription;
-  const isTrial = sub.plan === 'free_trial' || sub.status === 'trialing';
-  const isTrialExpired =
-    isTrial && new Date(sub.trialEndsAt) < new Date();
+  const subSummary = getSubscriptionStatusSummary(sub);
+  const isTrialExpired = subSummary.isTrial && subSummary.isExpired;
 
   // If trial is NOT expired and status is active, do not block UI
   if (!isTrialExpired && sub.status !== 'canceled') {
@@ -43,6 +42,7 @@ export const TrialExpiredOverlay: React.FC = () => {
     setIsUpgrading(true);
     setTimeout(() => {
       const isAnnual = selectedPlan === 'annual';
+      const nextBilling = new Date(Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString();
       updateTenantSubscription(currentTenant.id, {
         plan: isAnnual ? 'pro_annual' : 'pro_monthly',
         status: 'active',
@@ -51,7 +51,8 @@ export const TrialExpiredOverlay: React.FC = () => {
         billingCycle: selectedPlan,
         paymentMethodStatus: 'active',
         lastBillingDate: new Date().toISOString(),
-        nextBillingDate: new Date(Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString(),
+        nextBillingDate: nextBilling,
+        trialEndsAt: nextBilling,
       });
       setIsUpgrading(false);
     }, 1000);
@@ -89,7 +90,7 @@ export const TrialExpiredOverlay: React.FC = () => {
           </h2>
 
           <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
-            Workspace: <strong className="text-white">{currentTenant.companyName}</strong> · Expired on {formatDateTime(sub.trialEndsAt)}
+            Workspace: <strong className="text-white">{currentTenant.companyName}</strong> · Expired on {formatDateTime(subSummary.expiryDateIso || sub.trialEndsAt)}
           </p>
         </div>
 

@@ -37,6 +37,7 @@ import {
   TenantSubscription,
   DEFAULT_PLATFORM_PRICING,
   computePlatformPricingMetrics,
+  getSubscriptionStatusSummary,
 } from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -151,19 +152,17 @@ export const SaasMasterAdminView: React.FC = () => {
 
   // KPI Calculations
   const totalTenants = tenants.length;
-  const activePaidTenants = tenants.filter((t) => t.subscription.status === 'active');
+  const activePaidTenants = tenants.filter((t) => {
+    const s = getSubscriptionStatusSummary(t.subscription);
+    return s.isPaidPlan && !s.isExpired;
+  });
   const activeMonthlyTenants = activePaidTenants.filter((t) => t.subscription.plan !== 'pro_annual');
   const activeAnnualTenants = activePaidTenants.filter((t) => t.subscription.plan === 'pro_annual');
-  const activeTrialTenants = tenants.filter(
-    (t) =>
-      t.subscription.status === 'trialing' &&
-      new Date(t.subscription.trialEndsAt) >= new Date()
-  );
-  const expiredTenants = tenants.filter(
-    (t) =>
-      t.subscription.status === 'trialing' &&
-      new Date(t.subscription.trialEndsAt) < new Date()
-  );
+  const activeTrialTenants = tenants.filter((t) => {
+    const s = getSubscriptionStatusSummary(t.subscription);
+    return s.isTrial && !s.isExpired;
+  });
+  const expiredTenants = tenants.filter((t) => getSubscriptionStatusSummary(t.subscription).isExpired);
 
   const mrr = activePaidTenants.reduce((sum, t) => {
     if (t.subscription.plan === 'pro_annual') {
@@ -182,27 +181,25 @@ export const SaasMasterAdminView: React.FC = () => {
       t.contactEmail.toLowerCase().includes(query) ||
       t.slug.toLowerCase().includes(query);
 
-    const isTrialExpired =
-      t.subscription.status === 'trialing' &&
-      new Date(t.subscription.trialEndsAt) < new Date();
+    const subSummary = getSubscriptionStatusSummary(t.subscription);
 
     if (filterStatus === 'trialing') {
-      return matchesSearch && t.subscription.status === 'trialing' && !isTrialExpired;
+      return matchesSearch && subSummary.isTrial && !subSummary.isExpired;
     }
     if (filterStatus === 'active') {
-      return matchesSearch && t.subscription.status === 'active';
+      return matchesSearch && subSummary.isPaidPlan && !subSummary.isExpired;
     }
     if (filterStatus === 'expired') {
-      return matchesSearch && isTrialExpired;
+      return matchesSearch && subSummary.isExpired;
     }
     return matchesSearch;
   });
 
   const handleExtendTrial = (tenant: Tenant) => {
-    const currentExpiry = new Date(tenant.subscription.trialEndsAt);
+    const currentExpiryMs = getSubscriptionStatusSummary(tenant.subscription).expiryMs;
     const daysToAdd = pricingMetrics.trialDays || 7;
     const newExpiry = new Date(
-      Math.max(Date.now(), currentExpiry.getTime()) + daysToAdd * 24 * 60 * 60 * 1000
+      Math.max(Date.now(), currentExpiryMs) + daysToAdd * 24 * 60 * 60 * 1000
     ).toISOString();
 
     updateTenantSubscription(tenant.id, {
@@ -213,6 +210,7 @@ export const SaasMasterAdminView: React.FC = () => {
   };
 
   const handleActivatePro = (tenant: Tenant) => {
+    const nextBilling = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     updateTenantSubscription(tenant.id, {
       plan: 'pro_monthly',
       status: 'active',
@@ -220,7 +218,8 @@ export const SaasMasterAdminView: React.FC = () => {
       billingCycle: 'monthly',
       paymentMethodStatus: 'active',
       lastBillingDate: new Date().toISOString(),
-      nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      nextBillingDate: nextBilling,
+      trialEndsAt: nextBilling,
     });
     showNotification(
       `Activated Monthly Pro Subscription ($${pricingMetrics.monthlyPriceFormatted}/mo) for ${tenant.companyName}!`
@@ -228,6 +227,7 @@ export const SaasMasterAdminView: React.FC = () => {
   };
 
   const handleActivateAnnual = (tenant: Tenant) => {
+    const nextBilling = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
     updateTenantSubscription(tenant.id, {
       plan: 'pro_annual',
       status: 'active',
@@ -236,7 +236,8 @@ export const SaasMasterAdminView: React.FC = () => {
       billingCycle: 'annual',
       paymentMethodStatus: 'active',
       lastBillingDate: new Date().toISOString(),
-      nextBillingDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      nextBillingDate: nextBilling,
+      trialEndsAt: nextBilling,
     });
     showNotification(
       `Activated Annual Pro Subscription ($${pricingMetrics.annualPriceFormatted}/yr) for ${tenant.companyName}!`
@@ -264,6 +265,9 @@ export const SaasMasterAdminView: React.FC = () => {
 
     const isAnnual = pending.planRequested === 'pro_annual' || pending.billingCycle === 'annual';
     const plan = isAnnual ? 'pro_annual' : 'pro_monthly';
+    const nextBilling = new Date(
+      Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
+    ).toISOString();
 
     updateTenantSubscription(tenant.id, {
       plan,
@@ -273,9 +277,8 @@ export const SaasMasterAdminView: React.FC = () => {
       billingCycle: isAnnual ? 'annual' : 'monthly',
       paymentMethodStatus: 'active',
       lastBillingDate: new Date().toISOString(),
-      nextBillingDate: new Date(
-        Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
-      ).toISOString(),
+      nextBillingDate: nextBilling,
+      trialEndsAt: nextBilling,
       pendingBankPayment: {
         ...pending,
         status: 'approved',
@@ -998,15 +1001,7 @@ export const SaasMasterAdminView: React.FC = () => {
               ) : (
                 filteredTenants.map((tenant) => {
                   const isCurrent = tenant.id === currentTenant.id;
-                  const isTrialExpired =
-                    tenant.subscription.status === 'trialing' &&
-                    new Date(tenant.subscription.trialEndsAt) < new Date();
-
-                  const trialEnds = new Date(tenant.subscription.trialEndsAt);
-                  const daysLeft = Math.max(
-                    0,
-                    Math.ceil((trialEnds.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                  );
+                  const subSummary = getSubscriptionStatusSummary(tenant.subscription);
 
                   return (
                     <tr
@@ -1060,30 +1055,30 @@ export const SaasMasterAdminView: React.FC = () => {
 
                       {/* Plan Status */}
                       <td className="p-3">
-                        {tenant.subscription.plan === 'pro_annual' ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
-                            <Crown className="w-3 h-3 text-amber-600" />
-                            <span>Pro Annual (${pricingMetrics.annualPriceClean}/yr)</span>
-                          </span>
-                        ) : tenant.subscription.status === 'active' ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
-                            <Zap className="w-3 h-3 text-emerald-600" />
-                            <span>Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
-                          </span>
-                        ) : isTrialExpired ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3 text-rose-600" />
-                            <span>Trial Expired</span>
-                          </span>
-                        ) : tenant.subscription.status === 'canceled' ? (
+                        {subSummary.isCanceled ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300 inline-flex items-center gap-1">
                             <Ban className="w-3 h-3 text-slate-500" />
                             <span>Suspended</span>
                           </span>
+                        ) : subSummary.isExpired ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-rose-600" />
+                            <span>{subSummary.planLabel} Expired</span>
+                          </span>
+                        ) : tenant.subscription.plan === 'pro_annual' ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
+                            <Crown className="w-3 h-3 text-amber-600" />
+                            <span>Pro Annual (${pricingMetrics.annualPriceClean}/yr · {subSummary.shortDaysLabel})</span>
+                          </span>
+                        ) : tenant.subscription.status === 'active' ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-emerald-600" />
+                            <span>Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo · {subSummary.shortDaysLabel})</span>
+                          </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1">
                             <Clock className="w-3 h-3 text-amber-600" />
-                            <span>{pricingMetrics.trialDays}-Day Trial ({daysLeft} Days Left)</span>
+                            <span>{pricingMetrics.trialDays}-Day Trial ({subSummary.longDaysLabel})</span>
                           </span>
                         )}
                       </td>
@@ -1095,7 +1090,7 @@ export const SaasMasterAdminView: React.FC = () => {
 
                       {/* Expiry Date */}
                       <td className="p-3 text-slate-600 text-[11px]">
-                        {formatDateTime(tenant.subscription.trialEndsAt)}
+                        {subSummary.expiryDateIso ? formatDateTime(subSummary.expiryDateIso) : '—'}
                       </td>
 
                       {/* Actions */}

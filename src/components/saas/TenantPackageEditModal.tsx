@@ -14,7 +14,13 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
-import { Tenant, TenantPlan, TenantSubscription, computePlatformPricingMetrics } from '../../types';
+import {
+  Tenant,
+  TenantPlan,
+  TenantSubscription,
+  computePlatformPricingMetrics,
+  getSubscriptionStatusSummary,
+} from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
 
@@ -50,10 +56,9 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
     currency: 'USD',
     nextBillingDate: new Date().toISOString(),
   };
-  const currentExpiry = new Date(sub.trialEndsAt || sub.nextBillingDate || Date.now());
-  const now = new Date();
-  const diffMs = currentExpiry.getTime() - now.getTime();
-  const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  const subSummary = getSubscriptionStatusSummary(sub);
+  const currentExpiry = new Date(subSummary.expiryDateIso || Date.now());
+  const daysRemaining = subSummary.daysLeft;
 
   // Selected new plan
   const [selectedPlan, setSelectedPlan] = useState<TenantPlan>(sub?.plan || 'pro_monthly');
@@ -118,9 +123,9 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
 
   const handleQuickExtendTrial = (days: number) => {
     if (!tenant) return;
-    const currentExp = new Date(sub.trialEndsAt || Date.now());
+    const currentExpMs = subSummary.expiryMs || Date.now();
     const newExpiry = new Date(
-      Math.max(Date.now(), currentExp.getTime()) + days * 24 * 60 * 60 * 1000
+      Math.max(Date.now(), currentExpMs) + days * 24 * 60 * 60 * 1000
     ).toISOString();
 
     onSaveSubscription(
@@ -147,7 +152,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
 
     if (activationMode === 'schedule' && !isTrial) {
       // Queue subscription to take effect after current plan expiry
-      const scheduledStartDate = sub.trialEndsAt || sub.nextBillingDate || new Date().toISOString();
+      const scheduledStartDate = subSummary.expiryDateIso || new Date().toISOString();
 
       onSaveSubscription(
         tenant.id,
@@ -268,12 +273,16 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
 
               <div className="bg-white p-3 rounded-xl border border-slate-200">
                 <div className="text-[10px] text-slate-400 font-semibold">REMAINING DURATION</div>
-                <div className="font-black text-amber-600 text-sm mt-0.5 flex items-center gap-1">
-                  <Clock className="w-4 h-4 text-amber-500" />
-                  <span>{daysRemaining} Days Left</span>
+                <div
+                  className={`font-black text-sm mt-0.5 flex items-center gap-1 ${
+                    subSummary.isExpired || subSummary.isCanceled ? 'text-rose-600' : 'text-amber-600'
+                  }`}
+                >
+                  <Clock className={`w-4 h-4 ${subSummary.isExpired || subSummary.isCanceled ? 'text-rose-500' : 'text-amber-500'}`} />
+                  <span>{subSummary.longDaysLabel}</span>
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  Expires: {formatDate(sub.trialEndsAt || sub.nextBillingDate || '')}
+                  {subSummary.isExpired ? 'Expired:' : 'Expires:'} {formatDate(subSummary.expiryDateIso || '')}
                 </div>
               </div>
             </div>
@@ -486,7 +495,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                           <span>🟢 Schedule After Current Package Expires (Recommended)</span>
                         </div>
                         <p className="text-[11px] text-slate-600 mt-0.5">
-                          Tenant maintains their existing plan until <strong>{formatDate(sub.trialEndsAt || sub.nextBillingDate || '')}</strong> ({daysRemaining} days remaining). When the active period finishes, the new <strong>{selectedCycle === 'annual' ? `Pro Annual ($${pricingMetrics.annualPriceClean}/yr)` : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`}</strong> plan automatically activates.
+                          Tenant maintains their existing plan until <strong>{formatDate(subSummary.expiryDateIso)}</strong> ({subSummary.longDaysLabel}). When the active period finishes, the new <strong>{selectedCycle === 'annual' ? `Pro Annual ($${pricingMetrics.annualPriceClean}/yr)` : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`}</strong> plan automatically activates.
                         </p>
                       </div>
                     </label>

@@ -1193,6 +1193,107 @@ export interface TenantSubscription {
   queuedSubscription?: QueuedSubscription;
 }
 
+export interface SubscriptionStatusSummary {
+  planLabel: string;
+  isTrial: boolean;
+  isPaidPlan: boolean;
+  isCanceled: boolean;
+  isExpired: boolean;
+  expiryDateIso: string;
+  expiryMs: number;
+  msRemaining: number;
+  daysLeft: number;
+  badgeText: string;
+  shortDaysLabel: string;
+  longDaysLabel: string;
+}
+
+export function getSubscriptionStatusSummary(
+  sub: TenantSubscription | undefined | null,
+  nowMs: number = Date.now()
+): SubscriptionStatusSummary {
+  if (!sub) {
+    return {
+      planLabel: 'Free Trial',
+      isTrial: true,
+      isPaidPlan: false,
+      isCanceled: false,
+      isExpired: true,
+      expiryDateIso: '',
+      expiryMs: 0,
+      msRemaining: 0,
+      daysLeft: 0,
+      badgeText: 'Free Trial (Expired)',
+      shortDaysLabel: 'Expired',
+      longDaysLabel: 'Expired',
+    };
+  }
+
+  const isCanceled = sub.status === 'canceled';
+  const isPaidPlan =
+    !isCanceled && (sub.plan === 'pro_annual' || sub.plan === 'pro_monthly');
+  const isTrial = !isPaidPlan && !isCanceled;
+
+  const planLabel =
+    sub.plan === 'pro_annual'
+      ? 'Pro Annual'
+      : sub.plan === 'pro_monthly'
+      ? 'Pro Monthly'
+      : 'Free Trial';
+
+  // Paid plans track billing expiry via nextBillingDate (falling back to trialEndsAt only if missing);
+  // Trials track expiry via trialEndsAt (falling back to nextBillingDate if missing).
+  const candidatePrimary = isPaidPlan
+    ? sub.nextBillingDate || sub.trialEndsAt || ''
+    : sub.trialEndsAt || sub.nextBillingDate || '';
+
+  const primaryMs = candidatePrimary ? new Date(candidatePrimary).getTime() : NaN;
+  const fallbackIso = isPaidPlan ? sub.trialEndsAt || '' : sub.nextBillingDate || '';
+  const fallbackMs = fallbackIso ? new Date(fallbackIso).getTime() : NaN;
+
+  let expiryDateIso = candidatePrimary;
+  let expiryMs = primaryMs;
+
+  if (Number.isNaN(expiryMs) && !Number.isNaN(fallbackMs)) {
+    expiryDateIso = fallbackIso;
+    expiryMs = fallbackMs;
+  }
+
+  const msRemaining = Number.isNaN(expiryMs) ? 0 : expiryMs - nowMs;
+  const isExpired = !isCanceled && msRemaining <= 0;
+  const daysLeft =
+    isCanceled || isExpired ? 0 : Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+
+  const shortDaysLabel = isCanceled
+    ? 'Suspended'
+    : isExpired
+    ? 'Expired'
+    : `${daysLeft}d left`;
+
+  const longDaysLabel = isCanceled
+    ? 'Suspended'
+    : isExpired
+    ? 'Expired'
+    : `${daysLeft} ${daysLeft === 1 ? 'Day' : 'Days'} Left`;
+
+  const badgeText = `${planLabel} (${shortDaysLabel})`;
+
+  return {
+    planLabel,
+    isTrial,
+    isPaidPlan,
+    isCanceled,
+    isExpired,
+    expiryDateIso,
+    expiryMs: Number.isNaN(expiryMs) ? 0 : expiryMs,
+    msRemaining,
+    daysLeft,
+    badgeText,
+    shortDaysLabel,
+    longDaysLabel,
+  };
+}
+
 export interface Tenant {
   id: string; // e.g. "tenant-apex-main", "tenant-apex-telecom"
   companyName: string;

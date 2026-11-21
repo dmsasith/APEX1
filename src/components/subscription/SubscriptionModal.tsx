@@ -18,7 +18,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { computePlatformPricingMetrics } from '../../types';
+import { computePlatformPricingMetrics, getSubscriptionStatusSummary } from '../../types';
 import { TermsConditionsModal } from '../landing/TermsConditionsModal';
 import { LegalDocId } from '../landing/legalPoliciesData';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
@@ -106,13 +106,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   if (!isOpen || !currentTenant) return null;
 
   const sub = currentTenant.subscription;
-  const isTrial = sub.plan === 'free_trial' || sub.status === 'trialing';
-
-  // Calculate days remaining
-  const trialEndDate = new Date(sub.trialEndsAt);
-  const now = new Date();
-  const diffMs = trialEndDate.getTime() - now.getTime();
-  const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  const subSummary = getSubscriptionStatusSummary(sub);
+  const isTrial = subSummary.isTrial;
+  const daysRemaining = subSummary.daysLeft;
 
   const isAnnual = billingCycle === 'annual';
 
@@ -168,7 +164,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-black tracking-tight text-white">
-                {isTrial ? 'Pro Trial Active' : 'Pro Multi-Site'}
+                {subSummary.isCanceled
+                  ? 'Workspace Suspended'
+                  : subSummary.isExpired
+                  ? `${subSummary.planLabel} Expired`
+                  : isTrial
+                  ? 'Pro Trial Active'
+                  : `${subSummary.planLabel} Active`}
               </h2>
               
               <div className="flex items-center gap-2">
@@ -201,14 +203,24 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
             </div>
 
             <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
-              {isTrial && (
+              {subSummary.isExpired ? (
+                <span className="bg-rose-950/80 text-rose-300 border border-rose-800/60 rounded px-1.5 py-0.5 font-bold">
+                  Expired
+                </span>
+              ) : subSummary.isCanceled ? (
+                <span className="bg-slate-800 text-slate-300 rounded px-1.5 py-0.5 font-bold">
+                  Suspended
+                </span>
+              ) : (
                 <span className="bg-slate-800 rounded px-1.5 py-0.5">
-                  <strong className="text-amber-400">{daysRemaining}d</strong> trial remaining
+                  <strong className="text-amber-400">{daysRemaining}d</strong> remaining
                 </span>
               )}
-              <span className="bg-slate-800 rounded px-1.5 py-0.5">
-                Renews: {formatDateTime(sub.trialEndsAt)}
-              </span>
+              {subSummary.expiryDateIso && (
+                <span className="bg-slate-800 rounded px-1.5 py-0.5">
+                  {subSummary.isExpired ? 'Expired:' : 'Renews:'} {formatDateTime(subSummary.expiryDateIso)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -218,9 +230,23 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
             <div className="p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-400">ACTIVE SUBSCRIPTION STATUS</span>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 uppercase">
-                  <Zap className="w-3 h-3 text-emerald-400" />
-                  <span>{sub.status === 'active' ? 'ACTIVE PRO' : 'TRIAL ACTIVE'}</span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border flex items-center gap-1 uppercase ${
+                    subSummary.isExpired || subSummary.isCanceled
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  }`}
+                >
+                  <Zap className={`w-3 h-3 ${subSummary.isExpired || subSummary.isCanceled ? 'text-rose-400' : 'text-emerald-400'}`} />
+                  <span>
+                    {subSummary.isCanceled
+                      ? 'SUSPENDED'
+                      : subSummary.isExpired
+                      ? 'EXPIRED'
+                      : subSummary.isPaidPlan
+                      ? 'ACTIVE PRO'
+                      : 'TRIAL ACTIVE'}
+                  </span>
                 </span>
               </div>
 
@@ -239,12 +265,23 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                 </div>
 
                 <div className="sm:text-right">
-                  <div className="text-sm font-black text-amber-400 flex items-center sm:justify-end gap-1">
-                    <Clock className="w-4 h-4 text-amber-400" />
-                    <span>{daysRemaining} Days Remaining</span>
+                  <div
+                    className={`text-sm font-black flex items-center sm:justify-end gap-1 ${
+                      subSummary.isExpired || subSummary.isCanceled ? 'text-rose-400' : 'text-amber-400'
+                    }`}
+                  >
+                    <Clock className={`w-4 h-4 ${subSummary.isExpired || subSummary.isCanceled ? 'text-rose-400' : 'text-amber-400'}`} />
+                    <span>
+                      {subSummary.isCanceled
+                        ? 'Workspace Suspended'
+                        : subSummary.isExpired
+                        ? 'Plan Expired'
+                        : `${daysRemaining} ${daysRemaining === 1 ? 'Day' : 'Days'} Remaining`}
+                    </span>
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5">
-                    Plan Expiry Date: {formatDate(sub.trialEndsAt || sub.nextBillingDate || '')}
+                    {subSummary.isExpired ? 'Expired On:' : 'Plan Expiry Date:'}{' '}
+                    {formatDate(subSummary.expiryDateIso || '')}
                   </div>
                 </div>
               </div>

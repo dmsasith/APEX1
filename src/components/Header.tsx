@@ -34,7 +34,13 @@ import { EmailVerificationModal } from './auth/EmailVerificationModal';
 import { SystemConfigModal } from './common/SystemConfigModal';
 import { BarcodeScannerModal } from './common/BarcodeScannerModal';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
-import { isCentralOrAllSiteAdmin, isSuperAdmin, isUserAllSites, getUserAssignedSiteIds } from '../types';
+import {
+  isCentralOrAllSiteAdmin,
+  isSuperAdmin,
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  getSubscriptionStatusSummary,
+} from '../types';
 
 interface HeaderProps {
   onOpenPendingRequests?: () => void;
@@ -339,24 +345,38 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
 
             {/* Subscription Trial Badge & Verify Email Badge (Admin Only) */}
             {isAdmin && currentTenant && (() => {
-              const sub = currentTenant.subscription;
-              const expiry = new Date(sub.trialEndsAt || sub.nextBillingDate || Date.now());
-              const daysLeft = Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-              const planLabel = sub.plan === 'pro_annual' ? 'Pro Annual' : sub.plan === 'pro_monthly' ? 'Pro Monthly' : 'Free Trial';
+              const subSummary = getSubscriptionStatusSummary(currentTenant.subscription);
+              const badgeStyles =
+                subSummary.isExpired || subSummary.isCanceled
+                  ? 'bg-rose-50/95 hover:bg-rose-100/90 border-rose-300 text-rose-900'
+                  : subSummary.isTrial || subSummary.daysLeft <= 3
+                  ? 'bg-amber-50/90 hover:bg-amber-100/80 border-amber-300 text-amber-900'
+                  : 'bg-emerald-50/90 hover:bg-emerald-100/80 border-emerald-300 text-emerald-900';
+
+              const iconColor =
+                subSummary.isExpired || subSummary.isCanceled
+                  ? 'text-rose-600'
+                  : subSummary.isTrial || subSummary.daysLeft <= 3
+                  ? 'text-amber-600'
+                  : 'text-emerald-600';
 
               return (
                 <button
                   type="button"
                   onClick={() => setShowSubscriptionModal(true)}
-                  className={`h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap border transition cursor-pointer shadow-2xs ${
-                    sub.status === 'trialing'
-                      ? 'bg-amber-50/90 hover:bg-amber-100/80 border-amber-300 text-amber-900'
-                      : 'bg-emerald-50/90 hover:bg-emerald-100/80 border-emerald-300 text-emerald-900'
-                  }`}
-                  title={`Subscription: ${planLabel} (${daysLeft} days remaining). Click to view details.`}
+                  className={`h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap border transition cursor-pointer shadow-2xs ${badgeStyles}`}
+                  title={
+                    subSummary.isCanceled
+                      ? `Subscription: ${subSummary.planLabel} (Suspended). Click to view details.`
+                      : subSummary.isExpired
+                      ? `Subscription: ${subSummary.planLabel} (Expired). Click to renew or upgrade.`
+                      : `Subscription: ${subSummary.planLabel} (${subSummary.daysLeft} ${
+                          subSummary.daysLeft === 1 ? 'day' : 'days'
+                        } remaining). Click to view details.`
+                  }
                 >
-                  <Crown className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>{planLabel} ({daysLeft}d left)</span>
+                  <Crown className={`w-3.5 h-3.5 shrink-0 ${iconColor}`} />
+                  <span>{subSummary.badgeText}</span>
                 </button>
               );
             })()}

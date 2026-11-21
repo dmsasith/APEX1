@@ -55,6 +55,7 @@ import {
   TeamSiteAssignmentHistoryRecord,
   TeamSiteStockBreakdown,
   ReturnCondition,
+  getSubscriptionStatusSummary,
 } from '../types';
 import { DEFAULT_SECTION_FORMATS, deriveCompanyMonogram } from '../utils/formatAnalyzerUtils';
 import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
@@ -2023,8 +2024,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updatedTenants = tenants.map((t) => {
       const sub = t.subscription;
       if (sub.queuedSubscription) {
-        const expiryDate = new Date(sub.trialEndsAt || sub.nextBillingDate || 0);
-        if (expiryDate <= now) {
+        const subSummary = getSubscriptionStatusSummary(sub, now.getTime());
+        if (!subSummary.isCanceled && subSummary.expiryMs > 0 && subSummary.msRemaining <= 0) {
           hasChanges = true;
           const q = sub.queuedSubscription;
           const isAnnual = q.billingCycle === 'annual' || q.plan === 'pro_annual';

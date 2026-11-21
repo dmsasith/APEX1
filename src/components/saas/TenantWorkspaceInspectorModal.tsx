@@ -22,7 +22,16 @@ import {
   Tag,
   AlertTriangle,
 } from 'lucide-react';
-import { Tenant, Site, Item, User, Team, StockTransferRequest, computePlatformPricingMetrics } from '../../types';
+import {
+  Tenant,
+  Site,
+  Item,
+  User,
+  Team,
+  StockTransferRequest,
+  computePlatformPricingMetrics,
+  getSubscriptionStatusSummary,
+} from '../../types';
 import { loadTenantData, useStock } from '../../context/StockContext';
 import { formatDateTime } from '../../utils/exportUtils';
 
@@ -59,10 +68,8 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
   const requests = loadTenantData<StockTransferRequest[]>(tenant.id, 'stockRequests', []);
 
   const sub = tenant.subscription;
-  const isTrial = sub.plan === 'free_trial' || sub.status === 'trialing';
-  const trialExpired = isTrial && new Date(sub.trialEndsAt) < new Date();
-  const msRemaining = new Date(sub.trialEndsAt).getTime() - Date.now();
-  const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+  const subSummary = getSubscriptionStatusSummary(sub);
+  const daysRemaining = subSummary.daysLeft;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto no-print">
@@ -83,25 +90,30 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
                 </span>
 
                 {/* Plan Badge */}
-                {sub.plan === 'pro_annual' ? (
+                {subSummary.isCanceled ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-700/60 text-slate-300 border border-slate-600 flex items-center gap-1">
+                    <Ban className="w-3 h-3" />
+                    <span>Suspended</span>
+                  </span>
+                ) : subSummary.isExpired ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>{subSummary.planLabel} Expired</span>
+                  </span>
+                ) : sub.plan === 'pro_annual' ? (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    <span>Pro Annual (${pricingMetrics.annualPriceClean}/yr)</span>
+                    <span>Pro Annual (${pricingMetrics.annualPriceClean}/yr · {subSummary.shortDaysLabel})</span>
                   </span>
                 ) : sub.status === 'active' ? (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                     <Zap className="w-3 h-3" />
-                    <span>Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
-                  </span>
-                ) : trialExpired ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>Trial Expired</span>
+                    <span>Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo · {subSummary.shortDaysLabel})</span>
                   </span>
                 ) : (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    <span>{daysRemaining} Days Trial Left</span>
+                    <span>{subSummary.longDaysLabel}</span>
                   </span>
                 )}
               </div>
@@ -261,7 +273,8 @@ export const TenantWorkspaceInspectorModal: React.FC<TenantWorkspaceInspectorMod
                     <span className="text-slate-500">Subscription Plan:</span> {sub.plan}
                   </div>
                   <div>
-                    <span className="text-slate-500">Trial Period Ends:</span> {formatDateTime(sub.trialEndsAt)}
+                    <span className="text-slate-500">{subSummary.isPaidPlan ? 'Plan Renews / Ends:' : 'Trial Period Ends:'}</span>{' '}
+                    {subSummary.expiryDateIso ? formatDateTime(subSummary.expiryDateIso) : '—'}
                   </div>
                   <div>
                     <span className="text-slate-500">Created Timestamp:</span> {formatDateTime(tenant.createdAt)}
