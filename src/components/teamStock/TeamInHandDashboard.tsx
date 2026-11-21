@@ -13,10 +13,11 @@ import {
   RotateCcw,
   CheckCircle2,
   MapPin,
+  Download,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, formatDate, exportToCsv } from '../../utils/exportUtils';
-import { printHtmlElement } from '../../utils/printUtils';
+import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { TeamInHandSummary } from '../../types';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { getTemporaryAssignmentBadgeLabel } from '../../utils/teamAssignmentUtils';
@@ -152,6 +153,10 @@ export const TeamInHandDashboard: React.FC = () => {
     await printHtmlElement('team-in-hand-printable-area', 'All_Teams_In_Hand_Stock_Report');
   };
 
+  const handleDownloadPdfAll = async () => {
+    await downloadElementAsPdf('team-in-hand-printable-area', 'All_Teams_In_Hand_Stock_Report');
+  };
+
   return (
     <div id="team-in-hand-printable-area" className="space-y-6">
       {/* Header */}
@@ -189,6 +194,13 @@ export const TeamInHandDashboard: React.FC = () => {
             >
               <Printer className="w-4 h-4 text-white" />
               <span>Print Report</span>
+            </button>
+            <button
+              onClick={handleDownloadPdfAll}
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-white" />
+              <span>Download PDF</span>
             </button>
           </div>
         </div>

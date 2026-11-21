@@ -60,6 +60,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
   } = useStock();
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfNotice, setPdfNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [printWithImage, setPrintWithImage] = useState<boolean>(() => Boolean(item.imageUrl));
   const [activeSubView, setActiveSubView] = useState<
     'overview' | 'central-foc' | 'inbound' | 'sites' | 'teams' | 'projects' | 'reconciliation'
@@ -972,6 +973,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
 
   const handleDownloadPdf = async () => {
     setIsExportingPdf(true);
+    setPdfNotice(null);
     try {
       const safeCode = (item.itemCode || 'ITEM').replace(/[^a-zA-Z0-9_-]/g, '_');
       const prefix = focProjectId
@@ -979,9 +981,27 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
         : mode === 'central'
         ? 'Central_Item_Traceability'
         : `Site_Item_Traceability_${targetSite?.name || 'Branch'}`;
-      await downloadElementAsPdf(printElementId, `${prefix}_${safeCode}`);
+      const ok = await downloadElementAsPdf(printElementId, `${prefix}_${safeCode}`);
+      if (ok) {
+        setPdfNotice({
+          type: 'success',
+          text: `✓ PDF downloaded: ${prefix}_${safeCode}.pdf`,
+        });
+      } else {
+        setPdfNotice({
+          type: 'error',
+          text: 'Direct PDF download could not complete — opening Print dialog so you can Save as PDF.',
+        });
+        await printHtmlElement(printElementId, `${prefix}_${safeCode}`);
+      }
+    } catch {
+      setPdfNotice({
+        type: 'error',
+        text: 'Failed to generate PDF. Please use Print A4 Item Report -> Save as PDF.',
+      });
     } finally {
       setIsExportingPdf(false);
+      setTimeout(() => setPdfNotice(null), 4500);
     }
   };
 
@@ -1096,6 +1116,25 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
 
       {/* Interactive Screen Content */}
       <div className="p-4 sm:p-5 space-y-5">
+        {pdfNotice && (
+          <div
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold border flex items-center justify-between gap-2 ${
+              pdfNotice.type === 'success'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                : 'bg-amber-50 border-amber-300 text-amber-900'
+            }`}
+          >
+            <span>{pdfNotice.text}</span>
+            <button
+              type="button"
+              onClick={() => setPdfNotice(null)}
+              className="text-current opacity-70 hover:opacity-100 cursor-pointer"
+              aria-label="Dismiss notice"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         {/* 5-STAGE STANDARD RECONCILIATION FLOW KPI PIPELINE */}
         {grandTotals.hasFocFlow || mode === 'site' ? (
           <div className="space-y-2.5">

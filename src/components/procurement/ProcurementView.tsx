@@ -690,11 +690,16 @@ Email: ${tenantEmail}`;
       const el = document.getElementById('printable-purchase-order');
       if (el) {
         try {
-          await exportElementToPdf(el, `Purchase_Order_${po.poNumber}`, {
+          const ok = await exportElementToPdf(el, `Purchase_Order_${po.poNumber}`, {
             action: 'download',
             title: `PO_${po.poNumber}`,
           });
-          showToast(`PDF for PO #${po.poNumber} downloaded successfully!`);
+          if (ok) {
+            showToast(`PDF for PO #${po.poNumber} downloaded successfully!`);
+          } else {
+            showToast('Failed to generate PDF. Opening Print dialog as fallback.');
+            await printHtmlElement(el, `PO_${po.poNumber}`);
+          }
         } catch (err) {
           console.error('PDF export failed:', err);
           showToast('Failed to generate PDF. You can use the Print button to Save as PDF.');

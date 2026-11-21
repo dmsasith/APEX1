@@ -4821,10 +4821,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     setFullReportPrintNotice('Generating high-resolution A4 PDF...');
                     const docTitle = `Full_Site_Report_${fullSiteReportData.project.projectId}`;
                     try {
-                      await downloadElementAsPdf('full-site-report-printable-area', docTitle);
-                      setFullReportPrintNotice('✓ Full Site Report A4 PDF downloaded successfully!');
+                      const ok = await downloadElementAsPdf('full-site-report-printable-area', docTitle);
+                      setFullReportPrintNotice(
+                        ok
+                          ? '✓ Full Site Report A4 PDF downloaded successfully!'
+                          : 'PDF download encountered an issue. Please use Print Report -> Save as PDF.'
+                      );
                     } catch (err) {
                       console.error('Report PDF download error:', err);
+                      setFullReportPrintNotice('PDF download encountered an issue. Please use Print Report.');
                     } finally {
                       setTimeout(() => {
                         setIsPrintingFullReport(false);

@@ -26,7 +26,7 @@ import {
 import { StockBackup, Item, Site, Team, MainStockEntry, TeamIssue, TeamReturn, ProjectMaterialUsage, PurchaseOrder } from '../../types';
 import { exportBackupToExcel } from '../../utils/excelExportUtils';
 import { exportToCsv, formatDateTime, formatNumber } from '../../utils/exportUtils';
-import { printHtmlElement } from '../../utils/printUtils';
+import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { STORAGE_KEY_PREFIX } from '../../context/StockContext';
 
 interface OfflineBackupViewerModalProps {
@@ -137,6 +137,10 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
     await printHtmlElement('offline-backup-printable-area', `Backup_Report_${activeTab}`);
   };
 
+  const handleDownloadPdf = async () => {
+    await downloadElementAsPdf('offline-backup-printable-area', `Backup_Report_${activeTab}`);
+  };
+
   const snap = backup?.snapshot;
   const items = snap?.items || [];
   const sites = snap?.sites || [];
@@ -202,6 +206,16 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Print</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  title="Download current report as PDF"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">PDF</span>
                 </button>
 
                 <button

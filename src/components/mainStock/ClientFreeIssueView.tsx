@@ -3765,10 +3765,11 @@ export const ClientFreeIssueView: React.FC = () => {
                     onClick={async () => {
                       setIsExportingReportPdf(true);
                       try {
-                        await downloadElementAsPdf(
-                          singleReportElementId,
-                          `Central_FOC_Item_Report_${it.itemCode}_${projCode || 'Project'}.pdf`
-                        );
+                        const docName = `Central_FOC_Item_Report_${it.itemCode}_${projCode || 'Project'}`;
+                        const ok = await downloadElementAsPdf(singleReportElementId, docName);
+                        if (!ok) {
+                          await printHtmlElement(singleReportElementId, docName);
+                        }
                       } finally {
                         setIsExportingReportPdf(false);
                       }
@@ -4195,10 +4196,11 @@ export const ClientFreeIssueView: React.FC = () => {
                     onClick={async () => {
                       setIsExportingReportPdf(true);
                       try {
-                        await downloadElementAsPdf(
-                          masterReportElementId,
-                          `Full_Project_FOC_Report_${projCode || 'Project'}.pdf`
-                        );
+                        const docName = `Full_Project_FOC_Report_${projCode || 'Project'}`;
+                        const ok = await downloadElementAsPdf(masterReportElementId, docName);
+                        if (!ok) {
+                          await printHtmlElement(masterReportElementId, docName);
+                        }
                       } finally {
                         setIsExportingReportPdf(false);
                       }
@@ -4604,10 +4606,11 @@ export const ClientFreeIssueView: React.FC = () => {
                     onClick={async () => {
                       setIsExportingReportPdf(true);
                       try {
-                        await downloadElementAsPdf(
-                          spReportElementId,
-                          `SubProject_FOC_Report_${spCode}.pdf`
-                        );
+                        const docName = `SubProject_FOC_Report_${spCode}`;
+                        const ok = await downloadElementAsPdf(spReportElementId, docName);
+                        if (!ok) {
+                          await printHtmlElement(spReportElementId, docName);
+                        }
                       } finally {
                         setIsExportingReportPdf(false);
                       }

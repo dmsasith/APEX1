@@ -42,7 +42,7 @@ import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { BarcodeLabelModal } from '../common/BarcodeLabelModal';
 import { ItemImageUploader } from '../common/ItemImageUploader';
 import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
-import { printHtmlElement } from '../../utils/printUtils';
+import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 
 interface ItemsManagementViewProps {
   initialType?: 'all' | 'Material' | 'Machinery';
@@ -1665,6 +1665,17 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Print Now</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadElementAsPdf('printable-item-catalog-sheet', 'Master_Item_Catalog');
+                  }}
+                  className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF</span>
                 </button>
 
                 <button

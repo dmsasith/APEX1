@@ -24,10 +24,11 @@ import {
   AlertTriangle,
   RotateCcw,
   Home,
+  Download,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
-import { printHtmlElement } from '../../utils/printUtils';
+import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import {
   Site,
   Team,
@@ -237,6 +238,11 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
     await printHtmlElement('branch-directory-printable-area', filename);
   };
 
+  const handleDownloadPdf = async () => {
+    const filename = `Branch_Directory_Report_${selectedSiteId === 'all' ? 'All_Branches' : 'Branch'}`;
+    await downloadElementAsPdf('branch-directory-printable-area', filename);
+  };
+
   const selectedSite = activeSites.find((s) => s.id === selectedSiteId);
 
   return (
@@ -279,6 +285,14 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
             >
               <Printer className="w-4 h-4 text-white" />
               <span>Print Directory Report</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-white" />
+              <span>Download PDF</span>
             </button>
           </div>
         </div>

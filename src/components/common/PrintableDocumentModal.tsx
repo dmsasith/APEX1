@@ -280,8 +280,12 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     setStatusNotice('Generating genuine A4 PDF document...');
     try {
       const docName = `${customDocNumber || 'Voucher'}_${tenantHeaderMonogram || 'ISO'}`;
-      await downloadElementAsPdf('letterhead-printable-area', docName);
-      setStatusNotice('✓ PDF generated and downloaded successfully!');
+      const ok = await downloadElementAsPdf('letterhead-printable-area', docName);
+      if (ok) {
+        setStatusNotice('✓ PDF generated and downloaded successfully!');
+      } else {
+        setStatusNotice('PDF generation encountered an issue. Please try Print.');
+      }
     } catch (err) {
       console.error('Download PDF error:', err);
       setStatusNotice('PDF generation encountered an issue. Please try Print.');

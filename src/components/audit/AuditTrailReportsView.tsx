@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatDateTime, exportToCsv } from '../../utils/exportUtils';
-import { printHtmlElement } from '../../utils/printUtils';
+import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { AuditAction } from '../../types';
 import { ConfirmModal } from '../common/ConfirmModal';
 
@@ -126,6 +126,13 @@ export const AuditTrailReportsView: React.FC = () => {
             >
               <Printer className="w-4 h-4 text-white" />
               <span>Print Ledger</span>
+            </button>
+            <button
+              onClick={() => downloadElementAsPdf('audit-trail-printable-area', 'System_Audit_Trail_Ledger')}
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-white" />
+              <span>Download PDF</span>
             </button>
           </div>
         </div>
