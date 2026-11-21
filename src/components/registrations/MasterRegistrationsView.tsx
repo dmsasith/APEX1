@@ -3186,44 +3186,34 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       }`}
                     >
                       <div>
-                        {/* Header: Icon Badge + Squad Title + Actions */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                        {/* Header Row 1: Icon + Site/Code + Action Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <div
-                              className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center shrink-0 shadow-md ${
+                              className={`w-9 h-9 rounded-xl text-white flex items-center justify-center shrink-0 shadow-sm ${
                                 isTemp
                                   ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/20'
                                   : 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-emerald-600/20'
                               }`}
                             >
-                              <Users2 className="w-5 h-5" />
+                              <Users2 className="w-4 h-4" />
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                                <span className="break-words">{s?.name || 'Central Base'}</span>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
+                                <span className="truncate max-w-[140px]">{s?.name || 'Central Base'}</span>
                                 <span aria-hidden="true">·</span>
                                 <span className="font-mono tabular-nums text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
                                   SQ-{String(idx + 1).padStart(4, '0')}
                                 </span>
-                                <span aria-hidden="true">·</span>
-                                <span className="text-[10px] font-bold text-sky-700 dark:text-sky-400">
-                                  Initial Base: {initialBase.siteName}
-                                </span>
                               </div>
-                              <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
-                                {isAtInitialBase ? cleanBaseName : t.teamName}
-                              </h3>
-                              {hasTeamReceivedAnyStock(t.id) && (
-                                <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                  <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                                  <span>Team Name Locked (Stock Issued)</span>
-                                </div>
-                              )}
+                              <div className="text-[10px] font-semibold text-sky-700 dark:text-sky-400 leading-tight mt-0.5">
+                                Initial Base: {initialBase.siteName}
+                              </div>
                             </div>
                           </div>
 
                           {/* Unified Glass Action Bar */}
-                          <div className="flex items-center gap-1 bg-slate-100/85 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-1.5 py-1 shrink-0">
+                          <div className="flex items-center gap-0.5 bg-slate-100/85 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-1.5 py-1 shrink-0">
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -3276,6 +3266,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
+                        </div>
+
+                        {/* Header Row 2: Full-width Team Title & Stock Lock Badge */}
+                        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+                          <h3 className="font-bold text-slate-900 dark:text-white text-sm tracking-tight leading-snug">
+                            {isAtInitialBase ? cleanBaseName : t.teamName}
+                          </h3>
+                          {hasTeamReceivedAnyStock(t.id) && (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[10px] font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap shrink-0">
+                              <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                              <span>Team Name Locked (Stock Issued)</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* TEMPORARY OR PERMANENT SITE ASSIGNMENT BANNER */}
