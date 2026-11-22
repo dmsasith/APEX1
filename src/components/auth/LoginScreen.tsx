@@ -484,18 +484,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
 
                 {/* Password Input */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Password
-                    </label>
-                    <button
-                      type="button"
-                      onClick={openForgotPasswordModal}
-                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline transition cursor-pointer"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Password
+                  </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <Lock className="w-4 h-4 text-emerald-600" />
@@ -510,10 +501,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                     />
                     <button
                       type="button"
+                      tabIndex={-1}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="mt-1.5 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={openForgotPasswordModal}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline transition cursor-pointer"
+                    >
+                      Forgot Password?
                     </button>
                   </div>
                 </div>
