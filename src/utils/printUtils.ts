@@ -302,11 +302,122 @@ async function waitForClonedImages(root: HTMLElement): Promise<void> {
   );
 }
 
+interface AtomicSpan {
+  top: number;
+  bottom: number;
+  kind: 'tr' | 'heading' | 'block';
+  isHead?: boolean;
+}
+
+interface TableRegion {
+  top: number;
+  bottom: number;
+  theadTop: number | null;
+  theadBottom: number | null;
+}
+
+interface PdfLayoutMetrics {
+  refHeight: number;
+  atomicSpans: AtomicSpan[];
+  tableRegions: TableRegion[];
+}
+
+/**
+ * Measures every table row (`<tr>`), heading, `<thead>`, and unbreakable UI block
+ * inside the rendered staging DOM so multi-page PDF slicing never cuts text or rows in half.
+ */
+function collectPdfLayoutMetrics(rootEl: HTMLElement, fallbackHeight: number): PdfLayoutMetrics {
+  const rootRect = rootEl.getBoundingClientRect();
+  const refHeight = rootRect.height > 10 ? rootRect.height : fallbackHeight;
+  const atomicSpans: AtomicSpan[] = [];
+  const tableRegions: TableRegion[] = [];
+
+  const toRel = (rect: DOMRect) => ({
+    top: Math.max(0, rect.top - rootRect.top),
+    bottom: Math.max(0, rect.bottom - rootRect.top),
+  });
+
+  // 1. Record tables & their thead bands for clean continuation headers
+  rootEl.querySelectorAll('table').forEach((table) => {
+    const tRect = table.getBoundingClientRect();
+    if (tRect.height < 4) return;
+    const tRel = toRel(tRect);
+    const directThead = Array.from(table.children).find(
+      (child) => child.tagName === 'THEAD'
+    ) as HTMLElement | undefined;
+
+    let theadTop: number | null = null;
+    let theadBottom: number | null = null;
+    if (directThead) {
+      const hRect = directThead.getBoundingClientRect();
+      if (hRect.height >= 4 && hRect.height <= 200) {
+        const hRel = toRel(hRect);
+        theadTop = hRel.top;
+        theadBottom = hRel.bottom;
+      }
+    }
+
+    tableRegions.push({
+      top: tRel.top,
+      bottom: tRel.bottom,
+      theadTop,
+      theadBottom,
+    });
+  });
+
+  // 2. Protect every table row (`<tr>`) from horizontal slicing
+  rootEl.querySelectorAll('tr').forEach((tr) => {
+    const rect = tr.getBoundingClientRect();
+    if (rect.height < 2) return;
+    const rel = toRel(rect);
+    atomicSpans.push({
+      top: rel.top,
+      bottom: rel.bottom,
+      kind: 'tr',
+      isHead: Boolean(tr.closest('thead')),
+    });
+  });
+
+  // 3. Protect headings (`<h1>`-`<h5>`) so titles aren't sliced or orphaned
+  rootEl.querySelectorAll('h1, h2, h3, h4, h5').forEach((heading) => {
+    const rect = heading.getBoundingClientRect();
+    if (rect.height < 2) return;
+    const rel = toRel(rect);
+    atomicSpans.push({
+      top: rel.top,
+      bottom: rel.bottom,
+      kind: 'heading',
+    });
+  });
+
+  // 4. Protect paragraphs, list items, KPI cards, signature rows & explicit avoid-break blocks
+  rootEl
+    .querySelectorAll(
+      'p, li, .avoid-break, .pdf-avoid-break, [class*="break-inside-avoid"], .grid > div'
+    )
+    .forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      // Never lock a huge wrapper that contains a multi-row table
+      if (node.querySelector('table')) return;
+      const rect = node.getBoundingClientRect();
+      if (rect.height < 2 || rect.height > 320) return;
+      const rel = toRel(rect);
+      atomicSpans.push({
+        top: rel.top,
+        bottom: rel.bottom,
+        kind: 'block',
+      });
+    });
+
+  return { refHeight, atomicSpans, tableRegions };
+}
+
 /**
  * High-fidelity client-side PDF export.
  * Stages a visible off-screen clone (bypassing ancestor `display: none` or `hidden print:block`),
  * captures via html-to-image with hardened html2canvas fallback (Tailwind v4 oklch/oklab/color-mix safe),
- * cleanly slices multi-page A4 output with crisp 8mm margins, and triggers binary .pdf download.
+ * performs DOM-aware page-break slicing (never cutting table rows or headings in half and repeating
+ * table `<thead>` headers on continuation pages), and triggers binary .pdf download.
  */
 export async function exportElementToPdf(
   element: HTMLElement | string,
@@ -359,6 +470,9 @@ export async function exportElementToPdf(
 
     const captureWidth = Math.max(clonedEl.scrollWidth, clonedEl.offsetWidth, 820);
     const captureHeight = Math.max(clonedEl.scrollHeight, clonedEl.offsetHeight, 120);
+
+    // Measure exact row/heading/table coordinates before capturing image
+    const layoutMetrics = collectPdfLayoutMetrics(clonedEl, captureHeight);
 
     let imgData = '';
     let capturedImg: HTMLImageElement | null = null;
@@ -437,6 +551,21 @@ export async function exportElementToPdf(
 
     const imgWidth = capturedImg.naturalWidth || capturedImg.width || captureWidth * 2;
     const imgHeight = capturedImg.naturalHeight || capturedImg.height || captureHeight * 2;
+    const domToImgScaleY = imgHeight / Math.max(1, layoutMetrics.refHeight);
+
+    const imgSpans = layoutMetrics.atomicSpans.map((s) => ({
+      topImg: s.top * domToImgScaleY,
+      bottomImg: s.bottom * domToImgScaleY,
+      kind: s.kind,
+      isHead: Boolean(s.isHead),
+    }));
+
+    const imgTables = layoutMetrics.tableRegions.map((t) => ({
+      topImg: t.top * domToImgScaleY,
+      bottomImg: t.bottom * domToImgScaleY,
+      theadTopImg: t.theadTop !== null ? t.theadTop * domToImgScaleY : null,
+      theadBottomImg: t.theadBottom !== null ? t.theadBottom * domToImgScaleY : null,
+    }));
 
     // Standard A4 dimensions in mm: 210 x 297
     const pdf = new jsPDF({
@@ -456,9 +585,9 @@ export async function exportElementToPdf(
     if (totalHeightMm <= contentHeightMm) {
       pdf.addImage(imgData, 'PNG', margin, margin, contentWidthMm, totalHeightMm, undefined, 'FAST');
     } else {
-      // Slice source image cleanly per A4 page height so 8mm top & bottom margins stay crisp
+      // Smart DOM-aware multi-page slicing: never cuts rows/text mid-line and repeats thead cleanly
       const pxPerMm = imgWidth / contentWidthMm;
-      const sliceHeightPx = Math.max(1, Math.floor(contentHeightMm * pxPerMm));
+      const maxPageImgPx = Math.max(120, Math.floor(contentHeightMm * pxPerMm));
       let offsetY = 0;
       let pageIndex = 0;
 
@@ -468,24 +597,138 @@ export async function exportElementToPdf(
 
       if (sliceCtx) {
         while (offsetY < imgHeight) {
-          const currentSlicePx = Math.min(sliceHeightPx, imgHeight - offsetY);
-          sliceCanvas.height = currentSlicePx;
+          // Check if current page starts mid-table and should repeat the table's <thead> strip
+          let activeThead: { topPx: number; heightPx: number } | null = null;
+          if (offsetY > 0) {
+            const continuingTable = imgTables.find(
+              (t) =>
+                t.topImg + 4 < offsetY &&
+                offsetY < t.bottomImg - 4 &&
+                t.theadTopImg !== null &&
+                t.theadBottomImg !== null &&
+                offsetY > t.theadBottomImg + 4
+            );
+            if (
+              continuingTable &&
+              continuingTable.theadTopImg !== null &&
+              continuingTable.theadBottomImg !== null
+            ) {
+              const headTopPx = Math.max(0, Math.floor(continuingTable.theadTopImg));
+              const headBottomPx = Math.min(imgHeight, Math.ceil(continuingTable.theadBottomImg) + 1);
+              const headHeightPx = headBottomPx - headTopPx;
+              if (headHeightPx > 4 && headHeightPx < maxPageImgPx * 0.35) {
+                activeThead = { topPx: headTopPx, heightPx: headHeightPx };
+              }
+            }
+          }
+
+          const bodyBudgetPx = activeThead
+            ? Math.max(120, maxPageImgPx - activeThead.heightPx)
+            : maxPageImgPx;
+          const rawEndY = offsetY + bodyBudgetPx;
+
+          let cutY: number;
+          if (rawEndY >= imgHeight) {
+            cutY = imgHeight;
+          } else {
+            const minAllowedCut = offsetY + Math.max(80, Math.floor(bodyBudgetPx * 0.25));
+            cutY = rawEndY;
+
+            // Iteratively snap cutY upward above any straddling row/heading/block or orphaned header
+            for (let pass = 0; pass < 8; pass++) {
+              let nextCut = cutY;
+
+              // 1. Do not split any unbreakable span (tr, heading, block) smaller than 72% of page height
+              const straddling = imgSpans.filter(
+                (s) =>
+                  s.bottomImg - s.topImg <= bodyBudgetPx * 0.72 &&
+                  s.topImg < nextCut - 1 &&
+                  s.bottomImg > nextCut + 1
+              );
+              if (straddling.length > 0) {
+                const earliestTop = Math.floor(Math.min(...straddling.map((s) => s.topImg)));
+                if (earliestTop >= minAllowedCut && earliestTop < nextCut) {
+                  nextCut = earliestTop;
+                }
+              }
+
+              // 2. Pull up orphaned thead rows or section headings left right at the bottom with no body row/block after them
+              const hasContentBetween = (afterY: number, beforeY: number) =>
+                imgSpans.some(
+                  (s) =>
+                    ((s.kind === 'tr' && !s.isHead) || s.kind === 'block') &&
+                    s.topImg >= afterY - 2 &&
+                    s.bottomImg <= beforeY + 2
+                );
+
+              const orphanHeaders = imgSpans.filter(
+                (s) =>
+                  (s.kind === 'heading' || (s.kind === 'tr' && s.isHead)) &&
+                  s.bottomImg <= nextCut + 6 &&
+                  nextCut - s.bottomImg <= 44 &&
+                  s.topImg >= minAllowedCut &&
+                  !hasContentBetween(s.bottomImg, nextCut)
+              );
+
+              if (orphanHeaders.length > 0) {
+                const earliestHeaderTop = Math.floor(Math.min(...orphanHeaders.map((s) => s.topImg)));
+                if (earliestHeaderTop >= minAllowedCut && earliestHeaderTop < nextCut) {
+                  nextCut = earliestHeaderTop;
+                }
+              }
+
+              if (nextCut === cutY) break;
+              cutY = nextCut;
+            }
+          }
+
+          const endsMidTable =
+            cutY < imgHeight &&
+            imgTables.some((t) => t.topImg + 4 < cutY && cutY < t.bottomImg - 4);
+          // Include the shared 1px bottom border at table breaks when safe
+          const drawEndY = endsMidTable ? Math.min(imgHeight, cutY + 1) : cutY;
+          const drawBodyStartY =
+            offsetY > 0 && !activeThead && imgTables.some((t) => t.topImg + 4 < offsetY && offsetY < t.bottomImg - 4)
+              ? Math.max(0, offsetY - 1)
+              : offsetY;
+
+          const bodySlicePx = Math.max(1, drawEndY - drawBodyStartY);
+          const totalSlicePx = (activeThead ? activeThead.heightPx : 0) + bodySlicePx;
+
+          sliceCanvas.height = totalSlicePx;
           sliceCtx.fillStyle = '#ffffff';
-          sliceCtx.fillRect(0, 0, imgWidth, currentSlicePx);
+          sliceCtx.fillRect(0, 0, imgWidth, totalSlicePx);
+
+          let destY = 0;
+          if (activeThead) {
+            sliceCtx.drawImage(
+              capturedImg,
+              0,
+              activeThead.topPx,
+              imgWidth,
+              activeThead.heightPx,
+              0,
+              0,
+              imgWidth,
+              activeThead.heightPx
+            );
+            destY = activeThead.heightPx;
+          }
+
           sliceCtx.drawImage(
             capturedImg,
             0,
-            offsetY,
+            drawBodyStartY,
             imgWidth,
-            currentSlicePx,
+            bodySlicePx,
             0,
-            0,
+            destY,
             imgWidth,
-            currentSlicePx
+            bodySlicePx
           );
 
           const sliceDataUrl = sliceCanvas.toDataURL('image/png', 1.0);
-          const sliceHeightMm = (currentSlicePx * contentWidthMm) / imgWidth;
+          const sliceHeightMm = (totalSlicePx * contentWidthMm) / imgWidth;
 
           if (pageIndex > 0) pdf.addPage();
           pdf.addImage(
@@ -499,7 +742,7 @@ export async function exportElementToPdf(
             'FAST'
           );
 
-          offsetY += currentSlicePx;
+          offsetY = Math.max(offsetY + 1, cutY);
           pageIndex++;
         }
       } else {
@@ -616,6 +859,12 @@ export async function printHtmlElement(
               margin: 0 !important;
               box-shadow: none !important;
             }
+            table { page-break-inside: auto; break-inside: auto; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            tr, th, td { page-break-inside: avoid !important; break-inside: avoid !important; }
+            h1, h2, h3, h4, h5 { page-break-after: avoid !important; break-after: avoid !important; }
+            .avoid-break, .pdf-avoid-break, [class*="break-inside-avoid"] { page-break-inside: avoid !important; break-inside: avoid !important; }
           </style>
         </head>
         <body>
