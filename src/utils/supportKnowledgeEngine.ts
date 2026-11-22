@@ -923,14 +923,13 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
           `   • **Authorized & Approved By** (Central Management / Logistics Controller)\n` +
           `   • **Reviewed By**, **ISO Issue Number**, and **ISO Revision Number**\n` +
           `3. Click **Save ISO Header & Signers**.\n\n` +
-          `**Tab 3 — "3. Digital Signatures" (Draw or Upload):**\n` +
-          `1. Click **+ Add Digital Signature**.\n` +
-          `2. Enter the **Signer Full Name** (matching your Prepared By or Approved By name), **Designation / Role**, and **Department**.\n` +
-          `3. Either **Draw Signature** directly on the interactive signature pad OR click **Upload Signature Image** (PNG/JPG), then click **Save Signature**.\n` +
-          `4. **Auto-Match & Live Voucher Selection:** Saved signatures automatically appear on vouchers matching the signer's name, or you can manually pick any signature inside any voucher's **"Customize Voucher Header, Signers & Digital Signatures"** panel before clicking **Print** (isolated single-click A4 preview) or **Convert to PDF**!`
+          `**Tab 3 — "3. Digital Signatures" (Draw or Upload) & Default Print Mode:**\n` +
+          `1. Click **+ Add Digital Signature**, enter the **Signer Full Name**, **Designation / Role**, and **Department**, then either **Draw Signature** on the pad or **Upload Signature Image** (PNG/JPG) and click **Save Signature**.\n` +
+          `2. **Off Digital Signature (Default for Printing):** Enable this checkbox in Tab 3 if you want all printed vouchers and reports to hide digital signature images by default and leave clean dashed **Hand Signature & Stamp** spaces for wet-ink pen signing.\n` +
+          `3. **Per-Print Toggle & Auto-Match:** Saved signatures auto-match signers by name. Inside any Voucher/Report print window, you can toggle **"Off Digital Signature"** right in the top toolbar OR select **"✍️ Off Digital Signature (Blank Hand-Sign Space)"** per signer inside **Edit Signers & Designations** before clicking **Print** or **Save PDF**!`
       ),
     answerSi: () =>
-      `**Document Templates හි ISO 9001:2015 Format Settings, Auto Tenant Header, Signers සහ Digital Signatures සකස් කරගන්නා ආකාරය:**\n\n` +
+      `**Document Templates හි ISO 9001:2015 Format Settings, Auto Tenant Header, Signers, Digital Signatures සහ "Off Digital Signature" සකස් කරගන්නා ආකාරය:**\n\n` +
       `වම් පස මෙනුවෙන් **"Document Templates"** වෙත පිවිසෙන්න. එහි පැහැදිලි **ටැබ් 3ක්** ඇත:\n\n` +
       `**1 වන ටැබ් එක — "1. Section Formats (ISO Standard & Upload PDF/Image)":**\n` +
       `1. **Default ISO 9001:2015 Format:** කිසිදු ගොනුවක් Upload නොකළද, කාණ්ඩ 4ම (**FORMAT-01** සිට **FORMAT-04**) ජාත්‍යන්තර **ISO 9001:2015 Controlled Document Format** එකෙන් සහ ඔබේ ආයතනයේ නම (**Tenant Company Name**), දුරකථන, Email හා ලිපිනය ස්වයංක්‍රීයව Header එකට යොදාගෙන ක්‍රියාත්මක වේ.\n` +
@@ -942,16 +941,116 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `   • **Prepared & Checked By:** සකස් කරන නිලධාරියාගේ නම (Signer Full Name), තනතුර (Designation) සහ අංශය (Department)\n` +
       `   • **Authorized & Approved By:** අනුමත කරන නිලධාරියාගේ නම, තනතුර සහ අංශය\n` +
       `   • **Reviewed By** සහ **ISO Issue / Revision Numbers** ඇතුළත් කර **"Save ISO Header & Signers"** ක්ලික් කරන්න.\n\n` +
-      `**3 වන ටැබ් එක — "3. Digital Signatures" (ඩිජිටල් අත්සන් එකතු කිරීම):**\n` +
-      `1. **"+ Add Digital Signature"** බටන් එක ක්ලික් කරන්න.\n` +
-      `2. නිලධාරියාගේ නම (**Signer Full Name**), තනතුර (**Role**) සහ අංශය (**Department**) ඇතුළත් කරන්න.\n` +
-      `3. තිරයේ ඇති කොටුව මත Mouse/Touch මගින් කෙලින්ම අත්සන අඳින්න (**Draw Signature**) නැතිනම් අත්සනේ PNG/JPG Image එකක් **Upload** කර **"Save Signature"** ක්ලික් කරන්න.\n` +
-      `4. **වවුචර් වලට යෙදීම සහ තනි ක්ලික් Print:** Save කළ Digital Signatures නිලධාරියාගේ නම අනුව ස්වයංක්‍රීයව වවුචර් වලට වැටෙන අතර, ඕනෑම වවුචරයක් Print කරන විට උඩින් ඇති **"Customize Voucher Header, Signers & Digital Signatures"** කොටසින්ද කැමති අත්සනක් තෝරා එකවරම (Isolated Single-Click A4 Print) මුද්‍රණය හෝ PDF බාගත කළ හැක!`,
+      `**3 වන ටැබ් එක — "3. Digital Signatures" සහ "Off Digital Signature (Default for Printing)":**\n` +
+      `1. **"+ Add Digital Signature"** ක්ලික් කර නිලධාරියාගේ නම, තනතුර සහ අංශය ඇතුළත් කර තිරය මත අත්සන අඳින්න (**Draw Signature**) නැතිනම් Image එකක් **Upload** කර **"Save Signature"** ක්ලික් කරන්න.\n` +
+      `2. **"Off Digital Signature (Default for Printing)":** කඩදාසි මත පෑනෙන් අත්සන් (Hand Sign) තැබීමට අවශ්‍ය නම් මෙම Checkbox එක On කර සියලුම මුද්‍රණ සඳහා ස්ථිර Default ලෙස Digital Signatures නිවා දමා හිස් **Hand Signature & Stamp** ඉඩ තබාගත හැක.\n` +
+      `3. **වවුචර් වලට යෙදීම සහ Per-Print Toggle:** ඕනෑම වවුචරයක් හෝ වාර්තාවක් Print කරන විට ඉහළ තීරුවේ ඇති **"Off Digital Signature"** Checkbox එක හෝ **"Customize Voucher Header, Signers & Digital Signatures"** මගින් එම මුද්‍රණයට පමණක් Hand-Sign හිස් ඉඩ තබා Print / PDF කළ හැක!`,
+  },
+  {
+    id: 'off-digital-signature-hand-sign',
+    suggestedTab: 'templates',
+    keywords: [
+      'off digital',
+      'hand sign',
+      'hand signature',
+      'pen sign',
+      'manual sign',
+      'ink sign',
+      'rubber stamp',
+      'athsan',
+      'athsin',
+      'panen',
+      'blank sign',
+    ],
+    phrases: [
+      'off digital signature',
+      'hand sign',
+      'hand signature',
+      'blank hand-sign',
+      'print without signature',
+      'sign karanna ida',
+      'athsan gahanna',
+      'hand sign gahanda',
+      'off digital',
+    ],
+    answerEn: () =>
+      `**How to Use "Off Digital Signature" Mode for Physical Pen Signing & Rubber Stamping:**\n\n` +
+      `Whenever you need to print physical copies for wet-ink pen signatures and official stamps, you have **3 convenient ways** to turn off Digital Signatures and open generous blank signing spaces:\n\n` +
+      `1. **Quick Per-Print Toggle (Any Voucher or Report):** Open any Print / PDF modal across **All Vouchers (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV/Debit Note)**, **Client FOC Item/Project Reports**, **Full Report for This Site (Project)**, **Item Lifecycle / Forward Summaries**, or **Branch Staff & Teams Directory**, and check **"Off Digital Signature"** right in the top toolbar.\n` +
+      `2. **Per-Signer Override ("Edit Signers & Designations"):** Inside any Voucher Print Preview, click **Customize Voucher Header, Signers & Digital Signatures** and pick **"✍️ Off Digital Signature (Blank Hand-Sign Space)"** individually for *Prepared By* or *Approved By*.\n` +
+      `3. **Organization-Wide Default ("Document Templates -> 3. Digital Signatures"):** Check **"Off Digital Signature (Default for Printing)"** in Tab 3 if your company prefers hand-signed printouts by default across all reports.\n\n` +
+      `When active, digital signature images are hidden and generous dashed signing zones (**Hand Signature & Date** / **Hand Signature & Stamp**) appear cleanly above each officer's name & designation.`,
+    answerSi: () =>
+      `**වවුචර් සහ වාර්තා Print කරද්දී පෑනෙන් අත්සන් (Hand Sign) තැබීමට "Off Digital Signature" භාවිත කරන ආකාරය:**\n\n` +
+      `මුද්‍රිත පිටපත් මත පෑනෙන් අත්සන් කිරීමට සහ රබර් මුද්‍රා (Stamp) තැබීමට Digital අත්සන් සඟවා ප්‍රමාණවත් හිස් ඉඩක් ලබාගැනීමට **ක්‍රම 3ක්** ඇත:\n\n` +
+      `1. **Print කරන මොහොතේදීම (ඕනෑම Voucher හෝ Report එකක):** සියලුම වවුචර් (**RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV/Debit Note**), **Client FOC වාර්තා**, **Full Report for This Site (Project)**, **Item Lifecycle Summaries** සහ **Branch Directory** වල Print තිරයේ ඉහළ තීරුවේ ඇති **"Off Digital Signature"** Checkbox එක On කරන්න.\n` +
+      `2. **එක් නිලධාරියෙකු සඳහා පමණක් ("Edit Signers"):** වවුචරය Print Preview කර **"Customize Voucher Header, Signers & Digital Signatures"** ක්ලික් කර *Prepared By* හෝ *Approved By* Dropdown වෙතින් **"✍️ Off Digital Signature (Blank Hand-Sign Space)"** තෝරන්න.\n` +
+      `3. **ආයතනයේ ස්ථිර Default ක්‍රමය ලෙස ("Document Templates -> 3. Digital Signatures"):** සෑම මුද්‍රණයක්ම Hand-Sign ක්‍රමයට තැබීමට අවශ්‍ය නම් Tab 3 හි **"Off Digital Signature (Default for Printing)"** Checkbox එක On කරන්න.\n\n` +
+      `එවිට Digital Signature රූප සැඟවී, නිලධාරියාගේ නම සහ තනතුරට ඉහළින් පෑනෙන් අත්සන් තැබීමට සහ මුද්‍රා තැබීමට ඉතා පැහැදිලි හිස් කොටුවක් (**Hand Signature & Date / Stamp**) ලැබේ!`,
+  },
+  {
+    id: 'glass-tone-themes-ui-subscriptions',
+    suggestedTab: 'dashboard',
+    keywords: [
+      'glass tone',
+      'theme',
+      'sapphire',
+      'gold',
+      'color',
+      'colors',
+      'palette',
+      'font',
+      'typography',
+      'subscription',
+      'payments.lk',
+      'payable',
+      'stripe',
+      'usd',
+      'lkr',
+      'billing',
+      'inbound',
+    ],
+    phrases: [
+      'glass tone',
+      'sapphire & gold',
+      'sapphire and gold',
+      'change theme',
+      'theme color',
+      'wagu wala akuru',
+      'akuru size',
+      'font size',
+      'payments.lk',
+      'usd to lkr',
+      'auto renew',
+      'card subscription',
+    ],
+    answerEn: () =>
+      `**Live "Glass Tone" Themes (Sapphire & Gold Default), Crisp Typography & Recurring Card Subscriptions:**\n\n` +
+      `1. **9 Live "Glass Tone" Themes (Default: Sapphire & Gold):**\n` +
+      `   • The system opens in **Sapphire & Gold** (Royal Navy & Gold matching the landing palette).\n` +
+      `   • Click the **"Glass Tone"** color-swatch dropdown in the top Header sub-bar (or open **System Config**) to switch live across **9 Apple Liquid Glass themes**: *Sapphire & Gold, Liquid Emerald, Oceanic Teal, Cobalt Azure, Liquid Indigo, Liquid Amethyst, Obsidian Amber, Liquid Crimson,* and *Liquid Titanium*.\n` +
+      `   • Switching dynamically rethemes the Header, Workspace Navigation Sidebar, Canvas backdrop, Hero Banners, table hovers, and Mobile Dock.\n\n` +
+      `2. **Uniform Report/Table Typography & Main Central Stock Layout:**\n` +
+      `   • All tables, **Inbound Receipts History**, and printed A4 reports use standardized crisp **13.5px body / 12px header** typography for effortless reading.\n` +
+      `   • **Main Central Stock** organizes its mode switcher cleanly (*Central Stock Inventory, Returned From Sites, Damaged / Scrap Yard, Inbound Receipts History*).\n\n` +
+      `3. **Auto-Renewing Card Subscriptions (Payments.lk & Stripe + Live USD → LKR):**\n` +
+      `   • Open **Subscription** from the top Header to subscribe to **Pro Monthly** or **Pro Annual** via **Payments.lk / PAYable** or **Stripe** with live server-fetched **USD → LKR** exchange rate conversion and a Customer Billing Portal to manage auto-renewal anytime.`,
+    answerSi: () =>
+      `**සජීවී "Glass Tone" Themes (Sapphire & Gold Default), පැහැදිලි වගු/වාර්තා අකුරු සහ Auto-Renew Subscriptions:**\n\n` +
+      `1. **සජීවී "Glass Tone" Theme 9 ("Sapphire & Gold" Default):**\n` +
+      `   • පද්ධතිය විවෘත වන විට Default වර්ණය ලෙස Landing Page එකට ගැළපෙන **Sapphire & Gold** ක්‍රියාත්මක වේ.\n` +
+      `   • ඉහළ Header තීරුවේ ඇති **"Glass Tone"** Dropdown එකෙන් (හෝ **System Config** වෙතින්) ඕනෑම මොහොතක **Theme 9ක්** අතර සජීවීව මාරු විය හැක: *Sapphire & Gold, Liquid Emerald, Oceanic Teal, Cobalt Azure, Liquid Indigo, Liquid Amethyst, Obsidian Amber, Liquid Crimson* සහ *Liquid Titanium*.\n` +
+      `   • Theme එක මාරු කළ සැණින් Header, Workspace Navigation තීරුව, පසුබිම (Canvas), Banners සහ Mobile Dock සියල්ල අලංකාරව වෙනස් වේ.\n\n` +
+      `2. **වගු සහ වාර්තා වල පැහැදිලි අකුරු ප්‍රමාණය (13.5px) සහ Main Central Stock පෙනුම:**\n` +
+      `   • සියලුම වගු, **Inbound Receipts History** සහ Print කරන A4 වාර්තා එකම ප්‍රමිතියක පැහැදිලි අකුරු ප්‍රමාණයකින් (**13.5px body / 12px headers**) පෙනෙන ලෙස සකසා ඇත.\n` +
+      `   • **Main Central Stock** හි *Central Stock Inventory, Returned From Sites, Damaged / Scrap Yard* සහ *Inbound Receipts History* බටන් ඉතා පිළිවෙළට වෙන් කර ඇත.\n\n` +
+      `3. **Payments.lk / Stripe ස්වයංක්‍රීය කාඩ් Subscriptions (සජීවී USD → LKR):**\n` +
+      `   • ඉහළ Header හි **Subscription** බටන් එක හරහා **Payments.lk / PAYable** (සජීවී **USD → LKR** විනිමය අනුපාතය සමඟ) හෝ **Stripe** මගින් Auto-Renewing Pro Monthly / Pro Annual කාඩ් ගෙවීම් සක්‍රිය කර Customer Billing Portal මගින් පාලනය කළ හැක.`,
   },
   {
     id: 'directory-audit-letterhead-backup',
     suggestedTab: 'branch-directory',
-    keywords: ['directory', 'audit', 'report', 'print', 'backup', 'flush', 'theme', 'config'],
+    keywords: ['directory', 'audit', 'report', 'print', 'backup', 'flush', 'config'],
     phrases: [
       'branch staff & teams',
       'audit trail',
@@ -960,16 +1059,16 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
     ],
     answerEn: () =>
       `**Branch Directory, Isolated Single-Click Printing, Audit Trail & System Backups:**\n\n` +
-      `• **Branch Staff & Teams:** View, filter, export to Excel (**Export Members**), and print the complete hierarchy of branches, supervisors, field teams, and crew members.\n` +
-      `• **Isolated Single-Click A4 Print & PDF Export:** Every Print button across all Vouchers, Full Site Reports, Barcode Labels, Team In-Hand, Branch Directory, and Audit Trail opens a clean, isolated A4 print preview of ONLY that document without printing the full web page.\n` +
+      `• **Branch Staff & Teams:** View, filter, export to Excel (**Export Members**), and print the complete hierarchy of branches, supervisors, field teams, and crew members (including **"Off Digital Signature"** toggle).\n` +
+      `• **Isolated Single-Click A4 Print & PDF Export:** Every Print button across all Vouchers, Full Site Reports, Barcode Labels, Team In-Hand, Branch Directory, and Audit Trail opens a clean, isolated A4 print preview with crisp uniform typography (**13.5px / 12px**) and optional **"Off Digital Signature"** hand-sign spaces.\n` +
       `• **Audit Trail:** Inspect chronological logs of every transaction and user action with PDF/CSV export.\n` +
-      `• **System Backups & Config (Top Header):** Create/restore versioned JSON backups, open the **Offline Backup Viewer**, customize system theme/company settings, or perform an **Admin System Flush**.`,
+      `• **System Backups & Config (Top Header):** Create/restore versioned JSON backups, open the **Offline Backup Viewer**, switch **Glass Tone** themes (**Sapphire & Gold** default), customize company settings, or perform an **Admin System Flush**.`,
     answerSi: () =>
       `**Branch Directory, Isolated Single-Click Print, Audit Trail සහ System Backups:**\n\n` +
-      `• **Branch Staff & Teams:** සියලුම Branches, Supervisors, Teams සහ සාමාජිකයින්ගේ විස්තර බලාගැනීමට සහ Print / Excel Export කිරීමට.\n` +
-      `• **Isolated Single-Click A4 Print:** පද්ධතියේ ඕනෑම වවුචරයක හෝ වාර්තාවක Print එබූ විට සම්පූර්ණ වෙබ් පිටුව නොව අදාළ වවුචරය/වාර්තාව පමණක් එකවරම පැහැදිලිව Print Preview වේ.\n` +
+      `• **Branch Staff & Teams:** සියලුම Branches, Supervisors, Teams සහ සාමාජිකයින්ගේ විස්තර බලාගැනීමට සහ **"Off Digital Signature"** සහිතව Print / Excel Export කිරීමට.\n` +
+      `• **Isolated Single-Click A4 Print:** පද්ධතියේ ඕනෑම වවුචරයක හෝ වාර්තාවක Print එබූ විට පැහැදිලි **13.5px** අකුරු ප්‍රමාණයෙන් අදාළ වවුචරය/වාර්තාව පමණක් Print Preview වේ (අවශ්‍ය නම් **"Off Digital Signature"** මගින් පෑනෙන් අත්සන් තැබීමට ඉඩ තැබිය හැක).\n` +
       `• **Audit Trail:** පද්ධතියේ සිදු කළ සියලුම ගනුදෙනු පිළිබඳ වාර්තා ලබාගැනීමට.\n` +
-      `• **System Backup & Config (ඉහළ Header තීරුව):** පද්ධතියේ සම්පූර්ණ Backup ලබාගැනීමට, Restore කිරීමට සහ ආයතනයේ Theme/Settings වෙනස් කිරීමට.`,
+      `• **System Backup, Glass Tone & Config (ඉහළ Header තීරුව):** Backup ලබාගැනීමට, Restore කිරීමට, **Glass Tone** Theme 9 අතර මාරු වීමට සහ ආයතනයේ Settings වෙනස් කිරීමට.`,
   },
   {
     id: 'email-verification-branding',
@@ -1045,13 +1144,14 @@ export function resolveSmartSystemSupportAnswer(
       suggestedTab: ctx.currentTab || 'dashboard',
       reply:
         `**Apex Stock & Site Management System — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
-        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන කොටස්:\n` +
-        `1. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Completion Returnable Balance පිළිවෙළ, වර්ණ ගැන්වූ Main/Sub-Project Cards, Central Item/Project PDF Reports, Site Stock හි **"Central FOC"** Badge සහ ඕනෑම Site එකකට භාවිත කළ හැකි **"ALL AREAS"** Projects.\n` +
-        `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** සියලුම New Connection Section 4 සඳහාම Main Project යටතේ FOC කළමනාකරණය සහ අදාළ Section එකට FOC ඇත්නම් පමණක් Filter වන Dropdowns.\n` +
+        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන සහ නවතම කොටස්:\n` +
+        `1. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Completion Returnable Balance පිළිවෙළ, වර්ණ ගැන්වූ Main/Sub-Project Cards, Central Item/Project PDF Reports, Site Stock හි **"Central FOC"** Badge සහ **"ALL AREAS"** Projects.\n` +
+        `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** New Connection Section 4 සඳහාම Main Project යටතේ FOC කළමනාකරණය සහ Section අනුව Filter වන Dropdowns.\n` +
         `3. **Master Registrations & PO/Return Item Images (<200KB):** Items (PO/Requisition/Return Dropdown වල Photo සමඟ), Branches, Teams (Transfer & Name Lock), Clients සහ Users.\n` +
         `4. **Field Team Site Transfer & Site-Separated Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Old Site])"** සහ **"Stock to Return - [Site Name]"**.\n` +
         `5. **Material Usage & Multi-Item Returns (RV / BRM):** 1-2-3 Connection Flow, **Qty Used + Wastage Qty**, **Full Report for This Site**, සහ භාණ්ඩ කිහිපයක් එකවර Return කිරීම.\n` +
-        `6. **Document Templates (ISO 9001:2015 Formats, Signers & Digital Signatures):** Auto Tenant Header, Digital Signatures සහ Isolated Single-Click A4 Print.\n\n` +
+        `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 Formats, Digital Signatures සහ පෑනෙන් අත්සන් තැබීමට ඉඩ තබන **"Off Digital Signature"** (Per-Print, Edit Signers හෝ Tab 3 Global Default) + **13.5px** පැහැදිලි වගු/වාර්තා අකුරු.\n` +
+        `7. **"Glass Tone" Live Themes 9 & Auto-Renew Subscriptions:** **"Sapphire & Gold"** Default ලෙස Header හි **"Glass Tone"** වෙතින් Theme 9ක් අතර මාරු වීම සහ Payments.lk / Stripe (USD → LKR) Subscriptions.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
   }
@@ -1060,13 +1160,14 @@ export function resolveSmartSystemSupportAnswer(
     suggestedTab: ctx.currentTab || 'dashboard',
     reply:
       `**Apex Stock & Site Management System — Complete Feature Guide:**\n\n` +
-      `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules available in the system:\n` +
-      `1. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Completion Returnable Balance), color-coded Main & Sub-Project cards, per-item & full-project Central Reports, **"Central FOC"** badge in Site Branch Stock, and **"ALL AREAS"** multi-site projects.\n` +
-      `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** Unified Main Project FOC hierarchy across all 4 utility sections with section-filtered FOC dropdowns (only visible when FOC exists for that section).\n` +
-      `3. **Master Registrations & Item Photos (<200KB):** Register Items (thumbnails displayed in PO, Requisition, RV & BRM dropdowns + "Print with Image"), Branches, Teams (with Name Lock), Suppliers, Clients, and Users.\n` +
-      `4. **Field Team Site Transfer & Site-Separated In-Hand Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** and strict separation of **"Stock to Return - [Previous Site Name]"** vs. Active Site Stock.\n` +
+      `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules & latest updates available:\n` +
+      `1. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central -> Site -> Team -> Usage & Wastage -> Returnable Balance), color-coded Main/Sub-Project cards, per-item & full-project Central Reports, **"Central FOC"** badge in Site Stock, and **"ALL AREAS"** projects.\n` +
+      `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** Unified Main Project FOC hierarchy across all 4 utility sections with section-filtered FOC dropdowns.\n` +
+      `3. **Master Registrations & Item Photos (<200KB):** Register Items (thumbnails in PO/RV/BRM dropdowns + "Print with Image"), Branches, Teams (with Name Lock), Suppliers, Clients, and Users.\n` +
+      `4. **Field Team Site Transfer & Site-Separated In-Hand Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** and **"Stock to Return - [Previous Site Name]"**.\n` +
       `5. **Material Usage & Multi-Item Batch Returns (RV / BRM):** 1-2-3 Connection workflow, **Qty Used + Wastage Qty**, **Full Report for This Site (Project)**, and single-voucher batch returns.\n` +
-      `6. **Document Templates (ISO 9001:2015 Format Settings, Signers & Digital Signatures):** Configure ISO formats, Signer designations, Digital Signatures, and Isolated Single-Click A4 Printing.\n\n` +
+      `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 formats, Signers, Digital Signatures, plus **"Off Digital Signature"** (per-print toolbar, Edit Signers & Tab 3 default) for generous blank pen-signing & stamp boxes + crisp uniform **13.5px** table/report typography.\n` +
+      `7. **9 Live "Glass Tone" Themes ("Sapphire & Gold" Default) & Recurring Billing:** Switch themes live from Header **Glass Tone** (syncs Header, Sidebar & Canvas) and manage Payments.lk / Stripe auto-renewing card subscriptions with live **USD → LKR** rate conversion.\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

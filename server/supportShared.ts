@@ -63,19 +63,27 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
 7. **Multi-Item Batch Returns in Team Returns ("Team Returns") & Branch Returns ("Branch Returns")**:
    - **Team Returns (RV) & Branch Returns (BRM) with Item Photos in Dropdowns**: Item thumbnail images display inside return item dropdowns. Users can add **multiple items at once** (**"+ Add Item"**, **"+ Add All Held / Available"**, or barcode scan), set per-item quantity and condition (**Good** / **Damaged**), and submit the entire batch on a single **RV** or **BRM** voucher.
 
-8. **Document Templates ("Document Templates"), Admin Password Delete Protection & Enterprise Controls**:
+8. **Document Templates ("Document Templates"), "Off Digital Signature" Hand-Sign Mode, Admin Password Delete Protection & Enterprise Controls**:
    - **Document Templates (3 Tabs)**:
      • **Tab 1 ("1. Section Formats")**: ISO 9001:2015 Controlled Formats (**FORMAT-01** to **FORMAT-04**) with auto-populated Tenant Company Header, optional **PDF/Image Format Upload (limited to max 1MB file size)**, 1-click Format-01/02 unification, and Live A4 Studio settings.
      • **Tab 2 ("2. Auto Tenant Header & Signers")**: Company Logo & **ISO Signer Names, Designations & Department Matrix** (**Prepared & Checked By**, **Authorized & Approved By**, **Reviewed By**).
-     • **Tab 3 ("3. Digital Signatures")**: Draw on the interactive signature pad or upload a PNG/JPG signature image; auto-matches signers on vouchers and supports isolated single-click A4 printing (with **"Print with Image"** option).
+     • **Tab 3 ("3. Digital Signatures")**: Draw on the interactive signature pad or upload a PNG/JPG signature image; includes **"Off Digital Signature (Default for Printing)"** global checkbox to suppress digital signatures by default and leave generous dashed blank boxes for wet-ink pen signatures & stamps.
+   - **"Off Digital Signature" Per-Print Hand-Sign Mode Across All Reports & Vouchers**:
+     • Every print/PDF toolbar (across Vouchers RN/IN/PU/TSR/GRN/FOC/RV/BRM/PO/RTV, **Full Report for This Site (Project)**, **Client FOC Item/Project Reports**, **Item Lifecycle / Forward Summaries**, and **Branch Staff & Teams Directory**) includes an **"Off Digital Signature"** checkbox to switch that print to generous blank **Hand Signature & Stamp** spaces above officer names. Inside Voucher **Edit Signers & Designations**, individual signers can also be set to **"Off Digital Signature (Blank Hand-Sign Space)"**.
+   - **Uniform Crisp Typography & Main Stock UI**: All ledgers (including compact **Inbound Receipts History** & cleanly separated **Main Central Stock** filter buttons) and printable A4 reports use standardized **13.5px body / 12px header** typography.
+   - **Live "Glass Tone" Theme Switcher ("Sapphire & Gold" Default) & System Config**: Opens by default in **Sapphire & Gold** (Royal Navy & Amber Gold). The Header sub-bar **"Glass Tone"** color-swatch dropdown (and **System Config**) switches live across **9 Apple Liquid Glass themes** (*Sapphire & Gold, Liquid Emerald, Oceanic Teal, Cobalt Azure, Liquid Indigo, Liquid Amethyst, Obsidian Amber, Liquid Crimson, Liquid Titanium*), dynamically updating the Header, Workspace Navigation Sidebar, Canvas, Hero Banners, and Mobile Dock.
+   - **Auto-Renewing Card Subscriptions (Payments.lk / PAYable & Stripe + Live USD → LKR)**: From **Subscription** in the Header, activate auto-renewing **Pro Monthly** or **Pro Annual** card subscriptions via **Payments.lk** (with live server-fetched **USD → LKR** exchange rate conversion) or **Stripe**, and manage auto-renewal via the Customer Billing Portal.
    - **Mandatory Admin Password Verification for Any Deletion**: Deleting any record or transaction across the entire system requires entering the **Admin Password** in the confirmation modal (never deletes on a simple click).
    - **Audit Trail & Recycle Bin**: Filterable chronological history with isolated A4 Print & CSV export; restore or permanently delete soft-deleted records.
    - **Automatic Email Verification & Support**: Clicking **"Send Verification Email"** sends a Firebase link from **apexstox.com**; clicking the email link verifies the account automatically. Official domain: **apexstox.com** | Support email: **support@apexstox.com**.
-   - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change theme/company settings, or use **Admin View-As Mode**.`;
+   - **System Backups & Config (Top Header)**: Create/restore backups, open the **Offline Backup Viewer**, run **Admin System Flush**, change Glass Tone theme/company settings, or use **Admin View-As Mode**.`;
 
 export function detectSuggestedModule(text: string): string | undefined {
   const lower = text.toLowerCase();
   if (
+    lower.includes('off digital') ||
+    lower.includes('hand sign') ||
+    lower.includes('hand signature') ||
     lower.includes('format setting') ||
     lower.includes('document template') ||
     lower.includes('letterhead') ||

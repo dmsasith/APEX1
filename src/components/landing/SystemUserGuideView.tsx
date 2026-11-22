@@ -244,47 +244,47 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Switch to Tab 2 ("2. Auto Tenant Header & Signers") to configure your ISO header and default Signers: (a) Under "1. Tenant Company Identity & ISO Header Details", review your auto-loaded Company Name, Scope Subtitle, Phone, Email, Address, and choose "Logo Monogram Text" or "Logo Image (Upload)" (click "Sync from Tenant Account" anytime to re-sync). (b) Under "2. ISO Signer Names, Designations & Department Matrix", enter the Signer Full Name, Designation, and Department for "Prepared & Checked By" and "Authorized & Approved By", plus "Reviewed By", "ISO Issue Number", and "ISO Revision Number", then click "Save ISO Header & Signers".',
       },
       {
-        stepTitle: '3. Tab 3 — "3. Digital Signatures" (Draw on Pad or Upload Signature Image)',
+        stepTitle: '3. Tab 3 — "3. Digital Signatures" (Draw/Upload) & Global "Off Digital Signature (Default for Printing)"',
         detail:
-          'Switch to Tab 3 ("3. Digital Signatures") and click "+ Add Digital Signature". Enter the Signer Full Name (e.g., matching your Prepared By or Approved By name), Designation/Role, and Department. Then either draw the signature directly on the interactive Signature Pad or click "Upload Signature Image" to upload a PNG/JPG signature, and click "Save Signature". Saved signatures automatically match Signers by name on all vouchers — and inside any Voucher Print window ("Customize Voucher Header, Signers & Digital Signatures"), you can also pick any saved Digital Signature from the dropdowns on the fly.',
+          'Switch to Tab 3 ("3. Digital Signatures") and click "+ Add Digital Signature". Enter the Signer Full Name (matching your Prepared By or Approved By name), Designation/Role, and Department, then either draw on the Signature Pad or upload a PNG/JPG signature image and click "Save Signature". Need wet-ink pen signatures on paper printouts? Enable "Off Digital Signature (Default for Printing)" in Tab 3 to hide digital signature images globally by default and leave generous blank dashed hand-signing boxes ("Hand Signature & Date / Stamp") above signer titles on all vouchers and reports.',
       },
       {
-        stepTitle: '4. Isolated Single-Click A4 Print Preview & Genuine PDF Export Across All Sections',
+        stepTitle: '4. "Off Digital Signature" Per-Print Mode, Single-Click A4 Print Preview & PDF Export',
         detail:
-          'Clicking "Print" on any voucher (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV) or report (including "Full Report for This Site (Project)", Team In-Hand, Branch Directory, Barcode Labels, and Audit Ledger) immediately opens a clean, isolated A4 print preview of ONLY that voucher or report without printing the full web page. Use the separate "Save PDF" / "Convert to PDF" button whenever you want to download an A4 PDF file directly.',
+          'Every Print/PDF dialog across Vouchers (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV/Debit Note), "Full Report for This Site (Project)", Client FOC Reports, Item Summaries, and Branch Directory includes an "Off Digital Signature" toggle right in the toolbar (plus per-signer "Off Digital Signature (Blank Hand-Sign Space)" options inside Edit Signers). Toggle it anytime for physical pen signing & rubber stamping! All tables and printed reports also use standardized crisp typography (13.5px body / 12px headers) and isolated single-click A4 Print Preview & direct PDF download.',
       },
     ],
     keyOutputs: [
       'Default ISO 9001:2015 Controlled Formats (FORMAT-01 to FORMAT-04) + Auto Tenant Header',
       'Custom PDF/Image Upload, 1-Click Format Unification & Live A4 Column/Title Settings',
-      'ISO Signer Governance Matrix (Prepared By, Approved By, Reviewed By + Designations)',
-      'Digital Signatures Library (Draw or Upload) + Isolated Single-Click A4 Voucher Print',
+      'Digital Signatures Library (Draw/Upload) + "Off Digital Signature" Physical Hand-Sign Print Mode',
+      'Uniform Crisp Report/Table Typography (13.5px) + Isolated Single-Click A4 Print & PDF',
     ],
   },
   {
     id: 'ch-06',
     number: 'Chapter 06',
     category: 'admin',
-    categoryLabel: 'Machinery, Audits & Backups',
-    title: 'Plant & Equipment Fleet, Signer Governance, Audit Trail & Offline Backups',
+    categoryLabel: 'Themes, Subscriptions, Audits & Backups',
+    title: 'Live Glass Tone Themes (Sapphire & Gold Default), Plant Fleet, Subscriptions & Backups',
     summary:
-      'Maintain full accountability over high-value machinery assets, ISO document control, user activity logs, and offline data backups.',
+      'Switch live across 9 Apple Liquid Glass themes from the top Header, manage heavy machinery, configure per-print hand-sign blocks, manage recurring card subscriptions, and protect data with Admin-locked deletions and offline backups.',
     icon: ShieldCheck,
     steps: [
       {
-        stepTitle: '1. Dedicated Plant & Machinery Fleet View',
+        stepTitle: '1. Live "Glass Tone" Theme Switcher (9 Themes, Default "Sapphire & Gold") & Refined Workspace UI',
         detail:
-          'Track heavy machinery, generators, testing instruments, and power tools separately from consumables - know whether an asset is in the Central Yard, at a Site Branch, or with a Field Crew.',
+          'The workspace opens by default in "Sapphire & Gold" (matching the landing palette). Use the "Glass Tone" color-swatch dropdown in the top Header sub-bar (or System Config) anytime to switch live between 9 curated Apple Liquid Glass themes: Sapphire & Gold, Liquid Emerald, Oceanic Teal, Cobalt Azure, Liquid Indigo, Liquid Amethyst, Obsidian Amber, Liquid Crimson, and Liquid Titanium — dynamically updating the Header, Workspace Navigation Sidebar, Canvas backdrop, Hero Banners, and Mobile Dock. Main Central Stock also features a structured filter bar and compact Inbound Receipts ledger.',
       },
       {
-        stepTitle: '2. Per-Voucher Live Customization (Header, Signers & Digital Signatures)',
+        stepTitle: '2. Dedicated Plant & Machinery Fleet + Per-Voucher "Edit Signers" & Hand-Sign Overrides',
         detail:
-          'When opening any voucher for printing, click "Customize Voucher Header, Signers & Digital Signatures" at the top of the modal to override Document No, Date, Project Code, Prepared/Approved Signer Names, Designations, or Digital Signatures for that specific print.',
+          'Track heavy machinery, generators, testing instruments, and power tools separately across Central Yard, Site Branches, and Field Crews. When printing any voucher or report, use "Customize Voucher Header, Signers & Digital Signatures" to override Document No, Date, Signer Names, Designations, or switch individual signers to "Off Digital Signature (Blank Hand-Sign Space)" without affecting other prints.',
       },
       {
-        stepTitle: '3. Admin Password Verification for Any Deletion, Audit Trail & Safe Recycle Bin',
+        stepTitle: '3. Admin Password Verification for Deletions, Audit Trail & Recurring Card Subscriptions (USD -> LKR)',
         detail:
-          'To prevent accidental or unauthorized data removal, any delete, clear, or purge action across the entire system requires entering the Admin Password before confirmation. Every stock addition, dispatch, edit, or deletion is recorded in "Audit Trail", and deleted records can be restored from the "Recycle Bin".',
+          'Any delete, clear, or purge action requires Admin Password verification, and all activity is logged in "Audit Trail" with safe restoration in "Recycle Bin". In the "Subscription" portal, workspaces can activate auto-renewing Pro Monthly or Pro Annual card subscriptions via Payments.lk / PAYable (with live server-fetched USD -> LKR exchange rate conversion) or Stripe, and manage auto-renewal from the Customer Billing Portal.',
       },
       {
         stepTitle: '4. Country-Based Phone Digit Validation & 1-Click Full System Backups',
@@ -293,10 +293,10 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'Machinery & Returnable Tool Custody Ledger',
-      'Admin Password Protection Required for All Deletions & Country Phone Digit Validation',
-      'Tamper-Proof Audit Trail & Protected Recycle Bin',
-      '1-Click Full JSON Backup, Offline Viewer & Excel Export',
+      '9 Live "Glass Tone" Liquid Glass Themes ("Sapphire & Gold" Default) + Clean Workspace Tables',
+      'Machinery Custody Ledger + Per-Print "Off Digital Signature" Hand-Sign Blank Boxes',
+      'Auto-Renewing Card Subscriptions (Payments.lk / Stripe) with Live USD -> LKR Conversion',
+      'Admin Password Deletion Guard, Audit Trail, Recycle Bin & 1-Click JSON/Excel Backups',
     ],
   },
 ];
@@ -481,47 +481,47 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '2 වන ටැබ් එක ("2. Auto Tenant Header & Signers") වෙත ගොස්: (අ) "1. Tenant Company Identity & ISO Header Details" යටතේ ස්වයංක්‍රීයව ලැබී ඇති ආයතනයේ නම, ලිපිනය, දුරකථන අංක පරීක්ෂා කර "Logo Monogram Text" හෝ "Logo Image (Upload)" මගින් ඔබේ ලාංඡනය එක් කරන්න ("Sync from Tenant Account" බටන් එකෙන් ඕනෑම විටෙක Tenant ගිණුමේ විස්තර නැවත Auto-fill කරගත හැක). (ආ) "2. ISO Signer Names, Designations & Department Matrix" යටතේ වවුචර්වල අත්සන් තබන "Prepared & Checked By", "Authorized & Approved By" සහ "Reviewed By" නිලධාරීන්ගේ නම් (Signer Full Name), තනතුරු (Designation), අංශ (Department) සහ ISO Issue/Revision අංක ඇතුළත් කර "Save ISO Header & Signers" ක්ලික් කරන්න.',
       },
       {
-        stepTitle: '3. Tab 3 — "3. Digital Signatures" (ඩිජිටල් අත්සන් ඇඳීම හෝ Image එකක් ලෙස Upload කිරීම)',
+        stepTitle: '3. Tab 3 — "3. Digital Signatures" සහ "Off Digital Signature (Default for Printing)" පහසුකම',
         detail:
-          '3 වන ටැබ් එක ("3. Digital Signatures") වෙත ගොස් "+ Add Digital Signature" බටන් එක ක්ලික් කරන්න. එහිදී අත්සන් කරන නිලධාරියාගේ නම (Signer Full Name), තනතුර (Designation/Role) සහ අංශය (Department) ඇතුළත් කර, තිරයේ ඇති කොටුව තුළ Mouse/Touch මගින් කෙලින්ම අත්සන අඳින්න (Draw Signature) නැතිනම් අත්සනේ PNG/JPG ඡායාරූපයක් Upload කර "Save Signature" ක්ලික් කරන්න. මෙසේ Save කළ අත්සන්, නිලධාරියාගේ නම අනුව ස්වයංක්‍රීයව වවුචර් වලට වැටෙන අතර ඕනෑම වවුචරයක් Print කරන විට "Customize Voucher Header, Signers & Digital Signatures" කොටසින්ද කැමති Digital Signature එකක් තෝරාගත හැක.',
+          '3 වන ටැබ් එක ("3. Digital Signatures") වෙත ගොස් "+ Add Digital Signature" ක්ලික් කර නිලධාරියාගේ නම, තනතුර හා අංශය ඇතුළත් කර තිරය මත අත්සන අඳින්න (Draw) නැතිනම් PNG/JPG Image එකක් Upload කර Save කරන්න. තවද කඩදාසි මත පෑනෙන් අත්සන් (Hand Signature) තැබීමට අවශ්‍ය නම් මෙම ටැබ් එකේ ඇති "Off Digital Signature (Default for Printing)" Checkbox එක On කර සියලුම වාර්තා සඳහා ස්ථිර Default ක්‍රමය ලෙස සැකසිය හැක.',
       },
       {
-        stepTitle: '4. සම්පූර්ණ Web Page එක නොව අදාළ Voucher / Report එක පමණක් තනි ක්ලික් එකෙන් Print හා PDF කිරීම',
+        stepTitle: '4. "Off Digital Signature" Hand-Sign Print ක්‍රමය, පැහැදිලි අකුරු ප්‍රමාණය (13.5px) සහ A4 Print / PDF',
         detail:
-          'ඕනෑම Section එකක (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV හෝ Full Site Report) "Print" බටන් එක එබූ සැණින් සම්පූර්ණ වෙබ් පිටුව පෙන්වන්නේ නැතිව, අදාළ A4 වවුචරය හෝ වාර්තාව පමණක් වෙන් කරගත් පැහැදිලි Print Preview එකක් එකවරම විවෘත වේ. PDF ගොනුවක් ලෙස බාගත කිරීමට "Convert / Save as PDF" බටන් එක භාවිත කරන්න.',
+          'ඕනෑම වවුචරයක් (RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO, RTV/Debit Note), "Full Report for This Site (Project)", Client FOC වාර්තාවක්, Item Summary එකක් හෝ Branch Directory වාර්තාවක් Print කිරීමේදී ඉහළ තීරුවේ ඇති "Off Digital Signature" Checkbox එක On කළ හැක (නැතිනම් Edit Signers වෙතින් එක් නිලධාරියෙකු සඳහා පමණක් "Off Digital Signature (Blank Hand-Sign Space)" තේරිය හැක). එවිට Digital අත්සන සැඟවී, පෑනෙන් අත්සන් කිරීමට සහ රබර් මුද්‍රා (Stamp) තැබීමට ප්‍රමාණවත් ඉඩක් ("Hand Signature & Stamp") ඉතිරි වේ. සියලුම වගු සහ වාර්තා එකම ප්‍රමිතියක පැහැදිලි අකුරු ප්‍රමාණයකින් (13.5px / 12px) Print හා PDF වේ.',
       },
     ],
     keyOutputs: [
       'ISO 9001:2015 Controlled Formats (FORMAT-01 සිට 04) + Auto Tenant Header',
       'Tab 2: ආයතනයේ Logo සහ Signers (Prepared / Approved / Reviewed) තනතුරු සැකසුම',
-      'Tab 3: Digital Signatures (අත්සන ඇඳීම හෝ Image Upload) සහ Auto Signer Matching',
-      'වවුචරය පමණක් එකවර Print වන Isolated Single-Click A4 Print සහ Direct PDF',
+      'Digital Signatures Library + පෑනෙන් අත්සන් තැබීමට ඉඩ තබන "Off Digital Signature" Print Mode',
+      'සියලුම වගු සහ වාර්තා සඳහා පැහැදිලි Uniform අකුරු ප්‍රමාණය සහ Single-Click A4 Print / PDF',
     ],
   },
   {
     id: 'ch-06',
     number: '06 වන පරිච්ඡේදය',
     category: 'admin',
-    categoryLabel: 'යන්ත්‍රෝපකරණ, විගණන වාර්තා සහ Backups',
-    title: 'යන්ත්‍රෝපකරණ කළමනාකරණය, Voucher Print Customization, Audit Trail සහ Offline Backups',
+    categoryLabel: 'Glass Tone Themes, Subscriptions, විගණන සහ Backups',
+    title: 'Glass Tone Live Themes (Sapphire & Gold Default), යන්ත්‍රෝපකරණ, Recurring Subscriptions සහ Backups',
     summary:
-      'වටිනා යන්ත්‍රෝපකරණ සහ ටූල්ස් පිළිබඳ පූර්ණ වගවීම, වවුචරයක් Print කරන මොහොතේදීම Signers/Signatures වෙනස් කිරීමේ පහසුව, Audit Trail සහ ආරක්ෂිත Offline දත්ත Backups.',
+      'ඉහළ Header තීරුවෙන් සජීවීව Theme 9ක් අතර මාරු වීම, යන්ත්‍රෝපකරණ පාලනය, Print මොහොතේදීම Hand-Sign ඉඩ සැකසීම, Payments.lk / Stripe ස්වයංක්‍රීය කාඩ් ගෙවීම් සහ ආරක්ෂිත Offline Backups.',
     icon: ShieldCheck,
     steps: [
       {
-        stepTitle: '1. යන්ත්‍රෝපකරණ සහ ටූල්ස් සඳහාම වෙන්වූ Plant & Machinery Fleet කොටස',
+        stepTitle: '1. සජීවී "Glass Tone" Theme 9 ("Sapphire & Gold" Default) සහ පිළිවෙළ Workspace පෙනුම',
         detail:
-          'සාමාන්‍ය අමුද්‍රව්‍ය වලින් වෙන්ව එක්ස්කැවේටර්, ජෙනරේටර්, ටෙස්ටින් මීටර් සහ බල මෙවලම් දැනට ප්‍රධාන ගබඩාවේද, ශාඛාවකද, නැතහොත් කවර වැඩ කණ්ඩායමක් ළඟද යන්න ක්ෂණිකව බලාගන්න.',
+          'පද්ධතිය විවෘත වන විට Default වර්ණය ලෙස Landing Page එකට ගැළපෙන "Sapphire & Gold" (Royal Navy & Gold) Theme එක ක්‍රියාත්මක වේ. ඉහළ Header තීරුවේ ඇති "Glass Tone" Dropdown එකෙන් (හෝ System Config වෙතින්) ඕනෑම මොහොතක Theme 9ක් අතර සජීවීව මාරු විය හැක: Sapphire & Gold, Liquid Emerald, Oceanic Teal, Cobalt Azure, Liquid Indigo, Liquid Amethyst, Obsidian Amber, Liquid Crimson සහ Liquid Titanium — එවිට Header, Workspace Navigation තීරුව, Background Canvas, Banners සහ Mobile Dock ඉබේම අලංකාරව වෙනස් වේ. Main Central Stock වල Filter Buttons සහ Inbound Receipts වගුවද වඩාත් පැහැදිලි හා සංයුක්ත ලෙස සකසා ඇත.',
       },
       {
-        stepTitle: '2. වවුචරයක් Print කිරීමට පෙර එතැනදීම Signers සහ Digital Signatures වෙනස් කිරීම',
+        stepTitle: '2. යන්ත්‍රෝපකරණ (Plant & Machinery) සහ Print කරන මොහොතේදීම Signers / Hand-Sign වෙනස් කිරීම',
         detail:
-          'ඕනෑම වවුචරයක් Print කිරීමට විවෘත කළ විට උඩින් ඇති "Customize Voucher Header, Signers & Digital Signatures" ක්ලික් කිරීමෙන් එම වවුචරයට පමණක් අදාළව Document No, දිනය, Prepared/Approved නිලධාරීන්ගේ නම්, තනතුරු සහ Digital Signatures එතැනදීම තෝරා Print හෝ PDF කළ හැක.',
+          'සාමාන්‍ය අමුද්‍රව්‍ය වලින් වෙන්ව යන්ත්‍රෝපකරණ සහ ටූල්ස් ප්‍රධාන ගබඩාවේද, ශාඛාවකද, නැතහොත් කණ්ඩායමක් ළඟද යන්න බලාගන්න. ඕනෑම වවුචරයක් Print කිරීමේදී උඩින් ඇති "Customize Voucher Header, Signers & Digital Signatures" ක්ලික් කර එම මුද්‍රණයට පමණක් Document No, දිනය, නිලධාරීන්ගේ නම්, Digital Signatures හෝ "Off Digital Signature (Blank Hand-Sign Space)" තෝරා Print කළ හැක.',
       },
       {
-        stepTitle: '3. ඕනෑම දත්තයක් Delete කිරීමේදී Admin Password ආරක්ෂාව, Audit Trail සහ Recycle Bin',
+        stepTitle: '3. Admin Password ආරක්ෂාව, Audit Trail, Recycle Bin සහ Payments.lk / Stripe Auto-Renew Subscriptions',
         detail:
-          'අත්වැරදීමකින් හෝ අනවසරයෙන් දත්ත මැකී යාම වැළැක්වීම සඳහා පද්ධතියේ ඕනෑම දෙයක් Delete කිරීමේදී නිකන්ම Confirm වීම වෙනුවට Admin Password එක ඇතුළත් කිරීම අනිවාර්ය කර ඇත. සිදුවන සෑම ක්‍රියාවක්ම "Audit Trail" හි සටහන් වන අතර මැකුණු දත්ත "Recycle Bin" මගින් නැවත ලබාගත හැක.',
+          'පද්ධතියේ ඕනෑම දෙයක් Delete කිරීමේදී Admin Password ඇතුළත් කිරීම අනිවාර්ය වන අතර සෑම ක්‍රියාවක්ම "Audit Trail" හි සටහන් වී මැකුණු දත්ත "Recycle Bin" හරහා Restore කළ හැක. "Subscription" කොටස හරහා Payments.lk / PAYable (සජීවී USD -> LKR විනිමය අනුපාතය සමඟ) හෝ Stripe මගින් ස්වයංක්‍රීයව අලුත් වන (Auto-Renewing) Pro Monthly / Pro Annual කාඩ් ගෙවීම් සක්‍රිය කර Billing Portal හරහා පාලනය කළ හැක.',
       },
       {
         stepTitle: '4. රටට අදාළ දුරකථන අංක ගණන ස්වයංක්‍රීයව හඳුනාගැනීම සහ 1-Click JSON/Excel Backups',
@@ -530,10 +530,10 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
       },
     ],
     keyOutputs: [
-      'යන්ත්‍රෝපකරණ සහ ටූල්ස් භාරකාරත්ව ලෙජරය (Machinery Custody)',
-      'Delete කිරීමේදී Admin Password අනිවාර්ය කිරීම සහ රට අනුව Phone Number Validation',
-      'සම්පූර්ණ Audit Trail වාර්තා සහ ආරක්ෂිත Recycle Bin',
-      '1-Click JSON Backup, Offline Viewer සහ Excel Export පහසුකම',
+      'සජීවී "Glass Tone" Theme 9 ("Sapphire & Gold" Default) සහ පිළිවෙළ Main Stock / Inbound පෙනුම',
+      'යන්ත්‍රෝපකරණ Custody ලෙජරය සහ Print මොහොතේදී "Off Digital Signature" Hand-Sign පහසුකම',
+      'Payments.lk / Stripe Auto-Renew Card Subscriptions සහ සජීවී USD -> LKR පරිවර්තනය',
+      'Admin Password Delete ආරක්ෂාව, Audit Trail, Recycle Bin සහ 1-Click JSON/Excel Backups',
     ],
   },
 ];
@@ -656,15 +656,17 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'ISO 9001:2015 Format Settings, Signers, Digital Signatures & Enterprise Control',
+    group: 'ISO 9001:2015 Format Settings, Off Digital Signature, Glass Tone Themes & Subscriptions',
     items: [
       'Default ISO 9001:2015 Controlled Formats (FORMAT-01 to 04) with Auto-Synced Tenant Company Header',
       'Tab 2 Signer Governance: Prepared By, Approved By & Reviewed By Names, Designations & Departments',
-      'Tab 3 Digital Signatures Library: Draw on Interactive Pad or Upload PNG/JPG Signature + Auto-Match',
-      'Optional PDF / Image Company Format Upload (Max 1MB Limit) + Live A4 Format Studio',
-      'Isolated Single-Click A4 Print Preview (Prints Only the Voucher/Report) + Genuine A4 PDF Download',
-      'Admin Password Verification Required for All Deletions & Country-Aware Phone Digit Validation',
-      'Tamper-Proof Audit Trail, Safe Recycle Bin & 1-Click JSON Backup',
+      'Tab 3 Digital Signatures Library (Draw/Upload) + "Off Digital Signature (Default for Printing)" Global Toggle',
+      '"Off Digital Signature" Per-Print Hand-Sign Mode Across All Vouchers & Reports (Generous Dashed Ink-Sign & Stamp Space)',
+      'Uniform Crisp Typography (13.5px Body / 12px Headers) Across All Tables, Inbound Ledgers & Printed A4 Reports',
+      'Live "Glass Tone" Theme Switcher in Header (9 Apple Liquid Glass Themes, Default "Sapphire & Gold")',
+      'Auto-Renewing Card Subscriptions (Payments.lk / PAYable & Stripe) with Live USD -> LKR FX Rate Conversion',
+      'Optional PDF / Image Company Format Upload (Max 1MB Limit), Live A4 Format Studio & Isolated PDF Export',
+      'Admin Password Verification Required for All Deletions, Audit Trail, Recycle Bin & 1-Click JSON Backup',
     ],
   },
 ];
@@ -703,15 +705,17 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'ISO 9001:2015 Format Settings, Signers, Digital Signatures සහ ආරක්ෂිත පාලනය',
+    group: 'ISO Formats, Off Digital Signature, Glass Tone Themes, Subscriptions සහ ආරක්ෂිත පාලනය',
     items: [
       'Default ISO 9001:2015 Controlled Formats (FORMAT-01 සිට 04) සහ ස්වයංක්‍රීය Tenant Company Header',
       'Tab 2 Signer Governance: Prepared By, Approved By සහ Reviewed By නිලධාරීන්ගේ නම්, තනතුරු සහ අංශ',
-      'Tab 3 Digital Signatures: තිරය මත අත්සන ඇඳීම (Draw) හෝ Image Upload කිරීම සහ වවුචර් වලට Auto-Match වීම',
-      'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කිරීම (උපරිම 1MB) සහ Live A4 Format Studio සැකසුම්',
-      'සම්පූර්ණ වෙබ් පිටුව නොව අදාළ Voucher/Report එක පමණක් එකවර Print කරන Isolated A4 Print හා PDF',
-      'ඕනෑම දෙයක් Delete කිරීමේදී Admin Password අනිවාර්ය වීම සහ රට අනුව Phone Number අංක ගණන පරීක්ෂාව',
-      'Audit Trail විගණන වාර්තා, Recycle Bin සහ 1-Click JSON Offline Backup',
+      'Tab 3 Digital Signatures (Draw / Upload) සහ ස්ථිර "Off Digital Signature (Default for Printing)" විකල්පය',
+      'සෑම වවුචරයකම සහ වාර්තාවකම පෑනෙන් අත්සන් (Hand Sign & Stamp) තැබීමට ඉඩ තබන "Off Digital Signature" ක්‍රමය',
+      'සියලුම වගු (Inbound Receipts ඇතුළුව) සහ A4 වාර්තා සඳහා පැහැදිලි Uniform අකුරු ප්‍රමාණය (13.5px / 12px)',
+      'Header එකෙන් සජීවීව මාරු විය හැකි "Glass Tone" Theme 9 ("Sapphire & Gold" Default ලෙස විවෘත වේ)',
+      'Payments.lk / PAYable සහ Stripe මගින් සජීවී USD -> LKR අනුපාතය සමඟ Auto-Renew කාඩ් Subscriptions',
+      'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කිරීම (උපරිම 1MB), Live A4 Format Studio සහ Isolated PDF',
+      'Delete කිරීමේදී Admin Password අනිවාර්ය වීම, Audit Trail, Recycle Bin සහ 1-Click JSON Offline Backup',
     ],
   },
 ];
@@ -839,7 +843,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       'Stage 03: Branch Transfer - Site branches submit Stock Requisitions (RN); Central HQ checks stock & dispatches to regional yards.',
       'Stage 04: Field Crew Issue - Issue materials & tools to Crew Leaders (IN / Gate Pass) with live in-hand custody tracking.',
       'Stage 05: Daily Progress, Wastage & Full Reports - Log project Installed + Wastage Qty (PU) in Material Usage / Daily Progress Entry, print Full Site Reports (Team + Grand Totals), & return surplus (RV / BRM).',
-      'Stage 06: Company Formats - Upload PDF or Image company forms into 4 Format Slots so all sections print in your official layout.',
+      'Stage 06: ISO Formats, Hand-Sign Print & Themes - Configure ISO 9001:2015 Formats, Digital Signatures or "Off Digital Signature" hand-sign mode, plus 9 Glass Tone themes ("Sapphire & Gold" default).',
     ];
 
     doc.setFont('helvetica', 'normal');
@@ -1205,7 +1209,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       'පියවර 03 (Branch Transfer & "Central FOC"): ශාඛා මගින් බඩු ඉල්ලීම (ALL AREAS FOC ඇතුළුව) සහ Site Stock හි "Central FOC" ලෙස වෙන් කර පෙන්වීම.',
       'පියවර 04 (Field Crew Issue): වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN / Gate Pass) සහ Site අනුව වෙන් වූ In-Hand තොග පරීක්ෂාව.',
       'පියවර 05 (Daily Progress, Wastage & Full Reports): Section අනුව Filter වන FOC, Main/Sub-Project Balance Reports සහ Multi-Item Returns (RV / BRM).',
-      'පියවර 06 (ISO Formats & Signatures): ISO 9001:2015 Formats, Signers, Digital Signatures සහ Company PDF/Image Format සැකසීම.',
+      'පියවර 06 (ISO Formats, Hand-Sign & Glass Tone): ISO 9001:2015 Formats, Digital Signatures හෝ පෑනෙන් අත්සන් තැබීමේ "Off Digital Signature" ක්‍රමය සහ Sapphire & Gold ඇතුළු Glass Tone Themes 9 සැකසීම.',
     ];
 
     current.ctx.font = `600 16.5px ${fontStack}`;
@@ -1680,8 +1684,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'පියවර 06',
-                        title: 'ISO Formats සහ Signatures',
-                        desc: 'ISO 9001:2015 Formats, Auto Tenant Header, Signers හා Digital Signatures සැකසීම.',
+                        title: 'ISO Formats, Hand-Sign සහ Glass Tone',
+                        desc: 'ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" (Hand-Sign), සහ Glass Tone Themes 9.',
                         icon: Upload,
                       },
                     ]
@@ -1718,8 +1722,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'Stage 06',
-                        title: 'ISO Formats & Signatures',
-                        desc: 'ISO 9001:2015 formats, Auto Tenant Header, Signers, Digital Signatures & PDF/Image upload.',
+                        title: 'ISO Formats, Hand-Sign & Themes',
+                        desc: 'ISO 9001:2015 formats, Digital Signatures or "Off Digital Signature" hand-sign mode, and 9 Glass Tone themes.',
                         icon: Upload,
                       },
                     ]

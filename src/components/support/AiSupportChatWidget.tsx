@@ -59,11 +59,19 @@ const QUICK_PROMPTS: QuickPrompt[] = [
     targetTab: 'main-stock',
   },
   {
+    id: 'off-digital-signature-hand-sign',
+    labelEn: '✍️ Off Digital Signature (Hand Sign) & Glass Tone Themes?',
+    labelSi: '✍️ Off Digital Signature (Hand Sign) සහ Glass Tone Themes?',
+    promptEn: 'How do I enable "Off Digital Signature" to leave blank pen-signing spaces on printed reports/vouchers, and how do I switch across the 9 Glass Tone themes (Sapphire & Gold default)?',
+    promptSi: 'Reports සහ Vouchers print කරද්දී පෑනෙන් අත්සන් (Hand Sign) තැබීමට "Off Digital Signature" දාන්නේ කොහොමද? ඒ වගේම Glass Tone Theme 9 (Sapphire & Gold default) මාරු කරන්නේ කොහොමද?',
+    targetTab: 'templates',
+  },
+  {
     id: 'format-signers-digital-signatures',
     labelEn: '✒️ Format Settings, Signers & Digital Signatures?',
     labelSi: '✒️ Format Settings, Signers සහ Digital Signatures හදන්නේ කොහොමද?',
-    promptEn: 'How do I configure ISO 9001:2015 Format Settings, Auto Tenant Header, Signers (Prepared/Approved/Reviewed), and Digital Signatures (draw or upload) in Document Templates?',
-    promptSi: 'Document Templates වල ISO Format Settings, Auto Tenant Header, Signers (අත්සන් කරන නිලධාරීන්ගේ නම්/තනතුරු) සහ Digital Signatures (අඳින හෝ Upload කරන) සකස් කරගන්නේ කොහොමද?',
+    promptEn: 'How do I configure ISO 9001:2015 Format Settings, Auto Tenant Header, Signers (Prepared/Approved/Reviewed), Digital Signatures (draw/upload), and "Off Digital Signature (Default for Printing)" in Document Templates?',
+    promptSi: 'Document Templates වල ISO Format Settings, Auto Tenant Header, Signers (අත්සන් කරන නිලධාරීන්ගේ නම්/තනතුරු), Digital Signatures සහ "Off Digital Signature (Default for Printing)" සකස් කරගන්නේ කොහොමද?',
     targetTab: 'templates',
   },
   {
@@ -183,8 +191,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through the latest updates including **5-Stage Client Free Stock (FOC) Reconciliation (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Completion Returnable Balance), Color-Coded Main & Sub-Project Reports, Site Branch "Central FOC" Highlighting, "ALL AREAS" Island-Wide Projects, Main Project -> Under New Connections (Telecom/Water/Electric/Solar with Section-Filtered FOC), Field Team Transfers, Site-Separated In-Hand Stock, Item Photos in PO/Return Dropdowns (<200KB & "Print with Image"), ISO 9001:2015 Formats, and Digital Signatures**.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nමෙම පද්ධතියේ නවතම විශේෂාංග වන **පියවර 5 Client Free Stock (FOC) Reconciliation (Central -> Site -> Team -> Usage/Wastage -> Completion Returnable Balance), වර්ණ ගැන්වූ Main/Sub-Project Reports, Site Branch Stock හි "Central FOC" Badge, "ALL AREAS (All Site Branches)" විකල්පය, Main Project -> Under New Connections (Telecom/Water/Electric/Solar + Section අනුව Filter වන FOC), Team Transfers, PO/Return Dropdown වල Item Images (<200KB & "Print with Image"), ISO 9001:2015 Formats සහ Digital Signatures** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through the latest updates including **"Off Digital Signature" Hand-Sign Printing Mode (blank pen-sign & stamp boxes across all reports/vouchers), 9 Live "Glass Tone" Themes ("Sapphire & Gold" default), Uniform Report & Table Typography, Recurring Card Subscriptions (Payments.lk / Stripe with live USD → LKR rate), 5-Stage Client FOC Reconciliation, Main Project -> Under New Connections (Telecom/Water/Electric/Solar), Team Transfers, ISO 9001:2015 Formats, and Digital Signatures**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nපද්ධතියේ නවතම විශේෂාංග වන **"Off Digital Signature" ක්‍රමය (Reports හා Vouchers මුද්‍රණයේදී පෑනෙන් අත්සන් තැබීමට ඉඩ තැබීම), "Glass Tone" Live Themes 9 ("Sapphire & Gold" default), පැහැදිලි Uniform අකුරු ප්‍රමාණය, Payments.lk / Stripe ස්වයංක්‍රීය කාඩ් Subscriptions (සජීවී USD → LKR අනුපාතය), පියවර 5 Client FOC Reconciliation, Main Project -> Under New Connections, Team Transfers, ISO 9001:2015 Formats සහ Digital Signatures** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 
