@@ -377,23 +377,23 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           </div>
 
           {(recipientName || recipientLabel || notes) && (
-            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-xs text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900 mb-0.5">
                   {recipientLabel || 'RECIPIENT / DESTINATION'}:
                 </div>
                 <div className="font-semibold text-slate-900">{recipientName}</div>
-                {recipientSubDetails && <div className="text-[10px] text-slate-600">{recipientSubDetails}</div>}
+                {recipientSubDetails && <div className="text-[11px] text-slate-600">{recipientSubDetails}</div>}
               </div>
               <div>
                 <div className="font-bold text-slate-900 mb-0.5">PURPOSE / NOTES:</div>
-                <div className="text-slate-600 text-[10px]">{notes || 'Standard logistics transaction processed.'}</div>
+                <div className="text-slate-600 text-[11px]">{notes || 'Standard logistics transaction processed.'}</div>
               </div>
             </div>
           )}
 
           <div className="border border-black">
-            <table className="w-full text-[10.5px] border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
                   <th className="py-1.5 px-1.5 w-[7%] border-r border-black/40 font-extrabold">{colNo}</th>
@@ -420,9 +420,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     );
                     const imgUrl = matchedItm?.imageUrl;
                     return (
-                      <tr key={idx} className="h-6">
-                        <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                        <td className="py-1 px-2 text-left border-r border-black font-medium">
+                      <tr key={idx} className="h-7">
+                        <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                        <td className="py-1.5 px-2 text-left border-r border-black font-medium">
                           <div className="flex items-center gap-2">
                             {printWithImage && imgUrl && (
                               <img
@@ -437,10 +437,10 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             </div>
                           </div>
                         </td>
-                        <td className="py-1 px-1 text-center border-r border-black text-slate-600">{item.category || 'General'}</td>
-                        <td className="py-1 px-1 text-center font-mono border-r border-black">{item.unit || 'Nos'}</td>
-                        <td className="py-1 px-1.5 text-right font-mono font-bold border-r border-black">{formatNumber(item.quantity)}</td>
-                        <td className="py-1 px-2 text-left text-slate-600 text-[10px]">{item.remarks || 'Verified / Logged'}</td>
+                        <td className="py-1.5 px-1 text-center border-r border-black text-slate-600">{item.category || 'General'}</td>
+                        <td className="py-1.5 px-1 text-center font-mono border-r border-black">{item.unit || 'Nos'}</td>
+                        <td className="py-1.5 px-1.5 text-right font-mono font-bold border-r border-black">{formatNumber(item.quantity)}</td>
+                        <td className="py-1.5 px-2 text-left text-slate-600 text-[11px]">{item.remarks || 'Verified / Logged'}</td>
                       </tr>
                     );
                   })
@@ -471,25 +471,25 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-xs text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">SOURCE WAREHOUSE:</div>
                 <div>Main Central Warehouse (HQ Logistics)</div>
                 <div className="mt-1 font-bold text-slate-900">REQUISITION PURPOSE:</div>
-                <div className="italic text-[10px]">{req.purpose || 'Site maintenance & installation project'}</div>
+                <div className="italic text-[11px]">{req.purpose || 'Site maintenance & installation project'}</div>
               </div>
               <div>
                 <div className="font-bold text-slate-900">DESTINATION BRANCH SITE:</div>
                 <div className="font-semibold text-slate-900">{site?.name}</div>
                 <div>Location: {site?.location} | Supervisor: {site?.supervisorName}</div>
-                <div className="mt-1 font-mono text-[10px]">
+                <div className="mt-1 font-mono text-[11px]">
                   Priority: <strong className="text-slate-900">{req.priority}</strong> | Status: <strong>{req.status}</strong>
                 </div>
               </div>
             </div>
 
             <div className="border border-black">
-              <table className="w-full text-[10.5px] border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
                     <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
@@ -504,9 +504,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   {req.items.map((row, idx) => {
                     const itm = items.find((i) => i.id === row.itemId);
                     return (
-                      <tr key={row.itemId} className="h-6">
-                        <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                        <td className="py-1 px-2 text-left border-r border-black font-medium">
+                      <tr key={row.itemId} className="h-7">
+                        <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                        <td className="py-1.5 px-2 text-left border-r border-black font-medium">
                           <div className="flex items-center gap-2">
                             {printWithImage && itm?.imageUrl && (
                               <img
@@ -518,7 +518,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             <div>
                               <span className="font-mono font-bold mr-1.5">{itm?.itemCode}</span>
                               {itm && isMachineryItem(itm) && (
-                                <span className="text-[9px] font-bold bg-slate-200 px-1 py-0.2 rounded mr-1">
+                                <span className="text-[10px] font-bold bg-slate-200 px-1 py-0.2 rounded mr-1">
                                   [Machinery]
                                 </span>
                               )}
@@ -526,12 +526,12 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             </div>
                           </div>
                         </td>
-                        <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>
-                        <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.requestedQty)}</td>
-                        <td className="py-1 px-1.5 text-right font-mono font-medium border-r border-black">
+                        <td className="py-1.5 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>
+                        <td className="py-1.5 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.requestedQty)}</td>
+                        <td className="py-1.5 px-1.5 text-right font-mono font-medium border-r border-black">
                           {row.approvedQty !== undefined ? formatNumber(row.approvedQty) : '—'}
                         </td>
-                        <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">
+                        <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-900">
                           {row.receivedQty !== undefined ? formatNumber(row.receivedQty) : (row.approvedQty ? formatNumber(row.approvedQty) : '—')}
                         </td>
                       </tr>
@@ -542,7 +542,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             </div>
 
             {req.acceptanceNotes && (
-              <div className="p-2 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-700">
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700">
                 <strong className="text-slate-900">Site Receiving Remarks:</strong> {req.acceptanceNotes}
               </div>
             )}
@@ -569,7 +569,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-xs text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">ISSUED TO FIELD TEAM:</div>
                 <div className="font-bold text-slate-900">{team?.teamName}</div>
@@ -585,7 +585,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             </div>
 
             <div className="border border-black">
-              <table className="w-full text-[10.5px] border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
                     <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
@@ -599,9 +599,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   {iss.items.map((row, idx) => {
                     const itm = items.find((i) => i.id === row.itemId);
                     return (
-                      <tr key={row.itemId} className="h-6">
-                        <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                        <td className="py-1 px-2 text-left border-r border-black font-medium">
+                      <tr key={row.itemId} className="h-7">
+                        <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                        <td className="py-1.5 px-2 text-left border-r border-black font-medium">
                           <div className="flex items-center gap-2">
                             {printWithImage && itm?.imageUrl && (
                               <img
@@ -616,11 +616,11 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             </div>
                           </div>
                         </td>
-                        <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>
-                        <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
+                        <td className="py-1.5 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>
+                        <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
                           {formatNumber(row.quantity)}
                         </td>
-                        <td className="py-1 px-2 text-left text-slate-600 text-[10px]">Issued to Crew</td>
+                        <td className="py-1.5 px-2 text-left text-slate-600 text-[11px]">Issued to Crew</td>
                       </tr>
                     );
                   })}
@@ -629,7 +629,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             </div>
 
             {iss.notes && (
-              <div className="p-2 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-700">
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700">
                 <strong className="text-slate-900">Dispatch Remarks:</strong> {iss.notes}
               </div>
             )}
@@ -656,7 +656,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-xs text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">RETURNING FIELD TEAM:</div>
                 <div className="font-bold text-slate-900">{team?.teamName}</div>
@@ -670,7 +670,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             </div>
 
             <div className="border border-black">
-              <table className="w-full text-[10.5px] border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
                     <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
@@ -691,9 +691,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     return rowsToRender.map((row, idx) => {
                       const itm = items.find((i) => i.id === row.itemId);
                       return (
-                        <tr key={`${row.itemId}-${idx}`} className="h-6">
-                          <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                          <td className="py-1 px-2 text-left border-r border-black font-medium">
+                        <tr key={`${row.itemId}-${idx}`} className="h-7">
+                          <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                          <td className="py-1.5 px-2 text-left border-r border-black font-medium">
                             <div className="flex items-center gap-2">
                               {printWithImage && itm?.imageUrl && (
                                 <img
@@ -708,14 +708,14 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                               </div>
                             </div>
                           </td>
-                          <td className="py-1 px-1 text-center font-mono border-r border-black">{itm?.unit || 'Nos'}</td>
-                          <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
+                          <td className="py-1.5 px-1 text-center font-mono border-r border-black">{itm?.unit || 'Nos'}</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-900 border-r border-black">
                             {formatNumber(row.quantity)}
                           </td>
-                          <td className="py-1 px-1.5 text-center text-[10px] font-semibold border-r border-black">
+                          <td className="py-1.5 px-1.5 text-center text-[11px] font-semibold border-r border-black">
                             {row.condition}
                           </td>
-                          <td className="py-1 px-2 text-left text-slate-600 text-[10px]">{ret.reason}</td>
+                          <td className="py-1.5 px-2 text-left text-slate-600 text-[11px]">{ret.reason}</td>
                         </tr>
                       );
                     });
@@ -745,7 +745,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-[11px] text-slate-700 mb-2">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-xs text-slate-700 mb-2">
               <div>
                 <div className="font-bold text-slate-900">AUDITED FIELD TEAM:</div>
                 <div className="font-bold text-slate-900">{rep.team.teamName}</div>
@@ -768,11 +768,11 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             {/* Section 1: Unreturned Stock from Previous Site(s) — Stock to Return - [Site Name] */}
             {prevSitesToReturn.map((prevGrp) => (
               <div key={prevGrp.siteId} className="border-2 border-black mb-3">
-                <div className="bg-amber-100 text-black font-extrabold text-[11px] px-2.5 py-1.5 border-b border-black flex items-center justify-between">
+                <div className="bg-amber-100 text-black font-extrabold text-xs px-2.5 py-1.5 border-b border-black flex items-center justify-between">
                   <span>STOCK TO RETURN - {prevGrp.siteName.toUpperCase()} (CANNOT BE USED AT {rep.site.name.toUpperCase()})</span>
                   <span className="font-mono">TOTAL TO RETURN: {formatNumber(prevGrp.totalUnitsHeld)} UNITS</span>
                 </div>
-                <table className="w-full text-[10.5px] border-collapse">
+                <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
                       <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
@@ -789,9 +789,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                       .map((row, idx) => {
                         const itm = items.find((i) => i.id === row.itemId || i.itemCode === row.itemCode);
                         return (
-                          <tr key={`${prevGrp.siteId}-${row.itemId}`} className="h-6">
-                            <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                            <td className="py-1 px-2 text-left border-r border-black font-medium">
+                          <tr key={`${prevGrp.siteId}-${row.itemId}`} className="h-7">
+                            <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                            <td className="py-1.5 px-2 text-left border-r border-black font-medium">
                               <div className="flex items-center gap-2">
                                 {printWithImage && itm?.imageUrl && (
                                   <img
@@ -803,16 +803,16 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                                 <div>
                                   <span className="font-mono font-bold mr-1.5">{row.itemCode}</span>
                                   <span>{row.itemName}</span>
-                                  <span className="ml-1.5 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-amber-100 border border-black/40">
+                                  <span className="ml-1.5 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 border border-black/40">
                                     Stock to Return - {prevGrp.siteName}
                                   </span>
                                 </div>
                               </div>
                             </td>
-                            <td className="py-1 px-1 text-center font-mono border-r border-black">{row.unit}</td>
-                            <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
-                            <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
-                            <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
+                            <td className="py-1.5 px-1 text-center font-mono border-r border-black">{row.unit}</td>
+                            <td className="py-1.5 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
+                            <td className="py-1.5 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
+                            <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
                           </tr>
                         );
                       })}
@@ -823,11 +823,11 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
             {/* Section 2: Current Assigned Site Usable Stock */}
             <div className="border border-black">
-              <div className="bg-slate-100 text-black font-extrabold text-[11px] px-2.5 py-1.5 border-b border-black flex items-center justify-between">
+              <div className="bg-slate-100 text-black font-extrabold text-xs px-2.5 py-1.5 border-b border-black flex items-center justify-between">
                 <span>{rep.site.name.toUpperCase()} — ACTIVE SITE STOCK (USABLE ONLY AT {rep.site.name.toUpperCase()})</span>
                 <span className="font-mono">ACTIVE USABLE: {formatNumber(rep.totalUnitsHeld)} UNITS</span>
               </div>
-              <table className="w-full text-[10.5px] border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="font-bold text-center border-b border-black" style={tableHeaderStyle}>
                     <th className="py-1.5 px-1.5 w-[6%] border-r border-black/40 font-extrabold">{colNo}</th>
@@ -849,9 +849,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     rep.items.map((row, idx) => {
                       const itm = items.find((i) => i.id === row.itemId || i.itemCode === row.itemCode);
                       return (
-                        <tr key={row.itemId} className="h-6">
-                          <td className="py-1 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-                          <td className="py-1 px-2 text-left border-r border-black font-medium">
+                        <tr key={row.itemId} className="h-7">
+                          <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
+                          <td className="py-1.5 px-2 text-left border-r border-black font-medium">
                             <div className="flex items-center gap-2">
                               {printWithImage && itm?.imageUrl && (
                                 <img
@@ -866,10 +866,10 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                               </div>
                             </div>
                           </td>
-                          <td className="py-1 px-1 text-center font-mono border-r border-black">{row.unit}</td>
-                          <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
-                          <td className="py-1 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
-                          <td className="py-1 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
+                          <td className="py-1.5 px-1 text-center font-mono border-r border-black">{row.unit}</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalIssued)}</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.totalReturned)}</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-900">{formatNumber(row.currentInHand)}</td>
                         </tr>
                       );
                     })
@@ -1253,17 +1253,17 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
             {renderTableAndBody()}
 
             {/* 4. APPROVAL & SIGN-OFF MATRIX WITH DYNAMIC NAMES & DESIGNATIONS */}
-            <div className="border border-black text-[10px] mt-4 bg-white/95">
+            <div className="border border-black text-[11px] mt-4 bg-white/95">
               <table className="w-full border-collapse">
                 <tbody>
                   {/* Row 1: Prepared & Checked By */}
                   <tr className="border-b border-black">
                     <td className="w-1/4 p-1.5 font-bold border-r border-black">
-                      <div className="text-[9px] text-slate-500 font-sans">Date</div>
+                      <div className="text-[10px] text-slate-500 font-sans">Date</div>
                       <div className="font-mono font-bold">{customDate || new Date().toISOString().split('T')[0]}</div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
-                      <div className="text-[9px] text-slate-600 font-bold">
+                      <div className="text-[10px] text-slate-600 font-bold">
                         {effectiveFormat.signPreparedLabel || 'Prepared & Checked By'}
                       </div>
                       {prepSig && (
@@ -1275,19 +1275,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                           />
                         </div>
                       )}
-                      <div className="font-bold text-[11px] text-slate-900">
+                      <div className="font-bold text-xs text-slate-900">
                         {customPreparedBy || currentUser?.fullName || 'Authorized Officer'}
                       </div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
-                      <div className="text-[9px] text-slate-600 font-bold">Designee</div>
-                      <div className="font-medium text-slate-800 text-[10.5px]">
+                      <div className="text-[10px] text-slate-600 font-bold">Designee</div>
+                      <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDesigneePrepared || activeTemplate.designeePrepared || 'Storekeeper / Site Officer'}
                       </div>
                     </td>
                     <td className="w-1/4 p-1.5">
-                      <div className="text-[9px] text-slate-600 font-bold">Department</div>
-                      <div className="font-medium text-slate-800 text-[10.5px]">
+                      <div className="text-[10px] text-slate-600 font-bold">Department</div>
+                      <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDepartmentPrepared || activeTemplate.departmentPrepared || 'Warehouse & Site Logistics'}
                       </div>
                     </td>
@@ -1296,11 +1296,11 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   {/* Row 2: Approved by */}
                   <tr className={effectiveFormat.showIsoRevisionFooter !== false ? 'border-b border-black' : ''}>
                     <td className="w-1/4 p-1.5 font-bold border-r border-black">
-                      <div className="text-[9px] text-slate-500 font-sans">Date</div>
+                      <div className="text-[10px] text-slate-500 font-sans">Date</div>
                       <div className="font-mono font-bold">{customDate || new Date().toISOString().split('T')[0]}</div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
-                      <div className="text-[9px] text-slate-600 font-bold">
+                      <div className="text-[10px] text-slate-600 font-bold">
                         {effectiveFormat.signApprovedLabel || 'Approved By'}
                       </div>
                       {apprSig && (
@@ -1312,19 +1312,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                           />
                         </div>
                       )}
-                      <div className="font-bold text-[11px] text-slate-900">
+                      <div className="font-bold text-xs text-slate-900">
                         {customApprovedBy || currentUser?.fullName || 'Authorized Manager'}
                       </div>
                     </td>
                     <td className="w-1/4 p-1.5 border-r border-black">
-                      <div className="text-[9px] text-slate-600 font-bold">Designee</div>
-                      <div className="font-medium text-slate-800 text-[10.5px]">
+                      <div className="text-[10px] text-slate-600 font-bold">Designee</div>
+                      <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDesigneeApproved || activeTemplate.designeeApproved || 'Authorized Manager / Head of Operations'}
                       </div>
                     </td>
                     <td className="w-1/4 p-1.5">
-                      <div className="text-[9px] text-slate-600 font-bold">Department</div>
-                      <div className="font-medium text-slate-800 text-[10.5px]">
+                      <div className="text-[10px] text-slate-600 font-bold">Department</div>
+                      <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDepartmentApproved || activeTemplate.departmentApproved || 'Central Operations & Quality Control'}
                       </div>
                     </td>
@@ -1333,8 +1333,8 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   {/* Row 3: Issue No & Revision Matrix */}
                   {effectiveFormat.showIsoRevisionFooter !== false && (
                     <tr>
-                      <td colSpan={2} className="p-1 border-r border-black">
-                        <div className="grid grid-cols-2 text-[9px] gap-x-2">
+                      <td colSpan={2} className="p-1.5 border-r border-black">
+                        <div className="grid grid-cols-2 text-[10px] gap-x-2">
                           <div>
                             Issue NO: <strong className="font-mono">{customIssueNo || activeTemplate.issueNo || '01'}</strong>
                           </div>
@@ -1349,8 +1349,8 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                           </div>
                         </div>
                       </td>
-                      <td className="p-1 border-r border-black">
-                        <div className="text-[8.5px] text-slate-500">
+                      <td className="p-1.5 border-r border-black">
+                        <div className="text-[9.5px] text-slate-500">
                           {effectiveFormat.signThirdLabel || 'Reviewed By'}
                         </div>
                         {revSig && (
@@ -1362,12 +1362,12 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             />
                           </div>
                         )}
-                        <div className="font-bold text-[9.5px]">
+                        <div className="font-bold text-[10.5px]">
                           {customReviewedBy || activeTemplate.reviewedBy || currentUser?.fullName || 'Authorized Officer'}
                         </div>
                       </td>
-                      <td className="p-1">
-                        <div className="text-[8.5px] text-slate-500">
+                      <td className="p-1.5">
+                        <div className="text-[9.5px] text-slate-500">
                           {effectiveFormat.signApprovedLabel || 'Approved BY'}
                         </div>
                         {apprSig && (
@@ -1379,7 +1379,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                             />
                           </div>
                         )}
-                        <div className="font-bold text-[9.5px]">
+                        <div className="font-bold text-[10.5px]">
                           {customApprovedBy || activeTemplate.approvedBy || currentUser?.fullName || 'Authorized Manager'}
                         </div>
                       </td>

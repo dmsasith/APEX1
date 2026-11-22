@@ -1496,7 +1496,7 @@ export const LetterheadTemplatesView: React.FC = () => {
 
                   {/* Dynamic Items Table Structure Preview */}
                   <div className="border border-black my-2">
-                    <table className="w-full text-[10.5px] border-collapse">
+                    <table className="w-full text-xs border-collapse letterhead-preview-table">
                       <thead>
                         <tr
                           className="font-bold text-center border-b border-black"
@@ -1532,7 +1532,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                           </td>
                           <td className="py-1.5 px-1 text-center font-mono border-r border-black">NOS</td>
                           <td className="py-1.5 px-1.5 text-right font-mono font-bold border-r border-black">100</td>
-                          <td className="py-1.5 px-2 text-slate-600 text-[10px]">ISO Verified</td>
+                          <td className="py-1.5 px-2 text-slate-600 text-[11px]">ISO Verified</td>
                         </tr>
                         <tr>
                           <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">02</td>
@@ -1542,7 +1542,7 @@ export const LetterheadTemplatesView: React.FC = () => {
                           </td>
                           <td className="py-1.5 px-1 text-center font-mono border-r border-black">MTRS</td>
                           <td className="py-1.5 px-1.5 text-right font-mono font-bold border-r border-black">250</td>
-                          <td className="py-1.5 px-2 text-slate-600 text-[10px]">ISO Verified</td>
+                          <td className="py-1.5 px-2 text-slate-600 text-[11px]">ISO Verified</td>
                         </tr>
                       </tbody>
                     </table>

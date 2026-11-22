@@ -1718,8 +1718,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           </div>
 
             <div className="overflow-x-auto flex-1 max-h-[500px]">
-              <table className="w-full min-w-[720px] text-xs text-left table-fixed">
-                <thead className="bg-slate-100/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800 sticky top-0 backdrop-blur-xs">
+              <table className="w-full min-w-[820px] text-[13.5px] text-left table-fixed">
+                <thead className="bg-slate-100/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300 font-bold uppercase text-xs tracking-wider border-b border-slate-200 dark:border-slate-800 sticky top-0 backdrop-blur-xs">
                   <tr>
                     <th className="py-3 px-3 w-[5%]">
                       <input
@@ -1733,11 +1733,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       />
                     </th>
                     <th className="py-3 px-3 w-[20%]">Item Code</th>
-                    <th className="py-3 px-4 w-[32%]">Item Name</th>
-                    <th className="py-3 px-3 w-[21%]">Category</th>
+                    <th className="py-3 px-4 w-[30%]">Item Name</th>
+                    <th className="py-3 px-3 w-[19%]">Category</th>
                     <th className="py-3 px-3 text-center w-[7%]">Unit</th>
-                    <th className="py-3 px-3 text-right w-[9%]">Main Stock</th>
-                    <th className="py-3 px-3 text-right w-[6%]">Actions</th>
+                    <th className="py-3 px-3 text-right w-[10%]">Main Stock</th>
+                    <th className="py-3 px-3 text-right w-[9%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">

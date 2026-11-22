@@ -3952,7 +3952,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setFullSiteReportProjectId(usage.parentProjectId || usage.projectId)}
-                              className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline ml-1 cursor-pointer"
+                              className="text-xs font-bold text-teal-700 hover:text-teal-900 underline ml-1 cursor-pointer"
                             >
                               Full Site Report
                             </button>
@@ -3996,7 +3996,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                     Used: {formatNumber(row.quantity)} {itm?.unit}
                                   </span>
                                   {wQty > 0 && (
-                                    <span className="font-mono font-bold text-amber-800 bg-amber-100/80 border border-amber-300 px-1.5 py-0.5 rounded text-[11px]">
+                                    <span className="font-mono font-bold text-amber-800 bg-amber-100/80 border border-amber-300 px-1.5 py-0.5 rounded text-xs">
                                       + Wastage: {formatNumber(wQty)} {itm?.unit} (Total: {formatNumber(Number(row.quantity || 0) + wQty)})
                                     </span>
                                   )}
@@ -4201,11 +4201,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 ? `Sub-Project Free Stock Usage vs. Main Project Pool (${reconcileProject.parentProjectName})`
                                 : 'Client Free-Issue Stock Reconciliation (Client / Principal FOC)'}
                             </span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
                               Official Statement
                             </span>
                           </h4>
-                          <p className="text-[11px] text-indigo-300/80">
+                          <p className="text-xs text-indigo-300/80">
                             {isReconcileMainProject
                               ? 'Total materials received under this Main Project vs. combined usage across all Sub-Projects vs. net remaining balance'
                               : reconcileProject.parentProjectId
@@ -4217,9 +4217,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
+                      <table className="w-full text-left text-[13px]">
                         <thead>
-                          <tr className="border-b border-indigo-800/80 text-indigo-300 font-bold uppercase text-[10px]">
+                          <tr className="border-b border-indigo-800/80 text-indigo-300 font-bold uppercase text-xs">
                             <th className="py-2 px-3">Item Code</th>
                             <th className="py-2 px-3">Material Description</th>
                             <th className="py-2 px-3 text-right">Received in Main Pool</th>
@@ -4248,7 +4248,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                       {foc.subProjectBreakdown.map((sb) => (
                                         <span
                                           key={sb.subProjectId}
-                                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-900/80 text-amber-200 border border-indigo-700"
+                                          className="text-[11.5px] font-mono px-1.5 py-0.5 rounded bg-indigo-900/80 text-amber-200 border border-indigo-700"
                                         >
                                           ↳ {sb.subProjectName}: {formatNumber(sb.usedQty)} {foc.unit}
                                         </span>
@@ -4257,33 +4257,33 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                   )}
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-mono text-cyan-300 font-bold">
-                                  {formatNumber(foc.totalReceived)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                  {formatNumber(foc.totalReceived)} <span className="text-xs text-indigo-300">{foc.unit}</span>
                                 </td>
                                 {reconcileProject.parentProjectId && (
                                   <td className="py-2.5 px-3 text-right font-mono text-amber-300 font-black">
-                                    {formatNumber(foc.directUsed || 0)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                    {formatNumber(foc.directUsed || 0)} <span className="text-xs text-indigo-300">{foc.unit}</span>
                                   </td>
                                 )}
                                 <td className="py-2.5 px-3 text-right font-mono text-amber-200 font-bold">
                                   <div>
-                                    {formatNumber(foc.totalUsed)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                    {formatNumber(foc.totalUsed)} <span className="text-xs text-indigo-300">{foc.unit}</span>
                                   </div>
                                   {(foc.totalWastage || 0) > 0 && (
-                                    <div className="text-[10px] text-amber-300/90">
+                                    <div className="text-[11.5px] text-amber-300/90">
                                       (Incl. {formatNumber(foc.totalWastage || 0)} wastage)
                                     </div>
                                   )}
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-300">
-                                  {formatNumber(foc.remainingBalance)} <span className="text-[10px] text-indigo-300">{foc.unit}</span>
+                                  {formatNumber(foc.remainingBalance)} <span className="text-xs text-indigo-300">{foc.unit}</span>
                                 </td>
                                 <td className="py-2.5 px-3 text-center">
                                   {isDepleted ? (
-                                    <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 rounded-md">
+                                    <span className="text-[11.5px] font-bold text-rose-300 bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 rounded-md">
                                       100% Consumed
                                     </span>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                                    <span className="text-[11.5px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-md">
                                       Balance in Hand ({formatNumber(foc.remainingBalance)} {foc.unit})
                                     </span>
                                   )}
@@ -4644,14 +4644,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
             <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-teal-800">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-black uppercase tracking-wider">
                     Full Report for This Site (Project)
                   </span>
                   <span className="font-mono text-xs text-teal-300 font-bold">
                     [{fullSiteReportData.project.projectId}]
                   </span>
                   {fullSiteReportData.isMainUmbrella && (
-                    <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-400/30 text-purple-200 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-400/30 text-purple-200 text-[11px] font-bold">
                       Includes Main + {fullSiteReportData.childSubsCount} Sub-Project(s)
                     </span>
                   )}
@@ -4659,7 +4659,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 <h2 className="text-lg sm:text-xl font-black tracking-tight mt-1">
                   {fullSiteReportData.project.projectName} — Multi-Team Usage &amp; Wastage Report
                 </h2>
-                <p className="text-xs text-teal-200/90 mt-0.5">
+                <p className="text-[13px] text-teal-200/90 mt-0.5">
                   Site Branch: <strong>{fullSiteReportData.branchName}</strong> · Section:{' '}
                   <strong>{fullSiteReportData.project.projectTypeName || 'General'}</strong> · Customer/Principal:{' '}
                   <strong>{fullSiteReportData.project.customerName || '—'}</strong>
@@ -4868,13 +4868,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
               {/* Official Document Header (Included in Print / PDF) */}
               <div className="border-b-2 border-slate-900 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="text-[11px] font-black uppercase tracking-widest text-teal-700">
+                  <div className="text-xs font-black uppercase tracking-widest text-teal-700">
                     {config.companyName || 'APEX STOCK ENTERPRISE'} — OFFICIAL PROJECT CONSUMPTION &amp; WASTAGE REPORT
                   </div>
                   <h1 className="text-lg sm:text-xl font-black text-slate-950 mt-0.5">
                     FULL REPORT FOR THIS SITE (PROJECT): [{fullSiteReportData.project.projectId}] {fullSiteReportData.project.projectName}
                   </h1>
-                  <div className="text-xs text-slate-700 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <div className="text-[13px] text-slate-700 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
                     <span>
                       Site Branch: <strong>{fullSiteReportData.branchName}</strong>
                     </span>
@@ -4900,51 +4900,51 @@ export const ProjectMaterialUsageView: React.FC = () => {
               {/* Top KPI Summary Row */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Teams Involved</div>
+                  <div className="text-[11px] font-bold uppercase text-slate-500">Teams Involved</div>
                   <div className="text-xl font-black text-slate-900 font-mono mt-0.5">
                     {fullSiteReportData.teamsBreakdown.length}
                   </div>
-                  <div className="text-[10px] text-slate-500">Separate Team Breakdowns</div>
+                  <div className="text-[11px] text-slate-500">Separate Team Breakdowns</div>
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Total Vouchers</div>
+                  <div className="text-[11px] font-bold uppercase text-slate-500">Total Vouchers</div>
                   <div className="text-xl font-black text-teal-700 font-mono mt-0.5">
                     {fullSiteReportData.vouchersCount}
                   </div>
-                  <div className="text-[10px] text-slate-500">Logged Usage Slips</div>
+                  <div className="text-[11px] text-slate-500">Logged Usage Slips</div>
                 </div>
 
                 <div className="bg-white border border-teal-200 rounded-xl p-3.5 shadow-2xs">
-                  <div className="text-[10px] font-bold uppercase text-teal-700">Full Installed Qty</div>
+                  <div className="text-[11px] font-bold uppercase text-teal-700">Full Installed Qty</div>
                   <div className="text-xl font-black text-teal-800 font-mono mt-0.5">
                     {formatNumber(fullSiteReportData.grandTotalInstalled)}
                   </div>
-                  <div className="text-[10px] text-teal-600">Net Used on Site</div>
+                  <div className="text-[11px] text-teal-600">Net Used on Site</div>
                 </div>
 
                 <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 shadow-2xs">
-                  <div className="text-[10px] font-bold uppercase text-amber-800">Full Wastage Qty</div>
+                  <div className="text-[11px] font-bold uppercase text-amber-800">Full Wastage Qty</div>
                   <div className="text-xl font-black text-amber-700 font-mono mt-0.5">
                     {formatNumber(fullSiteReportData.grandTotalWastage)}
                   </div>
-                  <div className="text-[10px] text-amber-700">Recorded Material Wastage</div>
+                  <div className="text-[11px] text-amber-700">Recorded Material Wastage</div>
                 </div>
 
                 <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 shadow-2xs">
-                  <div className="text-[10px] font-bold uppercase text-indigo-800">Full Total Consumed</div>
+                  <div className="text-[11px] font-bold uppercase text-indigo-800">Full Total Consumed</div>
                   <div className="text-xl font-black text-indigo-900 font-mono mt-0.5">
                     {formatNumber(fullSiteReportData.grandTotalConsumed)}
                   </div>
-                  <div className="text-[10px] text-indigo-700">Installed + Wastage</div>
+                  <div className="text-[11px] text-indigo-700">Installed + Wastage</div>
                 </div>
 
                 <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 shadow-2xs">
-                  <div className="text-[10px] font-bold uppercase text-emerald-800">Full Material Value</div>
+                  <div className="text-[11px] font-bold uppercase text-emerald-800">Full Material Value</div>
                   <div className="text-lg font-black text-emerald-900 font-mono mt-0.5">
                     {config.currencySymbol || 'Rs.'} {formatNumber(fullSiteReportData.grandTotalCost)}
                   </div>
-                  <div className="text-[10px] text-emerald-700">Combined Project Cost</div>
+                  <div className="text-[11px] text-emerald-700">Combined Project Cost</div>
                 </div>
               </div>
 
@@ -5015,8 +5015,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               {teamGrp.teamName} — Material Summary &amp; Team Subtotal
                             </div>
                             <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                              <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
+                              <table className="w-full text-left text-[13px]">
+                                <thead className="bg-slate-100 text-slate-700 text-xs font-bold uppercase border-b border-slate-200">
                                   <tr>
                                     <th className="py-2 px-3">#</th>
                                     <th className="py-2 px-3">Item Code</th>
@@ -5052,7 +5052,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 </tbody>
                                 <tfoot className="bg-slate-900 text-white font-bold border-t-2 border-slate-800">
                                   <tr>
-                                    <td colSpan={4} className="py-2.5 px-3 text-right uppercase tracking-wider text-[11px] text-teal-300">
+                                    <td colSpan={4} className="py-2.5 px-3 text-right uppercase tracking-wider text-xs text-teal-300">
                                       Subtotal for {teamGrp.teamName}:
                                     </td>
                                     <td className="py-2.5 px-3 text-right font-mono text-teal-300">
@@ -5079,11 +5079,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               <span>
                                 View Voucher-by-Voucher Log for {teamGrp.teamName} ({teamGrp.voucherLines.length} item entries)
                               </span>
-                              <span className="text-[11px] text-teal-700 group-open:rotate-180 transition-transform">▼</span>
+                              <span className="text-xs text-teal-700 group-open:rotate-180 transition-transform">▼</span>
                             </summary>
                             <div className="p-3 pt-0 overflow-x-auto">
-                              <table className="w-full text-left text-[11px] bg-white border border-slate-200 rounded-lg">
-                                <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                              <table className="w-full text-left text-[13px] bg-white border border-slate-200 rounded-lg">
+                                <thead className="bg-slate-100 text-slate-600 text-xs font-bold uppercase border-b border-slate-200">
                                   <tr>
                                     <th className="py-1.5 px-2.5">Date</th>
                                     <th className="py-1.5 px-2.5">Voucher #</th>
@@ -5144,8 +5144,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     </div>
 
                     <div className="p-4 overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100 text-slate-800 font-extrabold uppercase border-b-2 border-slate-300">
+                      <table className="w-full text-left text-[13px]">
+                        <thead className="bg-slate-100 text-slate-800 text-xs font-extrabold uppercase border-b-2 border-slate-300">
                           <tr>
                             <th className="py-2.5 px-3">#</th>
                             <th className="py-2.5 px-3">Item Code</th>
@@ -5169,7 +5169,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                   {mat.teamsList.map((tn) => (
                                     <span
                                       key={tn}
-                                      className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700"
+                                      className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 text-[11px] font-bold text-slate-700"
                                     >
                                       {tn}
                                     </span>
@@ -5216,18 +5216,18 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
 
                   {/* Official Sign-Off Footer for Printed / Saved PDF Report */}
-                  <div className="pt-6 mt-4 border-t-2 border-slate-300 grid grid-cols-3 gap-6 text-xs text-slate-800">
+                  <div className="pt-6 mt-4 border-t-2 border-slate-300 grid grid-cols-3 gap-6 text-[13px] text-slate-800">
                     <div className="text-center pt-6 border-t border-slate-400">
                       <div className="font-bold text-slate-900">Prepared By</div>
-                      <div className="text-[11px] text-slate-500">Site Storekeeper / Supervisor</div>
+                      <div className="text-xs text-slate-500">Site Storekeeper / Supervisor</div>
                     </div>
                     <div className="text-center pt-6 border-t border-slate-400">
                       <div className="font-bold text-slate-900">Checked &amp; Verified By</div>
-                      <div className="text-[11px] text-slate-500">Project Engineer / Branch Manager</div>
+                      <div className="text-xs text-slate-500">Project Engineer / Branch Manager</div>
                     </div>
                     <div className="text-center pt-6 border-t border-slate-400">
                       <div className="font-bold text-slate-900">Approved By</div>
-                      <div className="text-[11px] text-slate-500">Central Logistics / Management</div>
+                      <div className="text-xs text-slate-500">Central Logistics / Management</div>
                     </div>
                   </div>
                 </>

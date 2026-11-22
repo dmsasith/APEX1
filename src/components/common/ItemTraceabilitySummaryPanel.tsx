@@ -2467,31 +2467,31 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           <div className="grid grid-cols-5 gap-2 text-center border-2 border-slate-800 p-2.5 bg-white">
             {grandTotals.hasFocFlow ? (
               <div className="border-r border-slate-300 pr-2">
-                <div className="text-[10px] font-extrabold uppercase text-indigo-900">
+                <div className="text-[11px] font-extrabold uppercase text-indigo-900">
                   1. FOC Central Receipt
                 </div>
                 <div className="text-sm font-black font-mono text-indigo-900 mt-0.5">
                   {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
                 </div>
-                <div className="text-[9px] text-slate-600">
+                <div className="text-[10.5px] text-slate-600">
                   Central Pool Rem: {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
                 </div>
               </div>
             ) : (
               <div className="border-r border-slate-300 pr-2">
-                <div className="text-[10px] font-extrabold uppercase text-slate-800">
+                <div className="text-[11px] font-extrabold uppercase text-slate-800">
                   1. Central HQ Pool
                 </div>
                 <div className="text-sm font-black font-mono text-slate-900 mt-0.5">
                   {formatNumber(mainStock.companyReceived)} {item.unit}
                 </div>
-                <div className="text-[9px] text-slate-600">
+                <div className="text-[10.5px] text-slate-600">
                   HQ In-Hand: {formatNumber(grandTotals.centralNormalInHand)} {item.unit}
                 </div>
               </div>
             )}
             <div className="border-r border-slate-300 pr-2">
-              <div className="text-[10px] font-extrabold uppercase text-slate-800">
+              <div className="text-[11px] font-extrabold uppercase text-slate-800">
                 2. Site Issue (HQ → Site)
               </div>
               {grandTotals.hasFocFlow ? (
@@ -2500,7 +2500,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                     {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit} (FOC)
                   </div>
                   {!focProjectId && grandTotals.effectiveSiteNormalIssued > 0 && (
-                    <div className="text-[9px] text-slate-600">
+                    <div className="text-[10.5px] text-slate-600">
                       + Normal HQ: {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
                     </div>
                   )}
@@ -2510,53 +2510,53 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                   <div className="text-sm font-black font-mono text-slate-900 mt-0.5">
                     {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
                   </div>
-                  <div className="text-[9px] text-slate-600">Normal HQ Issue</div>
+                  <div className="text-[10.5px] text-slate-600">Normal HQ Issue</div>
                 </>
               )}
             </div>
             <div className="border-r border-slate-300 pr-2">
-              <div className="text-[10px] font-extrabold uppercase text-blue-900">
+              <div className="text-[11px] font-extrabold uppercase text-blue-900">
                 3. Team Issue (Site → Team)
               </div>
               <div className="text-sm font-black font-mono text-blue-800 mt-0.5">
                 {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
               </div>
-              <div className="text-[9px] text-slate-600">
+              <div className="text-[10.5px] text-slate-600">
                 Ret Good: +{formatNumber(grandTotals.stage3TeamReturnedGood)} | In-Hand: {formatNumber(grandTotals.allTeamsInHand)}
               </div>
             </div>
             <div className="border-r border-slate-300 pr-2">
-              <div className="text-[10px] font-extrabold uppercase text-teal-900">
+              <div className="text-[11px] font-extrabold uppercase text-teal-900">
                 4. Usage &amp; Wastage
               </div>
               <div className="text-sm font-black font-mono text-slate-900 mt-0.5">
                 {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit}
               </div>
-              <div className="text-[9px] text-slate-600">
+              <div className="text-[10.5px] text-slate-600">
                 Used: {formatNumber(grandTotals.stage4Used)} | Waste: {formatNumber(grandTotals.stage4Wastage)}
               </div>
             </div>
             {grandTotals.hasFocFlow ? (
               <div>
-                <div className="text-[10px] font-extrabold uppercase text-emerald-900">
+                <div className="text-[11px] font-extrabold uppercase text-emerald-900">
                   5. Balance / Returnable
                 </div>
                 <div className="text-sm font-black font-mono text-emerald-800 mt-0.5">
                   Site FOC: {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
                 </div>
-                <div className="text-[9px] font-bold text-emerald-900">
+                <div className="text-[10.5px] font-bold text-emerald-900">
                   Total Client Returnable: {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
                 </div>
               </div>
             ) : (
               <div>
-                <div className="text-[10px] font-extrabold uppercase text-emerald-900">
+                <div className="text-[11px] font-extrabold uppercase text-emerald-900">
                   5. Available Site Balance
                 </div>
                 <div className="text-sm font-black font-mono text-emerald-800 mt-0.5">
                   {formatNumber(grandTotals.siteSpecificStock?.availableBalance ?? grandTotals.centralInHand)} {item.unit}
                 </div>
-                <div className="text-[9px] font-bold text-emerald-900">
+                <div className="text-[10.5px] font-bold text-emerald-900">
                   Physical Site Yard Stock
                 </div>
               </div>
@@ -2569,28 +2569,28 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
               <h3 className="text-xs font-black uppercase tracking-wider bg-indigo-50 px-2.5 py-1.5 border border-slate-300">
                 1. FOC Central Stock Receipt (Initial Client FOC Vouchers Received at Central Warehouse)
               </h3>
-              <table className="w-full text-[11px] border-collapse border border-slate-300">
+              <table className="w-full text-xs border-collapse border border-slate-300">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="border border-slate-300 p-1.5 text-left">FOC Voucher #</th>
-                    <th className="border border-slate-300 p-1.5 text-left">Client &amp; Dispatch Note</th>
-                    <th className="border border-slate-300 p-1.5 text-left">Project &amp; Allocated Site</th>
-                    <th className="border border-slate-300 p-1.5 text-left">Received Date</th>
-                    <th className="border border-slate-300 p-1.5 text-right">Initial FOC Qty ({item.unit})</th>
+                    <th className="border border-slate-300 p-2 text-left">FOC Voucher #</th>
+                    <th className="border border-slate-300 p-2 text-left">Client &amp; Dispatch Note</th>
+                    <th className="border border-slate-300 p-2 text-left">Project &amp; Allocated Site</th>
+                    <th className="border border-slate-300 p-2 text-left">Received Date</th>
+                    <th className="border border-slate-300 p-2 text-right">Initial FOC Qty ({item.unit})</th>
                   </tr>
                 </thead>
                 <tbody>
                   {initialCentralFocReceipts.map((foc) => (
                     <tr key={foc.id}>
-                      <td className="border border-slate-300 p-1.5 font-mono font-bold">{foc.voucherNo}</td>
-                      <td className="border border-slate-300 p-1.5">
+                      <td className="border border-slate-300 p-2 font-mono font-bold">{foc.voucherNo}</td>
+                      <td className="border border-slate-300 p-2">
                         {foc.clientName} (DN: {foc.dispatchNoteNo})
                       </td>
-                      <td className="border border-slate-300 p-1.5">
+                      <td className="border border-slate-300 p-2">
                         {foc.projectName} — Site: {foc.assignedSiteName}
                       </td>
-                      <td className="border border-slate-300 p-1.5">{formatDateTime(foc.date)}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      <td className="border border-slate-300 p-2">{formatDateTime(foc.date)}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                         +{formatNumber(foc.qty)}
                       </td>
                     </tr>
@@ -2605,15 +2605,15 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
             <h3 className="text-xs font-black uppercase tracking-wider bg-slate-100 px-2.5 py-1.5 border border-slate-300">
               2. Site Issue — Transfers Issued from Central Stock to {targetSite?.name || 'Site Branch(es)'}
             </h3>
-            <table className="w-full text-[11px] border-collapse border border-slate-300">
+            <table className="w-full text-xs border-collapse border border-slate-300">
               <thead>
                 <tr className="bg-slate-50">
-                  <th className="border border-slate-300 p-1.5 text-left">Requisition #</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Stock Tag</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Category &amp; Site</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Date</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Status</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Qty ({item.unit})</th>
+                  <th className="border border-slate-300 p-2 text-left">Requisition #</th>
+                  <th className="border border-slate-300 p-2 text-left">Stock Tag</th>
+                  <th className="border border-slate-300 p-2 text-left">Category &amp; Site</th>
+                  <th className="border border-slate-300 p-2 text-left">Date</th>
+                  <th className="border border-slate-300 p-2 text-left">Status</th>
+                  <th className="border border-slate-300 p-2 text-right">Qty ({item.unit})</th>
                 </tr>
               </thead>
               <tbody>
@@ -2626,16 +2626,16 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                 ) : (
                   displayedSiteTransfers.map((tr) => (
                     <tr key={tr.id}>
-                      <td className="border border-slate-300 p-1.5 font-mono font-bold">{tr.voucherNo}</td>
-                      <td className="border border-slate-300 p-1.5 font-bold">
+                      <td className="border border-slate-300 p-2 font-mono font-bold">{tr.voucherNo}</td>
+                      <td className="border border-slate-300 p-2 font-bold">
                         {tr.isCentralFoc ? '[CENTRAL FOC]' : 'Normal HQ'}
                       </td>
-                      <td className="border border-slate-300 p-1.5">
+                      <td className="border border-slate-300 p-2">
                         {tr.category} ({tr.siteName})
                       </td>
-                      <td className="border border-slate-300 p-1.5">{formatDateTime(tr.date)}</td>
-                      <td className="border border-slate-300 p-1.5">{tr.status}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      <td className="border border-slate-300 p-2">{formatDateTime(tr.date)}</td>
+                      <td className="border border-slate-300 p-2">{tr.status}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                         +{formatNumber(tr.qty)}
                       </td>
                     </tr>
@@ -2650,16 +2650,16 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
             <h3 className="text-xs font-black uppercase tracking-wider bg-slate-100 px-2.5 py-1.5 border border-slate-300">
               3. Team Issue — Field Teams Allocation, Returns &amp; Team In-Hand
             </h3>
-            <table className="w-full text-[11px] border-collapse border border-slate-300">
+            <table className="w-full text-xs border-collapse border border-slate-300">
               <thead>
                 <tr className="bg-slate-50">
-                  <th className="border border-slate-300 p-1.5 text-left">Field Team</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Site Branch</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Team Issue</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Returned (G/D)</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Used</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Wasted</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Team In-Hand</th>
+                  <th className="border border-slate-300 p-2 text-left">Field Team</th>
+                  <th className="border border-slate-300 p-2 text-left">Site Branch</th>
+                  <th className="border border-slate-300 p-2 text-right">Team Issue</th>
+                  <th className="border border-slate-300 p-2 text-right">Returned (G/D)</th>
+                  <th className="border border-slate-300 p-2 text-right">Used</th>
+                  <th className="border border-slate-300 p-2 text-right">Wasted</th>
+                  <th className="border border-slate-300 p-2 text-right">Team In-Hand</th>
                 </tr>
               </thead>
               <tbody>
@@ -2672,17 +2672,17 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                 ) : (
                   teamBreakdown.map((tb) => (
                     <tr key={tb.team.id}>
-                      <td className="border border-slate-300 p-1.5 font-bold">
+                      <td className="border border-slate-300 p-2 font-bold">
                         {tb.team.teamName} ({tb.team.teamLeaderName})
                       </td>
-                      <td className="border border-slate-300 p-1.5">{tb.siteName}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono">{formatNumber(tb.issuedQty)}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono">
+                      <td className="border border-slate-300 p-2">{tb.siteName}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono">{formatNumber(tb.issuedQty)}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono">
                         {formatNumber(tb.returnedGoodQty)} / {formatNumber(tb.returnedDamagedQty)}
                       </td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono">{formatNumber(tb.usedQty)}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono">{formatNumber(tb.wastedQty)}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      <td className="border border-slate-300 p-2 text-right font-mono">{formatNumber(tb.usedQty)}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono">{formatNumber(tb.wastedQty)}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                         {formatNumber(tb.inHandQty)} {item.unit}
                       </td>
                     </tr>
@@ -2699,15 +2699,15 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
             </h3>
 
             {subProjectFlowSections.length > 0 && (
-              <table className="w-full text-[11px] border-collapse border border-slate-300 mb-2">
+              <table className="w-full text-xs border-collapse border border-slate-300 mb-2">
                 <thead>
                   <tr className="bg-teal-50">
-                    <th className="border border-slate-300 p-1.5 text-left">Sub-Project Code &amp; Name</th>
-                    <th className="border border-slate-300 p-1.5 text-center">Vouchers</th>
-                    <th className="border border-slate-300 p-1.5 text-right">Used ({item.unit})</th>
-                    <th className="border border-slate-300 p-1.5 text-right">Wastage ({item.unit})</th>
-                    <th className="border border-slate-300 p-1.5 text-right">Total Consumed ({item.unit})</th>
-                    <th className="border border-slate-300 p-1.5 text-right">Share %</th>
+                    <th className="border border-slate-300 p-2 text-left">Sub-Project Code &amp; Name</th>
+                    <th className="border border-slate-300 p-2 text-center">Vouchers</th>
+                    <th className="border border-slate-300 p-2 text-right">Used ({item.unit})</th>
+                    <th className="border border-slate-300 p-2 text-right">Wastage ({item.unit})</th>
+                    <th className="border border-slate-300 p-2 text-right">Total Consumed ({item.unit})</th>
+                    <th className="border border-slate-300 p-2 text-right">Share %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2718,22 +2718,22 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                         : 0;
                     return (
                       <tr key={spf.subProject.id}>
-                        <td className="border border-slate-300 p-1.5 font-bold">
+                        <td className="border border-slate-300 p-2 font-bold">
                           [{spf.subProject.projectId}] {spf.subProject.projectName}
                         </td>
-                        <td className="border border-slate-300 p-1.5 text-center font-mono">
+                        <td className="border border-slate-300 p-2 text-center font-mono">
                           {spf.spLogs.length}
                         </td>
-                        <td className="border border-slate-300 p-1.5 text-right font-mono">
+                        <td className="border border-slate-300 p-2 text-right font-mono">
                           {formatNumber(spf.spUsed)}
                         </td>
-                        <td className="border border-slate-300 p-1.5 text-right font-mono">
+                        <td className="border border-slate-300 p-2 text-right font-mono">
                           {formatNumber(spf.spWastage)}
                         </td>
-                        <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                        <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                           {formatNumber(spf.spTotalConsumed)} {item.unit}
                         </td>
-                        <td className="border border-slate-300 p-1.5 text-right font-mono">
+                        <td className="border border-slate-300 p-2 text-right font-mono">
                           {sharePct}%
                         </td>
                       </tr>
@@ -2743,16 +2743,16 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
               </table>
             )}
 
-            <table className="w-full text-[11px] border-collapse border border-slate-300">
+            <table className="w-full text-xs border-collapse border border-slate-300">
               <thead>
                 <tr className="bg-slate-50">
-                  <th className="border border-slate-300 p-1.5 text-left">Voucher #</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Date</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Sub-Project / Project</th>
-                  <th className="border border-slate-300 p-1.5 text-left">Site &amp; Team</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Usage</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Wastage</th>
-                  <th className="border border-slate-300 p-1.5 text-right">Total</th>
+                  <th className="border border-slate-300 p-2 text-left">Voucher #</th>
+                  <th className="border border-slate-300 p-2 text-left">Date</th>
+                  <th className="border border-slate-300 p-2 text-left">Sub-Project / Project</th>
+                  <th className="border border-slate-300 p-2 text-left">Site &amp; Team</th>
+                  <th className="border border-slate-300 p-2 text-right">Usage</th>
+                  <th className="border border-slate-300 p-2 text-right">Wastage</th>
+                  <th className="border border-slate-300 p-2 text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -2765,17 +2765,17 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                 ) : (
                   projectUsageLogs.map((log) => (
                     <tr key={log.id}>
-                      <td className="border border-slate-300 p-1.5 font-mono font-bold">{log.voucherNo}</td>
-                      <td className="border border-slate-300 p-1.5">{formatDateTime(log.date)}</td>
-                      <td className="border border-slate-300 p-1.5 font-semibold">
+                      <td className="border border-slate-300 p-2 font-mono font-bold">{log.voucherNo}</td>
+                      <td className="border border-slate-300 p-2">{formatDateTime(log.date)}</td>
+                      <td className="border border-slate-300 p-2 font-semibold">
                         [{log.projectCode}] {log.projectName}
                       </td>
-                      <td className="border border-slate-300 p-1.5">
+                      <td className="border border-slate-300 p-2">
                         {log.siteName} — {log.teamName}
                       </td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono">{formatNumber(log.usedQty)}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono">{formatNumber(log.wastedQty)}</td>
-                      <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                      <td className="border border-slate-300 p-2 text-right font-mono">{formatNumber(log.usedQty)}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono">{formatNumber(log.wastedQty)}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                         {formatNumber(log.totalDeducted)} {item.unit}
                       </td>
                     </tr>
@@ -2793,70 +2793,70 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                 : '5. Site Material Balance & Reconciliation Statement'}
             </h3>
             {grandTotals.hasFocFlow ? (
-              <table className="w-full text-[11px] border-collapse border border-slate-300">
+              <table className="w-full text-xs border-collapse border border-slate-300">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="border border-slate-300 p-1.5 text-right">1. Central FOC Receipt</th>
-                    <th className="border border-slate-300 p-1.5 text-right">2. Site Issue (FOC)</th>
-                    <th className="border border-slate-300 p-1.5 text-right">Central Pool Rem.</th>
-                    <th className="border border-slate-300 p-1.5 text-right">3. Team Issue</th>
-                    <th className="border border-slate-300 p-1.5 text-right">4. Usage + Wastage</th>
-                    <th className="border border-slate-300 p-1.5 text-right">5a. Site FOC Returnable</th>
-                    <th className="border border-slate-300 p-1.5 text-right">5b. Total Client Returnable</th>
+                    <th className="border border-slate-300 p-2 text-right">1. Central FOC Receipt</th>
+                    <th className="border border-slate-300 p-2 text-right">2. Site Issue (FOC)</th>
+                    <th className="border border-slate-300 p-2 text-right">Central Pool Rem.</th>
+                    <th className="border border-slate-300 p-2 text-right">3. Team Issue</th>
+                    <th className="border border-slate-300 p-2 text-right">4. Usage + Wastage</th>
+                    <th className="border border-slate-300 p-2 text-right">5a. Site FOC Returnable</th>
+                    <th className="border border-slate-300 p-2 text-right">5b. Total Client Returnable</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                    <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                       {formatNumber(grandTotals.stage1InitialCentralFoc)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                    <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                       {formatNumber(grandTotals.effectiveSiteFocIssued)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                    <td className="border border-slate-300 p-2 text-right font-mono">
                       {formatNumber(grandTotals.centralFocPoolRemaining)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                    <td className="border border-slate-300 p-2 text-right font-mono">
                       {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                    <td className="border border-slate-300 p-2 text-right font-mono">
                       {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit} ({formatNumber(grandTotals.stage4Used)} + {formatNumber(grandTotals.stage4Wastage)})
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                    <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                       {formatNumber(grandTotals.stage5SiteFocReturnableBalance)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono font-black">
+                    <td className="border border-slate-300 p-2 text-right font-mono font-black">
                       {formatNumber(grandTotals.stage5TotalProjectReturnableToClient)} {item.unit}
                     </td>
                   </tr>
                 </tbody>
               </table>
             ) : (
-              <table className="w-full text-[11px] border-collapse border border-slate-300">
+              <table className="w-full text-xs border-collapse border border-slate-300">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="border border-slate-300 p-1.5 text-right">1. Central HQ Stock</th>
-                    <th className="border border-slate-300 p-1.5 text-right">2. Site Issue (Normal HQ)</th>
-                    <th className="border border-slate-300 p-1.5 text-right">3. Team Issue</th>
-                    <th className="border border-slate-300 p-1.5 text-right">4. Usage + Wastage</th>
-                    <th className="border border-slate-300 p-1.5 text-right">5. Available Site Balance</th>
+                    <th className="border border-slate-300 p-2 text-right">1. Central HQ Stock</th>
+                    <th className="border border-slate-300 p-2 text-right">2. Site Issue (Normal HQ)</th>
+                    <th className="border border-slate-300 p-2 text-right">3. Team Issue</th>
+                    <th className="border border-slate-300 p-2 text-right">4. Usage + Wastage</th>
+                    <th className="border border-slate-300 p-2 text-right">5. Available Site Balance</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                    <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                       {formatNumber(mainStock.companyReceived)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">
+                    <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                       {formatNumber(grandTotals.effectiveSiteNormalIssued)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                    <td className="border border-slate-300 p-2 text-right font-mono">
                       {formatNumber(grandTotals.stage3TeamIssued)} {item.unit}
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono">
+                    <td className="border border-slate-300 p-2 text-right font-mono">
                       {formatNumber(grandTotals.stage4TotalConsumed)} {item.unit} ({formatNumber(grandTotals.stage4Used)} + {formatNumber(grandTotals.stage4Wastage)})
                     </td>
-                    <td className="border border-slate-300 p-1.5 text-right font-mono font-black">
+                    <td className="border border-slate-300 p-2 text-right font-mono font-black">
                       {formatNumber(grandTotals.siteSpecificStock?.availableBalance ?? grandTotals.centralInHand)} {item.unit}
                     </td>
                   </tr>

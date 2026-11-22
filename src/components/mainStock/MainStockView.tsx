@@ -544,27 +544,27 @@ export const MainStockView: React.FC = () => {
       )}
 
       {/* Unified Enterprise Command & Filter Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        {/* Tier 1: Primary Mode Tabs + Search Input */}
-        <div className="p-3.5 sm:px-5 sm:py-3.5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-50/60 border-b border-slate-200/80">
-          {/* Segmented Mode Tabs */}
-          <div className="flex flex-wrap items-center gap-2 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/90">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+        {/* Tier 1: Tactile Mode Buttons + Search Input */}
+        <div className="px-3.5 sm:px-5 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 bg-slate-50/80 border-b border-slate-200/90">
+          {/* Separated Mode Buttons */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5 xl:pb-0">
             <button
               type="button"
               onClick={() => setActiveTab('inventory')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
+              className={`h-9 px-3 rounded-xl border text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'inventory'
-                  ? 'bg-slate-900 text-white border-slate-950 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-slate-50 hover:border-slate-400 hover:text-slate-950'
+                  ? 'bg-[#071128] text-white border-[#071128] shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-200/95 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-950 shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
               }`}
             >
-              <Boxes className={`w-3.5 h-3.5 ${activeTab === 'inventory' ? 'text-emerald-400' : 'text-slate-600'}`} />
+              <Boxes className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'inventory' ? 'text-amber-400' : 'text-emerald-600'}`} />
               <span>Central Stock Inventory</span>
               <span
-                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums ${
                   activeTab === 'inventory'
-                    ? 'bg-slate-800 text-emerald-300'
-                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    ? 'bg-amber-400 text-[#071026]'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200/80'
                 }`}
               >
                 {activeItems.length}
@@ -574,19 +574,19 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('returned-sites')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
+              className={`h-9 px-3 rounded-xl border text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'returned-sites'
                   ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-teal-50/70 hover:border-teal-300 hover:text-teal-900'
+                  : 'bg-white text-slate-700 border-slate-200/95 hover:bg-teal-50/60 hover:border-teal-300 hover:text-teal-900 shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
               }`}
             >
-              <RotateCcw className={`w-3.5 h-3.5 ${activeTab === 'returned-sites' ? 'text-teal-100' : 'text-teal-600'}`} />
+              <RotateCcw className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'returned-sites' ? 'text-teal-100' : 'text-teal-600'}`} />
               <span>Returned From Sites</span>
               <span
-                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums ${
                   activeTab === 'returned-sites'
-                    ? 'bg-teal-900 text-teal-200'
-                    : 'bg-teal-50 text-teal-800 border border-teal-200'
+                    ? 'bg-teal-900 text-teal-100'
+                    : 'bg-teal-50 text-teal-800 border border-teal-200/80'
                 }`}
               >
                 {goodReturns.length}
@@ -596,19 +596,19 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('damaged-returned')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
+              className={`h-9 px-3 rounded-xl border text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'damaged-returned'
                   ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-amber-50/70 hover:border-amber-300 hover:text-amber-900'
+                  : 'bg-white text-slate-700 border-slate-200/95 hover:bg-amber-50/60 hover:border-amber-300 hover:text-amber-900 shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
               }`}
             >
-              <ShieldAlert className={`w-3.5 h-3.5 ${activeTab === 'damaged-returned' ? 'text-amber-100' : 'text-amber-600'}`} />
+              <ShieldAlert className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'damaged-returned' ? 'text-amber-100' : 'text-amber-600'}`} />
               <span>Damaged / Scrap Yard</span>
               <span
-                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums ${
                   activeTab === 'damaged-returned'
                     ? 'bg-amber-800 text-amber-100'
-                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200/80'
                 }`}
               >
                 {totalDamagedUnitsInYard}
@@ -618,19 +618,19 @@ export const MainStockView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
+              className={`h-9 px-3 rounded-xl border text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'history'
                   ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-300/90 shadow-2xs hover:bg-blue-50/70 hover:border-blue-300 hover:text-blue-900'
+                  : 'bg-white text-slate-700 border-slate-200/95 hover:bg-blue-50/60 hover:border-blue-300 hover:text-blue-900 shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
               }`}
             >
-              <History className={`w-3.5 h-3.5 ${activeTab === 'history' ? 'text-blue-100' : 'text-blue-600'}`} />
+              <History className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'history' ? 'text-blue-100' : 'text-blue-600'}`} />
               <span>Inbound Receipts History</span>
               <span
-                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums ${
                   activeTab === 'history'
                     ? 'bg-blue-800 text-blue-100'
-                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    : 'bg-blue-50 text-blue-800 border border-blue-200/80'
                 }`}
               >
                 {mainStockEntries.length}
@@ -639,14 +639,14 @@ export const MainStockView: React.FC = () => {
           </div>
 
           {/* Global Search Input */}
-          <div className="relative w-full xl:w-80 2xl:w-96 shrink-0">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <div className="relative w-full xl:w-72 2xl:w-80 shrink-0">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search by Item Code, Name, Category, Slip #..."
+              placeholder="Search Code, Name, Category, Slip #..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200/90 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs focus:outline-none"
+              className="h-9 w-full pl-9 pr-8 bg-white border border-slate-200 focus:border-[#071128] focus:ring-2 focus:ring-slate-900/10 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors focus:outline-none"
             />
             {searchQuery && (
               <button
@@ -661,141 +661,150 @@ export const MainStockView: React.FC = () => {
           </div>
         </div>
 
-        {/* Tier 2: Contextual Filters Bar */}
+        {/* Tier 2: Separated Tactile Filter Buttons */}
         {activeTab === 'inventory' && (
-          <div className="px-3.5 py-3 sm:px-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs bg-white">
-            {/* Classification Segmented Control */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Classification:
-              </span>
-              <div className="inline-flex flex-wrap items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setItemTypeFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer active:scale-[0.98] ${
+          <div className="px-3.5 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2.5 text-xs bg-white">
+            {/* Classification Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setItemTypeFilter('all')}
+                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  itemTypeFilter === 'all'
+                    ? 'bg-[#071128] text-white border-[#071128] shadow-xs'
+                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300 hover:text-slate-950 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                <span>All Items</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded font-mono text-[10px] tabular-nums ${
                     itemTypeFilter === 'all'
-                      ? 'bg-slate-900 text-white border-slate-950 shadow-sm'
-                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-slate-50 hover:border-slate-400 hover:text-slate-950'
+                      ? 'bg-amber-400 text-[#071026] font-bold'
+                      : 'bg-white text-slate-700 border border-slate-200'
                   }`}
                 >
-                  All Items ({activeItems.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setItemTypeFilter('Material')}
-                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
+                  {activeItems.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemTypeFilter('Material')}
+                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  itemTypeFilter === 'Material'
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-indigo-50/60 hover:border-indigo-300 hover:text-indigo-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                <span>Materials & Consumables</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded font-mono text-[10px] tabular-nums ${
                     itemTypeFilter === 'Material'
-                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-800'
+                      ? 'bg-indigo-800 text-white font-bold'
+                      : 'bg-white text-slate-700 border border-slate-200'
                   }`}
                 >
-                  <span>Materials & Consumables</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
-                      itemTypeFilter === 'Material'
-                        ? 'bg-indigo-800 text-white'
-                        : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}
-                  >
-                    {materialsCount}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setItemTypeFilter('Machinery')}
-                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
+                  {materialsCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemTypeFilter('Machinery')}
+                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  itemTypeFilter === 'Machinery'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-amber-50/60 hover:border-amber-300 hover:text-amber-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                <span>Machinery & Equipment</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded font-mono text-[10px] tabular-nums ${
                     itemTypeFilter === 'Machinery'
-                      ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
-                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800'
+                      ? 'bg-amber-800 text-white font-bold'
+                      : 'bg-white text-slate-700 border border-slate-200'
                   }`}
                 >
-                  <span>Machinery & Equipment</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
-                      itemTypeFilter === 'Machinery'
-                        ? 'bg-amber-800 text-white'
-                        : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}
-                  >
-                    {machineryCount}
-                  </span>
-                </button>
-              </div>
+                  {machineryCount}
+                </span>
+              </button>
             </div>
 
-            {/* Stock Level & Category Controls */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Stock Level:
-              </span>
-              <div className="inline-flex flex-wrap items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAvailabilityFilter('all');
-                    setOnlyAvailable(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                    availabilityFilter === 'all' && !onlyAvailable
-                      ? 'bg-slate-900 text-white border-slate-950 shadow-sm'
-                      : 'bg-white text-slate-700 border-slate-300 shadow-2xs hover:bg-slate-50 hover:border-slate-400 hover:text-slate-950'
+            {/* Stock Level Buttons & Category Select (Aligned Horizontally) */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setAvailabilityFilter('all');
+                  setOnlyAvailable(false);
+                }}
+                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  availabilityFilter === 'all' && !onlyAvailable
+                    ? 'bg-[#071128] text-white border-[#071128] shadow-xs'
+                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300 hover:text-slate-950 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAvailabilityFilter('in-stock');
+                  setOnlyAvailable(true);
+                }}
+                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  availabilityFilter === 'in-stock' || onlyAvailable
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                    : 'bg-slate-50/70 text-emerald-800 border-slate-200 hover:bg-emerald-50/70 hover:border-emerald-300 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                <CheckCircle2
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    availabilityFilter === 'in-stock' || onlyAvailable ? 'text-white' : 'text-emerald-600'
                   }`}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAvailabilityFilter('in-stock');
-                    setOnlyAvailable(true);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-[0.98] ${
-                    availabilityFilter === 'in-stock' || onlyAvailable
-                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
-                      : 'bg-white text-emerald-800 border-emerald-300 shadow-2xs hover:bg-emerald-50 hover:border-emerald-400'
+                />
+                <span className="tabular-nums">In Stock ({availableStockItemsCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAvailabilityFilter('low-stock');
+                  setOnlyAvailable(false);
+                }}
+                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  availabilityFilter === 'low-stock'
+                    ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
+                    : 'bg-slate-50/70 text-amber-800 border-slate-200 hover:bg-amber-50/70 hover:border-amber-300 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                <AlertTriangle
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    availabilityFilter === 'low-stock' ? 'text-slate-950' : 'text-amber-500'
                   }`}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>In Stock ({availableStockItemsCount})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAvailabilityFilter('low-stock');
-                    setOnlyAvailable(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-[0.98] ${
-                    availabilityFilter === 'low-stock'
-                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
-                      : 'bg-white text-amber-800 border-amber-300 shadow-2xs hover:bg-amber-50 hover:border-amber-400'
-                  }`}
-                >
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>Low ({lowStockCount})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAvailabilityFilter('out-of-stock');
-                    setOnlyAvailable(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                    availabilityFilter === 'out-of-stock'
-                      ? 'bg-rose-600 text-white border-rose-700 shadow-sm'
-                      : 'bg-white text-rose-700 border-rose-300 shadow-2xs hover:bg-rose-50 hover:border-rose-400'
-                  }`}
-                >
-                  Out of Stock ({outOfStockCount})
-                </button>
-              </div>
+                />
+                <span className="tabular-nums">Low ({lowStockCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAvailabilityFilter('out-of-stock');
+                  setOnlyAvailable(false);
+                }}
+                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  availabilityFilter === 'out-of-stock'
+                    ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
+                    : 'bg-slate-50/70 text-rose-700 border-slate-200 hover:bg-rose-50/70 hover:border-rose-300 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                <span className="tabular-nums">Out of Stock ({outOfStockCount})</span>
+              </button>
 
-              <div className="flex items-center gap-1.5 bg-white border border-slate-300 hover:border-slate-400 rounded-xl px-3 py-2 shadow-2xs transition-colors">
+              <span className="hidden sm:block h-5 w-px bg-slate-200 mx-0.5" aria-hidden="true" />
+
+              <div className="h-8 flex items-center gap-1.5 bg-slate-50/70 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-lg px-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors">
                 <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                  className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer pr-1"
                 >
                   <option value="all">All Categories</option>
                   {categories.map((c) => (
@@ -862,25 +871,38 @@ export const MainStockView: React.FC = () => {
         )}
 
         {activeTab === 'history' && (
-          <div className="px-3.5 py-3 sm:px-5 flex items-center justify-end gap-2 text-xs bg-white">
-            <button
-              onClick={exportHistoryCsv}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-600" />
-              <span>Export CSV</span>
-            </button>
-            {mainStockEntries.length > 0 && (
+          <div className="px-3.5 py-2.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-xs bg-white">
+            <div className="flex items-center gap-2 text-slate-600">
+              <Receipt className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="font-bold text-slate-800">Complete Timestamped Inbound Inventory Receipts</span>
+              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span>
+                Showing <strong className="font-mono text-slate-900 tabular-nums">{filteredHistory.length}</strong> of{' '}
+                <strong className="font-mono text-slate-900 tabular-nums">{mainStockEntries.length}</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleClearInboundHistory}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-700 rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
-                title="Clear all inbound receipt records"
+                onClick={exportHistoryCsv}
+                className="h-8 flex items-center gap-1.5 px-3 bg-slate-50/70 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-bold text-slate-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                <span>Clear All History</span>
+                <Download className="w-3.5 h-3.5 text-slate-600" />
+                <span>Export CSV</span>
               </button>
-            )}
+              {isCentralAdmin && mainStockEntries.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearInboundHistory}
+                  className="h-8 flex items-center gap-1.5 px-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 text-rose-700 rounded-lg text-xs font-bold shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors cursor-pointer"
+                  title="Delete all logged purchase and manual receipt records"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Clear History ({mainStockEntries.length})</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1553,113 +1575,119 @@ export const MainStockView: React.FC = () => {
 
       {/* Tab 2: Complete Timestamped Transaction History Log */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="p-3 bg-slate-50/60 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-            <div className="flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-slate-600" />
-              <span>Complete Timestamped Inbound Inventory Receipts</span>
-              <span>· Total Logged: <strong className="font-mono text-slate-800">{filteredHistory.length}</strong></span>
-            </div>
-
-            {isCentralAdmin && mainStockEntries.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearInboundHistory}
-                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
-                title="Delete all logged purchase and manual receipt records"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear All Inbound History ({mainStockEntries.length})</span>
-              </button>
-            )}
-          </div>
-
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
+            <table className="w-full text-[13.5px] text-left border-collapse">
+              <thead className="bg-slate-50/90 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-3.5">Date & Time</th>
-                  <th className="py-3.5 px-3.5">Type</th>
-                  <th className="py-3.5 px-3.5">Reference / PO #</th>
-                  <th className="py-3.5 px-3.5">Supplier / Origin</th>
-                  <th className="py-3.5 px-3.5">Item Code</th>
-                  <th className="py-3.5 px-4">Material Description</th>
-                  <th className="py-3.5 px-3.5 text-right">Qty Received</th>
-                  <th className="py-3.5 px-3.5 text-right">Unit Cost</th>
-                  <th className="py-3.5 px-3.5 text-right">Total Cost</th>
-                  <th className="py-3.5 px-3.5">Received By</th>
-                  <th className="py-3.5 px-3.5 text-right">Action</th>
+                  <th className="py-3 px-4 w-48 whitespace-nowrap">Date &amp; Type</th>
+                  <th className="py-3 px-3.5 w-56">Reference &amp; Origin</th>
+                  <th className="py-3 px-4 min-w-[260px]">Item &amp; Receipt Notes</th>
+                  <th className="py-3 px-3.5 text-right w-32 whitespace-nowrap">Qty Received</th>
+                  <th className="py-3 px-3.5 text-right w-32 whitespace-nowrap">Unit Cost</th>
+                  <th className="py-3 px-3.5 text-right w-32 whitespace-nowrap">Total Cost</th>
+                  <th className="py-3 px-4 text-right w-40 whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-10 text-center text-slate-400 text-sm">
-                      No inbound transactions found.
+                    <td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <History className="w-6 h-6 text-slate-300" />
+                        <span className="font-semibold text-slate-600">No inbound transactions found.</span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   filteredHistory.map((entry) => {
                     const itm = items.find((i) => i.id === entry.itemId);
+                    const totalCost = Math.round(Number(entry.quantity) * Number(entry.unitCost));
                     return (
-                      <tr key={entry.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-3.5 text-slate-600 whitespace-nowrap font-mono text-xs">
-                          {formatDateTime(entry.timestamp)}
+                      <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors align-top">
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-mono text-xs font-semibold text-slate-700 tabular-nums">
+                            {formatDateTime(entry.timestamp)}
+                          </div>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                                entry.entryType === 'Purchase'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200/80'
+                                  : 'bg-purple-50 text-purple-700 border border-purple-200/80'
+                              }`}
+                            >
+                              {entry.entryType}
+                            </span>
+                            {entry.receivedBy && (
+                              <span className="text-xs text-slate-500 truncate max-w-[120px]" title={`Received by: ${entry.receivedBy}`}>
+                                · {entry.receivedBy}
+                              </span>
+                            )}
+                          </div>
                         </td>
-                        <td className="py-3.5 px-3.5 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-0.5 rounded text-xs font-bold ${
-                              entry.entryType === 'Purchase'
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                : 'bg-purple-50 text-purple-700 border border-purple-200'
-                            }`}
-                          >
-                            {entry.entryType}
-                          </span>
+
+                        <td className="py-3 px-3.5">
+                          <div className="font-mono font-bold text-slate-900 text-[13px] break-words leading-snug">
+                            {entry.referenceNo}
+                          </div>
+                          <div className="text-xs text-slate-600 font-medium mt-0.5 truncate max-w-[210px]" title={entry.supplier}>
+                            {entry.supplier}
+                          </div>
                         </td>
-                        <td className="py-3.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
-                          {entry.referenceNo}
-                        </td>
-                        <td className="py-3.5 px-3.5 text-slate-800 font-semibold whitespace-nowrap">
-                          {entry.supplier}
-                        </td>
-                        <td className="py-3.5 px-3.5 font-mono text-slate-900 whitespace-nowrap font-bold">
-                          {itm?.itemCode}
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-900 font-bold max-w-xs" title={itm?.itemName}>
-                          {itm?.itemName}
+
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {itm?.itemCode && (
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200/80 font-mono text-xs font-bold text-slate-800 shrink-0">
+                                {itm.itemCode}
+                              </span>
+                            )}
+                            <span className="font-bold text-slate-900 text-[13.5px] leading-snug">
+                              {itm?.itemName || 'Catalog Item'}
+                            </span>
+                          </div>
                           {entry.notes && (
-                            <div className="text-xs text-slate-500 font-normal italic mt-0.5">{entry.notes}</div>
+                            <p
+                              className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed"
+                              title={entry.notes}
+                            >
+                              {entry.notes}
+                            </p>
                           )}
                         </td>
-                        <td className="py-3.5 px-3.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                          +{formatNumber(entry.quantity)} <span className="text-xs text-slate-500 font-normal">{itm?.unit}</span>
+
+                        <td className="py-3 px-3.5 text-right whitespace-nowrap font-mono tabular-nums">
+                          <span className="text-[13.5px] font-extrabold text-emerald-700">
+                            +{formatNumber(entry.quantity)}
+                          </span>{' '}
+                          <span className="text-xs text-slate-500 font-sans font-medium">{itm?.unit}</span>
                         </td>
-                        <td className="py-3.5 px-3.5 text-right font-mono text-slate-600 whitespace-nowrap">
+
+                        <td className="py-3 px-3.5 text-right font-mono text-slate-700 whitespace-nowrap tabular-nums">
                           {config.currencySymbol}{Number(entry.unitCost).toFixed(2)}
                         </td>
-                        <td className="py-3.5 px-3.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                          {config.currencySymbol}{formatNumber(Math.round(entry.quantity * entry.unitCost))}
+
+                        <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap tabular-nums">
+                          {config.currencySymbol}{formatNumber(totalCost)}
                         </td>
-                        <td className="py-3.5 px-3.5 text-slate-600 whitespace-nowrap text-xs">
-                          {entry.receivedBy}
-                        </td>
-                        <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
+
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => setSelectedEntryForPrint(entry)}
-                              className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                              className="h-8 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 hover:border-emerald-300 shadow-2xs text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                               title="Print Official GRN / Stock Receipt Voucher"
                             >
-                              <Printer className="w-3.5 h-3.5" />
+                              <Printer className="w-3.5 h-3.5 shrink-0" />
                               <span>Print GRN</span>
                             </button>
                             {isCentralAdmin && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteEntry(entry)}
-                                className="p-1.5 rounded-lg bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 hover:border-rose-300 shadow-2xs transition-all cursor-pointer active:scale-95"
+                                className="h-8 w-8 flex items-center justify-center rounded-lg bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-300 shadow-2xs transition-colors cursor-pointer"
                                 title="Delete receipt record"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

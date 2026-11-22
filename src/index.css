@@ -120,6 +120,44 @@
     background-color: rgba(240, 253, 244, 0.55);
   }
 
+  /* Standardized Enterprise Table Typography (Readable, Uniform & Compact) */
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) {
+    font-size: 0.84375rem; /* 13.5px uniform baseline */
+    line-height: 1.45;
+  }
+
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) thead th {
+    font-size: 0.75rem; /* 12px uniform column header */
+    line-height: 1.35;
+  }
+
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) tbody td,
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) tfoot td {
+    font-size: 0.84375rem; /* 13.5px uniform row cell */
+    line-height: 1.45;
+  }
+
+  /* Lift microscopic 9px-11px secondary labels, dates & notes in tables cleanly to 12px */
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) td [class*="text-[9px]"],
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) td [class*="text-[10px]"],
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) td [class*="text-[10.5px]"],
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) td [class*="text-[11px]"],
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) th [class*="text-[9px]"],
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) th [class*="text-[10px]"],
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) th [class*="text-[11px]"] {
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.35;
+  }
+
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) td .text-xs {
+    font-size: 0.78125rem; /* 12.5px */
+    line-height: 1.4;
+  }
+
+  .liquid-glass-shell table:not(.printable-voucher-sheet table):not(.letterhead-preview-table) td button {
+    font-size: 0.78125rem; /* 12.5px */
+  }
+
   /* 3. Clean Fast Inputs, Selects & Textareas */
   .liquid-glass-shell main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
   .liquid-glass-shell main select:not(.bg-transparent),

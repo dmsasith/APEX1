@@ -3734,14 +3734,14 @@ export const ClientFreeIssueView: React.FC = () => {
               <div className="bg-slate-900 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-extrabold uppercase">
+                    <span className="px-2 py-0.5 rounded bg-indigo-600 text-white text-[11px] font-extrabold uppercase">
                       Central FOC · Item Report
                     </span>
-                    <h3 className="text-sm font-extrabold">
+                    <h3 className="text-base font-extrabold">
                       {it.itemCode} — {it.itemName}
                     </h3>
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
+                  <p className="text-xs text-slate-300 mt-0.5">
                     Project: {projCode ? `[${projCode}] ` : ''}{projName} · Client: {clientName}
                   </p>
                 </div>
@@ -3799,21 +3799,21 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Document Header */}
                   <div className="border-b-2 border-slate-900 pb-3 flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">
+                      <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-700">
                         CLIENT FREE-ISSUE (CENTRAL FOC) — INDIVIDUAL ITEM RECONCILIATION REPORT
                       </div>
                       <h1 className="text-lg font-black text-slate-900 mt-0.5">
                         {it.itemCode} — {it.itemName} ({it.unit})
                       </h1>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <p className="text-[13px] text-slate-600 mt-0.5">
                         Project: <strong>{projCode ? `[${projCode}] ` : ''}{projName}</strong> · Client: <strong>{clientName}</strong> · Site Branch: <strong>{branchName}</strong>
                       </p>
                     </div>
                     <div className="text-right text-xs">
-                      <span className="inline-block px-2.5 py-1 rounded bg-indigo-900 text-white font-extrabold text-[10px] uppercase">
+                      <span className="inline-block px-2.5 py-1 rounded bg-indigo-900 text-white font-extrabold text-[11px] uppercase">
                         Central FOC Stock
                       </span>
-                      <div className="text-[11px] text-slate-500 mt-1">
+                      <div className="text-xs text-slate-500 mt-1">
                         Date: <strong>{new Date().toLocaleDateString()}</strong>
                       </div>
                     </div>
@@ -3822,45 +3822,45 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* 5-Step Story KPI Strip */}
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
                     <div className="p-3 rounded-xl border-2 border-indigo-200 bg-indigo-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-indigo-800">1. Central FOC</div>
+                      <div className="text-[11px] font-extrabold uppercase text-indigo-800">1. Central FOC</div>
                       <div className="text-lg font-black font-mono text-indigo-900 mt-0.5">
                         {formatNumber(it.stage1CentralFocReceipt)} {it.unit}
                       </div>
-                      <div className="text-[10px] text-indigo-700 mt-0.5">
+                      <div className="text-[11px] text-indigo-700 mt-0.5">
                         Central Left: <strong>{formatNumber(it.centralFocPoolRem)} {it.unit}</strong>
                       </div>
                     </div>
                     <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-sky-900">2. Site Issue</div>
+                      <div className="text-[11px] font-extrabold uppercase text-sky-900">2. Site Issue</div>
                       <div className="text-lg font-black font-mono text-sky-800 mt-0.5">
                         {formatNumber(it.stage2SiteIssue)} {it.unit}
                       </div>
-                      <div className="text-[10px] text-sky-800 mt-0.5">{branchName}</div>
+                      <div className="text-[11px] text-sky-800 mt-0.5">{branchName}</div>
                     </div>
                     <div className="p-3 rounded-xl border border-violet-200 bg-violet-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-violet-900">3. Team Issue</div>
+                      <div className="text-[11px] font-extrabold uppercase text-violet-900">3. Team Issue</div>
                       <div className="text-lg font-black font-mono text-violet-800 mt-0.5">
                         {formatNumber(it.stage3TeamIssued)} {it.unit}
                       </div>
-                      <div className="text-[10px] text-violet-800 mt-0.5">
+                      <div className="text-[11px] text-violet-800 mt-0.5">
                         Ret: +{formatNumber(it.stage3TeamReturnedGood)} · Hand: {formatNumber(it.stage3TeamInHand)}
                       </div>
                     </div>
                     <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-amber-900">4. Used &amp; Waste</div>
+                      <div className="text-[11px] font-extrabold uppercase text-amber-900">4. Used &amp; Waste</div>
                       <div className="text-lg font-black font-mono text-amber-900 mt-0.5">
                         {formatNumber(it.stage4TotalConsumed)} {it.unit}
                       </div>
-                      <div className="text-[10px] text-amber-900 mt-0.5">
+                      <div className="text-[11px] text-amber-900 mt-0.5">
                         Used: {formatNumber(it.stage4InstalledUsage)} · Waste: {formatNumber(it.stage4Wastage)}
                       </div>
                     </div>
                     <div className="p-3 rounded-xl border-2 border-emerald-300 bg-emerald-50/70">
-                      <div className="text-[10px] font-extrabold uppercase text-emerald-900">5. Returnable Bal</div>
+                      <div className="text-[11px] font-extrabold uppercase text-emerald-900">5. Returnable Bal</div>
                       <div className="text-lg font-black font-mono text-emerald-800 mt-0.5">
                         {formatNumber(it.stage5TotalClientReturnableBalance)} {it.unit}
                       </div>
-                      <div className="text-[10px] font-bold text-indigo-800 mt-0.5">
+                      <div className="text-[11px] font-bold text-indigo-800 mt-0.5">
                         Site Bal: {formatNumber(it.stage5SiteReturnableBalance)} {it.unit}
                       </div>
                     </div>
@@ -3868,12 +3868,12 @@ export const ClientFreeIssueView: React.FC = () => {
 
                   {/* Step 1: Central FOC Receipts */}
                   <div>
-                    <h4 className="text-xs font-extrabold uppercase text-indigo-950 mb-1.5">
+                    <h4 className="text-[13px] font-extrabold uppercase text-indigo-950 mb-1.5">
                       Step 1 — Central FOC Stock Received from Client
                     </h4>
-                    <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                    <table className="w-full text-left border-collapse text-[13px] border border-slate-200">
                       <thead>
-                        <tr className="bg-indigo-50 text-indigo-950 text-[10px] font-extrabold uppercase border-b border-indigo-200">
+                        <tr className="bg-indigo-50 text-indigo-950 text-xs font-extrabold uppercase border-b border-indigo-200">
                           <th className="py-2 px-3">FOC Voucher #</th>
                           <th className="py-2 px-3">Dispatch Note #</th>
                           <th className="py-2 px-3">Date</th>
@@ -3908,12 +3908,12 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Step 2 & 3 Side-by-Side (Clean Compact Tables) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="text-xs font-extrabold uppercase text-sky-950 mb-1.5">
+                      <h4 className="text-[13px] font-extrabold uppercase text-sky-950 mb-1.5">
                         Step 2 — Site Issues (Central → {branchName})
                       </h4>
-                      <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                      <table className="w-full text-left border-collapse text-[13px] border border-slate-200">
                         <thead>
-                          <tr className="bg-sky-50 text-sky-950 text-[10px] font-extrabold uppercase border-b border-sky-200">
+                          <tr className="bg-sky-50 text-sky-950 text-xs font-extrabold uppercase border-b border-sky-200">
                             <th className="py-2 px-2.5">Requisition #</th>
                             <th className="py-2 px-2.5">Site &amp; Date</th>
                             <th className="py-2 px-2.5 text-right">Qty ({it.unit})</th>
@@ -3944,12 +3944,12 @@ export const ClientFreeIssueView: React.FC = () => {
                     </div>
 
                     <div>
-                      <h4 className="text-xs font-extrabold uppercase text-violet-950 mb-1.5">
+                      <h4 className="text-[13px] font-extrabold uppercase text-violet-950 mb-1.5">
                         Step 3 — Team Issues (Site → Field Teams)
                       </h4>
-                      <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                      <table className="w-full text-left border-collapse text-[13px] border border-slate-200">
                         <thead>
-                          <tr className="bg-violet-50 text-violet-950 text-[10px] font-extrabold uppercase border-b border-violet-200">
+                          <tr className="bg-violet-50 text-violet-950 text-xs font-extrabold uppercase border-b border-violet-200">
                             <th className="py-2 px-2.5">Issue #</th>
                             <th className="py-2 px-2.5">Team &amp; Date</th>
                             <th className="py-2 px-2.5 text-right">Qty ({it.unit})</th>
@@ -3982,13 +3982,13 @@ export const ClientFreeIssueView: React.FC = () => {
 
                   {/* Step 4: Clean Sub-Project Usage Distribution Table + Usage Vouchers */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-extrabold uppercase text-teal-950">
+                    <h4 className="text-[13px] font-extrabold uppercase text-teal-950">
                       Step 4 — Where This Item Was Used (Main &amp; Sub-Project Breakdown)
                     </h4>
 
-                    <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                    <table className="w-full text-left border-collapse text-[13px] border border-slate-200">
                       <thead>
-                        <tr className="bg-teal-50 text-teal-950 text-[10px] font-extrabold uppercase border-b border-teal-200">
+                        <tr className="bg-teal-50 text-teal-950 text-xs font-extrabold uppercase border-b border-teal-200">
                           <th className="py-2 px-3">Project / Sub-Project</th>
                           <th className="py-2 px-3 text-center">Vouchers</th>
                           <th className="py-2 px-3 text-right">Used ({it.unit})</th>
@@ -4026,7 +4026,7 @@ export const ClientFreeIssueView: React.FC = () => {
                           );
                         })}
                         <tr className="bg-slate-50 font-black border-t-2 border-slate-300">
-                          <td className="py-2 px-3 text-slate-900 uppercase text-[11px]">Total Consumed</td>
+                          <td className="py-2 px-3 text-slate-900 uppercase text-xs">Total Consumed</td>
                           <td className="py-2 px-3 text-center font-mono">{it.usageRecords.length}</td>
                           <td className="py-2 px-3 text-right font-mono text-teal-800">
                             {formatNumber(it.stage4InstalledUsage)}
@@ -4043,9 +4043,9 @@ export const ClientFreeIssueView: React.FC = () => {
                     </table>
 
                     {/* Individual Field Usage Vouchers */}
-                    <table className="w-full text-left border-collapse text-xs border border-slate-200">
+                    <table className="w-full text-left border-collapse text-[13px] border border-slate-200">
                       <thead>
-                        <tr className="bg-amber-50 text-amber-950 text-[10px] font-extrabold uppercase border-b border-amber-200">
+                        <tr className="bg-amber-50 text-amber-950 text-xs font-extrabold uppercase border-b border-amber-200">
                           <th className="py-2 px-3">Usage Voucher #</th>
                           <th className="py-2 px-3">Project / Sub-Project</th>
                           <th className="py-2 px-3">Field Team</th>
@@ -4087,16 +4087,16 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Step 5: Final Completion Statement & Signatures */}
                   <div className="p-4 rounded-xl bg-emerald-50/70 border-2 border-emerald-300 flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <div className="text-[10px] font-extrabold uppercase text-emerald-900">
+                      <div className="text-[11px] font-extrabold uppercase text-emerald-900">
                         Step 5 — Final Returnable Stock on Project Completion
                       </div>
-                      <p className="text-xs text-slate-700 mt-0.5">
+                      <p className="text-[13px] text-slate-700 mt-0.5">
                         Central FOC Left: <strong>{formatNumber(it.centralFocPoolRem)} {it.unit}</strong> + Site Branch Balance:{' '}
                         <strong>{formatNumber(it.stage5SiteReturnableBalance)} {it.unit}</strong>
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] font-bold uppercase text-indigo-800 block">
+                      <span className="text-[11px] font-bold uppercase text-indigo-800 block">
                         Final Client Returnable Balance
                       </span>
                       <span className="text-xl font-black font-mono text-emerald-800">
@@ -4105,21 +4105,21 @@ export const ClientFreeIssueView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-xs text-slate-600">
+                  <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-[13px] text-slate-600">
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Central Store / FOC Controller</div>
-                      <div className="text-[10px]">Signature &amp; Date</div>
+                      <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
-                      <div className="text-[10px]">Signature &amp; Date</div>
+                      <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Client Representative ({clientName})</div>
-                      <div className="text-[10px]">Verification &amp; Sign-Off</div>
+                      <div className="text-[11px]">Verification &amp; Sign-Off</div>
                     </div>
                   </div>
                 </div>
@@ -4165,14 +4165,14 @@ export const ClientFreeIssueView: React.FC = () => {
               <div className="bg-slate-950 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold uppercase">
+                    <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] font-extrabold uppercase">
                       Full Project Report
                     </span>
-                    <h3 className="text-sm font-extrabold">
+                    <h3 className="text-base font-extrabold">
                       {projCode ? `[${projCode}] ` : ''}{projName}
                     </h3>
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
+                  <p className="text-xs text-slate-300 mt-0.5">
                     Client: {clientName} · Branch: {branchName} · {proj.items.length} Item(s) · {proj.subProjectFlows.length} Sub-Project(s)
                   </p>
                 </div>
@@ -4230,13 +4230,13 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Corporate Header */}
                   <div className="border-b-2 border-slate-900 pb-3.5 flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">
+                      <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-700">
                         CENTRAL STOCK &amp; PROJECT MATERIAL CONTROL — FULL FOC RECONCILIATION REPORT
                       </div>
                       <h1 className="text-lg font-black text-slate-900 mt-0.5">
                         MAIN PROJECT: {projCode ? `[${projCode}] ` : ''}{projName}
                       </h1>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <p className="text-[13px] text-slate-600 mt-0.5">
                         Client: <strong>{clientName}</strong> · Allocated Site Branch: <strong>{branchName}</strong>
                         {proj.subProjectFlows.length > 0 && (
                           <span>
@@ -4247,10 +4247,10 @@ export const ClientFreeIssueView: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right text-xs">
-                      <span className="inline-block px-2.5 py-1 rounded bg-indigo-900 text-white font-extrabold text-[10px] uppercase">
+                      <span className="inline-block px-2.5 py-1 rounded bg-indigo-900 text-white font-extrabold text-[11px] uppercase">
                         Central FOC Master Report
                       </span>
-                      <div className="text-[11px] text-slate-500 mt-1">
+                      <div className="text-xs text-slate-500 mt-1">
                         Generated: <strong>{new Date().toLocaleDateString()}</strong>
                       </div>
                     </div>
@@ -4259,41 +4259,41 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Clean 5-Step Project Overview Strip */}
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
                     <div className="p-3 rounded-xl border-2 border-indigo-200 bg-indigo-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-indigo-800">1. Central FOC</div>
+                      <div className="text-[11px] font-extrabold uppercase text-indigo-800">1. Central FOC</div>
                       <div className="text-lg font-black font-mono text-indigo-900 mt-0.5">
                         {formatNumber(proj.totalRecv)}
                       </div>
-                      <div className="text-[10px] text-indigo-700">Central Left: {formatNumber(proj.totalRem)}</div>
+                      <div className="text-[11px] text-indigo-700">Central Left: {formatNumber(proj.totalRem)}</div>
                     </div>
                     <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-sky-900">2. Site Issue</div>
+                      <div className="text-[11px] font-extrabold uppercase text-sky-900">2. Site Issue</div>
                       <div className="text-lg font-black font-mono text-sky-800 mt-0.5">
                         {formatNumber(proj.totalDispatched)}
                       </div>
-                      <div className="text-[10px] text-sky-800">{branchName}</div>
+                      <div className="text-[11px] text-sky-800">{branchName}</div>
                     </div>
                     <div className="p-3 rounded-xl border border-violet-200 bg-violet-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-violet-900">3. Team Issue</div>
+                      <div className="text-[11px] font-extrabold uppercase text-violet-900">3. Team Issue</div>
                       <div className="text-lg font-black font-mono text-violet-800 mt-0.5">
                         {formatNumber(proj.totalTeamIssued)}
                       </div>
-                      <div className="text-[10px] text-violet-800">{proj.items.length} Material(s)</div>
+                      <div className="text-[11px] text-violet-800">{proj.items.length} Material(s)</div>
                     </div>
                     <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-amber-900">4. Total Used &amp; Waste</div>
+                      <div className="text-[11px] font-extrabold uppercase text-amber-900">4. Total Used &amp; Waste</div>
                       <div className="text-lg font-black font-mono text-amber-900 mt-0.5">
                         {formatNumber(proj.totalUsed)}
                       </div>
-                      <div className="text-[10px] text-amber-900">
+                      <div className="text-[11px] text-amber-900">
                         Used: {formatNumber(proj.totalInstalled)} · Waste: {formatNumber(proj.totalWastage)}
                       </div>
                     </div>
                     <div className="p-3 rounded-xl border-2 border-emerald-300 bg-emerald-50/70">
-                      <div className="text-[10px] font-extrabold uppercase text-emerald-900">5. Client Returnable</div>
+                      <div className="text-[11px] font-extrabold uppercase text-emerald-900">5. Client Returnable</div>
                       <div className="text-lg font-black font-mono text-emerald-800 mt-0.5">
                         {formatNumber(proj.totalClientReturnable)}
                       </div>
-                      <div className="text-[10px] font-bold text-indigo-800">
+                      <div className="text-[11px] font-bold text-indigo-800">
                         Site Bal: {formatNumber(proj.totalSiteReturnable)}
                       </div>
                     </div>
@@ -4301,12 +4301,12 @@ export const ClientFreeIssueView: React.FC = () => {
 
                   {/* PART 1: MAIN PROJECT STOCK RECEIVED & ISSUED */}
                   <div>
-                    <h4 className="text-xs font-black uppercase text-indigo-950 border-b-2 border-indigo-900 pb-1 mb-2">
+                    <h4 className="text-[13px] font-black uppercase text-indigo-950 border-b-2 border-indigo-900 pb-1 mb-2">
                       Part 1 — Main Project Stock Received &amp; Issued (Central FOC → Site → Teams)
                     </h4>
-                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                    <table className="w-full text-left border-collapse text-[13px] border border-slate-300">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-800 text-[10px] font-extrabold uppercase border-b border-slate-300">
+                        <tr className="bg-slate-100 text-slate-800 text-xs font-extrabold uppercase border-b border-slate-300">
                           <th className="py-2 px-2.5">#</th>
                           <th className="py-2 px-2.5">Item Code &amp; Material</th>
                           <th className="py-2 px-2 text-center">Unit</th>
@@ -4323,7 +4323,7 @@ export const ClientFreeIssueView: React.FC = () => {
                             <td className="py-2 px-2.5">
                               <span className="font-mono font-bold text-slate-900 mr-1.5">{it.itemCode}</span>
                               <span className="font-semibold text-slate-800">{it.itemName}</span>
-                              <span className="ml-1.5 px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 text-[9px] font-extrabold uppercase">
+                              <span className="ml-1.5 px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[10.5px] font-extrabold uppercase">
                                 Central FOC
                               </span>
                             </td>
@@ -4349,7 +4349,7 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* PART 2: SUB-PROJECT-BY-SUB-PROJECT USAGE FLOW (SIMPLE & CLEAR) */}
                   {proj.subProjectFlows.length > 0 && (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-black uppercase text-teal-950 border-b-2 border-teal-800 pb-1">
+                      <h4 className="text-[13px] font-black uppercase text-teal-950 border-b-2 border-teal-800 pb-1">
                         Part 2 — Sub-Project-by-Sub-Project Usage Flow ({proj.subProjectFlows.length} Sub-Projects)
                       </h4>
 
@@ -4360,14 +4360,14 @@ export const ClientFreeIssueView: React.FC = () => {
                             key={spf.subProject.id}
                             className="border border-teal-300 rounded-xl overflow-hidden"
                           >
-                            <div className="px-3.5 py-2 bg-teal-950 text-white flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div className="px-3.5 py-2 bg-teal-950 text-white flex flex-wrap items-center justify-between gap-2 text-[13px]">
                               <div>
                                 <span className="font-mono font-extrabold text-teal-200 mr-2">
                                   Sub-Project #{spf.orderIndex}: [{spf.subProject.projectId}]
                                 </span>
                                 <strong>{spf.subProject.projectName}</strong>
                               </div>
-                              <div className="font-mono text-[11px]">
+                              <div className="font-mono text-xs">
                                 Used: <strong>{formatNumber(spf.spTotalInstalled)}</strong> · Wastage:{' '}
                                 <strong>{formatNumber(spf.spTotalWastage)}</strong> · Total:{' '}
                                 <strong>{formatNumber(spf.spTotalConsumed)}</strong>
@@ -4375,13 +4375,13 @@ export const ClientFreeIssueView: React.FC = () => {
                             </div>
 
                             {usedItems.length === 0 ? (
-                              <div className="p-3 text-xs text-slate-500 bg-slate-50">
+                              <div className="p-3 text-[13px] text-slate-500 bg-slate-50">
                                 No material consumption logged under [{spf.subProject.projectId}] yet.
                               </div>
                             ) : (
-                              <table className="w-full text-left border-collapse text-xs">
+                              <table className="w-full text-left border-collapse text-[13px]">
                                 <thead>
-                                  <tr className="bg-teal-50 text-teal-950 text-[10px] font-extrabold uppercase border-b border-teal-200">
+                                  <tr className="bg-teal-50 text-teal-950 text-xs font-extrabold uppercase border-b border-teal-200">
                                     <th className="py-1.5 px-3">Item Code &amp; Material</th>
                                     <th className="py-1.5 px-2 text-center">Unit</th>
                                     <th className="py-1.5 px-3 text-right">Used</th>
@@ -4409,7 +4409,7 @@ export const ClientFreeIssueView: React.FC = () => {
                                       <td className="py-1.5 px-3 text-right font-mono font-black text-slate-900">
                                         {formatNumber(spIt.spTotalConsumed)}
                                       </td>
-                                      <td className="py-1.5 px-3 font-mono text-[10px] text-slate-600">
+                                      <td className="py-1.5 px-3 font-mono text-xs text-slate-600">
                                         {spIt.spUsageLogs.map((u) => u.usageVoucherNumber).join(', ')}
                                       </td>
                                     </tr>
@@ -4424,12 +4424,12 @@ export const ClientFreeIssueView: React.FC = () => {
                       {/* Direct Main Project Usage (if any usage was logged directly on parent Main Project) */}
                       {directMainUsageRows.length > 0 && (
                         <div className="border border-slate-300 rounded-xl overflow-hidden">
-                          <div className="px-3.5 py-2 bg-slate-800 text-white text-xs font-bold">
+                          <div className="px-3.5 py-2 bg-slate-800 text-white text-[13px] font-bold">
                             Direct Usage Logged on Main Project [{projCode}]
                           </div>
-                          <table className="w-full text-left border-collapse text-xs">
+                          <table className="w-full text-left border-collapse text-[13px]">
                             <thead>
-                              <tr className="bg-slate-50 text-slate-700 text-[10px] font-extrabold uppercase border-b border-slate-200">
+                              <tr className="bg-slate-50 text-slate-700 text-xs font-extrabold uppercase border-b border-slate-200">
                                 <th className="py-1.5 px-3">Item Code &amp; Material</th>
                                 <th className="py-1.5 px-2 text-center">Unit</th>
                                 <th className="py-1.5 px-3 text-right">Used</th>
@@ -4455,7 +4455,7 @@ export const ClientFreeIssueView: React.FC = () => {
                                   <td className="py-1.5 px-3 text-right font-mono font-black text-slate-900">
                                     {formatNumber(row.total)}
                                   </td>
-                                  <td className="py-1.5 px-3 font-mono text-[10px] text-slate-600">
+                                  <td className="py-1.5 px-3 font-mono text-xs text-slate-600">
                                     {row.vouchers.join(', ')}
                                   </td>
                                 </tr>
@@ -4470,19 +4470,19 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* PART 3 (BOTTOM): FINAL FULL PROJECT USAGE & CLIENT RETURNABLE BALANCE SUMMARY */}
                   <div>
                     <div className="border-b-2 border-emerald-800 pb-1 mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="text-xs font-black uppercase text-emerald-950">
+                      <h4 className="text-[13px] font-black uppercase text-emerald-950">
                         {proj.subProjectFlows.length > 0
                           ? `Part 3 (Final Summary) — Full Main Project [${projCode}] Total Usage & Client Returnable Balance`
                           : `Final Full Project Usage & Client Returnable Balance Summary`}
                       </h4>
-                      <span className="text-[10px] font-extrabold text-emerald-800">
+                      <span className="text-xs font-extrabold text-emerald-800">
                         Balance to Return to Client on Project Completion
                       </span>
                     </div>
 
-                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                    <table className="w-full text-left border-collapse text-[12.5px] border border-slate-300">
                       <thead>
-                        <tr className="bg-slate-900 text-white text-[10px] font-extrabold uppercase">
+                        <tr className="bg-slate-900 text-white text-[11px] font-extrabold uppercase">
                           <th className="py-2.5 px-2">#</th>
                           <th className="py-2.5 px-2.5">Item Code &amp; Description</th>
                           <th className="py-2.5 px-2 text-center">Unit</th>
@@ -4516,7 +4516,7 @@ export const ClientFreeIssueView: React.FC = () => {
                               <div className="font-black text-slate-900">
                                 {formatNumber(it.stage4TotalConsumed)}
                               </div>
-                              <div className="text-[10px] text-slate-600">
+                              <div className="text-[11px] text-slate-600">
                                 {formatNumber(it.stage4InstalledUsage)}U + {formatNumber(it.stage4Wastage)}W
                               </div>
                             </td>
@@ -4533,21 +4533,21 @@ export const ClientFreeIssueView: React.FC = () => {
                   </div>
 
                   {/* Official 3-Column Sign-Off */}
-                  <div className="grid grid-cols-3 gap-6 pt-5 border-t-2 border-slate-300 text-xs text-slate-600">
+                  <div className="grid grid-cols-3 gap-6 pt-5 border-t-2 border-slate-300 text-[13px] text-slate-600">
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Central Store / FOC Controller</div>
-                      <div className="text-[10px]">Prepared By · Signature &amp; Date</div>
+                      <div className="text-[11px]">Prepared By · Signature &amp; Date</div>
                     </div>
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
-                      <div className="text-[10px]">Verified By · Signature &amp; Date</div>
+                      <div className="text-[11px]">Verified By · Signature &amp; Date</div>
                     </div>
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Client Representative ({clientName})</div>
-                      <div className="text-[10px]">Final Completion Approval</div>
+                      <div className="text-[11px]">Final Completion Approval</div>
                     </div>
                   </div>
                 </div>
@@ -4578,14 +4578,14 @@ export const ClientFreeIssueView: React.FC = () => {
               <div className="bg-teal-950 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-teal-600 text-white text-[10px] font-extrabold uppercase">
+                    <span className="px-2 py-0.5 rounded bg-teal-600 text-white text-[11px] font-extrabold uppercase">
                       Sub-Project Flow Report
                     </span>
-                    <h3 className="text-sm font-extrabold">
+                    <h3 className="text-base font-extrabold">
                       [{spCode}] {spName}
                     </h3>
                   </div>
-                  <p className="text-[11px] text-teal-200 mt-0.5">
+                  <p className="text-xs text-teal-200 mt-0.5">
                     Main Project: [{parentCode}] {parentName} · Client: {clientName} · Branch: {branchName}
                   </p>
                 </div>
@@ -4640,21 +4640,21 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Document Header */}
                   <div className="border-b-2 border-slate-900 pb-3 flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800">
+                      <div className="text-xs font-extrabold uppercase tracking-wider text-teal-800">
                         CLIENT FOC — DEDICATED SUB-PROJECT USAGE FLOW REPORT
                       </div>
                       <h1 className="text-lg font-black text-slate-900 mt-0.5">
                         SUB-PROJECT: [{spCode}] {spName}
                       </h1>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <p className="text-[13px] text-slate-600 mt-0.5">
                         Main Project: <strong>[{parentCode}] {parentName}</strong> · Client: <strong>{clientName}</strong> · Site Branch: <strong>{branchName}</strong>
                       </p>
                     </div>
                     <div className="text-right text-xs">
-                      <span className="inline-block px-2.5 py-1 rounded bg-teal-900 text-white font-extrabold text-[10px] uppercase">
+                      <span className="inline-block px-2.5 py-1 rounded bg-teal-900 text-white font-extrabold text-[11px] uppercase">
                         Sub-Project #{spf.orderIndex}
                       </span>
-                      <div className="text-[11px] text-slate-500 mt-1">
+                      <div className="text-xs text-slate-500 mt-1">
                         Date: <strong>{new Date().toLocaleDateString()}</strong>
                       </div>
                     </div>
@@ -4663,25 +4663,25 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* 4 KPI Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                     <div className="p-3 rounded-xl border border-teal-200 bg-teal-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-teal-900">Used on [{spCode}]</div>
+                      <div className="text-[11px] font-extrabold uppercase text-teal-900">Used on [{spCode}]</div>
                       <div className="text-lg font-black font-mono text-teal-900 mt-0.5">
                         {formatNumber(spf.spTotalInstalled)}
                       </div>
                     </div>
                     <div className="p-3 rounded-xl border border-rose-200 bg-rose-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-rose-900">Wastage</div>
+                      <div className="text-[11px] font-extrabold uppercase text-rose-900">Wastage</div>
                       <div className="text-lg font-black font-mono text-rose-700 mt-0.5">
                         {formatNumber(spf.spTotalWastage)}
                       </div>
                     </div>
                     <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
-                      <div className="text-[10px] font-extrabold uppercase text-amber-900">Total Consumed</div>
+                      <div className="text-[11px] font-extrabold uppercase text-amber-900">Total Consumed</div>
                       <div className="text-lg font-black font-mono text-amber-900 mt-0.5">
                         {formatNumber(spf.spTotalConsumed)}
                       </div>
                     </div>
                     <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                      <div className="text-[10px] font-extrabold uppercase text-slate-600">Usage Vouchers</div>
+                      <div className="text-[11px] font-extrabold uppercase text-slate-600">Usage Vouchers</div>
                       <div className="text-lg font-black font-mono text-slate-900 mt-0.5">
                         {spf.spTotalLogsCount}
                       </div>
@@ -4690,12 +4690,12 @@ export const ClientFreeIssueView: React.FC = () => {
 
                   {/* Part 1: Sub-Project Materials Summary */}
                   <div>
-                    <h4 className="text-xs font-extrabold uppercase text-teal-950 mb-1.5">
+                    <h4 className="text-[13px] font-extrabold uppercase text-teal-950 mb-1.5">
                       Part 1 — Material Usage on [{spCode}] &amp; Main Project Remaining Balance
                     </h4>
-                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                    <table className="w-full text-left border-collapse text-[13px] border border-slate-300">
                       <thead>
-                        <tr className="bg-teal-950 text-white text-[10px] font-extrabold uppercase">
+                        <tr className="bg-teal-950 text-white text-xs font-extrabold uppercase">
                           <th className="py-2 px-2.5">#</th>
                           <th className="py-2 px-2.5">Item Code &amp; Material</th>
                           <th className="py-2 px-2 text-center">Unit</th>
@@ -4738,12 +4738,12 @@ export const ClientFreeIssueView: React.FC = () => {
 
                   {/* Part 2: Field Usage Vouchers for this Sub-Project */}
                   <div>
-                    <h4 className="text-xs font-extrabold uppercase text-slate-800 mb-1.5">
+                    <h4 className="text-[13px] font-extrabold uppercase text-slate-800 mb-1.5">
                       Part 2 — Field Usage Vouchers Logged on [{spCode}]
                     </h4>
-                    <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                    <table className="w-full text-left border-collapse text-[13px] border border-slate-300">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-800 text-[10px] font-extrabold uppercase border-b border-slate-300">
+                        <tr className="bg-slate-100 text-slate-800 text-xs font-extrabold uppercase border-b border-slate-300">
                           <th className="py-2 px-2.5">Voucher #</th>
                           <th className="py-2 px-2.5">Date</th>
                           <th className="py-2 px-2.5">Field Team</th>
@@ -4787,21 +4787,21 @@ export const ClientFreeIssueView: React.FC = () => {
                   </div>
 
                   {/* Sign-Off Block */}
-                  <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-xs text-slate-600">
+                  <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-[13px] text-slate-600">
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Prepared By (Site Store)</div>
-                      <div className="text-[10px]">Signature &amp; Date</div>
+                      <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
-                      <div className="text-[10px]">Signature &amp; Date</div>
+                      <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
                       <div className="border-b border-slate-400 h-8 mb-1" />
                       <div className="font-bold text-slate-800">Client / Project Inspector</div>
-                      <div className="text-[10px]">Sub-Project Sign-Off</div>
+                      <div className="text-[11px]">Sub-Project Sign-Off</div>
                     </div>
                   </div>
                 </div>
