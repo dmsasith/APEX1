@@ -37,11 +37,13 @@ import {
   Lock,
   RefreshCw,
   Package,
+  PenTool,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { Item, ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } from '../../types';
 import { formatNumber, formatDate, formatDateTime, exportToCsv } from '../../utils/exportUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
+import { matchDigitalSignature } from '../../utils/signatureUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { ItemTraceabilitySummaryPanel } from '../common/ItemTraceabilitySummaryPanel';
@@ -88,6 +90,8 @@ export const ClientFreeIssueView: React.FC = () => {
     teamReturns,
     teams,
     projectUsages,
+    digitalSignatures,
+    activeTemplate,
   } = useStock();
 
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
@@ -121,6 +125,9 @@ export const ClientFreeIssueView: React.FC = () => {
   } | null>(null);
   const [selectedSubProjectByParent, setSelectedSubProjectByParent] = useState<Record<string, string>>({});
   const [isExportingReportPdf, setIsExportingReportPdf] = useState(false);
+  const [offDigitalSignature, setOffDigitalSignature] = useState<boolean>(
+    Boolean(config?.offDigitalSignature)
+  );
 
   const resolveCatalogItem = (
     itemId: string,
@@ -3745,7 +3752,24 @@ export const ClientFreeIssueView: React.FC = () => {
                     Project: {projCode ? `[${projCode}] ` : ''}{projName} · Client: {clientName}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer select-none transition-colors ${
+                      offDigitalSignature
+                        ? 'bg-rose-500/20 border-rose-400 text-rose-200'
+                        : 'bg-white/10 hover:bg-white/20 border-white/20 text-slate-200'
+                    }`}
+                    title="Hide digital signatures and leave blank space for manual hand signing"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={offDigitalSignature}
+                      onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                      className="rounded border-slate-400 text-rose-500 focus:ring-rose-500"
+                    />
+                    <PenTool className="w-3.5 h-3.5 shrink-0" />
+                    <span>Off Digital Signature</span>
+                  </label>
                   <button
                     type="button"
                     onClick={() =>
@@ -4107,17 +4131,51 @@ export const ClientFreeIssueView: React.FC = () => {
 
                   <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-[13px] text-slate-600">
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared') ? (
+                        <div className="h-14 flex items-end pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared')!
+                                .signatureDataUrl
+                            }
+                            alt="Prepared Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-800">Central Store / FOC Controller</div>
                       <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved') ? (
+                        <div className="h-14 flex items-end pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved')!
+                                .signatureDataUrl
+                            }
+                            alt="Site Manager Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
                       <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                        <span className="text-[10px] text-slate-400 italic">Client Sign &amp; Stamp</span>
+                      </div>
                       <div className="font-bold text-slate-800">Client Representative ({clientName})</div>
                       <div className="text-[11px]">Verification &amp; Sign-Off</div>
                     </div>
@@ -4176,7 +4234,24 @@ export const ClientFreeIssueView: React.FC = () => {
                     Client: {clientName} · Branch: {branchName} · {proj.items.length} Item(s) · {proj.subProjectFlows.length} Sub-Project(s)
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer select-none transition-colors ${
+                      offDigitalSignature
+                        ? 'bg-rose-500/20 border-rose-400 text-rose-200'
+                        : 'bg-white/10 hover:bg-white/20 border-white/20 text-slate-200'
+                    }`}
+                    title="Hide digital signatures and leave blank space for manual hand signing"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={offDigitalSignature}
+                      onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                      className="rounded border-slate-400 text-rose-500 focus:ring-rose-500"
+                    />
+                    <PenTool className="w-3.5 h-3.5 shrink-0" />
+                    <span>Off Digital Signature</span>
+                  </label>
                   <button
                     type="button"
                     onClick={() =>
@@ -4535,17 +4610,51 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Official 3-Column Sign-Off */}
                   <div className="grid grid-cols-3 gap-6 pt-5 border-t-2 border-slate-300 text-[13px] text-slate-600">
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared') ? (
+                        <div className="h-14 flex items-end pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared')!
+                                .signatureDataUrl
+                            }
+                            alt="Prepared Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-800">Central Store / FOC Controller</div>
                       <div className="text-[11px]">Prepared By · Signature &amp; Date</div>
                     </div>
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved') ? (
+                        <div className="h-14 flex items-end pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved')!
+                                .signatureDataUrl
+                            }
+                            alt="Verified Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
                       <div className="text-[11px]">Verified By · Signature &amp; Date</div>
                     </div>
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                        <span className="text-[10px] text-slate-400 italic">Client Sign &amp; Stamp</span>
+                      </div>
                       <div className="font-bold text-slate-800">Client Representative ({clientName})</div>
                       <div className="text-[11px]">Final Completion Approval</div>
                     </div>
@@ -4589,7 +4698,24 @@ export const ClientFreeIssueView: React.FC = () => {
                     Main Project: [{parentCode}] {parentName} · Client: {clientName} · Branch: {branchName}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer select-none transition-colors ${
+                      offDigitalSignature
+                        ? 'bg-rose-500/20 border-rose-400 text-rose-200'
+                        : 'bg-white/10 hover:bg-white/20 border-white/20 text-slate-200'
+                    }`}
+                    title="Hide digital signatures and leave blank space for manual hand signing"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={offDigitalSignature}
+                      onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                      className="rounded border-slate-400 text-rose-500 focus:ring-rose-500"
+                    />
+                    <PenTool className="w-3.5 h-3.5 shrink-0" />
+                    <span>Off Digital Signature</span>
+                  </label>
                   <button
                     type="button"
                     onClick={() =>
@@ -4789,17 +4915,51 @@ export const ClientFreeIssueView: React.FC = () => {
                   {/* Sign-Off Block */}
                   <div className="grid grid-cols-3 gap-6 pt-5 border-t border-slate-200 text-[13px] text-slate-600">
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared') ? (
+                        <div className="h-14 flex items-end pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared')!
+                                .signatureDataUrl
+                            }
+                            alt="Prepared Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-800">Prepared By (Site Store)</div>
                       <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved') ? (
+                        <div className="h-14 flex items-end pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved')!
+                                .signatureDataUrl
+                            }
+                            alt="Site Manager Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-800">Site Manager ({branchName})</div>
                       <div className="text-[11px]">Signature &amp; Date</div>
                     </div>
                     <div>
-                      <div className="border-b border-slate-400 h-8 mb-1" />
+                      <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                        <span className="text-[10px] text-slate-400 italic">Client Sign &amp; Stamp</span>
+                      </div>
                       <div className="font-bold text-slate-800">Client / Project Inspector</div>
                       <div className="text-[11px]">Sub-Project Sign-Off</div>
                     </div>

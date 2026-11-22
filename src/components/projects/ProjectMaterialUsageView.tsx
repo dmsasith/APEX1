@@ -35,6 +35,7 @@ import {
   Gift,
   ScanLine,
   MapPin,
+  PenTool,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -51,6 +52,7 @@ import {
 } from '../../types';
 import { formatNumber, formatDateTime, exportToCsv } from '../../utils/exportUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
+import { matchDigitalSignature } from '../../utils/signatureUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
@@ -113,6 +115,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
     activeClients,
     config,
     currentTenant,
+    digitalSignatures,
+    activeTemplate,
   } = useStock();
 
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
@@ -129,6 +133,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [fullSiteReportProjectId, setFullSiteReportProjectId] = useState<string | null>(null);
   const [isPrintingFullReport, setIsPrintingFullReport] = useState(false);
   const [fullReportPrintNotice, setFullReportPrintNotice] = useState<string | null>(null);
+  const [offDigitalSignature, setOffDigitalSignature] = useState<boolean>(
+    Boolean(config?.offDigitalSignature)
+  );
 
   // Confirmation modal
   const [confirmState, setConfirmState] = useState<{
@@ -4781,6 +4788,24 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   <span>Export Excel / CSV</span>
                 </button>
 
+                <label
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold cursor-pointer select-none transition-colors ${
+                    offDigitalSignature
+                      ? 'bg-rose-500/20 border-rose-400 text-rose-200'
+                      : 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
+                  }`}
+                  title="Hide digital signatures and leave blank space for manual hand signing"
+                >
+                  <input
+                    type="checkbox"
+                    checked={offDigitalSignature}
+                    onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                    className="rounded border-slate-500 text-rose-500 focus:ring-rose-500"
+                  />
+                  <PenTool className="w-3.5 h-3.5 shrink-0" />
+                  <span>Off Digital Signature</span>
+                </label>
+
                 {/* Print Report Button */}
                 <button
                   type="button"
@@ -5216,16 +5241,67 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
 
                   {/* Official Sign-Off Footer for Printed / Saved PDF Report */}
-                  <div className="pt-6 mt-4 border-t-2 border-slate-300 grid grid-cols-3 gap-6 text-[13px] text-slate-800">
-                    <div className="text-center pt-6 border-t border-slate-400">
+                  <div className="pt-5 mt-5 border-t-2 border-slate-300 grid grid-cols-3 gap-6 text-[13px] text-slate-800">
+                    <div className="text-center">
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared') ? (
+                        <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared')!
+                                .signatureDataUrl
+                            }
+                            alt="Prepared Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature &amp; Date</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-900">Prepared By</div>
                       <div className="text-xs text-slate-500">Site Storekeeper / Supervisor</div>
                     </div>
-                    <div className="text-center pt-6 border-t border-slate-400">
+                    <div className="text-center">
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.reviewedBy || currentUser?.fullName, 'reviewed') ? (
+                        <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.reviewedBy || currentUser?.fullName, 'reviewed')!
+                                .signatureDataUrl
+                            }
+                            alt="Verified Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature &amp; Date</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-900">Checked &amp; Verified By</div>
                       <div className="text-xs text-slate-500">Project Engineer / Branch Manager</div>
                     </div>
-                    <div className="text-center pt-6 border-t border-slate-400">
+                    <div className="text-center">
+                      {!offDigitalSignature &&
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved') ? (
+                        <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400 mb-1.5">
+                          <img
+                            src={
+                              matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved')!
+                                .signatureDataUrl
+                            }
+                            alt="Approved Digital Signature"
+                            className="max-h-12 max-w-[150px] object-contain mix-blend-multiply"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                          <span className="text-[10px] text-slate-400 italic">Hand Signature &amp; Stamp</span>
+                        </div>
+                      )}
                       <div className="font-bold text-slate-900">Approved By</div>
                       <div className="text-xs text-slate-500">Central Logistics / Management</div>
                     </div>

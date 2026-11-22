@@ -15,11 +15,13 @@ import {
   CheckCircle2,
   Layers,
   Truck,
+  PenTool,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { Item } from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
+import { matchDigitalSignature } from '../../utils/signatureUtils';
 
 interface ItemTraceabilitySummaryPanelProps {
   item: Item;
@@ -57,11 +59,16 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
     getMainWarehouseStock,
     getSiteItemStock,
     allTeamsInHandStock,
+    digitalSignatures,
+    activeTemplate,
   } = useStock();
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfNotice, setPdfNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [printWithImage, setPrintWithImage] = useState<boolean>(() => Boolean(item.imageUrl));
+  const [offDigitalSignature, setOffDigitalSignature] = useState<boolean>(
+    Boolean(config?.offDigitalSignature)
+  );
   const [activeSubView, setActiveSubView] = useState<
     'overview' | 'central-foc' | 'inbound' | 'sites' | 'teams' | 'projects' | 'reconciliation'
   >('overview');
@@ -1083,6 +1090,23 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
               className="rounded border-amber-400 text-amber-500 focus:ring-amber-500"
             />
             <span>Print with Image</span>
+          </label>
+          <label
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer select-none transition-colors ${
+              offDigitalSignature
+                ? 'bg-rose-500/25 border-rose-300 text-rose-100'
+                : 'bg-black/30 hover:bg-black/40 border-white/25 text-slate-200'
+            }`}
+            title="Hide digital signatures and leave blank space for manual hand signing"
+          >
+            <input
+              type="checkbox"
+              checked={offDigitalSignature}
+              onChange={(e) => setOffDigitalSignature(e.target.checked)}
+              className="rounded border-slate-400 text-rose-500 focus:ring-rose-500"
+            />
+            <PenTool className="w-3.5 h-3.5 shrink-0" />
+            <span>Off Digital Signature</span>
           </label>
           <button
             type="button"
@@ -2866,15 +2890,52 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           </div>
 
           {/* ISO Sign-off Footer */}
-          <div className="grid grid-cols-3 gap-6 pt-8 text-xs">
-            <div className="border-t border-slate-400 pt-1.5 text-center font-semibold">
-              Prepared By (Store / Inventory Officer)
+          <div className="grid grid-cols-3 gap-6 pt-6 text-xs">
+            <div className="text-center">
+              {!offDigitalSignature &&
+              matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared') ? (
+                <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400 mb-1.5">
+                  <img
+                    src={
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared')!
+                        .signatureDataUrl
+                    }
+                    alt="Prepared Signature"
+                    className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                  />
+                </div>
+              ) : (
+                <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                  <span className="text-[10px] text-slate-400 italic">Hand Signature &amp; Date</span>
+                </div>
+              )}
+              <div className="font-semibold text-slate-900">Prepared By (Store / Inventory Officer)</div>
             </div>
-            <div className="border-t border-slate-400 pt-1.5 text-center font-semibold">
-              Verified By (Site / Operations Engineer)
+            <div className="text-center">
+              {!offDigitalSignature &&
+              matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved') ? (
+                <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400 mb-1.5">
+                  <img
+                    src={
+                      matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved')!
+                        .signatureDataUrl
+                    }
+                    alt="Verified Signature"
+                    className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                  />
+                </div>
+              ) : (
+                <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                  <span className="text-[10px] text-slate-400 italic">Hand Signature &amp; Date</span>
+                </div>
+              )}
+              <div className="font-semibold text-slate-900">Verified By (Site / Operations Engineer)</div>
             </div>
-            <div className="border-t border-slate-400 pt-1.5 text-center font-semibold">
-              Client / Management Reconciliation Sign-Off
+            <div className="text-center">
+              <div className="h-16 flex flex-col justify-end border-b border-dashed border-slate-400 mb-1.5 pb-1">
+                <span className="text-[10px] text-slate-400 italic">Hand Signature &amp; Stamp</span>
+              </div>
+              <div className="font-semibold text-slate-900">Client / Management Reconciliation Sign-Off</div>
             </div>
           </div>
         </div>

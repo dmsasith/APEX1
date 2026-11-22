@@ -25,10 +25,12 @@ import {
   RotateCcw,
   Home,
   Download,
+  PenTool,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
+import { matchDigitalSignature } from '../../utils/signatureUtils';
 import {
   Site,
   Team,
@@ -62,11 +64,16 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
     getTeamSiteInHandStock,
     returnTeamToInitialSite,
     promoteTeamAssignmentToPermanent,
+    digitalSignatures,
+    activeTemplate,
   } = useStock();
 
   const [selectedSiteId, setSelectedSiteId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [offDigitalSignature, setOffDigitalSignature] = useState<boolean>(
+    Boolean(config?.offDigitalSignature)
+  );
   const [teamModalState, setTeamModalState] = useState<{
     teamId: string;
     tab: 'details' | 'transfer';
@@ -269,7 +276,24 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 shrink-0 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
+            <label
+              className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold cursor-pointer select-none transition-colors ${
+                offDigitalSignature
+                  ? 'bg-rose-500/20 border-rose-400 text-rose-200'
+                  : 'bg-white/10 hover:bg-white/20 border-white/20 text-slate-200'
+              }`}
+              title="Hide digital signatures when printing directory report and leave blank hand-sign space"
+            >
+              <input
+                type="checkbox"
+                checked={offDigitalSignature}
+                onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                className="rounded border-slate-400 text-rose-500 focus:ring-rose-500"
+              />
+              <PenTool className="w-3.5 h-3.5 shrink-0" />
+              <span>Off Digital Signature</span>
+            </label>
             <button
               type="button"
               onClick={handleExportCsv}
@@ -904,19 +928,67 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
       <div className="hidden print:block mt-12 pt-8 border-t-2 border-slate-300 break-inside-avoid">
         <div className="grid grid-cols-3 gap-8 text-center text-xs">
           <div>
-            <div className="h-14 border-b border-slate-400" />
+            {!offDigitalSignature &&
+            matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared') ? (
+              <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400">
+                <img
+                  src={
+                    matchDigitalSignature(digitalSignatures, activeTemplate?.preparedBy || currentUser?.fullName, 'prepared')!
+                      .signatureDataUrl
+                  }
+                  alt="Prepared Signature"
+                  className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                />
+              </div>
+            ) : (
+              <div className="h-16 flex items-end justify-center pb-1 border-b border-dashed border-slate-400 text-[10px] text-slate-400 italic">
+                Hand Signature
+              </div>
+            )}
             <div className="font-bold text-slate-900 mt-2">Prepared By</div>
             <div className="text-[11px] text-slate-500">Branch Operations Officer</div>
             <div className="text-[10px] text-slate-400 font-mono mt-0.5">Date: ________________</div>
           </div>
           <div>
-            <div className="h-14 border-b border-slate-400" />
+            {!offDigitalSignature &&
+            matchDigitalSignature(digitalSignatures, activeTemplate?.reviewedBy || currentUser?.fullName, 'reviewed') ? (
+              <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400">
+                <img
+                  src={
+                    matchDigitalSignature(digitalSignatures, activeTemplate?.reviewedBy || currentUser?.fullName, 'reviewed')!
+                      .signatureDataUrl
+                  }
+                  alt="Verified Signature"
+                  className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                />
+              </div>
+            ) : (
+              <div className="h-16 flex items-end justify-center pb-1 border-b border-dashed border-slate-400 text-[10px] text-slate-400 italic">
+                Hand Signature
+              </div>
+            )}
             <div className="font-bold text-slate-900 mt-2">Branch Manager / Supervisor</div>
             <div className="text-[11px] text-slate-500">Site Branch Verification</div>
             <div className="text-[10px] text-slate-400 font-mono mt-0.5">Date: ________________</div>
           </div>
           <div>
-            <div className="h-14 border-b border-slate-400" />
+            {!offDigitalSignature &&
+            matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved') ? (
+              <div className="h-14 flex items-end justify-center pb-1 border-b border-slate-400">
+                <img
+                  src={
+                    matchDigitalSignature(digitalSignatures, activeTemplate?.approvedBy || currentUser?.fullName, 'approved')!
+                      .signatureDataUrl
+                  }
+                  alt="Approved Signature"
+                  className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                />
+              </div>
+            ) : (
+              <div className="h-16 flex items-end justify-center pb-1 border-b border-dashed border-slate-400 text-[10px] text-slate-400 italic">
+                Hand Signature &amp; Stamp
+              </div>
+            )}
             <div className="font-bold text-slate-900 mt-2">Central Operations Super Admin</div>
             <div className="text-[11px] text-slate-500">Headquarters Audit Approval</div>
             <div className="text-[10px] text-slate-400 font-mono mt-0.5">Date: ________________</div>

@@ -34,6 +34,7 @@ import {
   RotateCcw,
   Truck,
   ShieldCheck,
+  PenTool,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -50,6 +51,7 @@ import {
 import { getThemeConfig } from '../../utils/themeUtils';
 import { formatNumber, formatDate, formatDateTime } from '../../utils/exportUtils';
 import { exportElementToPdf, printHtmlElement } from '../../utils/printUtils';
+import { matchDigitalSignature } from '../../utils/signatureUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { SupplierReturnModal } from './SupplierReturnModal';
@@ -84,6 +86,7 @@ export const ProcurementView: React.FC = () => {
     dispatchSupplierReturn,
     activeProjects,
     projects,
+    digitalSignatures,
     getEffectiveSectionFormat,
   } = useStock();
 
@@ -103,6 +106,9 @@ export const ProcurementView: React.FC = () => {
   const isCentralAdmin = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   const [activeTab, setActiveTab] = useState<'orders' | 'returns' | 'suppliers'>('orders');
+  const [offDigitalSignature, setOffDigitalSignature] = useState<boolean>(
+    Boolean(config?.offDigitalSignature)
+  );
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [returnStatusFilter, setReturnStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1077,18 +1083,38 @@ Email: ${tenantEmail}`;
           </div>
 
           {activeTab === 'orders' && (
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3.5 py-2 bg-slate-50/80 hover:bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-600 transition-colors cursor-pointer shrink-0"
-            >
-              <option value="all">All Order Statuses</option>
-              <option value="Draft">Draft</option>
-              <option value="Order Sent">Order Sent / Pending</option>
-              <option value="Partially Received">Partially Received</option>
-              <option value="Received into Main Stock">Received into Main Stock</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
+            <>
+              <label
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer select-none transition-colors shrink-0 ${
+                  offDigitalSignature
+                    ? 'bg-rose-50 border-rose-300 text-rose-800'
+                    : 'bg-slate-50 hover:bg-white border-slate-200/90 text-slate-700'
+                }`}
+                title="Hide digital signatures when printing POs and leave blank hand-sign space"
+              >
+                <input
+                  type="checkbox"
+                  checked={offDigitalSignature}
+                  onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                  className="rounded border-slate-400 text-rose-600 focus:ring-rose-500"
+                />
+                <PenTool className="w-3.5 h-3.5 shrink-0" />
+                <span>Off Digital Signature</span>
+              </label>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3.5 py-2 bg-slate-50/80 hover:bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-600 transition-colors cursor-pointer shrink-0"
+              >
+                <option value="all">All Order Statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Order Sent">Order Sent / Pending</option>
+                <option value="Partially Received">Partially Received</option>
+                <option value="Received into Main Stock">Received into Main Stock</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </>
           )}
 
           {activeTab === 'returns' && (
@@ -2545,7 +2571,24 @@ Email: ${tenantEmail}`;
 
             {/* Modal Action Bar */}
             <div className="pt-3 border-t border-slate-200 shrink-0 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <label
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer select-none transition-colors ${
+                    offDigitalSignature
+                      ? 'bg-rose-50 border-rose-300 text-rose-800'
+                      : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                  }`}
+                  title="Hide digital signatures and leave blank space for hand signing"
+                >
+                  <input
+                    type="checkbox"
+                    checked={offDigitalSignature}
+                    onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                    className="rounded border-slate-400 text-rose-600 focus:ring-rose-500"
+                  />
+                  <PenTool className="w-3.5 h-3.5 shrink-0" />
+                  <span>Off Digital Signature</span>
+                </label>
                 <button
                   onClick={() => handlePrintDocument(viewingOrder)}
                   className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
@@ -3115,27 +3158,69 @@ Email: ${tenantEmail}`;
             {/* Signatures */}
             <div className="grid grid-cols-3 gap-6 pt-6 border-t border-slate-300 text-center text-xs">
               <div>
-                <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-600 font-semibold text-[10px]">
-                  {printingOrder.preparedBy}
-                </div>
+                {!offDigitalSignature &&
+                matchDigitalSignature(digitalSignatures, printingOrder.preparedBy || activeTemplate?.preparedBy, 'prepared') ? (
+                  <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1">
+                    <img
+                      src={
+                        matchDigitalSignature(
+                          digitalSignatures,
+                          printingOrder.preparedBy || activeTemplate?.preparedBy,
+                          'prepared'
+                        )!.signatureDataUrl
+                      }
+                      alt="Prepared Signature"
+                      className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-16 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
+                    Hand Signature &amp; Date
+                  </div>
+                )}
+                <div className="font-bold text-slate-900">{printingOrder.preparedBy}</div>
                 <div className="font-bold text-slate-800">{poFormat.signPreparedLabel || 'Prepared By'}</div>
                 <div className="text-[10px] text-slate-500">Central Warehouse Store</div>
               </div>
 
               <div>
-                <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-600 font-semibold text-[10px]">
-                  {printingOrder.approvedBy || activeTemplate?.approvedBy || 'Authorized Signature'}
+                {!offDigitalSignature &&
+                matchDigitalSignature(
+                  digitalSignatures,
+                  printingOrder.approvedBy || activeTemplate?.approvedBy,
+                  'approved'
+                ) ? (
+                  <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1">
+                    <img
+                      src={
+                        matchDigitalSignature(
+                          digitalSignatures,
+                          printingOrder.approvedBy || activeTemplate?.approvedBy,
+                          'approved'
+                        )!.signatureDataUrl
+                      }
+                      alt="Approved Signature"
+                      className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-16 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
+                    Hand Signature &amp; Stamp
+                  </div>
+                )}
+                <div className="font-bold text-slate-900">
+                  {printingOrder.approvedBy || activeTemplate?.approvedBy || 'Authorized Manager'}
                 </div>
                 <div className="font-bold text-slate-800">{poFormat.signApprovedLabel || 'Approved By'}</div>
                 <div className="text-[10px] text-slate-500">Procurement / Project Director</div>
               </div>
 
               <div>
-                <div className="h-14 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-400 text-[10px]">
-                  Sign & Date
+                <div className="h-16 border-b border-dashed border-slate-400 mb-2 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
+                  Sign &amp; Date
                 </div>
                 <div className="font-bold text-slate-800">{poFormat.signThirdLabel || 'Supplier Acknowledgment'}</div>
-                <div className="text-[10px] text-slate-500">Stamp & Delivery Acceptance</div>
+                <div className="text-[10px] text-slate-500">Stamp &amp; Delivery Acceptance</div>
               </div>
             </div>
 

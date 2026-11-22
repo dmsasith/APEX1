@@ -51,6 +51,7 @@ export const LetterheadTemplatesView: React.FC = () => {
   const {
     currentTenant,
     config,
+    updateConfig,
     currentUser,
     letterheadTemplates,
     activeTemplateId,
@@ -1555,12 +1556,17 @@ export const LetterheadTemplatesView: React.FC = () => {
                         <div className="text-[9px] text-slate-500 font-bold">
                           {draftFormat.signPreparedLabel || 'Prepared & Checked By'}
                         </div>
-                        {prepSig && (
+                        {!config?.offDigitalSignature && prepSig ? (
                           <img
                             src={prepSig.signatureDataUrl}
                             alt="Sig"
-                            className="h-6 object-contain my-0.5 mix-blend-multiply"
+                            className="h-7 object-contain my-1 mix-blend-multiply"
                           />
+                        ) : (
+                          <div className="h-12 flex flex-col justify-end my-1">
+                            <div className="border-b border-dashed border-slate-400 w-full mb-0.5" />
+                            <div className="text-[8px] text-slate-400 italic">Hand Signature &amp; Stamp</div>
+                          </div>
                         )}
                         <div className="font-bold text-slate-900">{preparedBy || autoTenantOfficer}</div>
                         <div className="text-[9px] text-slate-600">{designeePrepared}</div>
@@ -1569,12 +1575,17 @@ export const LetterheadTemplatesView: React.FC = () => {
                         <div className="text-[9px] text-slate-500 font-bold">
                           {draftFormat.signApprovedLabel || 'Authorized & Approved By'}
                         </div>
-                        {apprSig && (
+                        {!config?.offDigitalSignature && apprSig ? (
                           <img
                             src={apprSig.signatureDataUrl}
                             alt="Sig"
-                            className="h-6 object-contain my-0.5 mix-blend-multiply"
+                            className="h-7 object-contain my-1 mix-blend-multiply"
                           />
+                        ) : (
+                          <div className="h-12 flex flex-col justify-end my-1">
+                            <div className="border-b border-dashed border-slate-400 w-full mb-0.5" />
+                            <div className="text-[8px] text-slate-400 italic">Hand Signature &amp; Stamp</div>
+                          </div>
                         )}
                         <div className="font-bold text-slate-900">
                           {approvedBy || autoTenantOfficer}
@@ -1585,8 +1596,9 @@ export const LetterheadTemplatesView: React.FC = () => {
                         <div className="text-[9px] text-slate-500 font-bold">
                           {draftFormat.signThirdLabel || 'Reviewed / Received By'}
                         </div>
-                        <div className="h-6 flex items-end text-[9px] text-slate-400 italic">
-                          Sign & Stamp
+                        <div className="h-12 flex flex-col justify-end my-1">
+                          <div className="border-b border-dashed border-slate-400 w-full mb-0.5" />
+                          <div className="text-[8px] text-slate-400 italic">Sign &amp; Stamp</div>
                         </div>
                         <div className="font-bold text-slate-900">{reviewedBy || autoTenantOfficer}</div>
                         <div className="text-[9px] text-slate-600">Issue: {issueNo} | Rev: {revisionNo}</div>
@@ -2139,7 +2151,7 @@ export const LetterheadTemplatesView: React.FC = () => {
       {activeTab === 'signatures' && (
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b">
               <div>
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <PenTool className="w-5 h-5 text-emerald-600" />
@@ -2150,18 +2162,45 @@ export const LetterheadTemplatesView: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSigModal(true);
-                  setSigName('');
-                  setSigDataUrl('');
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Digital Signature</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <label
+                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border text-xs font-bold cursor-pointer select-none transition-colors ${
+                    config?.offDigitalSignature
+                      ? 'bg-amber-50 border-amber-400 text-amber-900 shadow-xs'
+                      : 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-700'
+                  }`}
+                  title="Default print mode: hide digital signatures and leave blank space for manual ink signatures"
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(config?.offDigitalSignature)}
+                    onChange={(e) => {
+                      updateConfig({ offDigitalSignature: e.target.checked });
+                      showFeedback(
+                        e.target.checked
+                          ? 'Default Print Mode: Off Digital Signature enabled (blank hand-sign spaces on reports).'
+                          : 'Default Print Mode: Digital Signatures enabled on printed reports.',
+                        'success'
+                      );
+                    }}
+                    className="rounded border-slate-400 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span>Off Digital Signature (Default for Printing)</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSigModal(true);
+                    setSigName('');
+                    setSigDataUrl('');
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Digital Signature</span>
+                </button>
+              </div>
             </div>
 
             {digitalSignatures.length === 0 ? (

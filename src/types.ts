@@ -48,6 +48,7 @@ export interface SystemConfig {
   themeId?: string;
   glassTone?: string;
   bgEffect?: string;
+  offDigitalSignature?: boolean;
   // SaaS Owner Bank & QR Payment Gateway Settings
   bankName?: string;
   bankAccountName?: string;

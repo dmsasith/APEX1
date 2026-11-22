@@ -158,6 +158,13 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
   const [customDocNumber, setCustomDocNumber] = useState<string>('');
   const [customDate, setCustomDate] = useState<string>('');
   const [printWithImage, setPrintWithImage] = useState<boolean>(false);
+  const [offDigitalSignature, setOffDigitalSignature] = useState<boolean>(
+    Boolean(config?.offDigitalSignature)
+  );
+
+  useEffect(() => {
+    setOffDigitalSignature(Boolean(config?.offDigitalSignature));
+  }, [config?.offDigitalSignature, isOpen]);
 
   // Sync state whenever activeTemplate or document changes
   useEffect(() => {
@@ -297,33 +304,42 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
     }
   };
 
-  // Find digital signatures
-  const prepSig =
-    digitalSignatures.find((s) => s.id === customPreparedSigId) ||
-    digitalSignatures.find(
-      (s) =>
-        s.name.toLowerCase().includes(customPreparedBy.toLowerCase()) ||
-        (customPreparedBy && s.name.toLowerCase().includes(customPreparedBy.split(' ')[0].toLowerCase()))
-    ) ||
-    digitalSignatures[1];
+  // Find digital signatures (suppressed when Off Digital Signature mode is enabled)
+  const isPrepSigOff = offDigitalSignature || customPreparedSigId === '__OFF__';
+  const isApprSigOff = offDigitalSignature || customApprovedSigId === '__OFF__';
+  const isRevSigOff = offDigitalSignature;
 
-  const apprSig =
-    digitalSignatures.find((s) => s.id === customApprovedSigId) ||
-    digitalSignatures.find(
-      (s) =>
-        s.name.toLowerCase().includes(customApprovedBy.toLowerCase()) ||
-        (customApprovedBy && s.name.toLowerCase().includes(customApprovedBy.split(' ')[0].toLowerCase()))
-    ) ||
-    digitalSignatures[0];
+  const prepSig = isPrepSigOff
+    ? undefined
+    : digitalSignatures.find((s) => s.id === customPreparedSigId) ||
+      digitalSignatures.find(
+        (s) =>
+          s.name.toLowerCase().includes(customPreparedBy.toLowerCase()) ||
+          (customPreparedBy && s.name.toLowerCase().includes(customPreparedBy.split(' ')[0].toLowerCase()))
+      ) ||
+      digitalSignatures[1] ||
+      digitalSignatures[0];
 
-  const revSig =
-    digitalSignatures.find((s) => s.id === customRevSigId) ||
-    digitalSignatures.find(
-      (s) =>
-        s.name.toLowerCase().includes(customReviewedBy.toLowerCase()) ||
-        (customReviewedBy && s.name.toLowerCase().includes(customReviewedBy.split(' ')[0].toLowerCase()))
-    ) ||
-    digitalSignatures[1];
+  const apprSig = isApprSigOff
+    ? undefined
+    : digitalSignatures.find((s) => s.id === customApprovedSigId) ||
+      digitalSignatures.find(
+        (s) =>
+          s.name.toLowerCase().includes(customApprovedBy.toLowerCase()) ||
+          (customApprovedBy && s.name.toLowerCase().includes(customApprovedBy.split(' ')[0].toLowerCase()))
+      ) ||
+      digitalSignatures[0];
+
+  const revSig = isRevSigOff
+    ? undefined
+    : digitalSignatures.find((s) => s.id === customRevSigId) ||
+      digitalSignatures.find(
+        (s) =>
+          s.name.toLowerCase().includes(customReviewedBy.toLowerCase()) ||
+          (customReviewedBy && s.name.toLowerCase().includes(customReviewedBy.split(' ')[0].toLowerCase()))
+      ) ||
+      digitalSignatures[1] ||
+      digitalSignatures[0];
 
   // Save current signers back to template as default
   const handleSaveAsTemplateDefault = () => {
@@ -920,6 +936,25 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
               <span>Print with Image</span>
             </label>
 
+            {/* Off Digital Signature (Hand-Sign Blank Space) Option */}
+            <label
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer select-none transition-colors ${
+                offDigitalSignature
+                  ? 'bg-rose-500/20 border-rose-400 text-rose-200 shadow-xs'
+                  : 'bg-slate-800 hover:bg-slate-700/80 border-slate-600 text-slate-200'
+              }`}
+              title="Hide digital signatures and leave blank space for physical hand signing"
+            >
+              <input
+                type="checkbox"
+                checked={offDigitalSignature}
+                onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                className="rounded border-slate-500 text-rose-500 focus:ring-rose-500"
+              />
+              <PenTool className="w-3.5 h-3.5 shrink-0" />
+              <span>Off Digital Signature</span>
+            </label>
+
             {/* ISO Standard & Tenant Auto-Sync Badge */}
             <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 text-[11px] text-emerald-300 font-semibold">
               <Building2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -1024,11 +1059,17 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   className="w-full p-1 border rounded text-xs text-slate-700"
                 />
                 <select
-                  value={customPreparedSigId}
-                  onChange={(e) => setCustomPreparedSigId(e.target.value)}
+                  value={offDigitalSignature ? '__OFF__' : customPreparedSigId}
+                  onChange={(e) => {
+                    if (e.target.value !== '__OFF__' && offDigitalSignature) {
+                      setOffDigitalSignature(false);
+                    }
+                    setCustomPreparedSigId(e.target.value);
+                  }}
                   className="w-full p-1 border rounded text-[11px] bg-slate-50"
                 >
                   <option value="">Auto-match Digital Signature</option>
+                  <option value="__OFF__">✍️ Off Digital Signature (Blank Hand-Sign Space)</option>
                   {digitalSignatures.map((s) => (
                     <option key={s.id} value={s.id}>
                       🖋️ {s.name} ({s.role})
@@ -1057,11 +1098,17 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   className="w-full p-1 border rounded text-xs text-slate-700"
                 />
                 <select
-                  value={customApprovedSigId}
-                  onChange={(e) => setCustomApprovedSigId(e.target.value)}
+                  value={offDigitalSignature ? '__OFF__' : customApprovedSigId}
+                  onChange={(e) => {
+                    if (e.target.value !== '__OFF__' && offDigitalSignature) {
+                      setOffDigitalSignature(false);
+                    }
+                    setCustomApprovedSigId(e.target.value);
+                  }}
                   className="w-full p-1 border rounded text-[11px] bg-slate-50"
                 >
                   <option value="">Auto-match Digital Signature</option>
+                  <option value="__OFF__">✍️ Off Digital Signature (Blank Hand-Sign Space)</option>
                   {digitalSignatures.map((s) => (
                     <option key={s.id} value={s.id}>
                       🖋️ {s.name} ({s.role})
@@ -1262,30 +1309,35 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                       <div className="text-[10px] text-slate-500 font-sans">Date</div>
                       <div className="font-mono font-bold">{customDate || new Date().toISOString().split('T')[0]}</div>
                     </td>
-                    <td className="w-1/4 p-1.5 border-r border-black">
+                    <td className="w-1/4 p-1.5 border-r border-black align-top">
                       <div className="text-[10px] text-slate-600 font-bold">
                         {effectiveFormat.signPreparedLabel || 'Prepared & Checked By'}
                       </div>
-                      {prepSig && (
-                        <div className="h-8 flex items-center justify-start my-0.5">
+                      {prepSig ? (
+                        <div className="h-9 flex items-center justify-start my-0.5">
                           <img
                             src={prepSig.signatureDataUrl}
                             alt="Prepared Signature"
-                            className="max-h-7 max-w-[130px] object-contain mix-blend-multiply"
+                            className="max-h-8 max-w-[140px] object-contain mix-blend-multiply"
                           />
+                        </div>
+                      ) : (
+                        <div className="h-14 flex flex-col justify-end my-1">
+                          <div className="border-b border-dashed border-slate-400 w-full mb-0.5" />
+                          <div className="text-[8.5px] text-slate-400 italic">Hand Signature &amp; Stamp</div>
                         </div>
                       )}
                       <div className="font-bold text-xs text-slate-900">
                         {customPreparedBy || currentUser?.fullName || 'Authorized Officer'}
                       </div>
                     </td>
-                    <td className="w-1/4 p-1.5 border-r border-black">
+                    <td className="w-1/4 p-1.5 border-r border-black align-top">
                       <div className="text-[10px] text-slate-600 font-bold">Designee</div>
                       <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDesigneePrepared || activeTemplate.designeePrepared || 'Storekeeper / Site Officer'}
                       </div>
                     </td>
-                    <td className="w-1/4 p-1.5">
+                    <td className="w-1/4 p-1.5 align-top">
                       <div className="text-[10px] text-slate-600 font-bold">Department</div>
                       <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDepartmentPrepared || activeTemplate.departmentPrepared || 'Warehouse & Site Logistics'}
@@ -1295,34 +1347,39 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
                   {/* Row 2: Approved by */}
                   <tr className={effectiveFormat.showIsoRevisionFooter !== false ? 'border-b border-black' : ''}>
-                    <td className="w-1/4 p-1.5 font-bold border-r border-black">
+                    <td className="w-1/4 p-1.5 font-bold border-r border-black align-top">
                       <div className="text-[10px] text-slate-500 font-sans">Date</div>
                       <div className="font-mono font-bold">{customDate || new Date().toISOString().split('T')[0]}</div>
                     </td>
-                    <td className="w-1/4 p-1.5 border-r border-black">
+                    <td className="w-1/4 p-1.5 border-r border-black align-top">
                       <div className="text-[10px] text-slate-600 font-bold">
                         {effectiveFormat.signApprovedLabel || 'Approved By'}
                       </div>
-                      {apprSig && (
-                        <div className="h-8 flex items-center justify-start my-0.5">
+                      {apprSig ? (
+                        <div className="h-9 flex items-center justify-start my-0.5">
                           <img
                             src={apprSig.signatureDataUrl}
                             alt="Approved Signature"
-                            className="max-h-7 max-w-[130px] object-contain mix-blend-multiply"
+                            className="max-h-8 max-w-[140px] object-contain mix-blend-multiply"
                           />
+                        </div>
+                      ) : (
+                        <div className="h-14 flex flex-col justify-end my-1">
+                          <div className="border-b border-dashed border-slate-400 w-full mb-0.5" />
+                          <div className="text-[8.5px] text-slate-400 italic">Hand Signature &amp; Stamp</div>
                         </div>
                       )}
                       <div className="font-bold text-xs text-slate-900">
                         {customApprovedBy || currentUser?.fullName || 'Authorized Manager'}
                       </div>
                     </td>
-                    <td className="w-1/4 p-1.5 border-r border-black">
+                    <td className="w-1/4 p-1.5 border-r border-black align-top">
                       <div className="text-[10px] text-slate-600 font-bold">Designee</div>
                       <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDesigneeApproved || activeTemplate.designeeApproved || 'Authorized Manager / Head of Operations'}
                       </div>
                     </td>
-                    <td className="w-1/4 p-1.5">
+                    <td className="w-1/4 p-1.5 align-top">
                       <div className="text-[10px] text-slate-600 font-bold">Department</div>
                       <div className="font-medium text-slate-800 text-[11.5px]">
                         {customDepartmentApproved || activeTemplate.departmentApproved || 'Central Operations & Quality Control'}
@@ -1333,7 +1390,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                   {/* Row 3: Issue No & Revision Matrix */}
                   {effectiveFormat.showIsoRevisionFooter !== false && (
                     <tr>
-                      <td colSpan={2} className="p-1.5 border-r border-black">
+                      <td colSpan={2} className="p-1.5 border-r border-black align-top">
                         <div className="grid grid-cols-2 text-[10px] gap-x-2">
                           <div>
                             Issue NO: <strong className="font-mono">{customIssueNo || activeTemplate.issueNo || '01'}</strong>
@@ -1349,34 +1406,44 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                           </div>
                         </div>
                       </td>
-                      <td className="p-1.5 border-r border-black">
+                      <td className="p-1.5 border-r border-black align-top">
                         <div className="text-[9.5px] text-slate-500">
                           {effectiveFormat.signThirdLabel || 'Reviewed By'}
                         </div>
-                        {revSig && (
-                          <div className="h-5 flex items-center justify-start my-0.2">
+                        {revSig ? (
+                          <div className="h-6 flex items-center justify-start my-0.5">
                             <img
                               src={revSig.signatureDataUrl}
                               alt="Reviewed Signature"
-                              className="max-h-4 max-w-[80px] object-contain mix-blend-multiply"
+                              className="max-h-5 max-w-[90px] object-contain mix-blend-multiply"
                             />
+                          </div>
+                        ) : (
+                          <div className="h-11 flex flex-col justify-end my-0.5">
+                            <div className="border-b border-dashed border-slate-400 w-full mb-0.5" />
+                            <div className="text-[8px] text-slate-400 italic">Sign &amp; Date</div>
                           </div>
                         )}
                         <div className="font-bold text-[10.5px]">
                           {customReviewedBy || activeTemplate.reviewedBy || currentUser?.fullName || 'Authorized Officer'}
                         </div>
                       </td>
-                      <td className="p-1.5">
+                      <td className="p-1.5 align-top">
                         <div className="text-[9.5px] text-slate-500">
                           {effectiveFormat.signApprovedLabel || 'Approved BY'}
                         </div>
-                        {apprSig && (
-                          <div className="h-5 flex items-center justify-start my-0.2">
+                        {apprSig ? (
+                          <div className="h-6 flex items-center justify-start my-0.5">
                             <img
                               src={apprSig.signatureDataUrl}
                               alt="Approved Signature"
-                              className="max-h-4 max-w-[80px] object-contain mix-blend-multiply"
+                              className="max-h-5 max-w-[90px] object-contain mix-blend-multiply"
                             />
+                          </div>
+                        ) : (
+                          <div className="h-11 flex flex-col justify-end my-0.5">
+                            <div className="border-b border-dashed border-slate-400 w-full mb-0.5" />
+                            <div className="text-[8px] text-slate-400 italic">Sign &amp; Stamp</div>
                           </div>
                         )}
                         <div className="font-bold text-[10.5px]">

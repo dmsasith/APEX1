@@ -15,11 +15,13 @@ import {
   CheckCircle2,
   FileText,
   ShieldAlert,
+  PenTool,
 } from 'lucide-react';
 import { SupplierReturn } from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, formatDate, formatDateTime } from '../../utils/exportUtils';
 import { exportElementToPdf, printHtmlElement } from '../../utils/printUtils';
+import { matchDigitalSignature } from '../../utils/signatureUtils';
 
 interface DebitNoteModalProps {
   supplierReturn: SupplierReturn | null;
@@ -32,9 +34,12 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { currentTenant, config, activeTemplate, getEffectiveSectionFormat } = useStock();
+  const { currentTenant, config, activeTemplate, digitalSignatures, getEffectiveSectionFormat } = useStock();
   const printAreaRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [offDigitalSignature, setOffDigitalSignature] = useState<boolean>(
+    Boolean(config?.offDigitalSignature)
+  );
 
   if (!isOpen || !supplierReturn) return null;
 
@@ -146,7 +151,24 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer select-none transition-colors ${
+                offDigitalSignature
+                  ? 'bg-rose-500/20 border-rose-400 text-rose-200'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+              }`}
+              title="Hide digital signatures and leave blank space for manual hand signing"
+            >
+              <input
+                type="checkbox"
+                checked={offDigitalSignature}
+                onChange={(e) => setOffDigitalSignature(e.target.checked)}
+                className="rounded border-slate-500 text-rose-500 focus:ring-rose-500"
+              />
+              <PenTool className="w-3.5 h-3.5 shrink-0" />
+              <span>Off Digital Signature</span>
+            </label>
             <button
               onClick={handleSendEmail}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors border border-slate-700 cursor-pointer"
@@ -447,29 +469,71 @@ export const DebitNoteModal: React.FC<DebitNoteModalProps> = ({
             )}
 
             {/* Official Signature Blocks */}
-            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-slate-300 mt-8 text-center text-xs">
+            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-300 mt-8 text-center text-xs">
               <div>
-                <div className="h-12 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-800 font-semibold text-[11px]">
-                  {supplierReturn.preparedBy || 'Storekeeper'}
-                </div>
-                <div className="font-bold text-slate-800">{rtvFormat.signPreparedLabel || 'Prepared By'}</div>
+                {!offDigitalSignature &&
+                matchDigitalSignature(digitalSignatures, supplierReturn.preparedBy || activeTemplate?.preparedBy, 'prepared') ? (
+                  <div className="h-14 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1">
+                    <img
+                      src={
+                        matchDigitalSignature(
+                          digitalSignatures,
+                          supplierReturn.preparedBy || activeTemplate?.preparedBy,
+                          'prepared'
+                        )!.signatureDataUrl
+                      }
+                      alt="Prepared Signature"
+                      className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-16 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
+                    Hand Signature &amp; Date
+                  </div>
+                )}
+                <div className="font-bold text-slate-900">{supplierReturn.preparedBy || 'Storekeeper'}</div>
+                <div className="font-semibold text-slate-700 text-[11px]">{rtvFormat.signPreparedLabel || 'Prepared By'}</div>
                 <div className="text-[10px] text-slate-500">Storekeeper / Yard In-Charge</div>
               </div>
 
               <div>
-                <div className="h-12 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-800 font-semibold text-[11px]">
+                {!offDigitalSignature &&
+                matchDigitalSignature(
+                  digitalSignatures,
+                  supplierReturn.approvedBy || activeTemplate?.approvedBy,
+                  'approved'
+                ) ? (
+                  <div className="h-14 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1">
+                    <img
+                      src={
+                        matchDigitalSignature(
+                          digitalSignatures,
+                          supplierReturn.approvedBy || activeTemplate?.approvedBy,
+                          'approved'
+                        )!.signatureDataUrl
+                      }
+                      alt="Approved Signature"
+                      className="max-h-12 max-w-[140px] object-contain mix-blend-multiply"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-16 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
+                    Hand Signature &amp; Stamp
+                  </div>
+                )}
+                <div className="font-bold text-slate-900">
                   {supplierReturn.approvedBy || activeTemplate?.approvedBy || 'Operations Head'}
                 </div>
-                <div className="font-bold text-slate-800">{rtvFormat.signApprovedLabel || 'Authorized By'}</div>
+                <div className="font-semibold text-slate-700 text-[11px]">{rtvFormat.signApprovedLabel || 'Authorized By'}</div>
                 <div className="text-[10px] text-slate-500">Procurement / Logistics Manager</div>
               </div>
 
               <div>
-                <div className="h-12 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
-                  Signature & Company Rubber Stamp
+                <div className="h-16 border-b border-dashed border-slate-400 mb-1 flex items-end justify-center pb-1 text-slate-400 text-[10px] italic">
+                  Signature &amp; Company Rubber Stamp
                 </div>
                 <div className="font-bold text-slate-800">{rtvFormat.signThirdLabel || 'Supplier Acknowledgment'}</div>
-                <div className="text-[10px] text-slate-500">Receiver Name, Date & Seal</div>
+                <div className="text-[10px] text-slate-500">Receiver Name, Date &amp; Seal</div>
               </div>
             </div>
 
