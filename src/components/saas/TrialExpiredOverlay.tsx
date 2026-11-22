@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Lock,
   ShieldCheck,
@@ -7,13 +7,23 @@ import {
   Clock,
   LogOut,
   Copy,
+  ExternalLink,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { computePlatformPricingMetrics, getSubscriptionStatusSummary } from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
+import {
+  fetchPaymentsLkGatewayStatus,
+  startPaymentsLkAutoSubscription,
+  verifyPaymentsLkSubscription,
+  type PaymentsLkGatewayStatus,
+} from '../../utils/paymentsLkClient';
 
 export const TrialExpiredOverlay: React.FC = () => {
-  const { currentTenant, updateTenantSubscription, platformPricing, config, logout } = useStock();
+  const { currentTenant, currentUser, updateTenantSubscription, platformPricing, config, logout } = useStock();
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
   const masterBankConfig = (() => {
@@ -30,7 +40,15 @@ export const TrialExpiredOverlay: React.FC = () => {
   const activeBankAccountNumber = config?.bankAccountNumber || masterBankConfig?.bankAccountNumber || '1000 4829 5012';
   const activeBankBranchSwift = config?.bankBranchSwift || masterBankConfig?.bankBranchSwift || 'Mulleriyawa Branch / CCBLLKLX';
   const activeBankQrImage = config?.bankQrImage || masterBankConfig?.bankQrImage || '';
-  const usdRate = config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64;
+  const baseStoredRate = config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64;
+
+  const [usdRate, setUsdRate] = useState<number>(baseStoredRate);
+  const [isLiveRate, setIsLiveRate] = useState<boolean>(false);
+  const [gatewayStatus, setGatewayStatus] = useState<PaymentsLkGatewayStatus | null>(null);
+  const [gatewayBusy, setGatewayBusy] = useState(false);
+  const [gatewayError, setGatewayError] = useState<string | null>(null);
+  const [gatewayNotice, setGatewayNotice] = useState<string | null>(null);
+  const [fallbackCheckoutUrl, setFallbackCheckoutUrl] = useState<string | null>(null);
 
   const [bankSlipRef, setBankSlipRef] = useState('');
   const [bankNotes, setBankNotes] = useState('');
@@ -39,6 +57,21 @@ export const TrialExpiredOverlay: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>(
     currentTenant?.subscription?.billingCycle || 'annual'
   );
+
+  useEffect(() => {
+    let mounted = true;
+    fetchPaymentsLkGatewayStatus().then((st) => {
+      if (!mounted) return;
+      setGatewayStatus(st);
+      if (st.usdToLkrRate > 50 && st.isLiveFxRate) {
+        setUsdRate(st.usdToLkrRate);
+        setIsLiveRate(true);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   if (!currentTenant || currentTenant.id === 'tenant-apex-main') return null;
 
@@ -82,6 +115,76 @@ export const TrialExpiredOverlay: React.FC = () => {
     });
 
     setShowSlipSuccess(true);
+  };
+
+  const isEmbeddedIframe = (() => {
+    try {
+      return typeof window !== 'undefined' && window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
+
+  const handleStartAutoRenewCheckout = async () => {
+    setGatewayError(null);
+    setGatewayNotice(null);
+    setFallbackCheckoutUrl(null);
+    setGatewayBusy(true);
+    try {
+      const res = await startPaymentsLkAutoSubscription({
+        billingCycle: selectedPlan,
+        tenantId: currentTenant.id,
+        customerEmail: currentTenant.contactEmail,
+        customerName: currentTenant.companyName,
+        currentUser,
+      });
+
+      updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+
+      if (res.status === 'active') {
+        setGatewayNotice('Subscription activated! Unlocking your workspace...');
+      } else if (res.checkoutUrl) {
+        setFallbackCheckoutUrl(res.checkoutUrl);
+        if (isEmbeddedIframe) {
+          setGatewayNotice(
+            `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) session ready for Rs. ${res.lkrAmount.toLocaleString()}. Click "Open Checkout", pay in the new tab, then click "Check & Unlock".`
+          );
+        } else {
+          setGatewayNotice(`Redirecting to Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) for Rs. ${res.lkrAmount.toLocaleString()}...`);
+          window.location.assign(res.checkoutUrl);
+        }
+      }
+    } catch (err: unknown) {
+      setGatewayError(err instanceof Error ? err.message : 'Unable to start Payments.lk checkout.');
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
+  const handleVerifyGateway = async () => {
+    setGatewayError(null);
+    setGatewayNotice(null);
+    setGatewayBusy(true);
+    try {
+      const res = await verifyPaymentsLkSubscription({
+        tenantId: currentTenant.id,
+        subscriptionId: sub.paymentsLkSubscriptionId,
+        currentUser,
+      });
+      if (res.subscriptionPatch) {
+        updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+      }
+      setGatewayNotice(res.message);
+      if (res.verified) {
+        setFallbackCheckoutUrl(null);
+      } else if (res.checkoutUrl) {
+        setFallbackCheckoutUrl(res.checkoutUrl);
+      }
+    } catch (err: unknown) {
+      setGatewayError(err instanceof Error ? err.message : 'Unable to verify payment status.');
+    } finally {
+      setGatewayBusy(false);
+    }
   };
 
   return (
@@ -168,6 +271,87 @@ export const TrialExpiredOverlay: React.FC = () => {
                 </div>
               </div>
             </button>
+          </div>
+
+          {/* Instant Online Reactivation via Payments.lk (Auto-Renewing LKR Card Subscription) */}
+          <div className="bg-gradient-to-br from-emerald-950/90 via-slate-950 to-indigo-950/80 border border-emerald-700/50 rounded-xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-xs font-black text-white flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-emerald-400" />
+                  <span>Instant Unlock · Card Auto-Renewal (Payments.lk)</span>
+                  {gatewayStatus?.mode === 'test' && (
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] uppercase font-black">
+                      Sandbox
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-300 mt-0.5">
+                  Charged in LKR at {isLiveRate ? 'live FX ' : ''}rate ($1 = Rs. {usdRate.toFixed(2)}) ·{' '}
+                  <strong className="text-emerald-300 font-mono">Rs. {selectedLkrAmount.toLocaleString()}</strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={gatewayBusy || (gatewayStatus !== null && !gatewayStatus.configured)}
+                onClick={handleStartAutoRenewCheckout}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer shrink-0"
+              >
+                {gatewayBusy ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Pay Rs. {selectedLkrAmount.toLocaleString()} Online</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {sub.paymentsLkSubscriptionId && (
+              <div className="flex items-center justify-between gap-2 bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-2 text-[11px]">
+                <span className="text-slate-300">
+                  Pending Ref: <strong className="font-mono text-emerald-300">{sub.paymentsLkSubscriptionId}</strong>
+                </span>
+                <button
+                  type="button"
+                  disabled={gatewayBusy}
+                  onClick={handleVerifyGateway}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${gatewayBusy ? 'animate-spin' : ''}`} />
+                  <span>Check &amp; Unlock</span>
+                </button>
+              </div>
+            )}
+
+            {gatewayError && (
+              <div className="p-2.5 bg-rose-950/80 border border-rose-700/60 rounded-lg text-[11px] text-rose-200 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>{gatewayError}</span>
+              </div>
+            )}
+
+            {gatewayNotice && (
+              <div className="p-2.5 bg-emerald-950/80 border border-emerald-700/60 rounded-lg text-[11px] text-emerald-200 flex items-center justify-between gap-2 flex-wrap">
+                <span>{gatewayNotice}</span>
+                {fallbackCheckoutUrl && (
+                  <a
+                    href={fallbackCheckoutUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-slate-900 rounded font-bold text-[10px]"
+                  >
+                    <span>Open Checkout</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Pending Verification Status or Bank Transfer Submission Form */}

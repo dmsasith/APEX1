@@ -60,15 +60,80 @@ import { AiSupportChatWidget } from './components/support/AiSupportChatWidget';
 import { useStock } from './context/StockContext';
 import { getThemeConfig } from './utils/themeUtils';
 import { isSuperAdmin, isCentralOrAllSiteAdmin } from './types';
+import { verifyPaymentsLkSubscription } from './utils/paymentsLkClient';
 
 function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void } = {}) {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [showMobileGlassMenu, setShowMobileGlassMenu] = useState(false);
-  const { config, currentUser, currentTenant, pendingRequestsCount } = useStock();
+  const [paymentToast, setPaymentToast] = useState<{ type: 'success' | 'info' | 'warn'; text: string } | null>(null);
+  const { config, currentUser, currentTenant, updateTenantSubscription, pendingRequestsCount } = useStock();
   const theme = getThemeConfig(config?.themeId || config?.logoColor);
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
+
+  // Handle Payments.lk redirect return (?payments_lk=success|cancel|portal_return)
+  useEffect(() => {
+    if (!currentTenant?.id || !currentUser?.id) return;
+    const params = new URLSearchParams(window.location.search);
+    const paymentsLkState = params.get('payments_lk');
+    if (!paymentsLkState) return;
+
+    const cleanUrl = () => {
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.delete('payments_lk');
+      nextParams.delete('billing_cycle');
+      nextParams.delete('checkout');
+      nextParams.delete('status');
+      const qs = nextParams.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`);
+    };
+
+    cleanUrl();
+
+    if (paymentsLkState === 'cancel') {
+      setPaymentToast({
+        type: 'warn',
+        text: 'Payments.lk checkout was cancelled before completion. You can retry anytime from Subscription.',
+      });
+      return;
+    }
+
+    if (paymentsLkState === 'success' || paymentsLkState === 'portal_return') {
+      setPaymentToast({
+        type: 'info',
+        text: 'Verifying your Payments.lk auto-renewing subscription status...',
+      });
+      verifyPaymentsLkSubscription({
+        tenantId: currentTenant.id,
+        subscriptionId: currentTenant.subscription?.paymentsLkSubscriptionId,
+        currentUser,
+      })
+        .then((res) => {
+          if (res.subscriptionPatch) {
+            updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+          }
+          setPaymentToast({
+            type: res.verified ? 'success' : 'info',
+            text: res.verified
+              ? 'Payments.lk Auto-Renewing Pro Subscription activated! Welcome aboard.'
+              : res.message,
+          });
+        })
+        .catch(() => {
+          setPaymentToast({
+            type: 'info',
+            text: 'Payment return received. Open Subscription modal and click Verify Status if it does not auto-sync within a few seconds.',
+          });
+        });
+    }
+  }, [currentTenant?.id, currentUser?.id]);
+
+  useEffect(() => {
+    if (!paymentToast) return;
+    const t = setTimeout(() => setPaymentToast(null), 8000);
+    return () => clearTimeout(t);
+  }, [paymentToast]);
 
   useEffect(() => {
     const handleNav = (e: Event) => {
@@ -204,6 +269,29 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
 
       {/* Trial Expired Lock Overlay (Blocks app when trial ends until upgraded) */}
       <TrialExpiredOverlay />
+
+      {paymentToast && (
+        <div
+          role="status"
+          className={`fixed bottom-5 right-5 z-[60] max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-bold flex items-center justify-between gap-3 ${
+            paymentToast.type === 'success'
+              ? 'bg-emerald-950 text-emerald-100 border-emerald-600'
+              : paymentToast.type === 'warn'
+              ? 'bg-amber-950 text-amber-100 border-amber-600'
+              : 'bg-slate-900 text-slate-100 border-slate-700'
+          }`}
+        >
+          <span>{paymentToast.text}</span>
+          <button
+            type="button"
+            onClick={() => setPaymentToast(null)}
+            className="p-0.5 rounded hover:bg-white/10 cursor-pointer shrink-0"
+            aria-label="Dismiss payment notice"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Top Layout Header with Dynamic Company & System Name */}
       <Header

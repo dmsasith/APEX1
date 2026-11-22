@@ -10,6 +10,18 @@ import {
   SYSTEM_KNOWLEDGE_PROMPT,
   detectSuggestedModule,
 } from './supportShared';
+import {
+  createBillingPortalForTenant,
+  createRecurringSubscriptionForTenant,
+  formatPaymentsLkApiError,
+  getConfiguredMode,
+  getLiveUsdToLkrRate,
+  isSecretKeyConfigured,
+  isWebhookSecretConfigured,
+  processPaymentsLkWebhook,
+  updateAutoRenewForTenant,
+  verifyAndSyncTenantSubscription,
+} from './paymentsLkService';
 
 interface SessionTokenPayload {
   sub: string;
@@ -39,7 +51,6 @@ export function createApiApp(): express.Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
-  app.use(express.json({ limit: '10mb' }));
 
   const SESSION_SIGNING_SECRET = resolveSessionSigningSecret();
 
@@ -53,6 +64,30 @@ export function createApiApp(): express.Express {
     }
     next();
   });
+
+  // Payments.lk Signed Webhook (MUST run BEFORE express.json so raw body bytes remain intact for HMAC verification)
+  app.post(
+    '/api/payments/webhook',
+    express.raw({ type: 'application/json', limit: '2mb' }),
+    async (req, res) => {
+      try {
+        const signatureHeader = req.headers['payments-signature'];
+        const rawPayload = Buffer.isBuffer(req.body)
+          ? req.body
+          : typeof req.body === 'string'
+          ? req.body
+          : JSON.stringify(req.body || {});
+        const result = await processPaymentsLkWebhook(rawPayload, signatureHeader);
+        res.status(200).json(result);
+      } catch (err: unknown) {
+        const formatted = formatPaymentsLkApiError(err);
+        console.warn('[Payments.lk Webhook Error]:', formatted.code, formatted.message);
+        res.status(formatted.status).json({ error: formatted.message, code: formatted.code });
+      }
+    }
+  );
+
+  app.use(express.json({ limit: '10mb' }));
 
   // Reject cross-origin state-changing API calls (no wildcard CORS)
   app.use('/api', (req, res, next) => {
@@ -500,12 +535,216 @@ export function createApiApp(): express.Express {
     }
   });
 
+  // Payments.lk Gateway Status (safe public metadata only — never exposes secret keys)
+  app.get('/api/payments/status', async (_req, res) => {
+    try {
+      const fx = await getLiveUsdToLkrRate();
+      res.json({
+        configured: isSecretKeyConfigured(),
+        webhookConfigured: isWebhookSecretConfigured(),
+        mode: getConfiguredMode(),
+        usdToLkrRate: fx.rate,
+        isLiveFxRate: fx.isLive,
+      });
+    } catch {
+      res.json({
+        configured: isSecretKeyConfigured(),
+        webhookConfigured: isWebhookSecretConfigured(),
+        mode: getConfiguredMode(),
+        usdToLkrRate: 300.0,
+        isLiveFxRate: false,
+      });
+    }
+  });
+
+  function isLocalOrPrivateHostname(hostname: string): boolean {
+    const clean = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (!clean) return true;
+    if (
+      clean === 'localhost' ||
+      clean.endsWith('.localhost') ||
+      clean === '127.0.0.1' ||
+      clean === '0.0.0.0' ||
+      clean === '::1'
+    ) {
+      return true;
+    }
+    if (/^10\./.test(clean) || /^192\.168\./.test(clean) || /^172\.(1[6-9]|2\d|3[01])\./.test(clean)) {
+      return true;
+    }
+    return false;
+  }
+
+  function resolveTrustedAppOrigin(req: express.Request): string {
+    // 1. Prefer HTTPS Origin header (already validated by CSRF origin middleware on POST routes)
+    const originHeader = (req.get('origin') || '').trim();
+    if (originHeader) {
+      try {
+        const parsed = new URL(originHeader);
+        if (parsed.protocol === 'https:' && !isLocalOrPrivateHostname(parsed.hostname)) {
+          return parsed.origin;
+        }
+      } catch {
+        // ignore invalid origin
+      }
+    }
+
+    // 2. Check forwarded/request host and always force https:// when public
+    const forwardedHost = (req.get('x-forwarded-host') || req.get('host') || '')
+      .split(',')[0]
+      .trim();
+    if (forwardedHost) {
+      try {
+        const parsed = new URL(`https://${forwardedHost}`);
+        if (!isLocalOrPrivateHostname(parsed.hostname)) {
+          return parsed.origin;
+        }
+      } catch {
+        // ignore malformed host
+      }
+    }
+
+    // 3. Fallback to runtime APP_URL (e.g. AI Studio preview HTTPS URL)
+    if (process.env.APP_URL) {
+      try {
+        const parsed = new URL(process.env.APP_URL);
+        if (!isLocalOrPrivateHostname(parsed.hostname)) {
+          return `https://${parsed.host}`;
+        }
+      } catch {
+        // ignore invalid APP_URL
+      }
+    }
+
+    // 4. Fallback to VERCEL_URL if present
+    const vercelHost = (process.env.VERCEL_URL || '').trim();
+    if (vercelHost && !isLocalOrPrivateHostname(vercelHost.split(':')[0])) {
+      return `https://${vercelHost}`;
+    }
+
+    // 5. Production domain fallback (Payments.lk API strictly rejects http:// or localhost URLs)
+    return 'https://apexstox.com';
+  }
+
+  // Create Auto-Renewing Recurring Subscription on Payments.lk (USD -> LKR Live FX)
+  app.post('/api/payments/create-subscription', async (req, res) => {
+    try {
+      const session = verifySessionToken(extractBearerToken(req));
+      if (!session) {
+        res.status(401).json({ error: 'Authentication session required.' });
+        return;
+      }
+
+      const billingCycle = req.body?.billingCycle === 'monthly' ? 'monthly' : 'annual';
+      const requestedTenantId =
+        typeof req.body?.tenantId === 'string' ? req.body.tenantId.trim() : '';
+      const targetTenantId =
+        session.scope === 'master' && requestedTenantId ? requestedTenantId : session.tenantId;
+
+      const result = await createRecurringSubscriptionForTenant({
+        tenantId: targetTenantId,
+        billingCycle,
+        baseReturnUrl: resolveTrustedAppOrigin(req),
+        fallbackCustomerEmail:
+          typeof req.body?.customerEmail === 'string' ? req.body.customerEmail : undefined,
+        fallbackCustomerName:
+          typeof req.body?.customerName === 'string' ? req.body.customerName : undefined,
+      });
+
+      res.json(result);
+    } catch (err: unknown) {
+      const formatted = formatPaymentsLkApiError(err);
+      res.status(formatted.status).json({ error: formatted.message, code: formatted.code });
+    }
+  });
+
+  // Confirm & Sync Subscription Status Directly from Payments.lk on Checkout Return
+  app.post('/api/payments/verify-subscription', async (req, res) => {
+    try {
+      const session = verifySessionToken(extractBearerToken(req));
+      if (!session) {
+        res.status(401).json({ error: 'Authentication session required.' });
+        return;
+      }
+
+      const requestedTenantId =
+        typeof req.body?.tenantId === 'string' ? req.body.tenantId.trim() : '';
+      const targetTenantId =
+        session.scope === 'master' && requestedTenantId ? requestedTenantId : session.tenantId;
+      const subscriptionId =
+        typeof req.body?.subscriptionId === 'string' ? req.body.subscriptionId.trim() : undefined;
+
+      const result = await verifyAndSyncTenantSubscription({
+        tenantId: targetTenantId,
+        subscriptionId,
+      });
+
+      res.json(result);
+    } catch (err: unknown) {
+      const formatted = formatPaymentsLkApiError(err);
+      res.status(formatted.status).json({ error: formatted.message, code: formatted.code });
+    }
+  });
+
+  // Open Payments.lk Customer Billing Portal (Manage Saved Card, Invoices & Auto-Renewal)
+  app.post('/api/payments/billing-portal', async (req, res) => {
+    try {
+      const session = verifySessionToken(extractBearerToken(req));
+      if (!session) {
+        res.status(401).json({ error: 'Authentication session required.' });
+        return;
+      }
+
+      const requestedTenantId =
+        typeof req.body?.tenantId === 'string' ? req.body.tenantId.trim() : '';
+      const targetTenantId =
+        session.scope === 'master' && requestedTenantId ? requestedTenantId : session.tenantId;
+
+      const result = await createBillingPortalForTenant({
+        tenantId: targetTenantId,
+        returnUrl: `${resolveTrustedAppOrigin(req)}/?payments_lk=portal_return`,
+      });
+      res.json(result);
+    } catch (err: unknown) {
+      const formatted = formatPaymentsLkApiError(err);
+      res.status(formatted.status).json({ error: formatted.message, code: formatted.code });
+    }
+  });
+
+  // Cancel Auto-Renewal at Period End or Resume Subscription
+  app.post('/api/payments/auto-renew', async (req, res) => {
+    try {
+      const session = verifySessionToken(extractBearerToken(req));
+      if (!session) {
+        res.status(401).json({ error: 'Authentication session required.' });
+        return;
+      }
+
+      const action = req.body?.action === 'resume' ? 'resume' : 'cancel';
+      const requestedTenantId =
+        typeof req.body?.tenantId === 'string' ? req.body.tenantId.trim() : '';
+      const targetTenantId =
+        session.scope === 'master' && requestedTenantId ? requestedTenantId : session.tenantId;
+
+      const result = await updateAutoRenewForTenant({
+        tenantId: targetTenantId,
+        action,
+      });
+      res.json(result);
+    } catch (err: unknown) {
+      const formatted = formatPaymentsLkApiError(err);
+      res.status(formatted.status).json({ error: formatted.message, code: formatted.code });
+    }
+  });
+
   app.get('/api/health', (_req, res) => {
     res.json({
       status: 'ok',
       uptime: process.uptime(),
       activeAiCalls,
       cacheSize: responseCache.size,
+      paymentsLkConfigured: isSecretKeyConfigured(),
+      paymentsLkMode: getConfiguredMode(),
       timestamp: new Date().toISOString(),
     });
   });

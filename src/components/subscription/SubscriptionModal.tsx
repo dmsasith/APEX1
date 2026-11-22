@@ -16,6 +16,10 @@ import {
   RefreshCw,
   Printer,
   FileText,
+  CreditCard,
+  ExternalLink,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { computePlatformPricingMetrics, getSubscriptionStatusSummary } from '../../types';
@@ -24,6 +28,14 @@ import { LegalDocId } from '../landing/legalPoliciesData';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
 import { EmailVerificationModal } from '../auth/EmailVerificationModal';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
+import {
+  fetchPaymentsLkGatewayStatus,
+  openPaymentsLkBillingPortal,
+  startPaymentsLkAutoSubscription,
+  togglePaymentsLkAutoRenew,
+  verifyPaymentsLkSubscription,
+  type PaymentsLkGatewayStatus,
+} from '../../utils/paymentsLkClient';
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -31,7 +43,7 @@ interface SubscriptionModalProps {
 }
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
-  const { currentTenant, updateTenantSubscription, config, platformPricing } = useStock();
+  const { currentTenant, currentUser, updateTenantSubscription, config, platformPricing } = useStock();
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
   // Retrieve global master owner bank config (synced across all tenants)
@@ -55,6 +67,28 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   );
   const [isLiveRate, setIsLiveRate] = useState<boolean>(false);
   const [legalDocModal, setLegalDocModal] = useState<LegalDocId | null>(null);
+  const [gatewayStatus, setGatewayStatus] = useState<PaymentsLkGatewayStatus | null>(null);
+  const [gatewayBusy, setGatewayBusy] = useState(false);
+  const [gatewayError, setGatewayError] = useState<string | null>(null);
+  const [gatewayNotice, setGatewayNotice] = useState<string | null>(null);
+  const [fallbackCheckoutUrl, setFallbackCheckoutUrl] = useState<string | null>(null);
+
+  // Fetch Payments.lk Gateway Status & Server Live USD/LKR FX Rate when opened
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+    fetchPaymentsLkGatewayStatus().then((st) => {
+      if (!mounted) return;
+      setGatewayStatus(st);
+      if (st.usdToLkrRate > 50 && st.isLiveFxRate) {
+        setUsdRate(st.usdToLkrRate);
+        setIsLiveRate(true);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen]);
 
   // Auto-fetch real-time USD to LKR Exchange Rate
   useEffect(() => {
@@ -139,6 +173,128 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       setSubmittedBankSlip(false);
       onClose();
     }, 2500);
+  };
+
+  const isEmbeddedIframe = (() => {
+    try {
+      return typeof window !== 'undefined' && window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
+
+  const handleStartAutoSubscription = async () => {
+    setGatewayError(null);
+    setGatewayNotice(null);
+    setFallbackCheckoutUrl(null);
+    setGatewayBusy(true);
+    try {
+      const res = await startPaymentsLkAutoSubscription({
+        billingCycle,
+        tenantId: currentTenant.id,
+        customerEmail: currentTenant.contactEmail,
+        customerName: currentTenant.companyName,
+        currentUser,
+      });
+
+      updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+
+      if (res.status === 'active') {
+        setGatewayNotice('Auto-renewing Pro Subscription activated immediately on your card on file!');
+      } else if (res.checkoutUrl) {
+        setFallbackCheckoutUrl(res.checkoutUrl);
+        if (isEmbeddedIframe) {
+          setGatewayNotice(
+            `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) session ready for Rs. ${res.lkrAmount.toLocaleString()}. Click "Open Payment Page" to complete payment, then click "Verify Status".`
+          );
+        } else {
+          setGatewayNotice(
+            `Redirecting to Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) secure checkout for Rs. ${res.lkrAmount.toLocaleString()}...`
+          );
+          window.location.assign(res.checkoutUrl);
+        }
+      } else {
+        setGatewayNotice(`Subscription initialized (status: ${res.status}). Click Verify Status if payment completes.`);
+      }
+    } catch (err: unknown) {
+      setGatewayError(err instanceof Error ? err.message : 'Failed to initiate Payments.lk checkout.');
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
+  const handleVerifyGatewayStatus = async () => {
+    setGatewayError(null);
+    setGatewayNotice(null);
+    setGatewayBusy(true);
+    try {
+      const res = await verifyPaymentsLkSubscription({
+        tenantId: currentTenant.id,
+        subscriptionId: sub.paymentsLkSubscriptionId,
+        currentUser,
+      });
+      if (res.subscriptionPatch) {
+        updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+      }
+      if (res.verified) {
+        setFallbackCheckoutUrl(null);
+        setGatewayNotice(res.message);
+      } else {
+        setGatewayNotice(res.message);
+        if (res.checkoutUrl) setFallbackCheckoutUrl(res.checkoutUrl);
+      }
+    } catch (err: unknown) {
+      setGatewayError(err instanceof Error ? err.message : 'Unable to verify subscription status.');
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    setGatewayError(null);
+    setGatewayNotice(null);
+    setGatewayBusy(true);
+    try {
+      const res = await openPaymentsLkBillingPortal({
+        tenantId: currentTenant.id,
+        currentUser,
+      });
+      if (res.url) {
+        setFallbackCheckoutUrl(res.url);
+        if (isEmbeddedIframe) {
+          setGatewayNotice('Customer Billing Portal is ready. Click "Open Payment Page" to manage your card & invoices.');
+        } else {
+          window.location.assign(res.url);
+        }
+      }
+    } catch (err: unknown) {
+      setGatewayError(err instanceof Error ? err.message : 'Unable to open Payments.lk Customer Portal.');
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
+  const handleToggleAutoRenew = async (action: 'cancel' | 'resume') => {
+    setGatewayError(null);
+    setGatewayNotice(null);
+    setGatewayBusy(true);
+    try {
+      const res = await togglePaymentsLkAutoRenew({
+        tenantId: currentTenant.id,
+        action,
+        currentUser,
+      });
+      updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+      setGatewayNotice(
+        action === 'cancel'
+          ? 'Auto-renewal will stop at the end of your current paid period.'
+          : 'Auto-renewal has been resumed!'
+      );
+    } catch (err: unknown) {
+      setGatewayError(err instanceof Error ? err.message : 'Unable to update auto-renewal setting.');
+    } finally {
+      setGatewayBusy(false);
+    }
   };
 
   return (
@@ -344,6 +500,162 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                   Save {pricingMetrics.annualSavingsPercent}%
                 </span>
               </button>
+            </div>
+
+            {/* PAYMENTS.LK AUTO-RENEWING CARD SUBSCRIPTION */}
+            <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-indigo-950 text-white border border-emerald-700/50 rounded-2xl p-4 sm:p-5 space-y-3 shadow-md">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black tracking-tight flex items-center gap-2">
+                      <span>Auto-Renewing Card Subscription (Payments.lk)</span>
+                      {gatewayStatus?.mode === 'test' && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                          Sandbox Test Mode
+                        </span>
+                      )}
+                      {gatewayStatus?.mode === 'live' && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-400/20 text-emerald-300 border border-emerald-400/40">
+                          Live Gateway
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      Visa / Mastercard / Amex · Charged in LKR using live FX rate ($1 = Rs. {usdRate.toFixed(2)}
+                      {isLiveRate ? ' Live' : ''})
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-base font-black text-emerald-300 font-mono">
+                    Rs. {(isAnnual ? annualLkr : monthlyLkr).toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    ${isAnnual ? pricingMetrics.annualPriceFormatted : pricingMetrics.monthlyPriceFormatted} USD /{' '}
+                    {isAnnual ? 'year' : 'month'}
+                  </div>
+                </div>
+              </div>
+
+              {gatewayError && (
+                <div className="p-2.5 bg-rose-950/80 border border-rose-500/40 rounded-xl text-[11px] text-rose-200 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <span>{gatewayError}</span>
+                </div>
+              )}
+
+              {gatewayNotice && (
+                <div className="p-2.5 bg-emerald-900/50 border border-emerald-500/40 rounded-xl text-[11px] text-emerald-100 flex items-center justify-between gap-2 flex-wrap">
+                  <span>{gatewayNotice}</span>
+                  {fallbackCheckoutUrl && (
+                    <a
+                      href={fallbackCheckoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-slate-900 rounded-lg font-bold text-[10px] hover:bg-emerald-50"
+                    >
+                      <span>Open Payment Page</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {sub.paymentsLkSubscriptionId && (
+                <div className="p-2.5 bg-slate-950/60 border border-slate-700/70 rounded-xl text-[11px] flex flex-wrap items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <div className="text-slate-200 font-bold flex items-center gap-1.5">
+                      <span>Gateway Ref:</span>
+                      <span className="font-mono text-emerald-300">{sub.paymentsLkSubscriptionId}</span>
+                      {sub.paymentsLkStatus && (
+                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] uppercase text-amber-300 font-bold">
+                          {sub.paymentsLkStatus}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {sub.cancelAtPeriodEnd
+                        ? 'Auto-renew disabled (ends after current paid period)'
+                        : sub.autoRenew
+                        ? 'Auto-renewal enabled · Card billed automatically each cycle'
+                        : 'Pending initial card authorization on Payments.lk'}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={gatewayBusy}
+                      onClick={handleVerifyGatewayStatus}
+                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${gatewayBusy ? 'animate-spin' : ''}`} />
+                      <span>Verify Status</span>
+                    </button>
+
+                    {sub.paymentsLkCustomerId && (
+                      <button
+                        type="button"
+                        disabled={gatewayBusy}
+                        onClick={handleOpenBillingPortal}
+                        className="px-2.5 py-1.5 bg-indigo-600/80 hover:bg-indigo-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Manage Card / Invoices</span>
+                      </button>
+                    )}
+
+                    {sub.paymentsLkStatus === 'active' && (
+                      <button
+                        type="button"
+                        disabled={gatewayBusy}
+                        onClick={() => handleToggleAutoRenew(sub.cancelAtPeriodEnd ? 'resume' : 'cancel')}
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer disabled:opacity-50 ${
+                          sub.cancelAtPeriodEnd
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                            : 'bg-rose-900/70 hover:bg-rose-800 text-rose-200 border border-rose-700/60'
+                        }`}
+                      >
+                        {sub.cancelAtPeriodEnd ? 'Resume Auto-Renew' : 'Cancel Auto-Renew'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+                <div className="text-[11px] text-slate-300">
+                  Instant cloud activation · Card details tokenized securely by PAYable / Payments.lk.
+                </div>
+
+                <button
+                  type="button"
+                  disabled={gatewayBusy || (gatewayStatus !== null && !gatewayStatus.configured)}
+                  onClick={handleStartAutoSubscription}
+                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer shrink-0"
+                >
+                  {gatewayBusy ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Connecting Payments.lk...</span>
+                    </>
+                  ) : gatewayStatus && !gatewayStatus.configured ? (
+                    <span>Configure PAYMENTS_LK_SECRET_KEY on Server</span>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>
+                        Subscribe Online · Rs. {(isAnnual ? annualLkr : monthlyLkr).toLocaleString()} /{' '}
+                        {isAnnual ? 'yr' : 'mo'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* BANK QR CODE & DIRECT TRANSFER SECTION */}

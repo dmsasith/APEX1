@@ -1191,6 +1191,18 @@ export interface TenantSubscription {
     approvedAt?: string;
   };
   queuedSubscription?: QueuedSubscription;
+  // Payments.lk Auto-Renewing Subscription Integration Metadata
+  paymentsLkSubscriptionId?: string;
+  paymentsLkCustomerId?: string;
+  paymentsLkPriceId?: string;
+  paymentsLkMode?: 'test' | 'live';
+  paymentsLkStatus?: string;
+  autoRenew?: boolean;
+  cancelAtPeriodEnd?: boolean;
+  lastLkrAmountCharged?: number;
+  lastUsdToLkrRate?: number;
+  lastInvoiceId?: string;
+  lastWebhookEventId?: string;
 }
 
 export interface SubscriptionStatusSummary {
