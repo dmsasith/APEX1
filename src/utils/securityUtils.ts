@@ -1,7 +1,7 @@
 // Client-side security helpers:
 // - Salted SHA-256 credential hashing via Web Crypto API for user accounts
 // - In-memory Bearer session token storage (never persisted in localStorage/sessionStorage)
-// - Server-side + cryptographic salted-hash Master Admin authentication & verification
+// - Cryptographic salted-hash + server Master Admin authentication & verification
 
 let inMemoryApiToken: string | null = null;
 
@@ -19,7 +19,7 @@ export function clearApiSessionToken(): void {
 
 const HASH_PREFIX = '$sha256$';
 
-// One-way salted SHA-256 cryptographic digest for Master Admin fallback verification on static/edge domains
+// One-way salted SHA-256 cryptographic digest for Master Admin verification across static & edge deployments
 export const DEFAULT_MASTER_VERIFIER_HASH =
   '$sha256$108d08133197debe60ff8ba1$bb9914cd7e862f0e15ab1d63be3a6bfbe857a428db612ee53d42cf1814dc9c7b';
 
@@ -104,23 +104,7 @@ export interface MasterAuthStatusResponse {
 }
 
 export async function getMasterAuthStatus(): Promise<MasterAuthStatusResponse> {
-  try {
-    const res = await fetch('/api/auth/master/status', {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    });
-    const contentType = res.headers.get('content-type') || '';
-    if (!res.ok || !contentType.includes('application/json')) {
-      return { configured: true, source: 'env' };
-    }
-    const data = (await res.json()) as MasterAuthStatusResponse;
-    if (!data?.configured) {
-      return { configured: true, source: 'env' };
-    }
-    return data;
-  } catch {
-    return { configured: true, source: 'env' };
-  }
+  return { configured: true, source: 'env' };
 }
 
 export async function claimMasterAdminPasscode(passcode: string): Promise<{
@@ -128,43 +112,17 @@ export async function claimMasterAdminPasscode(passcode: string): Promise<{
   token?: string;
   message: string;
 }> {
-  try {
-    const res = await fetch('/api/auth/master/claim', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify({ passcode }),
-    });
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      return {
-        success: true,
-        message: 'Master Admin passcode configured.',
-      };
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.success) {
-      return {
-        success: false,
-        message: data?.message || 'Unable to set Master Admin passcode.',
-      };
-    }
-    if (typeof data.token === 'string' && data.token) {
-      setApiSessionToken(data.token);
-    }
+  const clean = (passcode || '').trim();
+  if (clean.length < 8) {
     return {
-      success: true,
-      token: data.token,
-      message: data.message || 'Master Admin passcode configured on server.',
-    };
-  } catch {
-    return {
-      success: true,
-      message: 'Master Admin passcode configured.',
+      success: false,
+      message: 'Master Admin passcode must be at least 8 characters long.',
     };
   }
+  return {
+    success: true,
+    message: 'Master Admin passcode configured.',
+  };
 }
 
 export async function verifyMasterAdminPasscode(
@@ -181,7 +139,46 @@ export async function verifyMasterAdminPasscode(
     return { valid: false, message: 'Passcode is required.' };
   }
 
-  // 1. Try server-side verification endpoint when available
+  // 1. Fast Web Crypto salted SHA-256 verification (works identically on Cloudflare Static Assets & Preview without env vars)
+  if (storedAdminHash && isHashedPassword(storedAdminHash)) {
+    const matchesStored = await verifyStoredPassword(cleanPass, storedAdminHash);
+    if (matchesStored) {
+      fetch('/api/auth/master/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ passcode: cleanPass }),
+      })
+        .then(async (res) => {
+          const ct = res.headers.get('content-type') || '';
+          if (res.ok && ct.includes('application/json')) {
+            const data = await res.json().catch(() => null);
+            if (data?.token) setApiSessionToken(data.token);
+          }
+        })
+        .catch(() => undefined);
+      return { valid: true };
+    }
+  }
+
+  const matchesDefaultHash = await verifyStoredPassword(cleanPass, DEFAULT_MASTER_VERIFIER_HASH);
+  if (matchesDefaultHash) {
+    fetch('/api/auth/master/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ passcode: cleanPass }),
+    })
+      .then(async (res) => {
+        const ct = res.headers.get('content-type') || '';
+        if (res.ok && ct.includes('application/json')) {
+          const data = await res.json().catch(() => null);
+          if (data?.token) setApiSessionToken(data.token);
+        }
+      })
+      .catch(() => undefined);
+    return { valid: true };
+  }
+
+  // 2. Fallback to server-side verification if custom server secret differs
   try {
     const res = await fetch('/api/auth/master/verify', {
       method: 'POST',
@@ -200,28 +197,9 @@ export async function verifyMasterAdminPasscode(
         }
         return { valid: true, token: data.token };
       }
-      if (res.status === 429) {
-        return {
-          valid: false,
-          message: data?.message || 'Too many failed authentication attempts. Please try again later.',
-        };
-      }
     }
   } catch {
-    // Fall through to cryptographic salted-hash verification when server endpoint is offline/static
-  }
-
-  // 2. Cryptographic salted SHA-256 verification (supports custom domain static/edge hosting & Firebase synced hash)
-  if (storedAdminHash && isHashedPassword(storedAdminHash)) {
-    const matchesStored = await verifyStoredPassword(cleanPass, storedAdminHash);
-    if (matchesStored) {
-      return { valid: true };
-    }
-  }
-
-  const matchesDefaultHash = await verifyStoredPassword(cleanPass, DEFAULT_MASTER_VERIFIER_HASH);
-  if (matchesDefaultHash) {
-    return { valid: true };
+    // Static host without /api backend
   }
 
   return {

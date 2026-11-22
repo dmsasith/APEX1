@@ -1,11 +1,8 @@
 {
   "name": "apexstox",
-  "main": "worker.ts",
-  "compatibility_date": "2025-01-01",
+  "compatibility_date": "2024-09-23",
   "assets": {
     "directory": "./dist",
-    "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": true
+    "not_found_handling": "single-page-application"
   }
 }
