@@ -44,7 +44,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
   const [address, setAddress] = useState(config.address || '');
   const [phone, setPhone] = useState(config.phone || '');
   const [email, setEmail] = useState(config.email || '');
-  const [themeId, setThemeId] = useState(config.themeId || config.logoColor || 'emerald');
+  const [themeId, setThemeId] = useState(config.themeId || config.logoColor || 'sapphire');
   const [usdToLkrRate, setUsdToLkrRate] = useState<number>(config.usdToLkrRate || 332.64);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
       setAddress(config.address || '');
       setPhone(config.phone || '');
       setEmail(config.email || '');
-      setThemeId(config.themeId || config.logoColor || 'emerald');
+      setThemeId(config.themeId || config.logoColor || 'sapphire');
       setUsdToLkrRate(config.usdToLkrRate || 332.64);
 
       setBarcodeEnabled(config.barcodeEnabled !== false);

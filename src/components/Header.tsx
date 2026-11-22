@@ -24,6 +24,7 @@ import {
   Zap,
   FileSpreadsheet,
   Barcode,
+  ChevronDown,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { ConfirmModal } from './common/ConfirmModal';
@@ -59,13 +60,15 @@ const PRESET_ICONS = [
 ];
 
 const MONOGRAM_COLORS = [
+  { id: 'sapphire', bgClass: 'bg-blue-800', borderClass: 'border-amber-400', label: 'Sapphire & Gold' },
   { id: 'emerald', bgClass: 'bg-emerald-600', borderClass: 'border-emerald-400', label: 'Emerald' },
-  { id: 'blue', bgClass: 'bg-blue-600', borderClass: 'border-blue-400', label: 'Sapphire' },
+  { id: 'teal', bgClass: 'bg-teal-600', borderClass: 'border-teal-400', label: 'Teal' },
+  { id: 'blue', bgClass: 'bg-blue-600', borderClass: 'border-blue-400', label: 'Cobalt' },
   { id: 'indigo', bgClass: 'bg-indigo-600', borderClass: 'border-indigo-400', label: 'Indigo' },
-  { id: 'purple', bgClass: 'bg-purple-600', borderClass: 'border-purple-400', label: 'Purple' },
+  { id: 'purple', bgClass: 'bg-purple-600', borderClass: 'border-purple-400', label: 'Amethyst' },
   { id: 'amber', bgClass: 'bg-amber-600', borderClass: 'border-amber-400', label: 'Amber' },
   { id: 'rose', bgClass: 'bg-rose-600', borderClass: 'border-rose-400', label: 'Crimson' },
-  { id: 'slate', bgClass: 'bg-slate-700', borderClass: 'border-slate-500', label: 'Slate' },
+  { id: 'slate', bgClass: 'bg-slate-700', borderClass: 'border-slate-500', label: 'Titanium' },
 ];
 
 export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests, onOpenRecycleBin, onReturnToGateway }) => {
@@ -115,7 +118,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showBarcodeLookupModal, setShowBarcodeLookupModal] = useState(false);
+  const [showToneMenu, setShowToneMenu] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const toneMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setTempCompanyName(config.companyName);
@@ -126,7 +131,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
     setModalLogoImage(config.logoImage || '');
     setModalLogoIcon(config.logoIcon || 'building');
     setModalLogoMonogram(config.logoMonogram || config.companyName.slice(0, 2).toUpperCase());
-    setModalLogoColor(config.logoColor || 'emerald');
+    setModalLogoColor(config.logoColor || 'sapphire');
 
     if (typeof document !== 'undefined') {
       document.title = `${config.companyName} | ${config.systemName}`;
@@ -138,8 +143,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
     setTimeout(() => setStatusMessage(null), 3500);
   };
 
-  const currentThemeId = config.themeId || config.logoColor || 'emerald';
-  const currentTheme = getThemeConfig(currentThemeId);
+  const currentTheme = getThemeConfig(config.themeId || config.logoColor);
+  const currentThemeId = currentTheme.id;
   const isCentralAdmin = isSuperAdmin(authUser?.role) || authUser?.username === 'admin';
 
   useEffect(() => {
@@ -148,6 +153,24 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
       document.documentElement.setAttribute('data-theme', currentThemeId);
     }
   }, [currentTheme, currentThemeId]);
+
+  useEffect(() => {
+    if (!showToneMenu) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (toneMenuRef.current && !toneMenuRef.current.contains(e.target as Node)) {
+        setShowToneMenu(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowToneMenu(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [showToneMenu]);
 
   const handleSaveInlineNames = (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,16 +264,16 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
     }
     const iconObj = PRESET_ICONS.find((p) => p.id === iconId) || PRESET_ICONS[0];
     const IconComponent = iconObj.icon;
-    return <IconComponent className="w-5 h-5 text-[#071026] stroke-[2.2]" />;
+    return <IconComponent className={`w-5 h-5 ${currentTheme.logoBadgeText} stroke-[2.2]`} />;
   };
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#060c1d]/95 via-[#091533]/92 to-[#060c1d]/95 backdrop-blur-2xl text-white border-b border-white/12 shadow-[0_14px_38px_-12px_rgba(2,6,18,0.68),inset_0_1px_0_rgba(255,255,255,0.12)]">
-        {/* Top Specular Gold Crystal Rule matching Landing Page */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400/85 to-transparent" />
+      <header className={`sticky top-0 z-30 ${currentTheme.headerBg} text-white border-b ${currentTheme.headerBorder} shadow-[0_14px_38px_-12px_rgba(2,6,18,0.68),inset_0_1px_0_rgba(255,255,255,0.12)] transition-colors duration-200`}>
+        {/* Top Specular Crystal Rule matching Active Glass Tone */}
+        <div className={`h-[2px] w-full ${currentTheme.topRuleBg}`} />
 
-        {/* Main Top Sapphire Glass Bar - Aligned to exact same 1600px grid as Workspace */}
+        {/* Main Top Glass Bar - Aligned to exact same 1600px grid as Workspace */}
         <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 min-h-[60px] flex items-center justify-between gap-3 xl:gap-4">
           {/* Zone 1: Company & System Identity (Left-aligned with Sidebar) */}
           <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -258,16 +281,16 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               <button
                 type="button"
                 onClick={handleOpenLogoModal}
-                className="group relative w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 border border-amber-200/70 shadow-[0_6px_18px_-4px_rgba(251,191,36,0.4),inset_0_1.5px_0_rgba(255,255,255,0.75)] flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-105 cursor-pointer"
+                className={`group relative w-10 h-10 rounded-2xl border ${currentTheme.logoBadgeBg} flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-105 cursor-pointer`}
                 title="Click to customize Company Logo & Identity (Main Admin Only)"
               >
                 {renderCurrentLogo(config.logoType || (config.logoImage ? 'image' : 'icon'), config.logoImage, config.logoIcon, config.logoMonogram, config.logoColor)}
                 <div className="absolute inset-0 bg-[#071026]/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Camera className="w-4 h-4 text-amber-300" />
+                  <Camera className={`w-4 h-4 ${currentTheme.accentText}`} />
                 </div>
               </button>
             ) : (
-              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 border border-amber-200/70 shadow-[0_6px_18px_-4px_rgba(251,191,36,0.32),inset_0_1.5px_0_rgba(255,255,255,0.75)] flex items-center justify-center shrink-0">
+              <div className={`relative w-10 h-10 rounded-2xl border ${currentTheme.logoBadgeBg} flex items-center justify-center shrink-0`}>
                 {renderCurrentLogo(config.logoType || (config.logoImage ? 'image' : 'icon'), config.logoImage, config.logoIcon, config.logoMonogram, config.logoColor)}
               </div>
             )}
@@ -279,7 +302,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                     <>
                       <span
                         onClick={handleOpenLogoModal}
-                        className="font-extrabold text-white tracking-tight text-base sm:text-[17px] leading-tight truncate cursor-pointer hover:text-amber-300 transition-colors"
+                        className={`font-extrabold text-white tracking-tight text-base sm:text-[17px] leading-tight truncate cursor-pointer ${currentTheme.accentHoverText} transition-colors`}
                         title="Click to customize"
                       >
                         {config.companyName}
@@ -287,7 +310,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                       <button
                         type="button"
                         onClick={handleOpenLogoModal}
-                        className="p-1 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                        className={`p-1 rounded-lg text-slate-400 ${currentTheme.accentHoverText} hover:bg-white/10 transition-colors cursor-pointer shrink-0`}
                         aria-label="Edit"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -300,20 +323,20 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-300 truncate mt-0.5">
-                  <span className="text-amber-300 font-semibold truncate">{config.systemName}</span>
+                  <span className={`${currentTheme.accentText} font-semibold truncate`}>{config.systemName}</span>
                   <span aria-hidden="true" className="text-white/25 hidden sm:inline">·</span>
-                  <span className="text-sky-200/65 hidden sm:inline font-medium whitespace-nowrap">Liquid Glass Enterprise OS</span>
+                  <span className={`${currentTheme.subAccentText} hidden sm:inline font-medium whitespace-nowrap`}>Liquid Glass Enterprise OS</span>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSaveInlineNames} className="flex items-center gap-2 bg-[#0d1d42] p-1.5 rounded-2xl border border-white/20 shadow-lg">
+              <form onSubmit={handleSaveInlineNames} className={`flex items-center gap-2 ${currentTheme.headerPillBg} p-1.5 rounded-2xl border shadow-lg`}>
                 <div className="flex flex-col gap-1">
                   <input
                     type="text"
                     value={tempCompanyName}
                     onChange={(e) => setTempCompanyName(e.target.value)}
                     placeholder="Company Name"
-                    className="bg-[#060c1d] border border-white/20 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 w-48 sm:w-60"
+                    className={`${currentTheme.headerInputBg} border border-white/20 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-400 focus:outline-none w-48 sm:w-60`}
                     autoFocus
                   />
                   <input
@@ -321,11 +344,11 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                     value={tempSystemName}
                     onChange={(e) => setTempSystemName(e.target.value)}
                     placeholder="System Name"
-                    className="bg-[#060c1d] border border-white/20 rounded-lg px-2.5 py-1 text-[11px] text-amber-300 placeholder-slate-400 focus:outline-none focus:border-amber-400 w-48 sm:w-60"
+                    className={`${currentTheme.headerInputBg} border border-white/20 rounded-lg px-2.5 py-1 text-[11px] ${currentTheme.accentText} placeholder-slate-400 focus:outline-none w-48 sm:w-60`}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <button type="submit" className="p-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-[#071026] text-xs flex items-center justify-center cursor-pointer" title="Save">
+                  <button type="submit" className={`p-1.5 rounded-lg ${currentTheme.primaryCtaBg} text-xs flex items-center justify-center cursor-pointer`} title="Save">
                     <Check className="w-3.5 h-3.5" />
                   </button>
                   <button type="button" onClick={() => setIsEditingNames(false)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs flex items-center justify-center cursor-pointer" title="Cancel">
@@ -342,10 +365,10 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               <button
                 type="button"
                 onClick={onReturnToGateway}
-                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/[0.08] hover:bg-white/[0.15] text-amber-200 border border-white/15 shadow-2xs transition cursor-pointer"
+                className={`h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/[0.08] hover:bg-white/[0.15] ${currentTheme.accentText} border border-white/15 shadow-2xs transition cursor-pointer`}
                 title="Return to Developer Portal Gateway"
               >
-                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <Zap className={`w-3.5 h-3.5 ${currentTheme.accentText} shrink-0`} />
                 <span>Portal Gateway</span>
               </button>
             )}
@@ -443,26 +466,26 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 </button>
                 <button
                   onClick={() => setShowConfigModal(true)}
-                  className="h-8 w-8 flex items-center justify-center rounded-xl bg-white/[0.08] hover:bg-white/[0.16] text-amber-300 border border-white/15 cursor-pointer shadow-2xs transition shrink-0"
+                  className={`h-8 w-8 flex items-center justify-center rounded-xl bg-white/[0.08] hover:bg-white/[0.16] ${currentTheme.accentText} border border-white/15 cursor-pointer shadow-2xs transition shrink-0`}
                   title="System Settings (Main Admin Only)"
                 >
-                  <Sliders className="w-3.5 h-3.5 text-amber-300" />
+                  <Sliders className={`w-3.5 h-3.5 ${currentTheme.accentText}`} />
                 </button>
               </>
             )}
           </div>
         </div>
 
-        {/* Row 2: Sapphire Sub-Bar (Aligned to exact same 1600px grid as Row 1 & Workspace) */}
-        <div className="bg-[#050b1a]/88 border-t border-white/10">
+        {/* Row 2: Theme-Synchronized Glass Sub-Bar */}
+        <div className={`${currentTheme.headerSubBarBg} border-t border-white/10 transition-colors duration-200`}>
           <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 xl:gap-3 text-xs text-slate-300">
             {/* Active User Controls (Left-aligned with Logo & Sidebar) */}
             <div className="flex items-center gap-2 min-w-0 max-w-full flex-wrap">
-              <div className="h-8 flex items-center gap-2 bg-[#0d1d42]/80 border border-white/14 rounded-xl px-2.5 text-xs shadow-2xs max-w-full min-w-0">
+              <div className={`h-8 flex items-center gap-2 ${currentTheme.headerPillBg} border rounded-xl px-2.5 text-xs shadow-2xs max-w-full min-w-0`}>
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(true)}
-                  className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] font-extrabold text-[10px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                  className={`w-6 h-6 rounded-lg ${currentTheme.logoBadgeBg} ${currentTheme.logoBadgeText} font-extrabold text-[10px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs`}
                   title="Click to edit account profile & email"
                 >
                   {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
@@ -489,7 +512,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                   <button
                     type="button"
                     onClick={() => setShowProfileModal(true)}
-                    className="text-[11px] text-amber-300 hover:text-amber-200 font-bold cursor-pointer hover:underline whitespace-nowrap shrink-0"
+                    className={`text-[11px] ${currentTheme.accentText} ${currentTheme.accentHoverText} font-bold cursor-pointer hover:underline whitespace-nowrap shrink-0`}
                   >
                     Edit Profile
                   </button>
@@ -507,56 +530,111 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               </button>
             </div>
 
-            {/* Status, Scope & Developer Credit (Wraps cleanly inside container so nothing clips at laptop edges) */}
+            {/* Status, Scope & Developer Credit */}
             <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 xl:gap-2 min-w-0 max-w-full">
               {config.barcodeEnabled !== false && (
                 <button
                   type="button"
                   onClick={() => setShowBarcodeLookupModal(true)}
-                  className="h-8 flex items-center gap-1.5 px-2.5 xl:px-3 rounded-xl bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-[#071026] font-extrabold text-xs shadow-[0_6px_16px_-4px_rgba(251,191,36,0.4)] border border-amber-200/70 cursor-pointer transition whitespace-nowrap shrink-0"
+                  className={`h-8 flex items-center gap-1.5 px-2.5 xl:px-3 rounded-xl border font-extrabold text-xs cursor-pointer transition whitespace-nowrap shrink-0 ${currentTheme.primaryCtaBg}`}
                   title="Scan Barcode via USB Gun or Mobile Phone Camera to check live stock"
                 >
-                  <Barcode className="w-3.5 h-3.5 text-[#071026] shrink-0" />
+                  <Barcode className={`w-3.5 h-3.5 ${currentTheme.logoBadgeText} shrink-0`} />
                   <span>Scan Barcode</span>
                 </button>
               )}
 
               <div
-                className="h-8 flex items-center gap-1.5 xl:gap-2 bg-[#0d1d42]/75 border border-white/14 rounded-xl px-2.5 xl:px-3 text-slate-300 shadow-2xs min-w-0 max-w-full whitespace-nowrap"
+                className={`h-8 flex items-center gap-1.5 xl:gap-2 ${currentTheme.headerPillBg} border rounded-xl px-2.5 xl:px-3 text-slate-300 shadow-2xs min-w-0 max-w-full whitespace-nowrap`}
                 title={`Scope: ${activeSiteName} · Role: ${currentUser.role}`}
               >
-                <Layers className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+                <Layers className={`w-3.5 h-3.5 ${currentTheme.subAccentText} shrink-0`} />
                 <span className="truncate max-w-[145px] 2xl:max-w-[220px]">
                   Scope: <strong className="text-white">{activeSiteName}</strong>
                 </span>
                 <span aria-hidden="true" className="text-white/25 shrink-0">·</span>
                 <span className="truncate max-w-[125px] 2xl:max-w-none">
-                  Role: <strong className="text-amber-300">{currentUser.role}</strong>
+                  Role: <strong className={currentTheme.accentText}>{currentUser.role}</strong>
                 </span>
               </div>
 
-              <div className="h-8 flex items-center gap-1.5 bg-[#0d1d42]/75 border border-white/14 rounded-xl px-2.5 text-xs shadow-2xs whitespace-nowrap shrink-0">
-                <Palette className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-[11px] text-slate-400 font-medium hidden 2xl:inline">Glass Tone:</span>
-                <span className="text-[11px] text-slate-400 font-medium 2xl:hidden">Tone:</span>
-                <select
-                  value={currentThemeId}
-                  onChange={(e) => updateConfig({ themeId: e.target.value, logoColor: e.target.value })}
-                  className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer max-w-[100px] 2xl:max-w-none truncate"
+              {/* Interactive Glass Tone Color Palette Picker */}
+              <div className="relative" ref={toneMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowToneMenu((prev) => !prev)}
+                  aria-haspopup="listbox"
+                  aria-expanded={showToneMenu}
+                  className={`h-8 flex items-center gap-2 ${currentTheme.headerPillBg} hover:bg-white/[0.14] border rounded-xl px-2.5 text-xs shadow-2xs whitespace-nowrap shrink-0 cursor-pointer transition`}
+                  title="Switch Glass Tone Theme"
                 >
-                  {Object.entries(APP_THEMES).map(([key, t]) => (
-                    <option key={key} value={key} className="bg-[#09132c] text-white">
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                  <span
+                    className={`w-3.5 h-3.5 rounded-full bg-gradient-to-br ${currentTheme.swatchGradient} ring-1 ring-white/50 shadow-xs shrink-0`}
+                  />
+                  <span className="text-[11px] text-slate-300 font-medium hidden 2xl:inline">Glass Tone:</span>
+                  <span className="text-white text-xs font-bold max-w-[120px] truncate">{currentTheme.name}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-300 transition-transform duration-150 shrink-0 ${showToneMenu ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showToneMenu && (
+                  <div
+                    role="listbox"
+                    aria-label="Glass Tone Themes"
+                    className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#070f23]/98 backdrop-blur-2xl border border-white/18 shadow-[0_24px_60px_-12px_rgba(2,6,18,0.85)] p-2 z-[70]"
+                  >
+                    <div className="px-2.5 py-1.5 mb-1 border-b border-white/10 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-200">
+                        <Palette className={`w-3.5 h-3.5 ${currentTheme.accentText}`} />
+                        <span>Select Glass Tone</span>
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-400">Live Workspace</span>
+                    </div>
+                    <div className="space-y-1 max-h-80 overflow-y-auto pr-0.5">
+                      {Object.values(APP_THEMES).map((t) => {
+                        const isSelected = t.id === currentThemeId;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              updateConfig({ themeId: t.id, logoColor: t.id });
+                              setShowToneMenu(false);
+                            }}
+                            className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl text-left transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-white/14 border border-white/25 text-white shadow-xs'
+                                : 'border border-transparent text-slate-200 hover:bg-white/[0.08] hover:text-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.swatchGradient} ring-1 ring-white/45 shrink-0 shadow-xs`}
+                              />
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold leading-tight truncate">{t.name}</div>
+                                <div className="text-[10.5px] text-slate-400 leading-tight truncate mt-0.5">
+                                  {t.tagline}
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <Check className={`w-4 h-4 shrink-0 ${t.accentText}`} />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div
-                className="flex min-h-8 items-center gap-1.5 bg-[#0d1d42]/75 border border-white/14 rounded-xl px-2.5 xl:px-3 py-1 text-[11px] font-bold text-slate-200 shadow-2xs max-w-full"
+                className={`flex min-h-8 items-center gap-1.5 ${currentTheme.headerPillBg} border rounded-xl px-2.5 xl:px-3 py-1 text-[11px] font-bold text-slate-200 shadow-2xs max-w-full`}
                 title="Apex Developer | System Developed By Sasith Dissanayake"
               >
-                <span className="text-amber-400 shrink-0">◆</span>
+                <span className={`${currentTheme.accentText} shrink-0`}>◆</span>
                 <span className="leading-tight break-words sm:whitespace-nowrap">
                   Apex Developer | System Developed By Sasith Dissanayake
                 </span>

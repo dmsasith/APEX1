@@ -38,13 +38,129 @@
    APPLE LIQUID GLASS DESIGN SYSTEM (HIGH-PERFORMANCE 60FPS & MODAL-SAFE)
    ========================================================================== */
 @media screen {
+  /* Per-Theme Glass CSS Variables (instantaneous 60fps switch across canvas, heroes & inputs) */
+  :root,
+  html[data-theme="sapphire"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(56, 189, 248, 0.22) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(251, 191, 36, 0.14) 0px, transparent 44%),
+      radial-gradient(at 15% 88%, rgba(59, 130, 246, 0.16) 0px, transparent 46%),
+      linear-gradient(145deg, #e4eef9 0%, #eef3fc 42%, #fdfaf0 74%, #f4f7fb 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(7, 17, 40, 0.97) 0%, rgba(15, 38, 86, 0.93) 54%, rgba(7, 17, 40, 0.98) 100%);
+    --theme-hero-border: rgba(251, 191, 36, 0.28);
+    --theme-table-hover: rgba(239, 246, 255, 0.72);
+    --theme-focus-border: #2563eb;
+    --theme-focus-ring: rgba(37, 99, 235, 0.16);
+  }
+
+  html[data-theme="emerald"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(56, 189, 248, 0.18) 0px, transparent 42%),
+      radial-gradient(at 92% 12%, rgba(16, 185, 129, 0.20) 0px, transparent 45%),
+      radial-gradient(at 15% 88%, rgba(20, 184, 166, 0.16) 0px, transparent 45%),
+      linear-gradient(145deg, #e3eff8 0%, #eef2ff 36%, #e6faf0 70%, #f4f7fb 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(10, 23, 32, 0.96) 0%, rgba(6, 78, 59, 0.93) 52%, rgba(15, 23, 42, 0.97) 100%);
+    --theme-hero-border: rgba(52, 211, 153, 0.26);
+    --theme-table-hover: rgba(240, 253, 244, 0.65);
+    --theme-focus-border: #10b981;
+    --theme-focus-ring: rgba(16, 185, 129, 0.16);
+  }
+
+  html[data-theme="teal"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(45, 212, 191, 0.20) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(6, 182, 212, 0.18) 0px, transparent 44%),
+      radial-gradient(at 15% 88%, rgba(14, 165, 233, 0.14) 0px, transparent 46%),
+      linear-gradient(145deg, #e1f5f7 0%, #eaf8fa 40%, #ecfeff 72%, #f4f8fa 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(4, 24, 29, 0.97) 0%, rgba(13, 86, 94, 0.92) 54%, rgba(6, 30, 38, 0.97) 100%);
+    --theme-hero-border: rgba(45, 212, 191, 0.28);
+    --theme-table-hover: rgba(240, 253, 250, 0.72);
+    --theme-focus-border: #0d9488;
+    --theme-focus-ring: rgba(20, 184, 166, 0.16);
+  }
+
+  html[data-theme="blue"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(56, 189, 248, 0.24) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(37, 99, 235, 0.16) 0px, transparent 45%),
+      radial-gradient(at 15% 88%, rgba(14, 165, 233, 0.16) 0px, transparent 46%),
+      linear-gradient(145deg, #e2eefa 0%, #ebf3fe 42%, #eff6ff 72%, #f4f8fc 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(7, 19, 46, 0.97) 0%, rgba(23, 62, 138, 0.93) 52%, rgba(8, 22, 54, 0.97) 100%);
+    --theme-hero-border: rgba(56, 189, 248, 0.28);
+    --theme-table-hover: rgba(239, 246, 255, 0.75);
+    --theme-focus-border: #2563eb;
+    --theme-focus-ring: rgba(56, 189, 248, 0.18);
+  }
+
+  html[data-theme="indigo"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(99, 102, 241, 0.20) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(139, 92, 246, 0.18) 0px, transparent 44%),
+      radial-gradient(at 15% 88%, rgba(56, 189, 248, 0.14) 0px, transparent 46%),
+      linear-gradient(145deg, #e8ebfb 0%, #eef0fd 42%, #f1effe 72%, #f5f6fc 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(12, 15, 43, 0.97) 0%, rgba(49, 46, 129, 0.93) 54%, rgba(15, 19, 51, 0.97) 100%);
+    --theme-hero-border: rgba(129, 140, 248, 0.30);
+    --theme-table-hover: rgba(238, 242, 255, 0.75);
+    --theme-focus-border: #4f46e5;
+    --theme-focus-ring: rgba(99, 102, 241, 0.18);
+  }
+
+  html[data-theme="purple"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(168, 85, 247, 0.18) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(217, 70, 239, 0.14) 0px, transparent 44%),
+      radial-gradient(at 15% 88%, rgba(129, 140, 248, 0.14) 0px, transparent 46%),
+      linear-gradient(145deg, #f1eafb 0%, #f4effd 42%, #f8f0fc 72%, #f8f6fc 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(20, 9, 38, 0.97) 0%, rgba(78, 29, 125, 0.93) 54%, rgba(24, 11, 46, 0.97) 100%);
+    --theme-hero-border: rgba(192, 132, 252, 0.30);
+    --theme-table-hover: rgba(250, 245, 255, 0.75);
+    --theme-focus-border: #9333ea;
+    --theme-focus-ring: rgba(168, 85, 247, 0.18);
+  }
+
+  html[data-theme="amber"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(245, 158, 11, 0.16) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(251, 146, 60, 0.14) 0px, transparent 44%),
+      radial-gradient(at 15% 88%, rgba(148, 163, 184, 0.14) 0px, transparent 46%),
+      linear-gradient(145deg, #f6f2ea 0%, #faf6ee 42%, #f7f4ec 72%, #f8f8f7 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(21, 16, 8, 0.97) 0%, rgba(92, 57, 13, 0.92) 54%, rgba(24, 18, 9, 0.97) 100%);
+    --theme-hero-border: rgba(251, 191, 36, 0.30);
+    --theme-table-hover: rgba(255, 251, 235, 0.75);
+    --theme-focus-border: #d97706;
+    --theme-focus-ring: rgba(245, 158, 11, 0.18);
+  }
+
+  html[data-theme="rose"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(244, 63, 94, 0.16) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(236, 72, 153, 0.14) 0px, transparent 44%),
+      radial-gradient(at 15% 88%, rgba(148, 163, 184, 0.12) 0px, transparent 46%),
+      linear-gradient(145deg, #f9edf1 0%, #fcf1f4 42%, #faf2f6 72%, #f9f7f8 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(26, 8, 16, 0.97) 0%, rgba(102, 22, 51, 0.92) 54%, rgba(29, 9, 18, 0.97) 100%);
+    --theme-hero-border: rgba(251, 113, 133, 0.28);
+    --theme-table-hover: rgba(255, 241, 242, 0.72);
+    --theme-focus-border: #e11d48;
+    --theme-focus-ring: rgba(244, 63, 94, 0.18);
+  }
+
+  html[data-theme="slate"] {
+    --theme-canvas-bg:
+      radial-gradient(at 6% 8%, rgba(100, 116, 139, 0.16) 0px, transparent 44%),
+      radial-gradient(at 92% 12%, rgba(56, 189, 248, 0.12) 0px, transparent 44%),
+      radial-gradient(at 15% 88%, rgba(148, 163, 184, 0.15) 0px, transparent 46%),
+      linear-gradient(145deg, #eaedf2 0%, #f1f4f8 42%, #eef2f6 72%, #f8fafc 100%);
+    --theme-hero-bg: linear-gradient(135deg, rgba(13, 19, 32, 0.97) 0%, rgba(30, 41, 59, 0.94) 54%, rgba(15, 23, 42, 0.97) 100%);
+    --theme-hero-border: rgba(203, 213, 225, 0.26);
+    --theme-table-hover: rgba(241, 245, 249, 0.78);
+    --theme-focus-border: #475569;
+    --theme-focus-ring: rgba(71, 85, 105, 0.16);
+  }
+
   .liquid-glass-canvas {
     position: relative;
-    background-image:
-      radial-gradient(at 6% 8%, rgba(56, 189, 248, 0.20) 0px, transparent 42%),
-      radial-gradient(at 92% 12%, rgba(16, 185, 129, 0.18) 0px, transparent 45%),
-      radial-gradient(at 15% 88%, rgba(20, 184, 166, 0.15) 0px, transparent 45%),
-      linear-gradient(145deg, #e3eff8 0%, #eef2ff 36%, #e8faef 70%, #f4f7fb 100%);
+    background-image: var(--theme-canvas-bg);
+    transition: background-image 0.25s ease;
   }
 
   /* High-Clarity Frosted Royal Sapphire Glass Canvas for Landing & Auth Portal */
@@ -81,22 +197,17 @@
       inset 0 1px 0 0 rgba(255, 255, 255, 1);
   }
 
-  /* 1. Dark Emerald Hero Banners Across All Modules (Zero :has() Subtree Scanning) */
+  /* 1. Theme-Synchronized Hero Banners Across All Modules */
   .liquid-glass-shell main > div > div[class*="from-slate-900"],
   .liquid-glass-shell main > div > div[class*="from-emerald-950"],
   .liquid-glass-shell main > div > div[class*="from-teal-950"],
   .liquid-glass-shell main > div > div[class*="bg-slate-900"] {
     border-radius: 1.5rem !important;
-    background: linear-gradient(
-      135deg,
-      rgba(15, 23, 42, 0.96) 0%,
-      rgba(6, 78, 59, 0.92) 52%,
-      rgba(15, 23, 42, 0.97) 100%
-    ) !important;
-    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    background: var(--theme-hero-bg) !important;
+    border: 1px solid var(--theme-hero-border) !important;
     box-shadow:
       0 14px 32px -10px rgba(15, 23, 42, 0.22),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.28) !important;
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.24) !important;
   }
 
   /* Crisp Typography for All Page Headings */
@@ -117,7 +228,7 @@
   }
 
   .liquid-glass-shell main tbody tr:hover {
-    background-color: rgba(240, 253, 244, 0.55);
+    background-color: var(--theme-table-hover);
   }
 
   /* Standardized Enterprise Table Typography (Readable, Uniform & Compact) */
@@ -168,8 +279,8 @@
   .liquid-glass-shell main input:not([type="checkbox"]):not([type="radio"]):focus,
   .liquid-glass-shell main select:not(.bg-transparent):focus,
   .liquid-glass-shell main textarea:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    border-color: var(--theme-focus-border);
+    box-shadow: 0 0 0 3px var(--theme-focus-ring);
     outline: none;
   }
 

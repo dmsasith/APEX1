@@ -24,6 +24,7 @@ import {
   Gift,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
+import { getThemeConfig } from '../utils/themeUtils';
 import { isSuperAdmin, isCentralOrAllSiteAdmin } from '../types';
 
 interface SidebarProps {
@@ -32,7 +33,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelectTab }) => {
-  const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout } = useStock();
+  const { config, pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout } = useStock();
+  const theme = getThemeConfig(config?.themeId || config?.logoColor);
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
@@ -180,19 +182,19 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
 
   return (
     <aside className="w-68 xl:w-72 shrink-0 flex flex-col">
-      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-b from-[#071128] via-[#091634] to-[#050c1d] border border-white/15 shadow-[0_22px_50px_-14px_rgba(3,7,18,0.55),inset_0_1px_0_rgba(255,255,255,0.22)] flex-1 flex flex-col justify-between">
-        {/* Top Specular Gold Crystal Rule matching Landing Page */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400/85 to-transparent shrink-0" />
+      <div className={`relative overflow-hidden rounded-[28px] ${theme.navContainerBg} border border-white/15 shadow-[0_22px_50px_-14px_rgba(3,7,18,0.55),inset_0_1px_0_rgba(255,255,255,0.22)] flex-1 flex flex-col justify-between transition-colors duration-200`}>
+        {/* Top Specular Crystal Rule matching Active Glass Tone */}
+        <div className={`h-[2px] w-full ${theme.topRuleBg} shrink-0`} />
 
-        {/* Subtle Sapphire & Gold Ambient Glass Refraction Glows */}
-        <div className="pointer-events-none absolute -top-20 -left-16 w-48 h-48 rounded-full bg-sky-400/12 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-12 -right-16 w-44 h-44 rounded-full bg-amber-400/10 blur-3xl" />
+        {/* Subtle Ambient Glass Refraction Glows */}
+        <div className={`pointer-events-none absolute -top-20 -left-16 w-48 h-48 rounded-full ${theme.navGlowPrimary} blur-3xl`} />
+        <div className={`pointer-events-none absolute bottom-12 -right-16 w-44 h-44 rounded-full ${theme.navGlowSecondary} blur-3xl`} />
 
         <div className="relative z-10 p-4 flex-1 flex flex-col justify-between overflow-y-auto">
           <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-widest text-amber-300 px-3.5 py-2.5 bg-[#0d1d42]/80 border border-white/15 rounded-2xl mb-4 flex items-center justify-between shadow-[0_8px_20px_-8px_rgba(2,6,18,0.6),inset_0_1px_0_rgba(255,255,255,0.16)]">
+            <div className={`text-[11px] font-extrabold uppercase tracking-widest ${theme.navTitleBox} border rounded-2xl px-3.5 py-2.5 mb-4 flex items-center justify-between shadow-[0_8px_20px_-8px_rgba(2,6,18,0.6),inset_0_1px_0_rgba(255,255,255,0.16)]`}>
               <span>Workspace Navigation</span>
-              <Compass className="w-3.5 h-3.5 text-amber-400" />
+              <Compass className={`w-3.5 h-3.5 ${theme.accentText}`} />
             </div>
 
             <nav className="space-y-3.5">
@@ -204,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
                     className="bg-white/[0.04] border border-white/[0.09] rounded-2xl p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                   >
                     {section.title && (
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-sky-200/65 px-2.5 py-1 mb-1 flex items-center justify-between">
+                      <div className={`text-[10px] font-extrabold uppercase tracking-wider ${theme.navSectionLabel} px-2.5 py-1 mb-1 flex items-center justify-between`}>
                         <span>{section.title}</span>
                       </div>
                     )}
@@ -219,16 +221,14 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
                             onClick={() => onSelectTab(item.id)}
                             className={`group w-full text-left px-3 py-2.5 rounded-xl text-[13px] flex items-center justify-between cursor-pointer transition-colors duration-100 ${
                               isActive
-                                ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 text-[#071026] font-extrabold border border-amber-200/80 shadow-[0_8px_20px_-6px_rgba(251,191,36,0.5),inset_0_1px_0_rgba(255,255,255,0.65)]'
+                                ? theme.navActiveBg
                                 : 'font-semibold text-slate-200 hover:bg-white/[0.08] hover:text-white border border-transparent hover:border-white/12'
                             }`}
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <div
-                                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-100 ${
-                                  isActive
-                                    ? 'bg-[#071026]/12 text-[#071026] border border-[#071026]/15'
-                                    : 'bg-white/[0.08] text-sky-300 border border-white/10 group-hover:text-amber-300 group-hover:border-amber-400/30'
+                                className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 transition-colors duration-100 ${
+                                  isActive ? theme.navActiveIconWell : theme.navIconInactive
                                 }`}
                               >
                                 <Icon className="w-4 h-4 shrink-0" />
@@ -239,7 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
                             {item.badge && (
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold tabular-nums shadow-xs ${
-                                  isActive ? 'bg-[#071026] text-amber-300' : item.badgeColor
+                                  isActive ? theme.navActiveBadge : item.badgeColor
                                 }`}
                               >
                                 {item.badge}
@@ -257,11 +257,11 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
 
           {/* User Profile Card & Sign Out Button */}
           <div className="mt-5 pt-4 border-t border-white/12">
-            <div className="bg-[#0d1d42]/75 border border-white/14 rounded-2xl p-3 mb-2.5 shadow-[0_8px_20px_-10px_rgba(2,6,18,0.65),inset_0_1px_0_rgba(255,255,255,0.14)]">
+            <div className={`${theme.headerPillBg} border rounded-2xl p-3 mb-2.5 shadow-[0_8px_20px_-10px_rgba(2,6,18,0.65),inset_0_1px_0_rgba(255,255,255,0.14)]`}>
               <div className="text-[13px] font-extrabold text-white truncate">
                 {currentUser?.fullName}
               </div>
-              <div className="text-[11px] font-semibold text-amber-300 truncate mt-0.5">
+              <div className={`text-[11px] font-semibold ${theme.accentText} truncate mt-0.5`}>
                 {currentUser?.role}
               </div>
             </div>

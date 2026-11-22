@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
+import { getThemeConfig } from '../../utils/themeUtils';
 
 interface DashboardViewProps {
   onNavigate: (tabId: string) => void;
@@ -57,6 +58,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     totalLowStockAlertsCount,
     pendingRequestsCount,
   } = useStock();
+
+  const theme = getThemeConfig(config?.themeId || config?.logoColor);
 
   // Aggregate low stock alerts across Main and Branches
   const lowStockItemsList: Array<{
@@ -126,15 +129,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     <div className="space-y-5">
       {/* Top Executive Hero Banner */}
       <div className="relative bg-gradient-to-r from-slate-900 via-emerald-950 to-indigo-950 text-white rounded-2xl p-6 sm:p-7 border border-slate-800 shadow-sm overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+        <div
+          className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 rounded-full blur-3xl pointer-events-none opacity-20"
+          style={{ backgroundColor: theme.accentHex }}
+        />
+        <div
+          className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 rounded-full blur-3xl pointer-events-none opacity-15"
+          style={{ backgroundColor: theme.secondaryHex }}
+        />
 
         <div className="relative z-10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5">
           <div className="min-w-0 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-300 tracking-wide">
+            <div className={`flex flex-wrap items-center gap-2 text-xs font-semibold tracking-wide ${theme.accentText}`}>
               <span>Enterprise Operations Overview</span>
-              <span className="text-emerald-400/60" aria-hidden="true">·</span>
-              <span className="text-emerald-200 tabular-nums">
+              <span className="opacity-50" aria-hidden="true">·</span>
+              <span className={`${theme.subAccentText} tabular-nums`}>
                 {activeTeams.length} Active Crew{activeTeams.length !== 1 ? 's' : ''} ({formatNumber(totalInHandUnitsHeldByTeams)} Units In-Hand)
               </span>
             </div>

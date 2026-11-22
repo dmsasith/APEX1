@@ -72,6 +72,13 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
   const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme.id);
+      document.documentElement.style.setProperty('--theme-primary', theme.accentHex);
+    }
+  }, [theme.id, theme.accentHex]);
+
   // Handle Payments.lk redirect return (?payments_lk=success|cancel|portal_return)
   useEffect(() => {
     if (!currentTenant?.id || !currentUser?.id) return;
@@ -300,16 +307,16 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         onReturnToGateway={onReturnToGateway}
       />
 
-      {/* Mobile Horizontal Frosted Sapphire Sub-Navigation Strip */}
-      <div className="lg:hidden bg-[#071128]/95 backdrop-blur-xl border-b border-white/12 overflow-x-auto no-print px-3 py-2 flex items-center gap-1.5 scrollbar-thin">
+      {/* Mobile Horizontal Frosted Glass Sub-Navigation Strip */}
+      <div className={`lg:hidden ${theme.mobileStripBg} backdrop-blur-xl border-b border-white/12 overflow-x-auto no-print px-3 py-2 flex items-center gap-1.5 scrollbar-thin transition-colors duration-200`}>
         {allMobileModules.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setCurrentTab(tab.id)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap border transition-colors cursor-pointer ${
               currentTab === tab.id
-                ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 text-[#071026] font-extrabold border border-amber-200/80 shadow-xs'
-                : 'text-slate-200 bg-white/[0.07] hover:bg-white/[0.14] border border-white/12'
+                ? theme.mobileChipActive
+                : 'text-slate-200 bg-white/[0.07] hover:bg-white/[0.14] border-white/12'
             }`}
           >
             {tab.label}
@@ -347,7 +354,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
               }}
               className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-emerald-600/90 text-white shadow-[0_6px_16px_-3px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.6)] scale-105'
+                  ? theme.mobileDockActive
                   : 'text-slate-700 hover:bg-white/70'
               }`}
             >
@@ -405,13 +412,13 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
                       setCurrentTab(mod.id);
                       setShowMobileGlassMenu(false);
                     }}
-                    className={`p-3 rounded-2xl text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                    className={`p-3 rounded-2xl text-left flex items-center gap-2.5 border transition-all cursor-pointer ${
                       active
-                        ? 'bg-emerald-600 text-white shadow-md border border-white/40'
-                        : 'bg-white/75 hover:bg-white text-slate-800 border border-white/95 shadow-2xs'
+                        ? theme.mobileChipActive
+                        : 'bg-white/75 hover:bg-white text-slate-800 border-white/95 shadow-2xs'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-emerald-600'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-current' : theme.mobileDrawerIcon}`} />
                     <span className="text-xs font-bold truncate">{mod.label}</span>
                   </button>
                 );
