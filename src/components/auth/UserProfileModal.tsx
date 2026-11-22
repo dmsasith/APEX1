@@ -60,8 +60,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       return;
     }
 
-    const isMasterAdminAccount = currentUser.id === 'usr-admin-1';
-    const cleanNewPass = isMasterAdminAccount ? '' : password.trim();
+    const cleanNewPass = password.trim();
     if (cleanNewPass && cleanNewPass.length < 6) {
       setStatusMsg('New password must be at least 6 characters long.');
       return;
@@ -178,40 +177,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             </div>
 
             {/* Password */}
-            {currentUser.id === 'usr-admin-1' ? (
-              <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3 text-[11px] text-amber-200 flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white block">Server-Protected Master Admin Passcode</strong>
-                  Master Admin login credentials are verified on the server via the{' '}
-                  <code className="px-1 py-0.5 bg-slate-900 rounded text-amber-300">MASTER_ADMIN_PASSCODE</code>{' '}
-                  environment secret and cannot be overwritten from profile settings.
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">
+                New Account Password <span className="text-slate-500 font-normal">(Leave blank to keep current)</span>
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter new password (optional)"
+                  className="w-full pl-9 pr-10 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  New Account Password <span className="text-slate-500 font-normal">(Leave blank to keep current)</span>
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter new password (optional)"
-                    className="w-full pl-9 pr-10 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* Role & Assigned Site(s) Summary */}
             <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5 text-xs">

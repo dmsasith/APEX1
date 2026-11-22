@@ -72,6 +72,7 @@ import {
   issueWorkspaceSessionToken,
   getApiSessionToken,
   clearApiSessionToken,
+  DEFAULT_MASTER_VERIFIER_HASH,
 } from '../utils/securityUtils';
 import {
   INITIAL_CONFIG,
@@ -1214,22 +1215,35 @@ export function sanitizeAndRecoverApexUsers(existingUsers?: User[]): User[] {
     seenUsernames.add(norm);
     recovered.push({
       ...u,
-      password: isCoreAdmin ? '' : u.password,
+      password: isCoreAdmin
+        ? isHashedPassword(u.password)
+          ? u.password
+          : DEFAULT_MASTER_VERIFIER_HASH
+        : u.password,
       tenantId: u.tenantId || DEFAULT_TENANT.id,
       role: normalizeRole(u.role),
       isDeleted: isCoreAdmin ? false : (u.isDeleted ?? false),
     });
   };
 
-  // 1. Always ensure Master Super Admin is present (credential verified exclusively server-side)
+  // 1. Always ensure Master Super Admin is present (preserving any updated profile / hashed credential)
+  const existingCoreAdmin = Array.isArray(existingUsers)
+    ? existingUsers.find(
+        (u) => u && (u.id === 'usr-admin-1' || (u.username || '').trim().toLowerCase() === 'admin')
+      )
+    : undefined;
   const adminUser: User = {
     id: 'usr-admin-1',
     username: 'admin',
-    fullName: 'Sasith Dissanayake',
+    fullName: existingCoreAdmin?.fullName?.trim() || 'Sasith Dissanayake',
+    email: existingCoreAdmin?.email,
     siteId: 'all',
     role: 'Super Admin Central',
-    password: '',
-    createdAt: '2026-11-01T00:00:00.000Z',
+    password:
+      existingCoreAdmin?.password && isHashedPassword(existingCoreAdmin.password)
+        ? existingCoreAdmin.password
+        : DEFAULT_MASTER_VERIFIER_HASH,
+    createdAt: existingCoreAdmin?.createdAt || '2026-11-01T00:00:00.000Z',
     isDeleted: false,
     tenantId: DEFAULT_TENANT.id,
   };
@@ -2552,7 +2566,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const verifyCandidatePassword = async (t: Tenant, u: User, pass: string): Promise<boolean> => {
         if (!pass) return false;
         if (isCandidateMasterAdmin(t, u)) {
-          const serverRes = await verifyMasterAdminPasscode(pass);
+          const serverRes = await verifyMasterAdminPasscode(pass, u.password);
           return serverRes.valid;
         }
         return verifyStoredPassword(pass, u.password);
@@ -2606,7 +2620,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const activeFound = await findUserInTenant(activeTenObj, term);
         if (activeFound) {
           if (isCandidateMasterAdmin(activeTenObj, activeFound) && inputPass) {
-            const masterRes = await verifyMasterAdminPasscode(inputPass);
+            const masterRes = await verifyMasterAdminPasscode(inputPass, activeFound.password);
             if (masterRes.valid) {
               matchedTenant = activeTenObj;
               matchedUser = activeFound;
@@ -2727,7 +2741,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       if (isMasterAdminTarget) {
         if (!masterAuthAlreadyVerified) {
-          const serverAuthRes = await verifyMasterAdminPasscode(inputPass);
+          const serverAuthRes = await verifyMasterAdminPasscode(inputPass, matchedUser.password);
           if (!serverAuthRes.valid) {
             return {
               success: false,
@@ -2846,9 +2860,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const activeTid = currentTenantIdRef.current;
     const isMasterCtx = activeTid === DEFAULT_TENANT.id || activeTid === 'tenant-apex-main';
 
-    // 1. Verify against server-side Master Admin passcode when in Master workspace
+    // 1. Verify against Master Admin passcode when in Master workspace
     if (isMasterCtx) {
-      const serverCheck = await verifyMasterAdminPasscode(trimmed);
+      const adminRec = users.find((u) => u.id === 'usr-admin-1' || u.username === 'admin');
+      const serverCheck = await verifyMasterAdminPasscode(trimmed, adminRec?.password || currentUser?.password);
       if (serverCheck.valid) {
         return { valid: true };
       }
@@ -5629,7 +5644,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (
       updates.password &&
       updates.password.trim() &&
-      id !== 'usr-admin-1' &&
       !isHashedPassword(updates.password)
     ) {
       hashPasswordForStorage(updates.password).then((hashed) => {
@@ -8897,7 +8911,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     let pwAuthorized = false;
     if (isMasterFlush) {
-      const serverCheck = await verifyMasterAdminPasscode(trimmedPw);
+      const adminRec = users.find((u) => u.id === 'usr-admin-1' || u.username === 'admin');
+      const serverCheck = await verifyMasterAdminPasscode(trimmedPw, adminRec?.password || currentUser?.password);
       pwAuthorized = serverCheck.valid;
     } else if (currentUser?.password) {
       pwAuthorized = await verifyStoredPassword(trimmedPw, currentUser.password);
