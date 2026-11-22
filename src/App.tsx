@@ -300,16 +300,16 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         onReturnToGateway={onReturnToGateway}
       />
 
-      {/* Mobile Horizontal Frosted Glass Sub-Navigation Pill Strip */}
-      <div className="lg:hidden bg-white/55 backdrop-blur-xl border-b border-white/80 overflow-x-auto no-print px-3 py-2 flex items-center gap-1.5 scrollbar-thin">
+      {/* Mobile Horizontal Frosted Sapphire Sub-Navigation Strip */}
+      <div className="lg:hidden bg-[#071128]/95 backdrop-blur-xl border-b border-white/12 overflow-x-auto no-print px-3 py-2 flex items-center gap-1.5 scrollbar-thin">
         {allMobileModules.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setCurrentTab(tab.id)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
               currentTab === tab.id
-                ? `${theme.primaryBtn}`
-                : 'text-slate-700 bg-white/70 hover:bg-white/95 border border-white/90 shadow-2xs'
+                ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 text-[#071026] font-extrabold border border-amber-200/80 shadow-xs'
+                : 'text-slate-200 bg-white/[0.07] hover:bg-white/[0.14] border border-white/12'
             }`}
           >
             {tab.label}

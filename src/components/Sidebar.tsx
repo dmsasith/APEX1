@@ -11,8 +11,6 @@ import {
   Users2,
   Building2,
   FileText,
-  AlertTriangle,
-  Bell,
   Trash2,
   FolderKanban,
   Layers,
@@ -26,7 +24,6 @@ import {
   Gift,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
-import { getThemeConfig } from '../utils/themeUtils';
 import { isSuperAdmin, isCentralOrAllSiteAdmin } from '../types';
 
 interface SidebarProps {
@@ -35,11 +32,9 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelectTab }) => {
-  const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout, config, currentTenant } = useStock();
-  const currentTheme = getThemeConfig(config?.themeId || config?.logoColor || 'emerald');
+  const { pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout } = useStock();
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
-  const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
 
   // Grouped Navigation Items in Logical Operations Workflow Flow
   const navSections: Array<{ title?: string; items: any[] }> = [
@@ -185,91 +180,103 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
 
   return (
     <aside className="w-68 xl:w-72 shrink-0 flex flex-col">
-      <div className="liquid-glass-panel rounded-[28px] p-4 flex-1 flex flex-col justify-between overflow-y-auto">
-        <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-widest text-slate-700 px-3.5 py-2 bg-white/70 border border-white/95 rounded-2xl mb-4 flex items-center justify-between shadow-[0_4px_12px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)]">
-            <span>Workspace Navigation</span>
-            <Compass className="w-3.5 h-3.5 text-emerald-600" />
-          </div>
+      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-b from-[#071128] via-[#091634] to-[#050c1d] border border-white/15 shadow-[0_22px_50px_-14px_rgba(3,7,18,0.55),inset_0_1px_0_rgba(255,255,255,0.22)] flex-1 flex flex-col justify-between">
+        {/* Top Specular Gold Crystal Rule matching Landing Page */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400/85 to-transparent shrink-0" />
 
-          <nav className="space-y-4">
-            {navSections.map((section, sIdx) => {
-              if (!section.items || section.items.length === 0) return null;
-              return (
-                <div key={sIdx} className="bg-white/35 border border-white/70 rounded-2xl p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                  {section.title && (
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 px-2.5 py-1 mb-1 flex items-center justify-between">
-                      <span>{section.title}</span>
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    {section.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = currentTab === item.id;
+        {/* Subtle Sapphire & Gold Ambient Glass Refraction Glows */}
+        <div className="pointer-events-none absolute -top-20 -left-16 w-48 h-48 rounded-full bg-sky-400/12 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-12 -right-16 w-44 h-44 rounded-full bg-amber-400/10 blur-3xl" />
 
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => onSelectTab(item.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-between cursor-pointer transition-colors duration-75 ${
-                            isActive
-                              ? `${currentTheme.navActiveBg}`
-                              : 'text-slate-700 hover:bg-white/85 hover:text-slate-950 border border-transparent hover:border-white/90'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                isActive
-                                  ? 'bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]'
-                                  : 'bg-white/75 text-slate-600 border border-white/90 shadow-2xs'
-                              }`}
-                            >
-                              <Icon className="w-4 h-4 shrink-0" />
+        <div className="relative z-10 p-4 flex-1 flex flex-col justify-between overflow-y-auto">
+          <div>
+            <div className="text-[11px] font-extrabold uppercase tracking-widest text-amber-300 px-3.5 py-2.5 bg-[#0d1d42]/80 border border-white/15 rounded-2xl mb-4 flex items-center justify-between shadow-[0_8px_20px_-8px_rgba(2,6,18,0.6),inset_0_1px_0_rgba(255,255,255,0.16)]">
+              <span>Workspace Navigation</span>
+              <Compass className="w-3.5 h-3.5 text-amber-400" />
+            </div>
+
+            <nav className="space-y-3.5">
+              {navSections.map((section, sIdx) => {
+                if (!section.items || section.items.length === 0) return null;
+                return (
+                  <div
+                    key={sIdx}
+                    className="bg-white/[0.04] border border-white/[0.09] rounded-2xl p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  >
+                    {section.title && (
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-sky-200/65 px-2.5 py-1 mb-1 flex items-center justify-between">
+                        <span>{section.title}</span>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      {section.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = currentTab === item.id;
+
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => onSelectTab(item.id)}
+                            className={`group w-full text-left px-3 py-2.5 rounded-xl text-[13px] flex items-center justify-between cursor-pointer transition-colors duration-100 ${
+                              isActive
+                                ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 text-[#071026] font-extrabold border border-amber-200/80 shadow-[0_8px_20px_-6px_rgba(251,191,36,0.5),inset_0_1px_0_rgba(255,255,255,0.65)]'
+                                : 'font-semibold text-slate-200 hover:bg-white/[0.08] hover:text-white border border-transparent hover:border-white/12'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-100 ${
+                                  isActive
+                                    ? 'bg-[#071026]/12 text-[#071026] border border-[#071026]/15'
+                                    : 'bg-white/[0.08] text-sky-300 border border-white/10 group-hover:text-amber-300 group-hover:border-amber-400/30'
+                                }`}
+                              >
+                                <Icon className="w-4 h-4 shrink-0" />
+                              </div>
+                              <span className="leading-snug">{item.label}</span>
                             </div>
-                            <span className="leading-snug">{item.label}</span>
-                          </div>
 
-                          {item.badge && (
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-xs ${
-                                isActive ? 'bg-white text-slate-900' : item.badgeColor
-                              }`}
-                            >
-                              {item.badge}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                            {item.badge && (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold tabular-nums shadow-xs ${
+                                  isActive ? 'bg-[#071026] text-amber-300' : item.badgeColor
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* User Profile Card & Sign Out Button */}
-        <div className="mt-6 pt-4 border-t border-white/75">
-          <div className="bg-white/65 border border-white/90 rounded-2xl p-3 mb-2.5 shadow-[0_4px_14px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.95)]">
-            <div className="text-[13px] font-extrabold text-slate-900 truncate">
-              {currentUser?.fullName}
-            </div>
-            <div className="text-[11px] font-medium text-emerald-700 truncate mt-0.5">
-              {currentUser?.role}
-            </div>
+                );
+              })}
+            </nav>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              logout();
-            }}
-            className="w-full py-2.5 px-3.5 rounded-2xl bg-white/80 hover:bg-rose-50/90 text-slate-800 hover:text-rose-700 border border-white/95 hover:border-rose-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,1)]"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out of Workspace</span>
-          </button>
+          {/* User Profile Card & Sign Out Button */}
+          <div className="mt-5 pt-4 border-t border-white/12">
+            <div className="bg-[#0d1d42]/75 border border-white/14 rounded-2xl p-3 mb-2.5 shadow-[0_8px_20px_-10px_rgba(2,6,18,0.65),inset_0_1px_0_rgba(255,255,255,0.14)]">
+              <div className="text-[13px] font-extrabold text-white truncate">
+                {currentUser?.fullName}
+              </div>
+              <div className="text-[11px] font-semibold text-amber-300 truncate mt-0.5">
+                {currentUser?.role}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+              }}
+              className="w-full py-2.5 px-3.5 rounded-2xl bg-white/[0.07] hover:bg-rose-500/20 text-slate-100 hover:text-rose-200 border border-white/15 hover:border-rose-400/40 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-[0_6px_16px_-6px_rgba(2,6,18,0.5),inset_0_1px_0_rgba(255,255,255,0.12)]"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out of Workspace</span>
+            </button>
+          </div>
         </div>
       </div>
     </aside>

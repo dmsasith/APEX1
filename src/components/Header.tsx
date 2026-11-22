@@ -225,25 +225,32 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
 
   const renderCurrentLogo = (type: 'icon' | 'image' | 'monogram', image?: string, iconId?: string, monogram?: string, color?: string) => {
     if (type === 'image' && image) {
-      return <img src={image} alt={config.companyName} className="w-full h-full object-contain rounded-lg p-0.5" />;
+      return (
+        <div className="w-full h-full rounded-[14px] bg-white/95 flex items-center justify-center p-0.5">
+          <img src={image} alt={config.companyName} className="w-full h-full object-contain rounded-lg" />
+        </div>
+      );
     }
     if (type === 'monogram') {
       const selectedColor = MONOGRAM_COLORS.find((c) => c.id === color) || MONOGRAM_COLORS[0];
       return (
-        <div className={`w-full h-full rounded-lg ${selectedColor.bgClass} flex items-center justify-center font-bold text-white text-xs tracking-wider shadow-inner`}>
+        <div className={`w-full h-full rounded-[14px] ${selectedColor.bgClass} flex items-center justify-center font-bold text-white text-xs tracking-wider shadow-inner`}>
           {monogram || config.companyName.slice(0, 2).toUpperCase()}
         </div>
       );
     }
     const iconObj = PRESET_ICONS.find((p) => p.id === iconId) || PRESET_ICONS[0];
     const IconComponent = iconObj.icon;
-    return <IconComponent className="w-5 h-5 text-emerald-600" />;
+    return <IconComponent className="w-5 h-5 text-[#071026] stroke-[2.2]" />;
   };
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-slate-200/80 backdrop-blur-xl text-slate-900 border-b border-slate-300/85 shadow-[0_8px_28px_-10px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,0.75)]">
-        {/* Main Top Liquid Glass Bar - Aligned to exact same 1600px grid as Workspace */}
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#060c1d]/95 via-[#091533]/92 to-[#060c1d]/95 backdrop-blur-2xl text-white border-b border-white/12 shadow-[0_14px_38px_-12px_rgba(2,6,18,0.68),inset_0_1px_0_rgba(255,255,255,0.12)]">
+        {/* Top Specular Gold Crystal Rule matching Landing Page */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400/85 to-transparent" />
+
+        {/* Main Top Sapphire Glass Bar - Aligned to exact same 1600px grid as Workspace */}
         <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 min-h-[60px] flex items-center justify-between gap-3 xl:gap-4">
           {/* Zone 1: Company & System Identity (Left-aligned with Sidebar) */}
           <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -251,16 +258,16 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               <button
                 type="button"
                 onClick={handleOpenLogoModal}
-                className="group relative w-10 h-10 rounded-2xl bg-gradient-to-br from-white to-emerald-50/90 border border-white shadow-[0_6px_16px_-4px_rgba(16,185,129,0.22),inset_0_1.5px_0_rgba(255,255,255,1)] flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-105 cursor-pointer"
+                className="group relative w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 border border-amber-200/70 shadow-[0_6px_18px_-4px_rgba(251,191,36,0.4),inset_0_1.5px_0_rgba(255,255,255,0.75)] flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-105 cursor-pointer"
                 title="Click to customize Company Logo & Identity (Main Admin Only)"
               >
                 {renderCurrentLogo(config.logoType || (config.logoImage ? 'image' : 'icon'), config.logoImage, config.logoIcon, config.logoMonogram, config.logoColor)}
-                <div className="absolute inset-0 bg-slate-900/50 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Camera className="w-4 h-4 text-white" />
+                <div className="absolute inset-0 bg-[#071026]/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera className="w-4 h-4 text-amber-300" />
                 </div>
               </button>
             ) : (
-              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-white to-emerald-50/90 border border-white shadow-[0_6px_16px_-4px_rgba(16,185,129,0.18),inset_0_1.5px_0_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 border border-amber-200/70 shadow-[0_6px_18px_-4px_rgba(251,191,36,0.32),inset_0_1.5px_0_rgba(255,255,255,0.75)] flex items-center justify-center shrink-0">
                 {renderCurrentLogo(config.logoType || (config.logoImage ? 'image' : 'icon'), config.logoImage, config.logoIcon, config.logoMonogram, config.logoColor)}
               </div>
             )}
@@ -272,7 +279,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                     <>
                       <span
                         onClick={handleOpenLogoModal}
-                        className="font-extrabold text-slate-900 tracking-tight text-base sm:text-[17px] leading-tight truncate cursor-pointer hover:text-emerald-700 transition-colors"
+                        className="font-extrabold text-white tracking-tight text-base sm:text-[17px] leading-tight truncate cursor-pointer hover:text-amber-300 transition-colors"
                         title="Click to customize"
                       >
                         {config.companyName}
@@ -280,33 +287,33 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                       <button
                         type="button"
                         onClick={handleOpenLogoModal}
-                        className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/75 transition-colors cursor-pointer shrink-0"
+                        className="p-1 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                         aria-label="Edit"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                     </>
                   ) : (
-                    <span className="font-extrabold text-slate-900 tracking-tight text-base sm:text-[17px] leading-tight truncate">
+                    <span className="font-extrabold text-white tracking-tight text-base sm:text-[17px] leading-tight truncate">
                       {config.companyName}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600 truncate mt-0.5">
-                  <span className="text-emerald-700 font-semibold truncate">{config.systemName}</span>
-                  <span aria-hidden="true" className="text-slate-300 hidden sm:inline">·</span>
-                  <span className="text-slate-500 hidden sm:inline font-medium whitespace-nowrap">Liquid Glass Enterprise OS</span>
+                <div className="flex items-center gap-2 text-xs text-slate-300 truncate mt-0.5">
+                  <span className="text-amber-300 font-semibold truncate">{config.systemName}</span>
+                  <span aria-hidden="true" className="text-white/25 hidden sm:inline">·</span>
+                  <span className="text-sky-200/65 hidden sm:inline font-medium whitespace-nowrap">Liquid Glass Enterprise OS</span>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSaveInlineNames} className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-lg">
+              <form onSubmit={handleSaveInlineNames} className="flex items-center gap-2 bg-[#0d1d42] p-1.5 rounded-2xl border border-white/20 shadow-lg">
                 <div className="flex flex-col gap-1">
                   <input
                     type="text"
                     value={tempCompanyName}
                     onChange={(e) => setTempCompanyName(e.target.value)}
                     placeholder="Company Name"
-                    className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 w-48 sm:w-60"
+                    className="bg-[#060c1d] border border-white/20 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 w-48 sm:w-60"
                     autoFocus
                   />
                   <input
@@ -314,14 +321,14 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                     value={tempSystemName}
                     onChange={(e) => setTempSystemName(e.target.value)}
                     placeholder="System Name"
-                    className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[11px] text-emerald-700 placeholder-slate-400 focus:outline-none focus:border-emerald-500 w-48 sm:w-60"
+                    className="bg-[#060c1d] border border-white/20 rounded-lg px-2.5 py-1 text-[11px] text-amber-300 placeholder-slate-400 focus:outline-none focus:border-amber-400 w-48 sm:w-60"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <button type="submit" className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center justify-center cursor-pointer" title="Save">
+                  <button type="submit" className="p-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-[#071026] text-xs flex items-center justify-center cursor-pointer" title="Save">
                     <Check className="w-3.5 h-3.5" />
                   </button>
-                  <button type="button" onClick={() => setIsEditingNames(false)} className="p-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs flex items-center justify-center cursor-pointer" title="Cancel">
+                  <button type="button" onClick={() => setIsEditingNames(false)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs flex items-center justify-center cursor-pointer" title="Cancel">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -329,16 +336,16 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
             )}
           </div>
 
-          {/* Zone 2: Liquid Glass Action Controls & Status (Right-aligned with Main Workspace) */}
+          {/* Zone 2: Sapphire Glass Action Controls & Status (Right-aligned with Main Workspace) */}
           <div className="hidden lg:flex flex-wrap items-center justify-end gap-1.5 xl:gap-2 text-xs min-w-0">
             {onReturnToGateway && authUser.username === 'admin' && (
               <button
                 type="button"
                 onClick={onReturnToGateway}
-                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/90 hover:bg-white text-teal-800 border border-slate-200/90 shadow-2xs transition cursor-pointer"
+                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/[0.08] hover:bg-white/[0.15] text-amber-200 border border-white/15 shadow-2xs transition cursor-pointer"
                 title="Return to Developer Portal Gateway"
               >
-                <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>Portal Gateway</span>
               </button>
             )}
@@ -348,17 +355,17 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               const subSummary = getSubscriptionStatusSummary(currentTenant.subscription);
               const badgeStyles =
                 subSummary.isExpired || subSummary.isCanceled
-                  ? 'bg-rose-50/95 hover:bg-rose-100/90 border-rose-300 text-rose-900'
+                  ? 'bg-rose-500/20 hover:bg-rose-500/30 border-rose-400/45 text-rose-200'
                   : subSummary.isTrial || subSummary.daysLeft <= 3
-                  ? 'bg-amber-50/90 hover:bg-amber-100/80 border-amber-300 text-amber-900'
-                  : 'bg-emerald-50/90 hover:bg-emerald-100/80 border-emerald-300 text-emerald-900';
+                  ? 'bg-amber-400/20 hover:bg-amber-400/30 border-amber-400/45 text-amber-200'
+                  : 'bg-emerald-500/18 hover:bg-emerald-500/28 border-emerald-400/40 text-emerald-200';
 
               const iconColor =
                 subSummary.isExpired || subSummary.isCanceled
-                  ? 'text-rose-600'
+                  ? 'text-rose-300'
                   : subSummary.isTrial || subSummary.daysLeft <= 3
-                  ? 'text-amber-600'
-                  : 'text-emerald-600';
+                  ? 'text-amber-300'
+                  : 'text-emerald-300';
 
               return (
                 <button
@@ -386,18 +393,18 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 <button
                   type="button"
                   onClick={() => setShowEmailVerifyModal(true)}
-                  className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-100/90 hover:bg-amber-200/70 border border-amber-300 text-amber-900 transition cursor-pointer shadow-2xs"
+                  className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/45 text-amber-200 transition cursor-pointer shadow-2xs"
                   title="Verify Email"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-300 shrink-0" />
                   <span>Verify Email</span>
                 </button>
               ) : (
                 <div
-                  className="h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold whitespace-nowrap bg-emerald-50/90 border border-emerald-200 text-emerald-800"
+                  className="h-9 flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold whitespace-nowrap bg-emerald-500/15 border border-emerald-400/35 text-emerald-200"
                   title="Email Verified"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
                   <span>Verified</span>
                 </div>
               )
@@ -406,9 +413,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
             {pendingRequestsCount > 0 && (
               <button
                 onClick={onOpenPendingRequests}
-                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl whitespace-nowrap bg-amber-50/90 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold transition-colors cursor-pointer shadow-2xs"
+                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl whitespace-nowrap bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/45 text-amber-200 font-bold transition-colors cursor-pointer shadow-2xs"
               >
-                <Bell className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <Bell className="w-3.5 h-3.5 text-amber-300 shrink-0" />
                 <span>{pendingRequestsCount} Pending</span>
               </button>
             )}
@@ -416,9 +423,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
             {recycleBinCount > 0 && (
               <button
                 onClick={onOpenRecycleBin}
-                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 border border-rose-200 text-rose-800 font-bold transition-colors cursor-pointer shadow-2xs"
+                className="h-9 flex items-center gap-1.5 px-3 xl:px-3.5 rounded-xl whitespace-nowrap bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-rose-200 font-bold transition-colors cursor-pointer shadow-2xs"
               >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <Trash2 className="w-3.5 h-3.5 text-rose-300 shrink-0" />
                 <span>{recycleBinCount} in Bin</span>
               </button>
             )}
@@ -428,34 +435,34 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               <>
                 <button
                   onClick={() => setShowBackupModal(true)}
-                  className="h-8 px-2.5 rounded-xl whitespace-nowrap bg-rose-50/90 hover:bg-rose-100 text-rose-800 border border-rose-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs transition"
+                  className="h-8 px-2.5 rounded-xl whitespace-nowrap bg-rose-500/18 hover:bg-rose-500/28 text-rose-200 border border-rose-400/35 text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs transition"
                   title="Backup & Flush"
                 >
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-300 shrink-0" />
                   <span>Backup & Flush</span>
                 </button>
                 <button
                   onClick={() => setShowConfigModal(true)}
-                  className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 border border-slate-200 cursor-pointer shadow-2xs transition shrink-0"
+                  className="h-8 w-8 flex items-center justify-center rounded-xl bg-white/[0.08] hover:bg-white/[0.16] text-amber-300 border border-white/15 cursor-pointer shadow-2xs transition shrink-0"
                   title="System Settings (Main Admin Only)"
                 >
-                  <Sliders className="w-3.5 h-3.5 text-emerald-600" />
+                  <Sliders className="w-3.5 h-3.5 text-amber-300" />
                 </button>
               </>
             )}
           </div>
         </div>
 
-        {/* Row 2: Sub-Bar (Aligned to exact same 1600px grid as Row 1 & Workspace) */}
-        <div className="bg-slate-300/45 border-t border-slate-300/80">
-          <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 xl:gap-3 text-xs text-slate-600">
+        {/* Row 2: Sapphire Sub-Bar (Aligned to exact same 1600px grid as Row 1 & Workspace) */}
+        <div className="bg-[#050b1a]/88 border-t border-white/10">
+          <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 xl:gap-3 text-xs text-slate-300">
             {/* Active User Controls (Left-aligned with Logo & Sidebar) */}
             <div className="flex items-center gap-2 min-w-0 max-w-full flex-wrap">
-              <div className="h-8 flex items-center gap-2 bg-white border border-slate-200/90 rounded-xl px-2.5 text-xs shadow-2xs max-w-full min-w-0">
+              <div className="h-8 flex items-center gap-2 bg-[#0d1d42]/80 border border-white/14 rounded-xl px-2.5 text-xs shadow-2xs max-w-full min-w-0">
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(true)}
-                  className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                  className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] font-extrabold text-[10px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
                   title="Click to edit account profile & email"
                 >
                   {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
@@ -465,24 +472,24 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                     <select
                       value={currentUser.id}
                       onChange={(e) => setViewAsUser(activeUsers.find((u) => u.id === e.target.value)!)}
-                      className="bg-transparent text-slate-900 font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[130px] 2xl:max-w-[165px]"
+                      className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[130px] 2xl:max-w-[165px]"
                     >
                       {activeUsers.map((u) => (
-                        <option key={u.id} value={u.id} className="bg-white text-slate-900">
+                        <option key={u.id} value={u.id} className="bg-[#09132c] text-white">
                           {u.id === authUser.id ? `★ ${u.fullName}` : u.fullName}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <span className="font-bold text-slate-900 text-xs truncate max-w-[140px] 2xl:max-w-[175px]">
+                    <span className="font-bold text-white text-xs truncate max-w-[140px] 2xl:max-w-[175px]">
                       {currentUser?.fullName} ({currentUser?.role})
                     </span>
                   )}
-                  <span className="text-slate-300">·</span>
+                  <span className="text-white/25">·</span>
                   <button
                     type="button"
                     onClick={() => setShowProfileModal(true)}
-                    className="text-[11px] text-emerald-700 hover:text-emerald-600 font-bold cursor-pointer hover:underline whitespace-nowrap shrink-0"
+                    className="text-[11px] text-amber-300 hover:text-amber-200 font-bold cursor-pointer hover:underline whitespace-nowrap shrink-0"
                   >
                     Edit Profile
                   </button>
@@ -492,10 +499,10 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               <button
                 type="button"
                 onClick={logout}
-                className="group h-8 flex items-center gap-1.5 px-3 rounded-xl bg-white/95 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200/90 hover:border-rose-200 font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap shrink-0"
+                className="group h-8 flex items-center gap-1.5 px-3 rounded-xl bg-white/[0.07] hover:bg-rose-500/20 text-slate-200 hover:text-rose-200 border border-white/14 hover:border-rose-400/40 font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap shrink-0"
                 title="Log Out"
               >
-                <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 shrink-0 transition-colors" />
+                <LogOut className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-300 shrink-0 transition-colors" />
                 <span>Log Out</span>
               </button>
             </div>
@@ -506,39 +513,39 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 <button
                   type="button"
                   onClick={() => setShowBarcodeLookupModal(true)}
-                  className="h-8 flex items-center gap-1.5 px-2.5 xl:px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-2xs cursor-pointer transition whitespace-nowrap shrink-0"
+                  className="h-8 flex items-center gap-1.5 px-2.5 xl:px-3 rounded-xl bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-[#071026] font-extrabold text-xs shadow-[0_6px_16px_-4px_rgba(251,191,36,0.4)] border border-amber-200/70 cursor-pointer transition whitespace-nowrap shrink-0"
                   title="Scan Barcode via USB Gun or Mobile Phone Camera to check live stock"
                 >
-                  <Barcode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <Barcode className="w-3.5 h-3.5 text-[#071026] shrink-0" />
                   <span>Scan Barcode</span>
                 </button>
               )}
 
               <div
-                className="h-8 flex items-center gap-1.5 xl:gap-2 bg-white border border-slate-200/90 rounded-xl px-2.5 xl:px-3 text-slate-600 shadow-2xs min-w-0 max-w-full whitespace-nowrap"
+                className="h-8 flex items-center gap-1.5 xl:gap-2 bg-[#0d1d42]/75 border border-white/14 rounded-xl px-2.5 xl:px-3 text-slate-300 shadow-2xs min-w-0 max-w-full whitespace-nowrap"
                 title={`Scope: ${activeSiteName} · Role: ${currentUser.role}`}
               >
-                <Layers className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <Layers className="w-3.5 h-3.5 text-sky-300 shrink-0" />
                 <span className="truncate max-w-[145px] 2xl:max-w-[220px]">
-                  Scope: <strong className="text-slate-900">{activeSiteName}</strong>
+                  Scope: <strong className="text-white">{activeSiteName}</strong>
                 </span>
-                <span aria-hidden="true" className="text-slate-300 shrink-0">·</span>
+                <span aria-hidden="true" className="text-white/25 shrink-0">·</span>
                 <span className="truncate max-w-[125px] 2xl:max-w-none">
-                  Role: <strong className="text-emerald-700">{currentUser.role}</strong>
+                  Role: <strong className="text-amber-300">{currentUser.role}</strong>
                 </span>
               </div>
 
-              <div className="h-8 flex items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-2.5 text-xs shadow-2xs whitespace-nowrap shrink-0">
-                <Palette className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="text-[11px] text-slate-500 font-medium hidden 2xl:inline">Glass Tone:</span>
-                <span className="text-[11px] text-slate-500 font-medium 2xl:hidden">Tone:</span>
+              <div className="h-8 flex items-center gap-1.5 bg-[#0d1d42]/75 border border-white/14 rounded-xl px-2.5 text-xs shadow-2xs whitespace-nowrap shrink-0">
+                <Palette className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[11px] text-slate-400 font-medium hidden 2xl:inline">Glass Tone:</span>
+                <span className="text-[11px] text-slate-400 font-medium 2xl:hidden">Tone:</span>
                 <select
                   value={currentThemeId}
                   onChange={(e) => updateConfig({ themeId: e.target.value, logoColor: e.target.value })}
-                  className="bg-transparent text-slate-900 text-xs font-bold focus:outline-none cursor-pointer max-w-[100px] 2xl:max-w-none truncate"
+                  className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer max-w-[100px] 2xl:max-w-none truncate"
                 >
                   {Object.entries(APP_THEMES).map(([key, t]) => (
-                    <option key={key} value={key} className="bg-white text-slate-900">
+                    <option key={key} value={key} className="bg-[#09132c] text-white">
                       {t.name}
                     </option>
                   ))}
@@ -546,10 +553,10 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
               </div>
 
               <div
-                className="flex min-h-8 items-center gap-1.5 bg-white border border-slate-200/90 rounded-xl px-2.5 xl:px-3 py-1 text-[11px] font-bold text-slate-800 shadow-2xs max-w-full"
+                className="flex min-h-8 items-center gap-1.5 bg-[#0d1d42]/75 border border-white/14 rounded-xl px-2.5 xl:px-3 py-1 text-[11px] font-bold text-slate-200 shadow-2xs max-w-full"
                 title="Apex Developer | System Developed By Sasith Dissanayake"
               >
-                <span className="text-emerald-600 shrink-0">◆</span>
+                <span className="text-amber-400 shrink-0">◆</span>
                 <span className="leading-tight break-words sm:whitespace-nowrap">
                   Apex Developer | System Developed By Sasith Dissanayake
                 </span>
