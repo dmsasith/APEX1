@@ -46,6 +46,7 @@ export interface SystemConfig {
   logoMonogram?: string;
   logoColor?: string;
   themeId?: string;
+  glassTone?: string;
   bgEffect?: string;
   // SaaS Owner Bank & QR Payment Gateway Settings
   bankName?: string;

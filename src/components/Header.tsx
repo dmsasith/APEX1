@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
   const [modalLogoMonogram, setModalLogoMonogram] = useState<string>(
     config.logoMonogram || config.companyName.slice(0, 2).toUpperCase()
   );
-  const [modalLogoColor, setModalLogoColor] = useState<string>(config.logoColor || 'emerald');
+  const [modalLogoColor, setModalLogoColor] = useState<string>(config.logoColor || 'sapphire');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,7 +143,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
     setTimeout(() => setStatusMessage(null), 3500);
   };
 
-  const currentTheme = getThemeConfig(config.themeId || config.logoColor);
+  const currentTheme = getThemeConfig(config.glassTone);
   const currentThemeId = currentTheme.id;
   const isCentralAdmin = isSuperAdmin(authUser?.role) || authUser?.username === 'admin';
 
@@ -599,7 +599,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                             role="option"
                             aria-selected={isSelected}
                             onClick={() => {
-                              updateConfig({ themeId: t.id, logoColor: t.id });
+                              updateConfig({ glassTone: t.id, themeId: t.id, logoColor: t.id });
                               setShowToneMenu(false);
                             }}
                             className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl text-left transition cursor-pointer ${
@@ -613,7 +613,14 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                                 className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.swatchGradient} ring-1 ring-white/45 shrink-0 shadow-xs`}
                               />
                               <div className="min-w-0">
-                                <div className="text-xs font-bold leading-tight truncate">{t.name}</div>
+                                <div className="text-xs font-bold leading-tight truncate flex items-center gap-1.5">
+                                  <span>{t.name}</span>
+                                  {t.id === 'sapphire' && (
+                                    <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                      Default
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-[10.5px] text-slate-400 leading-tight truncate mt-0.5">
                                   {t.tagline}
                                 </div>

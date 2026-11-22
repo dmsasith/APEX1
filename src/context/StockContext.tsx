@@ -2202,6 +2202,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       address: 'Central Yard & Operations Hub',
       phone: currentTenant.contactPhone || '',
       email: currentTenant.contactEmail || '',
+      glassTone: 'sapphire',
+      themeId: 'sapphire',
+      logoColor: 'sapphire',
     })
   );
   const [sites, setSites] = useState<Site[]>(() => {
@@ -2362,6 +2365,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       address: 'Central Logistics Yard & Operations Hub',
       phone: tObj.contactPhone || '',
       email: tObj.contactEmail || '',
+      glassTone: 'sapphire',
+      themeId: 'sapphire',
+      logoColor: 'sapphire',
     });
 
     if (isDefault || tenantId === 'tenant-apex-main') {

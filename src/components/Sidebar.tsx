@@ -34,7 +34,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelectTab }) => {
   const { config, pendingRequestsCount, totalLowStockAlertsCount, recycleBinCount, currentUser, logout } = useStock();
-  const theme = getThemeConfig(config?.themeId || config?.logoColor);
+  const theme = getThemeConfig(config?.glassTone);
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
 

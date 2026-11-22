@@ -59,7 +59,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     pendingRequestsCount,
   } = useStock();
 
-  const theme = getThemeConfig(config?.themeId || config?.logoColor);
+  const theme = getThemeConfig(config?.glassTone);
 
   // Aggregate low stock alerts across Main and Branches
   const lowStockItemsList: Array<{

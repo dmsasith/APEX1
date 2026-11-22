@@ -99,7 +99,7 @@ export const ProcurementView: React.FC = () => {
     config.address ||
     activeTemplate?.address ||
     'Head Office & Central Warehouse Operations';
-  const theme = getThemeConfig(config?.themeId || config?.logoColor);
+  const theme = getThemeConfig(config?.glassTone);
   const isCentralAdmin = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
 
   const [activeTab, setActiveTab] = useState<'orders' | 'returns' | 'suppliers'>('orders');

@@ -67,7 +67,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
   const [showMobileGlassMenu, setShowMobileGlassMenu] = useState(false);
   const [paymentToast, setPaymentToast] = useState<{ type: 'success' | 'info' | 'warn'; text: string } | null>(null);
   const { config, currentUser, currentTenant, updateTenantSubscription, pendingRequestsCount } = useStock();
-  const theme = getThemeConfig(config?.themeId || config?.logoColor);
+  const theme = getThemeConfig(config?.glassTone);
   const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const canAccessProcurement = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin';
   const isMasterOwner = (currentTenant?.id === 'tenant-apex-main' || currentUser?.username === 'admin') && isCentralAdmin;
