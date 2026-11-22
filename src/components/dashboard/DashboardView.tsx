@@ -306,7 +306,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </div>
         </button>
 
-        {/* Card 4: Low Stock Alerts (Eye-Friendly Warm Muted Amber-Bronze Warning Gradient) */}
+        {/* Card 4: Low Stock Alerts (Neutral Gray when 0, Warm Amber-Orange Warning Gradient when > 0) */}
         <button
           type="button"
           onClick={() => {
@@ -315,19 +315,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               tableElem.scrollIntoView({ behavior: 'smooth' });
             }
           }}
-          className="relative overflow-hidden bg-gradient-to-br from-amber-600 via-orange-700 to-stone-800 hover:from-amber-500 hover:via-orange-600 hover:to-stone-700 text-white rounded-2xl border border-amber-400/40 p-5 flex flex-col justify-between min-h-[172px] text-left transition-all duration-200 shadow-md shadow-amber-950/10 cursor-pointer group"
+          className={`relative overflow-hidden text-white rounded-2xl border p-5 flex flex-col justify-between min-h-[172px] text-left transition-all duration-200 shadow-md cursor-pointer group ${
+            totalLowStockAlertsCount > 0
+              ? 'bg-gradient-to-br from-amber-600 via-orange-700 to-stone-800 hover:from-amber-500 hover:via-orange-600 hover:to-stone-700 border-amber-400/40 shadow-amber-950/10'
+              : 'bg-gradient-to-br from-slate-500 via-slate-600 to-slate-800 hover:from-slate-500 hover:via-slate-600 hover:to-slate-700 border-slate-400/40 shadow-slate-950/10'
+          }`}
         >
-          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-amber-300/10 blur-2xl pointer-events-none" />
+          <div
+            className={`absolute -right-6 -top-6 w-28 h-28 rounded-full blur-2xl pointer-events-none ${
+              totalLowStockAlertsCount > 0 ? 'bg-amber-300/10' : 'bg-white/10'
+            }`}
+          />
           <div className="relative z-10 flex items-start justify-between gap-3 w-full">
             <div>
-              <p className="text-xs font-semibold text-amber-100/90 tracking-wide">
+              <p
+                className={`text-xs font-semibold tracking-wide ${
+                  totalLowStockAlertsCount > 0 ? 'text-amber-100/90' : 'text-slate-200/90'
+                }`}
+              >
                 Safety Threshold
               </p>
               <h3 className="text-base font-extrabold text-white mt-0.5">
                 Low Stock Alerts
               </h3>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/25 text-amber-100 flex items-center justify-center shrink-0 group-hover:bg-white group-hover:text-amber-700 transition-colors duration-200">
+            <div
+              className={`w-11 h-11 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center shrink-0 group-hover:bg-white transition-colors duration-200 ${
+                totalLowStockAlertsCount > 0
+                  ? 'text-amber-100 group-hover:text-amber-700'
+                  : 'text-slate-100 group-hover:text-slate-700'
+              }`}
+            >
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
@@ -347,7 +365,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             {totalLowStockAlertsCount > 0 ? (
               <span className="text-amber-100 font-semibold truncate">Under Min. Level</span>
             ) : (
-              <span className="text-amber-100/90 font-medium truncate">All Stocks Healthy</span>
+              <span className="text-slate-200 font-medium truncate">All Stocks Healthy</span>
             )}
             <span className="text-white font-bold whitespace-nowrap inline-flex items-center gap-1 shrink-0 group-hover:translate-y-0.5 transition-transform">
               <span>View Alerts</span>
