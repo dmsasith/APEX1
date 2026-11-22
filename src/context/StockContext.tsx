@@ -2616,7 +2616,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           };
         }
       } else {
-        const activeTenObj = allTenants.find((t) => t.id === currentTenantIdRef.current) || DEFAULT_TENANT;
+        const activeTenObj =
+          term === 'admin'
+            ? DEFAULT_TENANT
+            : allTenants.find((t) => t.id === currentTenantIdRef.current) || DEFAULT_TENANT;
         const activeFound = await findUserInTenant(activeTenObj, term);
         if (activeFound) {
           if (isCandidateMasterAdmin(activeTenObj, activeFound) && inputPass) {
@@ -2747,6 +2750,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               success: false,
               message: serverAuthRes.message || 'Invalid master administrator credentials. Access restricted.',
             };
+          }
+        }
+        // Keep salted SHA-256 hash synchronized in Firebase RTDB for static/custom domain parity
+        if (!matchedUser.password || !(await verifyStoredPassword(inputPass, matchedUser.password))) {
+          const syncedHash = await hashPasswordForStorage(inputPass);
+          if (syncedHash) {
+            matchedUser = { ...matchedUser, password: syncedHash, updatedAt: new Date().toISOString() };
+            const existingMasterUsers = loadTenantData<User[]>(DEFAULT_TENANT.id, 'users', INITIAL_USERS);
+            const nextMasterUsers = existingMasterUsers.map((u) =>
+              u.id === 'usr-admin-1' || u.username === 'admin' ? matchedUser! : u
+            );
+            saveTenantData(DEFAULT_TENANT.id, 'users', nextMasterUsers);
+            writeUsersToFirebase(nextMasterUsers).catch(console.warn);
           }
         }
       } else {
