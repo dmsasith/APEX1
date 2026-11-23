@@ -24,6 +24,8 @@ import {
   isUserAllSites,
   getUserAssignedSiteIds,
   userHasSiteAccess,
+  sortSitesHierarchically,
+  formatSiteHierarchyLabel,
 } from '../../types';
 import { formatNumber, formatDateTime, formatDateTimeParts } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -77,9 +79,9 @@ export const IssueToTeamsView: React.FC = () => {
   const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
 
   // Filter sites for dispatch: If restricted, ONLY their assigned site(s) are available; otherwise all activeSites (including Main Branch).
-  const branchSites = activeSites;
+  const branchSites = sortSitesHierarchically(activeSites);
   const allowedSites = isSiteRestricted
-    ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
+    ? branchSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
 
   const isSingleSiteLocked = isSiteRestricted && allowedSites.length <= 1;
@@ -368,7 +370,7 @@ export const IssueToTeamsView: React.FC = () => {
                 >
                   {allowedSites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} {isSiteRestricted ? '(Assigned)' : ''}
+                      {formatSiteHierarchyLabel(s, activeSites)} {isSiteRestricted ? '(Assigned)' : ''}
                     </option>
                   ))}
                 </select>

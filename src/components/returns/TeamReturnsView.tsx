@@ -24,6 +24,8 @@ import {
   isUserAllSites,
   getUserAssignedSiteIds,
   userHasSiteAccess,
+  sortSitesHierarchically,
+  formatSiteHierarchyLabel,
 } from '../../types';
 import { formatNumber, formatDateTimeParts } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -79,9 +81,9 @@ export const TeamReturnsView: React.FC = () => {
   const isSiteRestricted = !isAllSitesUser;
   const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
 
-  const branchSites = activeSites;
+  const branchSites = sortSitesHierarchically(activeSites);
   const allowedSites = isSiteRestricted
-    ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
+    ? branchSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
 
   const isSingleSiteLocked = isSiteRestricted && allowedSites.length <= 1;
@@ -443,7 +445,7 @@ export const TeamReturnsView: React.FC = () => {
                 >
                   {allowedSites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} {isSiteRestricted ? '(Assigned)' : ''}
+                      {formatSiteHierarchyLabel(s, activeSites)} {isSiteRestricted ? '(Assigned)' : ''}
                     </option>
                   ))}
                 </select>

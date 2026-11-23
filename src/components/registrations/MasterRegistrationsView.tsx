@@ -55,6 +55,12 @@ import {
   stripSuperAdminSuffix,
   computePlatformPricingMetrics,
   getTenantBranchQuotaSummary,
+  isSubSite,
+  isRegionalSiteBranch,
+  getParentSite,
+  getChildSubSites,
+  sortSitesHierarchically,
+  formatSiteHierarchyLabel,
 } from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
 import {
@@ -322,6 +328,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   // --- SITE FORM STATE ---
+  const [siteTier, setSiteTier] = useState<'regional' | 'subsite'>('regional');
+  const [parentSiteId, setParentSiteId] = useState('');
   const [siteName, setSiteName] = useState('');
   const [siteSupervisor, setSiteSupervisor] = useState('');
   const [siteSupervisorUserId, setSiteSupervisorUserId] = useState('');
@@ -331,6 +339,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [siteLocation, setSiteLocation] = useState('');
   const [sitePhone, setSitePhone] = useState('');
   const [siteQuotaError, setSiteQuotaError] = useState<string | null>(null);
+
+  const regionalBranches = activeSites.filter((s) => isRegionalSiteBranch(s));
+  const hierarchicalSites = sortSitesHierarchically(activeSites);
 
   const handleOpenExtraSiteUpgradeModal = () => {
     const targetExtraSlots = Math.max(1, branchQuota.extraSiteSlots + 1);
@@ -346,6 +357,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     if (!siteName.trim()) return;
     setSiteQuotaError(null);
 
+    if (siteTier === 'subsite' && !parentSiteId) {
+      showToast('Please select a Parent Regional Site Branch for this Sub-Site Branch.');
+      return;
+    }
+
+    const parentBranchObj =
+      siteTier === 'subsite' ? regionalBranches.find((r) => r.id === parentSiteId) : undefined;
+
     try {
       addSite(
         {
@@ -355,11 +374,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           location: siteLocation.trim() || 'On-site details pending',
           contactNumber: sitePhone.trim() || '+1 (555) 000-0000',
           isMainWarehouse: false,
+          parentSiteId: siteTier === 'subsite' ? parentSiteId : undefined,
+          parentSiteName: parentBranchObj?.name,
         },
         newSiteAssignedUserIds
       );
 
-      showToast(`Site Branch "${siteName}" added & synced with assigned user account(s)!`);
+      showToast(
+        siteTier === 'subsite' && parentBranchObj
+          ? `Sub-Site Branch "${siteName}" registered under "${parentBranchObj.name}" & synced!`
+          : `Site Branch "${siteName}" added & synced with assigned user account(s)!`
+      );
+      setSiteTier('regional');
+      setParentSiteId('');
       setSiteName('');
       setSiteSupervisor('');
       setSiteSupervisorUserId('');
@@ -373,6 +400,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         const cleanMsg = msg.replace('BRANCH_QUOTA_REACHED:', '').trim();
         setSiteQuotaError(cleanMsg);
         showToast(cleanMsg);
+      } else if (msg.startsWith('INVALID_PARENT_SITE:')) {
+        showToast(msg.replace('INVALID_PARENT_SITE:', '').trim());
       } else {
         showToast(msg || 'Could not register site branch.');
       }
@@ -629,6 +658,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleClearSiteForm = () => {
+    setSiteTier('regional');
+    setParentSiteId('');
     setSiteName('');
     setSiteSupervisor('');
     setSiteSupervisorUserId('');
@@ -674,10 +705,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleSaveSiteEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSite) return;
-    updateSite(editingSite.id, editingSite, editingSiteUserIds);
-    showToast(`Site Branch "${editingSite.name}" & assigned staff synchronized.`);
-    setEditingSite(null);
-    setEditingSiteUserIds([]);
+    try {
+      updateSite(editingSite.id, editingSite, editingSiteUserIds);
+      showToast(`Site Branch "${editingSite.name}" & assigned staff synchronized.`);
+      setEditingSite(null);
+      setEditingSiteUserIds([]);
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      showToast(msg.replace('INVALID_PARENT_SITE:', '').trim() || 'Could not update site branch.');
+    }
   };
 
   const handleSaveUserEdit = (e: React.FormEvent) => {
@@ -870,14 +906,26 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleDeleteSite = (s: Site) => {
+    const childSubs = getChildSubSites(s.id, activeSites);
+    if (childSubs.length > 0) {
+      showToast(
+        `Cannot delete "${s.name}" because ${childSubs.length} Sub-Site Branch(es) (${childSubs.map((c) => c.name).join(', ')}) are linked under it. Remove or reassign those Sub-Sites first.`
+      );
+      return;
+    }
     setConfirmState({
       isOpen: true,
       title: `Move Site "${s.name}" to Recycle Bin?`,
-      message: `Are you sure you want to move site branch "${s.name}" (${s.location}) to the Recycle Bin?`,
+      message: `Are you sure you want to move ${isSubSite(s) ? 'Sub-Site Branch' : 'site branch'} "${s.name}" (${s.location}) to the Recycle Bin?`,
       confirmLabel: 'Move to Recycle Bin',
       onConfirm: () => {
-        softDeleteSite(s.id);
-        showToast(`Site "${s.name}" moved to Recycle Bin.`);
+        try {
+          softDeleteSite(s.id);
+          showToast(`Site "${s.name}" moved to Recycle Bin.`);
+        } catch (err: any) {
+          const msg = String(err?.message || '');
+          showToast(msg.replace('SUBSITES_EXIST:', '').trim() || 'Could not remove site.');
+        }
       },
     });
   };
@@ -2002,11 +2050,89 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               <form onSubmit={handleCreateSite} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Site Branch Name *
+                    Branch Hierarchy Level *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiteTier('regional');
+                        setParentSiteId('');
+                      }}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                        siteTier === 'regional'
+                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs ring-1 ring-slate-900/10'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      Regional Site Branch
+                      <span className="block text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        Supplied by Central HQ
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiteTier('subsite');
+                        if (!parentSiteId && regionalBranches[0]) {
+                          setParentSiteId(regionalBranches[0].id);
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                        siteTier === 'subsite'
+                          ? 'bg-white dark:bg-slate-900 text-sky-900 dark:text-sky-300 shadow-xs ring-1 ring-sky-600/20'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      Sub-Site Branch
+                      <span className="block text-[10px] font-medium text-sky-700 dark:text-sky-400">
+                        Supplied by Site Branch
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {siteTier === 'subsite' && (
+                  <div className="p-3.5 rounded-2xl bg-sky-50/80 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/70 space-y-2">
+                    <label className="block text-xs font-bold text-sky-950 dark:text-sky-200">
+                      Parent Regional Site Branch *
+                    </label>
+                    {regionalBranches.length === 0 ? (
+                      <div className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                        No Regional Site Branches registered yet. Register at least one Regional Site Branch first before adding a Sub-Site Branch.
+                      </div>
+                    ) : (
+                      <select
+                        value={parentSiteId}
+                        onChange={(e) => setParentSiteId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 border border-sky-300 dark:border-sky-700 rounded-xl text-xs bg-white dark:bg-slate-900 dark:text-white focus:ring-4 focus:ring-sky-500/15 focus:border-sky-600 focus:outline-none font-bold"
+                        required
+                      >
+                        <option value="">-- Select Parent Regional Site Branch --</option>
+                        {regionalBranches.map((rb) => (
+                          <option key={rb.id} value={rb.id}>
+                            {rb.name} ({rb.location})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <p className="text-[11px] text-sky-800 dark:text-sky-300 leading-relaxed">
+                      Stock for this Sub-Site will be issued by &amp; returned to its Parent Regional Site Branch. Field teams can be registered inside this Sub-Site normally.
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    {siteTier === 'subsite' ? 'Sub-Site Branch Name *' : 'Site Branch Name *'}
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Matale Regional Depot, Kandy Operations Yard"
+                    placeholder={
+                      siteTier === 'subsite'
+                        ? 'e.g. Dambulla Field Sub-Yard, Galewela Mini-Depot'
+                        : 'e.g. Matale Regional Depot, Kandy Operations Yard'
+                    }
                     value={siteName}
                     onChange={(e) => setSiteName(e.target.value)}
                     className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs font-medium bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all"
@@ -2250,9 +2376,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
 
             <div className={`grid grid-cols-1 ${activeSites.length > 1 ? '2xl:grid-cols-2' : ''} gap-4`}>
-              {activeSites.map((s, idx) => {
+              {hierarchicalSites.map((s, idx) => {
                 const assignedTeams = activeTeams.filter((t) => t.assignedSiteId === s.id);
                 const assignedUsers = activeUsers.filter((u) => isUserAssignedToSite(u, s, activeSites));
+                const isSub = isSubSite(s);
+                const parentSiteObj = isSub ? getParentSite(s, activeSites) : undefined;
+                const childSubs = isRegionalSiteBranch(s) ? getChildSubSites(s.id, activeSites) : [];
                 const isChecked = selectedSiteIds.includes(s.id);
                 const supervisorInitials = (s.supervisorName || 'S')
                   .split(' ')
@@ -2269,6 +2398,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         ? 'bg-gradient-to-br from-emerald-50/95 via-white/95 to-teal-50/80 dark:from-emerald-950/40 dark:via-slate-900/95 dark:to-slate-900 border border-emerald-400/60 dark:border-emerald-500/40 shadow-[0_14px_34px_-12px_rgba(16,185,129,0.22)] hover:shadow-[0_20px_42px_-12px_rgba(16,185,129,0.3)]'
                         : isChecked
                         ? 'bg-emerald-50/40 dark:bg-slate-900 border-2 border-emerald-500 shadow-md'
+                        : isSub
+                        ? 'bg-gradient-to-br from-sky-50/75 via-white/95 to-slate-50/85 dark:from-sky-950/25 dark:via-slate-900/95 dark:to-slate-900 border border-sky-300/70 dark:border-sky-700/50 border-l-4 border-l-sky-500 shadow-[0_10px_28px_-12px_rgba(14,165,233,0.16)]'
                         : 'bg-gradient-to-br from-white/95 via-white/90 to-slate-50/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-800/80 backdrop-blur-xl border border-white/95 dark:border-slate-800 ring-1 ring-slate-900/[0.06] dark:ring-white/[0.06] shadow-[0_10px_28px_-12px_rgba(15,23,42,0.1)] hover:shadow-[0_18px_38px_-12px_rgba(16,185,129,0.16)] hover:border-emerald-400/50'
                     }`}
                   >
@@ -2280,6 +2411,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
                               s.isMainWarehouse
                                 ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/25'
+                                : isSub
+                                ? 'bg-gradient-to-br from-sky-600 to-indigo-700 text-white shadow-sky-500/20'
                                 : 'bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-emerald-400 shadow-slate-900/15'
                             }`}
                           >
@@ -2292,17 +2425,39 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                              <span className={s.isMainWarehouse ? 'text-emerald-700 dark:text-emerald-400' : ''}>
-                                {s.isMainWarehouse ? 'Central HQ Warehouse' : 'Regional Site Branch'}
+                              <span
+                                className={
+                                  s.isMainWarehouse
+                                    ? 'text-emerald-700 dark:text-emerald-400'
+                                    : isSub
+                                    ? 'text-sky-700 dark:text-sky-400'
+                                    : ''
+                                }
+                              >
+                                {s.isMainWarehouse
+                                  ? 'Central HQ Warehouse'
+                                  : isSub
+                                  ? 'Sub-Site Branch'
+                                  : 'Regional Site Branch'}
                               </span>
                               <span aria-hidden="true">·</span>
                               <span className="font-mono tabular-nums text-[10px]">
-                                {s.isMainWarehouse ? 'HQ-0001' : `BR-${String(idx).padStart(4, '0')}`}
+                                {s.isMainWarehouse ? 'HQ-0001' : isSub ? `SUB-${String(idx).padStart(4, '0')}` : `BR-${String(idx).padStart(4, '0')}`}
                               </span>
                             </div>
                             <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
-                              {s.name}
+                              {isSub ? `↳ ${s.name}` : s.name}
                             </h3>
+                            {isSub && (
+                              <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100/90 dark:bg-sky-900/50 border border-sky-200 dark:border-sky-700/60 text-[10px] font-bold text-sky-900 dark:text-sky-200">
+                                <span>Under: {parentSiteObj?.name || s.parentSiteName || 'Regional Branch'}</span>
+                              </div>
+                            )}
+                            {!isSub && childSubs.length > 0 && (
+                              <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/80 dark:bg-emerald-950/50 border border-emerald-300/60 dark:border-emerald-800/60 text-[10px] font-bold text-emerald-900 dark:text-emerald-300">
+                                <span>{childSubs.length} Sub-Site{childSubs.length === 1 ? '' : 's'}: {childSubs.map((c) => c.name).join(', ')}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -2476,11 +2631,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         <span>
                           Staff: <strong className="font-mono tabular-nums text-slate-900 dark:text-white font-extrabold">{assignedUsers.length}</strong>
                         </span>
+                        {childSubs.length > 0 && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span>
+                              Sub-Sites: <strong className="font-mono tabular-nums text-sky-700 dark:text-sky-400 font-extrabold">{childSubs.length}</strong>
+                            </span>
+                          </>
+                        )}
                       </div>
 
                       <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>{s.isMainWarehouse ? 'Primary Hub' : 'Operational'}</span>
+                        <span>{s.isMainWarehouse ? 'Primary Hub' : isSub ? 'Sub-Site' : 'Operational'}</span>
                       </span>
                     </div>
                   </div>
@@ -2696,7 +2859,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     </div>
 
                     <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 divide-y divide-slate-200/70 dark:divide-slate-700/60">
-                      {activeSites.map((s) => {
+                      {hierarchicalSites.map((s) => {
                         const checked = userSelectedSiteIds.includes(s.id);
                         return (
                           <label
@@ -2716,7 +2879,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               />
                               <div className="min-w-0">
                                 <div className="font-bold text-slate-900 dark:text-white break-words leading-snug">
-                                  {s.name}
+                                  {formatSiteHierarchyLabel(s, activeSites)}
                                 </div>
                                 <div className="text-[10px] text-slate-500 dark:text-slate-400 break-words leading-snug mt-0.5">
                                   {s.location} · In-Charge: {s.supervisorName || 'Unassigned'}
@@ -3043,16 +3206,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Assigned Site Base *
+                  Assigned Site / Sub-Site Base *
                 </label>
                 <select
                   value={assignedSiteId}
                   onChange={(e) => setAssignedSiteId(e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-200/90 dark:border-slate-700 rounded-2xl text-xs bg-slate-50/70 dark:bg-slate-800/60 dark:text-white focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all font-medium"
                 >
-                  {activeSites.map((s) => (
+                  {hierarchicalSites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}
+                      {formatSiteHierarchyLabel(s, activeSites)}
                     </option>
                   ))}
                 </select>
@@ -3317,7 +3480,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             </div>
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
-                                <span className="truncate max-w-[140px]">{s?.name || 'Central Base'}</span>
+                                <span className="truncate max-w-[200px]">
+                                  {s ? formatSiteHierarchyLabel(s, activeSites) : 'Central Base'}
+                                </span>
                                 <span aria-hidden="true">·</span>
                                 <span className="font-mono tabular-nums text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
                                   SQ-{String(idx + 1).padStart(4, '0')}
@@ -4432,6 +4597,45 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             </div>
 
             <form onSubmit={handleSaveSiteEdit} className="space-y-4">
+              {!editingSite.isMainWarehouse && (() => {
+                const existingChildren = getChildSubSites(editingSite.id, activeSites);
+                const availableParents = regionalBranches.filter((r) => r.id !== editingSite.id);
+                return (
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Branch Hierarchy Level / Parent Regional Branch
+                    </label>
+                    {existingChildren.length > 0 ? (
+                      <div className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold">
+                        Regional Site Branch (Parent of {existingChildren.length} active Sub-Site{existingChildren.length === 1 ? '' : 's'}:{' '}
+                        {existingChildren.map((c) => c.name).join(', ')})
+                      </div>
+                    ) : (
+                      <select
+                        value={editingSite.parentSiteId || ''}
+                        onChange={(e) => {
+                          const nextParentId = e.target.value;
+                          const nextParent = availableParents.find((p) => p.id === nextParentId);
+                          setEditingSite({
+                            ...editingSite,
+                            parentSiteId: nextParentId || undefined,
+                            parentSiteName: nextParent?.name,
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-900 dark:text-white font-semibold focus:outline-none"
+                      >
+                        <option value="">Regional Site Branch (Supplied by Central HQ)</option>
+                        {availableParents.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            ↳ Sub-Site Branch under: {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Site Name</label>
                 <input
@@ -4934,7 +5138,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           Select / Update Site Branches (Single or Multiple):
                         </div>
                         <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
-                          {activeSites.map((s) => {
+                          {hierarchicalSites.map((s) => {
                             const checked = currentEditSiteIds.includes(s.id);
                             const isSup = supervisedByEditUser.some((sp) => sp.id === s.id);
                             return (
@@ -4955,7 +5159,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                   />
                                   <div className="min-w-0">
                                     <div className="font-bold text-slate-900 dark:text-white break-words leading-snug">
-                                      {s.name}
+                                      {formatSiteHierarchyLabel(s, activeSites)}
                                       {isSup && (
                                         <span className="ml-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                                           · Current Supervisor
@@ -5091,15 +5295,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site Base</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site / Sub-Site Base</label>
                 <select
                   value={editingTeam.assignedSiteId}
                   onChange={(e) => setEditingTeam({ ...editingTeam, assignedSiteId: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
                 >
-                  {activeSites.map((s) => (
+                  {hierarchicalSites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}
+                      {formatSiteHierarchyLabel(s, activeSites)}
                     </option>
                   ))}
                 </select>

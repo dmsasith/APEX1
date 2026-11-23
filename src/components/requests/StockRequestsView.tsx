@@ -28,6 +28,11 @@ import {
   userHasSiteAccess,
   ClientFreeIssueEntry,
   ClientFreeIssueItemRow,
+  isSubSite,
+  getParentSite,
+  formatSiteHierarchyLabel,
+  sortSitesHierarchically,
+  canUserManageSourceSite,
 } from '../../types';
 import { formatNumber, formatDateTime, formatDateTimeParts } from '../../utils/exportUtils';
 import { isMachineryItem } from '../../utils/itemTypeUtils';
@@ -77,7 +82,7 @@ export const StockRequestsView: React.FC = () => {
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
 
   // Requisition Form State (scoped to user's assigned sites if not Central/All-Sites)
-  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const branchSites = sortSitesHierarchically(activeSites.filter((s) => !s.isMainWarehouse));
 
   // Helper to resolve which Site Branch a Project (and its FOC pool) belongs to
   const resolveProjectBranch = (p?: typeof activeProjects[0]): { siteId: string; siteName: string } => {
@@ -227,6 +232,9 @@ export const StockRequestsView: React.FC = () => {
   const activeMachineryItems = activeItems.filter((i) => isMachineryItem(i));
 
   const [formSiteId, setFormSiteId] = useState(defaultSite);
+  const formTargetSite = activeSites.find((s) => s.id === formSiteId);
+  const formParentSite =
+    formTargetSite && isSubSite(formTargetSite) ? getParentSite(formTargetSite, activeSites) : undefined;
   const [formRequestCategory, setFormRequestCategory] = useState<'normal' | 'foc'>('normal');
   const [focScopeFilter, setFocScopeFilter] = useState<'all' | 'main' | 'individual'>('all');
   const [selectedFocProjectId, setSelectedFocProjectId] = useState<string>('');
@@ -322,13 +330,16 @@ export const StockRequestsView: React.FC = () => {
       });
   }, [activeProjects, getProjectFreeStockList, clientFreeIssues, sites, projects, stockRequests]);
 
-  // Filter FOC Root Projects to those allocated to the currently selected Requesting Site Branch (formSiteId) OR allocated to ALL AREAS ('ALL_AREAS')
+  // Filter FOC Root Projects to those allocated to the currently selected Requesting Site Branch (or its Parent Regional Branch) OR ALL AREAS ('ALL_AREAS')
   const focRootProjectsWithMeta = useMemo(() => {
     if (!formSiteId) return allFocRootProjectsWithMeta;
     return allFocRootProjectsWithMeta.filter(
-      (entry) => entry.resolvedSiteId === formSiteId || entry.resolvedSiteId === 'ALL_AREAS'
+      (entry) =>
+        entry.resolvedSiteId === formSiteId ||
+        (Boolean(formParentSite) && entry.resolvedSiteId === formParentSite!.id) ||
+        entry.resolvedSiteId === 'ALL_AREAS'
     );
-  }, [allFocRootProjectsWithMeta, formSiteId]);
+  }, [allFocRootProjectsWithMeta, formSiteId, formParentSite]);
 
   // Any legacy projects that do not yet have a Site Branch assigned
   const unassignedFocProjects = useMemo(() => {
@@ -565,8 +576,12 @@ export const StockRequestsView: React.FC = () => {
     }
   };
 
-  // Helper to get available balance for a request item (supports both Normal Main Stock and Project FOC HQ Pool)
+  // Helper to get available balance for a request item (supports Main Stock, Parent Regional Branch Stock for Sub-Sites, and Project FOC Pool)
   const getRequestItemAvailableBalance = (req: StockTransferRequest, itemId: string): number => {
+    const sourceSite = req.sourceSiteId ? sites.find((s) => s.id === req.sourceSiteId) : undefined;
+    if (req.sourceSiteId && sourceSite && !sourceSite.isMainWarehouse) {
+      return getSiteItemStock(req.sourceSiteId, itemId).availableBalance;
+    }
     if (req.requestCategory === 'foc' && req.focProjectId) {
       return getClientFreeStockBalance(req.focProjectId, itemId).centralWarehouseAvailable;
     }
@@ -607,7 +622,9 @@ export const StockRequestsView: React.FC = () => {
     });
 
     if (remaining.length === 0) {
-      rejectStockRequest(reviewingRequest.id, 'All requested items are completely out of stock at Central Warehouse');
+      const srcSite = reviewingRequest.sourceSiteId ? sites.find((s) => s.id === reviewingRequest.sourceSiteId) : undefined;
+      const srcName = srcSite && !srcSite.isMainWarehouse ? srcSite.name : 'Central Warehouse';
+      rejectStockRequest(reviewingRequest.id, `All requested items are completely out of stock at ${srcName}`);
       setReviewingRequest(null);
     } else {
       setReviewingRequest({
@@ -620,7 +637,10 @@ export const StockRequestsView: React.FC = () => {
 
   const handleExecuteReject = () => {
     if (!reviewingRequest) return;
-    rejectStockRequest(reviewingRequest.id, rejectionReason.trim() || 'Rejected by Central Logistics');
+    const srcSite = reviewingRequest.sourceSiteId ? sites.find((s) => s.id === reviewingRequest.sourceSiteId) : undefined;
+    const defaultRejectMsg =
+      srcSite && !srcSite.isMainWarehouse ? `Rejected by Parent Branch (${srcSite.name})` : 'Rejected by Central Logistics';
+    rejectStockRequest(reviewingRequest.id, rejectionReason.trim() || defaultRejectMsg);
     setReviewingRequest(null);
     setShowRejectInline(false);
     setRejectionReason('');
@@ -653,13 +673,29 @@ export const StockRequestsView: React.FC = () => {
     setAcceptingRequest(null);
   };
 
-  // Filter requests based on user role, assigned site(s), branch filter, request category, and search query
+  // Filter requests based on user role, assigned site(s) (both requesting site & parent source branch), branch filter, request category, and search query
   const visibleRequests = stockRequests.filter((req) => {
     if (isCentralAdmin) {
-      if (selectedBranchFilter !== 'all' && req.siteId !== selectedBranchFilter) return false;
+      if (
+        selectedBranchFilter !== 'all' &&
+        req.siteId !== selectedBranchFilter &&
+        req.sourceSiteId !== selectedBranchFilter
+      ) {
+        return false;
+      }
     } else {
-      if (!userHasSiteAccess(currentUser, req.siteId, activeSites)) return false;
-      if (selectedBranchFilter !== 'all' && req.siteId !== selectedBranchFilter) return false;
+      const hasDestAccess = userHasSiteAccess(currentUser, req.siteId, activeSites);
+      const hasSourceAccess = Boolean(
+        req.sourceSiteId && userHasSiteAccess(currentUser, req.sourceSiteId, activeSites)
+      );
+      if (!hasDestAccess && !hasSourceAccess) return false;
+      if (
+        selectedBranchFilter !== 'all' &&
+        req.siteId !== selectedBranchFilter &&
+        req.sourceSiteId !== selectedBranchFilter
+      ) {
+        return false;
+      }
     }
 
     if (requestTypeFilter === 'foc' && req.requestCategory !== 'foc') return false;
@@ -1003,10 +1039,10 @@ export const StockRequestsView: React.FC = () => {
                 >
                   <option value="all">All Branches ({stockRequests.length} total)</option>
                   {branchSites.map((b) => {
-                    const count = stockRequests.filter((r) => r.siteId === b.id).length;
+                    const count = stockRequests.filter((r) => r.siteId === b.id || r.sourceSiteId === b.id).length;
                     return (
                       <option key={b.id} value={b.id}>
-                        {b.name} ({count})
+                        {formatSiteHierarchyLabel(b, activeSites)} ({count})
                       </option>
                     );
                   })}
@@ -1142,7 +1178,12 @@ export const StockRequestsView: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3 px-2.5 align-top">
-                        <div className="font-bold text-slate-900 text-sm leading-tight">{site?.name}</div>
+                        <div className="font-bold text-slate-900 text-sm leading-tight">
+                          {site && isSubSite(site) ? `↳ ${site.name}` : site?.name}
+                        </div>
+                        <div className="text-[11px] text-sky-700 font-semibold mt-0.5 truncate max-w-[160px]" title={req.sourceSiteName || 'Main Central Warehouse'}>
+                          From: {req.sourceSiteName || 'Main Warehouse'}
+                        </div>
                         <div className="text-xs text-slate-500 mt-0.5 truncate max-w-[140px]" title={req.requestedBy}>
                           By: {req.requestedBy}
                         </div>
@@ -1267,8 +1308,9 @@ export const StockRequestsView: React.FC = () => {
                             </button>
                           )}
 
-                          {/* 2. Central Admin Review & Approve or Reject */}
-                          {req.status === 'Pending Approval' && isCentralAdmin && (
+                          {/* 2. Central Admin OR Parent Regional Branch Admin Review & Approve or Reject */}
+                          {req.status === 'Pending Approval' &&
+                            canUserManageSourceSite(currentUser, req.sourceSiteId, activeSites) && (
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleOpenApproveModal(req)}
@@ -1342,9 +1384,15 @@ export const StockRequestsView: React.FC = () => {
                   <ArrowRightLeft className={`w-5 h-5 ${formRequestCategory === 'foc' ? 'text-indigo-200' : 'text-emerald-400'}`} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl text-slate-900">Submit Stock Requirement Form to Main Branch</h3>
+                  <h3 className="font-bold text-xl text-slate-900">
+                    {formParentSite
+                      ? `Submit Stock Requirement Form to Parent Branch (${formParentSite.name})`
+                      : 'Submit Stock Requirement Form to Main Branch'}
+                  </h3>
                   <p className="text-xs sm:text-sm text-slate-500">
-                    {formRequestCategory === 'foc'
+                    {formParentSite
+                      ? `Sub-Site requisition routed to Parent Regional Site Branch (${formParentSite.name}) for stock allocation`
+                      : formRequestCategory === 'foc'
                       ? 'Request Client Free-Issue (FOC) stock from Central Warehouse Pool for an Assigned Main or Individual Project'
                       : 'Official site requisition for standard company-owned construction materials or heavy machinery & equipment'}
                   </p>
@@ -1391,7 +1439,9 @@ export const StockRequestsView: React.FC = () => {
                     )}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                    Request general company-owned materials & machinery from Central Main Warehouse (GRN Stock).
+                    {formParentSite
+                      ? `Request materials & machinery from Parent Site Branch (${formParentSite.name}).`
+                      : 'Request general company-owned materials & machinery from Central Main Warehouse (GRN Stock).'}
                   </p>
                 </div>
               </button>
@@ -1482,10 +1532,16 @@ export const StockRequestsView: React.FC = () => {
                   >
                     {(allowedRequisitionSites.length > 0 ? allowedRequisitionSites : branchSites).map((s) => (
                       <option key={s.id} value={s.id}>
-                        🏢 {s.name} ({s.location || 'Site Branch'})
+                        {isSubSite(s) ? '📍 ' : '🏢 '}
+                        {formatSiteHierarchyLabel(s, activeSites, true)}
                       </option>
                     ))}
                   </select>
+                  {formParentSite && (
+                    <div className="mt-1.5 text-[11px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-lg">
+                      Supplied by Parent Site Branch: <strong>{formParentSite.name}</strong>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1937,13 +1993,15 @@ export const StockRequestsView: React.FC = () => {
                           setRows(
                             siteLowStockItemsForForm.map((itm) => {
                               const sStk = getSiteItemStock(formSiteId, itm.id);
-                              const mStk = getMainWarehouseStock(itm.id);
+                              const sourceAvail = formParentSite
+                                ? getSiteItemStock(formParentSite.id, itm.id).availableBalance
+                                : getMainWarehouseStock(itm.id).availableBalance;
                               const needed = Math.max(10, (sStk.threshold || 10) * 2 - sStk.availableBalance);
                               return {
                                 itemId: itm.id,
                                 requestedQty:
-                                  mStk.availableBalance > 0
-                                    ? Math.min(needed, mStk.availableBalance)
+                                  sourceAvail > 0
+                                    ? Math.min(needed, sourceAvail)
                                     : needed,
                               };
                             })
@@ -1992,7 +2050,11 @@ export const StockRequestsView: React.FC = () => {
                         <th className="py-3 px-2 text-center w-16 whitespace-nowrap">Unit</th>
                         <th className="py-3 px-2 text-right w-24 whitespace-nowrap">Site Avl.</th>
                         <th className="py-3 px-2 text-right w-24 whitespace-nowrap">
-                          {formRequestCategory === 'foc' ? 'FOC Main' : 'Main Avail.'}
+                          {formRequestCategory === 'foc'
+                            ? 'FOC Main'
+                            : formParentSite
+                            ? 'Parent Avail.'
+                            : 'Main Avail.'}
                         </th>
                         <th className="py-3 px-2 text-right w-28 font-bold text-slate-900 whitespace-nowrap">Required Qty *</th>
                         <th className="py-3 px-2 text-center w-12 whitespace-nowrap">Del</th>
@@ -2035,7 +2097,9 @@ export const StockRequestsView: React.FC = () => {
                         displayedRows.map(({ row, index: originalIndex, item }) => {
                           const isMach = item ? isMachineryItem(item) : false;
                           const availBalance = item
-                            ? formRequestCategory === 'foc' && selectedFocProjectMeta
+                            ? formParentSite
+                              ? getSiteItemStock(formParentSite.id, item.id).availableBalance
+                              : formRequestCategory === 'foc' && selectedFocProjectMeta
                               ? getClientFreeStockBalance(selectedFocProjectMeta.project.id, item.id).centralWarehouseAvailable
                               : getMainWarehouseStock(item.id).availableBalance
                             : 0;
@@ -2082,6 +2146,8 @@ export const StockRequestsView: React.FC = () => {
                                     selectedItemId={row.itemId}
                                     onSelectItem={(selected) => handleRowChange(originalIndex, 'itemId', selected.id)}
                                     requestingSiteId={formSiteId}
+                                    sourceSiteId={formParentSite?.id}
+                                    sourceSiteName={formParentSite?.name}
                                     showStockBadge={true}
                                     defaultClassification={reqModalTab === 'Machinery' ? 'Machinery' : 'Material'}
                                     onlyAvailableStock={onlyAvailableInModal}
@@ -2141,7 +2207,11 @@ export const StockRequestsView: React.FC = () => {
                                 >
                                   {formatNumber(availBalance)}
                                 </span>
-                                {formRequestCategory === 'foc' ? (
+                                {formParentSite ? (
+                                  <div className="text-[10px] font-sans font-semibold text-sky-700 mt-0.5">
+                                    Parent: {formParentSite.name}
+                                  </div>
+                                ) : formRequestCategory === 'foc' ? (
                                   <div className="text-[10px] font-sans font-semibold text-indigo-600">
                                     Project FOC Pool
                                   </div>
@@ -2237,8 +2307,15 @@ export const StockRequestsView: React.FC = () => {
         </div>
       )}
 
-      {/* APPROVE REQUISITION MODAL (Main Branch Admin) */}
+      {/* APPROVE REQUISITION MODAL (Main Branch Admin or Parent Regional Branch Admin) */}
       {reviewingRequest && (() => {
+        const reviewSourceSite = reviewingRequest.sourceSiteId
+          ? sites.find((s) => s.id === reviewingRequest.sourceSiteId)
+          : undefined;
+        const isParentBranchSupply = Boolean(reviewSourceSite && !reviewSourceSite.isMainWarehouse);
+        const sourceWarehouseLabel =
+          reviewSourceSite?.name || reviewingRequest.sourceSiteName || 'Central Main Warehouse';
+
         const shortageSummary = reviewingRequest.items.reduce(
           (acc, row) => {
             const avail = getRequestItemAvailableBalance(reviewingRequest, row.itemId);
@@ -2277,6 +2354,8 @@ export const StockRequestsView: React.FC = () => {
                     <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                       <span>Requesting Site: <strong className="text-slate-800">{sites.find((s) => s.id === reviewingRequest.siteId)?.name}</strong></span>
                       <span>·</span>
+                      <span>Supply Source: <strong className="text-sky-800">{sourceWarehouseLabel}</strong></span>
+                      <span>·</span>
                       <span>Requester: <strong className="text-slate-800">{reviewingRequest.requestedBy}</strong></span>
                       <span>·</span>
                       <span>Priority: <strong className={reviewingRequest.priority === 'Emergency' ? 'text-red-700' : 'text-slate-700'}>{reviewingRequest.priority}</strong></span>
@@ -2310,7 +2389,9 @@ export const StockRequestsView: React.FC = () => {
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-950 bg-amber-200/90 px-2 py-0.5 rounded-md border border-amber-300">
                         <AlertTriangle className="w-3 h-3 text-amber-700" />
                         <span>
-                          {reviewingRequest.requestCategory === 'foc'
+                          {isParentBranchSupply
+                            ? `${sourceWarehouseLabel} Stock Shortage`
+                            : reviewingRequest.requestCategory === 'foc'
                             ? 'Project FOC Pool Shortage'
                             : 'Central Stock Shortage'}
                         </span>
@@ -2355,7 +2436,7 @@ export const StockRequestsView: React.FC = () => {
                         type="button"
                         onClick={() => {
                           setShowRejectInline(true);
-                          setRejectionReason('Requested items currently unavailable or out of stock at Central Warehouse');
+                          setRejectionReason(`Requested items currently unavailable or out of stock at ${sourceWarehouseLabel}`);
                         }}
                         className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
                         title="Reject this requisition"
@@ -2371,8 +2452,10 @@ export const StockRequestsView: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span>
-                      All requested items are <strong>fully in stock</strong> in{' '}
-                      {reviewingRequest.requestCategory === 'foc'
+                      All requested items are <strong>fully in stock</strong> at{' '}
+                      {isParentBranchSupply
+                        ? sourceWarehouseLabel
+                        : reviewingRequest.requestCategory === 'foc'
                         ? `Project FOC Central Pool (${reviewingRequest.focProjectCode || reviewingRequest.focProjectName})`
                         : 'Central Warehouse'}.
                     </span>
@@ -2415,8 +2498,8 @@ export const StockRequestsView: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-[11px] font-bold text-rose-900 mr-1">Quick Reasons:</span>
                     {[
-                      'Requested items out of stock at Central Warehouse',
-                      'Insufficient inventory - pending supplier replenishment',
+                      `Requested items out of stock at ${sourceWarehouseLabel}`,
+                      'Insufficient inventory - pending replenishment',
                       'Duplicate requisition note',
                       'Project on hold / cancelled by management',
                     ].map((chip) => (
@@ -2440,7 +2523,7 @@ export const StockRequestsView: React.FC = () => {
                       type="text"
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="e.g. Items currently unavailable in Central Yard or duplicate requisition"
+                      placeholder="e.g. Items currently unavailable or duplicate requisition"
                       className="flex-1 px-3 py-1.5 border border-rose-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium"
                       autoFocus
                     />
@@ -2463,7 +2546,11 @@ export const StockRequestsView: React.FC = () => {
                     <tr>
                       <th className="py-2.5 px-3.5">Item Code & Material Description</th>
                       <th className="py-2.5 px-3.5 text-right">
-                        {reviewingRequest.requestCategory === 'foc' ? 'Project FOC Pool Avail.' : 'Main Warehouse Avail.'}
+                        {isParentBranchSupply
+                          ? 'Parent Branch Avail.'
+                          : reviewingRequest.requestCategory === 'foc'
+                          ? 'Project FOC Pool Avail.'
+                          : 'Main Warehouse Avail.'}
                       </th>
                       <th className="py-2.5 px-3.5 text-right">Site Requested</th>
                       <th className="py-2.5 px-3.5 text-right w-48 font-bold text-slate-900">Approved Qty to Dispatch</th>

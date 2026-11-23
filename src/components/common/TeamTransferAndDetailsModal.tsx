@@ -18,7 +18,14 @@ import {
   RotateCcw,
   Home,
 } from 'lucide-react';
-import { Team, isSuperAdmin, isCentralOrAllSiteAdmin, isUserAssignedToSite } from '../../types';
+import {
+  Team,
+  isSuperAdmin,
+  isCentralOrAllSiteAdmin,
+  isUserAssignedToSite,
+  sortSitesHierarchically,
+  formatSiteHierarchyLabel,
+} from '../../types';
 import { useStock } from '../../context/StockContext';
 import {
   extractBaseTeamName,
@@ -144,7 +151,9 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
     (tId, sId) => getTeamSiteInHandStock(tId, sId).totalUnitsHeld
   );
 
-  const otherAvailableSites = activeSites.filter((s) => s.id !== team.assignedSiteId);
+  const otherAvailableSites = sortSitesHierarchically(
+    activeSites.filter((s) => s.id !== team.assignedSiteId)
+  );
   const selectedNewSite = activeSites.find((s) => s.id === targetSiteId);
   const isTargetInitialBase = targetSiteId === initialBase.siteId;
 
@@ -973,7 +982,8 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                     ) : (
                       otherAvailableSites.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.name} ({s.location}){s.id === initialBase.siteId ? ' ★ [Initial Base Site]' : ''}
+                          {formatSiteHierarchyLabel(s, activeSites, true)}
+                          {s.id === initialBase.siteId ? ' ★ [Initial Base Site]' : ''}
                         </option>
                       ))
                     )}

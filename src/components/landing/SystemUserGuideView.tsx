@@ -77,9 +77,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     icon: Boxes,
     steps: [
       {
-        stepTitle: '1. Create Your Company Workspace & Sequential 0001 Numbering',
+        stepTitle: '1. Workspace Registration, Super Admin First-Name Accountability & 20-Site Default Capacity',
         detail:
-          'Click "Start 7-Day Free Trial" and enter your Company Name, Admin Username, and Password. All system codes, Item Codes (ITM-0001, MCH-0001), Barcodes (APX-0001), Project IDs (PRJ-2026-0001, MAJ-2026-0001), and Voucher Reference Numbers (PO, GRN, RN, DN, IN, PU, RV, BRM) automatically start from 0001 and increment sequentially.',
+          'Click "Start 7-Day Free Trial" and enter your Company Name, the Super Admin\'s mandatory real Personal Full Name (generic labels like "Admin" are disallowed), Username, and Password. Every plan includes Unlimited Users, Unlimited Field Teams, 1 Central HQ Warehouse, and 20 Regional/Sub-Site Branches (+$10/mo per extra site). Whenever logging in with the Super Admin password, the user enters their personal name: the system verifies First-Name match against the registered Super Admin profile and logs every Audit Trail & Voucher action as "[Name] (as Super Admin)". All Item Codes (ITM-0001), Project IDs, and Vouchers automatically increment from 0001.',
       },
       {
         stepTitle: '2. Register Materials, Heavy Machinery, Auto-Compressed Item Photos (<200KB) & Single-Shot Barcode Scanning',
@@ -87,21 +87,21 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Open "Master Registrations -> Item Catalog" to add Consumable Materials and Returnable Machinery/Tools or bulk import via Excel/CSV. You can optionally attach an Item Photo when adding or editing any item — the system automatically resizes and compresses the image to under 200KB for fast cloud loading, and every printable voucher/report includes a "Print with Image" checkbox to optionally print item thumbnails. When scanning barcodes via Mobile Camera or USB/Wireless Barcode Gun, the scanner detects once, automatically stops and hides the camera view to prevent continuous duplicate scans, and provides a "Scan Now" button to re-activate the scanner.',
       },
       {
-        stepTitle: '3. Register Field Teams, Auto Crew Size, Team Name Lock & Conflict-Free Site Transfer Workflow (Temporary vs. Permanent with Ref)',
+        stepTitle: '3. 3-Tier Branches (Regional -> Optional Sub-Site), Field Teams, Team Name Lock & Site Transfers',
         detail:
-          'In "Master Registrations -> Teams", enter the Team Leader name (Crew Size automatically starts at 1 and increments with each Member added). To protect historical vouchers and audit integrity, once a team has received any stock item, its Team Name is automatically locked against renaming (while leader/member details remain editable). When transferring a Field Team to a new Site Branch via "Transfer / Site History", the system checks unreturned stock on their previous site and assigns them as "Temporary Assigned to - [New Site Name]" first. Once previous-site stock is cleared (or confirmed by Branch/System Admin when zero stock was held), the assignment promotes to "Permanent" and displays the team with a permanent prior-site reference: "[Team Name] (Ref: [Previous Site Name])", while preserving a Complete Assigned Sites History ledger.',
+          'In "Master Registrations -> Sites / Branches", create Regional Site Branches (supplied directly by Central HQ) and optionally nest Sub-Site Branches underneath any Regional Site (parent branches with active Sub-Sites cannot be deleted). Field Teams can be registered inside BOTH Regional Site Branches and Sub-Site Branches normally — Crew Size auto-calculates, Team Names lock after stock issue, and "Transfer / Site History" manages "Temporary Assigned to - [New Site]" -> Permanent "[Team Name] (Ref: [Old Site])" cleanly.',
       },
       {
-        stepTitle: '4. Create Staff Logins (Single Site, Multi-Site, HQ) & Auto Email Verification',
+        stepTitle: '4. Create Staff Logins (Regional, Sub-Site, Multi-Site, HQ) & Auto Email Verification',
         detail:
-          'Under "User Management", create accounts for HQ Storekeepers and Site Supervisors. Assign each user to All Sites (Central HQ), a Single Site Branch, or Multiple Specific Site Branches. Account security features 1-click "Send Verification Email" via apexstox.com (support@apexstox.com) — clicking the verification link in your inbox automatically completes verification.',
+          'Under "User Management", create unlimited accounts for HQ Storekeepers, Regional Branch Admins (who also hold dispatch/approval authority over child Sub-Site Branches), and Sub-Site Supervisors. Assign All Sites (Central HQ), a Single Site/Sub-Site, or Multiple Specific Branches. Account security features 1-click "Send Verification Email" via apexstox.com (support@apexstox.com) for automatic verification.',
       },
     ],
     keyOutputs: [
-      'Sequential 0001-Based Codes, IDs & Two-Line Item Code + Name Dropdowns',
-      'Optional Item Photo Upload (<200KB Auto-Compression) & "Print with Image" Toggle',
-      'Team Site Transfer ("Temporary Assigned" -> Permanent "Ref: Old Site") & Team Name Lock After Stock Issue',
-      'Single-Site & Multi-Site Branch Locks + Auto Email Verification (apexstox.com)',
+      'Mandatory Personal Super Admin Full Name + First-Name Verified Login ("[Name] (as Super Admin)")',
+      'Unlimited Users & Teams + 1 Central HQ + 20 Regional/Sub-Site Branches Included (+$10/mo extra site)',
+      '3-Tier Hierarchy (Central HQ -> Regional Site -> Optional Sub-Site -> Field Teams) & Team Name Lock',
+      'Auto-Compressed Item Photos (<200KB), "Print with Image" & Auto Email Verification (apexstox.com)',
     ],
   },
   {
@@ -152,37 +152,37 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     number: 'Chapter 03',
     category: 'operations',
     categoryLabel: 'Site Transfers & Field Dispatch',
-    title: '2-Tab Site Stock Requisitions, Site Branch Item Forward Summary, HQ Dispatches & Crew Issuance (IN)',
+    title: '3-Tier Site/Sub-Site Transfers, Direct Sub-Site Dispatch, 2-Tab Requisitions & Field Crew Issuance (IN)',
     summary:
-      'Submit Normal Stock or Branch-Exclusive Client Free Stock (FOC) requisitions, inspect forward item traceability at any Site Branch, and control every movement from Central HQ to Regional Site Yards and Field Teams.',
+      'Submit Normal or FOC Stock Requisitions (with automatic Parent-Site routing for Sub-Sites), issue stock directly from Regional Branches to Sub-Sites, inspect forward item traceability, and supply Field Teams across both tiers.',
     icon: Send,
     steps: [
       {
-        stepTitle: '1. Two-Tab Stock Requisition Form: Normal Stock vs. Client FOC (Including "ALL AREAS" Projects)',
+        stepTitle: '1. Two-Tab Stock Requisitions (HQ Routing for Regional Sites & Auto Parent Routing for Sub-Sites)',
         detail:
-          'In "Stock Requisitions -> + New Stock Requirement Form", choose your Requesting Site Branch first, then switch between two dedicated tabs: (1) "Normal Stock Request" for regular warehouse stock (where items that are Low Stock at your site automatically appear at the very top with "Site Low" & "Site Avl:" badges alongside "Main:" stock), or (2) "Client Free Stock for Assigned Project Request" which displays Major/Main Projects and Individual Projects assigned to your Site Branch PLUS any "ALL AREAS (All Site Branches)" island-wide projects.',
+          'In "Stock Requisitions -> + New Stock Requirement Form", choose your Requesting Site Branch first, then switch between "1. Normal Stock Request" ("Site Low" items auto-sorted to top) or "2. Client Free Stock for Assigned Project Request" (including "ALL AREAS" projects). When a Regional Site Branch creates a request, it routes to Central HQ (showing "Main:" balance). When a child Sub-Site Branch creates a request, it automatically routes upstream to its Parent Regional Site Branch (showing live "Parent Avl:" stock alongside "Site Avl:")!',
       },
       {
-        stepTitle: '2. HQ Dispatch Approval & Automatic MainStock / FOC Pool Deduction to Site Branch',
+        stepTitle: '2. HQ / Parent-Site Dispatch Approval & Atomic Inventory Transfer',
         detail:
-          'Central HQ reviews the requisition table (displaying full Item Code + Material Description, wrapped Date/Time, and project badges). When approved and confirmed as received at the Site Branch, Normal requests deduct from Central Main Stock and add to Site Branch Stock, while FOC requests deduct from the Central Main FOC Pool and transfer into the Site Branch Yard for Sub-Project, New Connection, or Individual Project usage.',
+          'Central HQ approves Regional Site requests, while either the Parent Regional Branch Admin or Central Admin can approve child Sub-Site requisitions. Once approved and confirmed as received, Normal requests transfer stock down the chain (Central -> Regional OR Parent Regional -> Sub-Site), while Central HQ also tracks Sub-Site lineage in full lifecycle traceability.',
       },
       {
-        stepTitle: '3. Site Branch Stock — "Central FOC" Visual Identification & 5-Stage Forward Reconciliation Summary',
+        stepTitle: '3. Site Branch Stock: Direct "Issue Stock to Sub-Site", "Central FOC" Badges & 5-Stage Forward Summary',
         detail:
-          'In "Site Branch Stock (Site Inventories)", stock received from Central FOC is clearly highlighted with a distinct "Central FOC" badge/color tag so branch supervisors never confuse free client stock with normal company stock. Click any item row (or "Forward Summary") to expand its forward reconciliation breakdown following the same clear sequence: Transfers Received (Normal vs. Central FOC) -> Site Issues to Field Teams -> Project Usage & Wastage -> Site Yard & Teams In-Hand Balance — with "Print A4 Summary" and "Download PDF" buttons.',
+          'Open "Site Branch Stock (Site Inventories)" under any Parent Regional Site Branch and click the emerald "Issue Stock to Sub-Site" action to transfer stock directly from the Regional Site Store down to any nested Sub-Site Branch without waiting for a requisition. Central FOC receipts carry a "Central FOC" badge highlight, and clicking any item row expands its 5-Stage Forward Traceability Summary with "Print A4 Summary" & "Download PDF".',
       },
       {
-        stepTitle: '4. Daily Issuance to Field Crews (IN) & Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]")',
+        stepTitle: '4. Field Crew Issuance (IN) Inside Regional & Sub-Site Branches + Site-Separated Team Stock',
         detail:
-          'In "Issue to Teams", HQ or Site Supervisors issue consumable materials and returnable tools to a Field Team Leader and print a signable Issue Note (IN) / Gate Pass. In "Team In-Hand Stock", stock held by transferred teams is NEVER combined across sites: any unreturned balance from a previous site is displayed separately in an amber "Stock to Return - [Previous Site Name]" ledger (must be returned to that site and cannot be consumed at the new site), while materials issued at their new site appear separately under "[New Site Name] — Active Site Stock".',
+          'Both Regional Site Branches and Sub-Site Branches issue materials & tools directly to their Field Teams via "Issue to Teams" with signable Issue Notes (IN) / Gate Passes. In "Team In-Hand Stock", transferred team balances stay strictly separated per site ("Stock to Return - [Previous Site Name]" vs. "[Current Site Name] - Active Site Stock") and are never summed across branches.',
       },
     ],
     keyOutputs: [
-      '2-Tab Stock Requisitions: Normal Stock vs. Assigned-Site & "ALL AREAS" Client FOC',
+      'Direct "Issue Stock to Sub-Site" from Parent Regional Branch Store + Parent-Routed Sub-Site Requisitions ("Parent Avl:")',
+      '2-Tab Stock Requisitions: Normal Stock ("Site Low" Top Sort) vs. Assigned-Site & "ALL AREAS" Client FOC',
       'Site Branch Stock "Central FOC" Highlight Badge & 5-Stage Forward Traceability Summary (Printable A4 / PDF)',
-      'Site-Separated Team In-Hand Stock: "Stock to Return - [Old Site]" vs. Active Site Stock (Never Combined)',
-      'Printable Numbered Issue Notes (IN), Gate Passes & TSR Audit Reports',
+      'Field Teams in Both Regional & Sub-Site Tiers + Site-Separated Team In-Hand Stock ("Stock to Return")',
     ],
   },
   {
@@ -211,16 +211,16 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Teams only consume active-site stock (unless the project or Main Project is "ALL AREAS", which allows all branches). In Reconciliation, color-coded Main Project cards show each linked Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below in its own flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Balance), ending with a Full Usage & Client Completion Returnable Balance Report; selecting a single Sub-Project shows that Sub-Project\'s dedicated flow.',
       },
       {
-        stepTitle: '4. Usage Vouchers History — "Full Report for This Site (Project)" & Multi-Item Batch Returns (RV / BRM with Item Photos)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site" & Upstream Multi-Item Returns (RV / BRM)',
         detail:
-          'Open "Usage Vouchers History" and select a project to unlock "Full Report for This Site (Project)" showing: (Part 1) Separate Team-by-Team consumption & Wastage with Team Subtotals, and (Part 2) Full Site Consolidated Grand Total (Print/PDF or Excel CSV). In both "Team Returns" (RV) and "Branch Returns" (BRM), item thumbnails display inside dropdowns, and you can add multiple items at once ("+ Add Item" or "+ Add All Held / Available"), set per-item Good/Damaged conditions, and return the entire batch on a single Return Voucher.',
+          'Open "Usage Vouchers History" and select a project to unlock "Full Report for This Site (Project)" showing Team Subtotals and Full Site Consolidated Grand Total (Print/PDF or Excel CSV). In "Team Returns" (RV) and "Branch Returns" (BRM), item thumbnails appear in dropdowns and you can add multiple items at once ("+ Add Item" / "+ Add All Held"). Note that Branch Returns (BRM) route upstream automatically: Regional Site Branches return to Central Main Warehouse, while Sub-Site Branches return directly to their Parent Regional Site Branch!',
       },
     ],
     keyOutputs: [
       'International Section Templates (Telecom, Water, Electric, Solar) + "+ Add Field" Builder & "ALL AREAS" Branch Option',
       'Main Project -> Under New Connections Hierarchy + Section-Filtered FOC Visibility (Only When FOC Exists)',
       'Main & Sub-Project Color-Coded 5-Stage Reconciliation + Completion Returnable Balance Report',
-      'Full Report for This Site (Project) & Multi-Item Batch Returns (RV / BRM with Item Photos)',
+      'Full Report for This Site (Project) & Upstream Multi-Item Returns (RV -> Branch, Sub-Site BRM -> Parent Site)',
     ],
   },
   {
@@ -314,9 +314,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     icon: Boxes,
     steps: [
       {
-        stepTitle: '1. ඔබේ ආයතනයේ Workspace ගිණුම සහ 0001 සිට ඇරඹෙන නිල අංකන පද්ධතිය',
+        stepTitle: '1. ආයතන ගිණුම, Super Admin First-Name වගකීම සහ මූලික Site Branches 20 පහසුකම',
         detail:
-          '"Start 7-Day Free Trial" බටන් එක ක්ලික් කර ඔබේ ආයතනයේ ගිණුම අරඹන්න. පද්ධතියේ සියලුම Item Codes (ITM-0001, MCH-0001), Barcodes (APX-0001), Project IDs (PRJ-2026-0001, MAJ-2026-0001) සහ සියලුම වවුචර් අංක (PO, GRN, RN, DN, IN, PU, RV, BRM) ඉබේම 0001 සිට පිළිවෙළට (Sequential) ජනනය වේ.',
+          '"Start 7-Day Free Trial" ක්ලික් කර Company Name සමඟ ප්‍රධාන Super Admin ගේ සැබෑ Personal Full Name ("Admin" වැනි පොදු නම් වලට ඉඩ නොදේ), Username සහ Password ඇතුළත් කරන්න. සෑම පැකේජයකටම Unlimited Users, Unlimited Field Teams, 1 Central HQ සහ Site Branches 20ක් නොමිලේ ලැබේ (අමතර Site එකකට +$10/mo). Super Admin Password ගසා ලොග් වන සෑම විටම පුද්ගලයාගේ නමේ First Name ගැළපේදැයි පරීක්ෂා කර සෑම ක්‍රියාවක්ම "[නම] (as Super Admin)" ලෙස Audit Trail හි සටහන් කරයි.',
       },
       {
         stepTitle: '2. භාණ්ඩ ලියාපදිංචිය, 200KB ට අඩු Item Image Upload ("Print with Image") සහ Single-Shot Barcode Scanner',
@@ -324,21 +324,21 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Master Registrations -> Item Catalog" හරහා අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ඇතුළත් කරන්න හෝ Excel මගින් Import කරන්න. භාණ්ඩයක් Add/Edit කිරීමේදී අවශ්‍ය නම් භාණ්ඩයේ ඡායාරූපයක් (Item Photo) එක් කළ හැකි අතර පද්ධතිය මගින් එය ස්වයංක්‍රීයව 200KB ට අඩු ප්‍රමාණයකට (Auto-Compress) සකසා ගබඩා කරයි. ඕනෑම වවුචරයක් Print කිරීමේදී "Print with Image" තේරීම මගින් භාණ්ඩයේ රූපය සමඟ හෝ රූපය රහිතව Print කළ හැක. Barcode Scan කිරීමේදී එක වරක් Detect වූ සැණින් Camera එක ඉබේම නතර වන අතර ඊළඟ භාණ්ඩය සඳහා "Scan Now" බටන් එක භාවිත කළ හැක.',
       },
       {
-        stepTitle: '3. වැඩ කණ්ඩායම් (Teams) ලියාපදිංචිය, Team Name ආරක්ෂාව සහ Site Transfer ක්‍රියාවලිය (Temporary vs. Permanent with Ref)',
+        stepTitle: '3. 3-Tier ශාඛා ව්‍යුහය (Regional Site -> Sub-Site Branch), Field Teams, Team Name Lock සහ Site Transfer',
         detail:
-          '"Master Registrations -> Teams" තුළදී Team Leader සහ සාමාජිකයින් (Members) ඇතුළත් කරන විට Crew Size එක ඉබේම ගණනය වේ. එක භාණ්ඩයක් හෝ ලබාගෙන ඇති (Stock Issued) Team එකක නම (Team Name) වෙනස් කළ නොහැකි ලෙස Lock වන අතර එමගින් පැරණි වවුචර් සහ ගිණුම් වාර්තා ආරක්ෂා වේ. දැනට Site එකක සිටින Team එකක් වෙනත් Site එකකට මාරු කිරීමේදී ("Transfer / Site History"): පරණ Site එකේ භාර නොදුන් බඩු තිබුණත් නැතත් මුලින්ම අලුත් Site එකේ "Temporary Assigned to - [New Site Name]" ලෙස පෙන්වයි. පරණ Site එකේ බඩු Clear වූ පසු (හෝ බඩු නොගත් Team එකක් නම් Branch/System Admin විසින් Confirm කළ පසු) එය "Permanent" තත්ත්වයට පත් වී කලින් සිටි Site එකේ නම සමඟ "[Team Name] (Ref: [Previous Site Name])" ලෙස සටහන් වේ.',
+          '"Master Registrations -> Sites / Branches" හි Central HQ යටතේ Regional Site Branches සෑදිය හැකි අතර, අවශ්‍ය නම් Regional Site Branch එකක් යටතේ Sub-Site Branches ද ලියාපදිංචි කළ හැක (සක්‍රීය Sub-Sites ඇති Regional Site එකක් Delete කළ නොහැක). Regional Site සහ Sub-Site යන දෙවර්ගය තුළම සාමාන්‍ය පරිදි Field Teams නිර්මාණය කළ හැකිය (Auto Crew Size, බඩු ගත් පසු Team Name Lock සහ "Temporary Assigned" -> Permanent "Ref: Old Site" Transfer ක්‍රියාවලිය සහිතයි).',
       },
       {
-        stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Staff Logins), ශාඛා බලතල සහ Auto Email Verification',
+        stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Regional, Sub-Site, Multi-Site, HQ) සහ Auto Email Verification',
         detail:
-          '"User Management" යටතේ ප්‍රධාන ගබඩා භාරකරුවන් සහ ප්‍රාදේශීය වැඩබිම් පරීක්ෂකවරුන් (Site Supervisors) සඳහා ගිණුම් සාදන්න (Single Site, Multi-Site හෝ Central HQ). ගිණුම Verify කිරීමේදී "Send Verification Email" ක්ලික් කර ඔබේ Email Inbox එකට ලැබෙන apexstox.com (support@apexstox.com) ලින්ක් එක ක්ලික් කළ සැණින් ගිණුම ස්වයංක්‍රීයව Verify වේ.',
+          '"User Management" යටතේ ප්‍රධාන ගබඩා භාරකරුවන්, Regional Branch Admins (තමන් යටතේ ඇති Sub-Site Branches පාලන බලය සහිත), සහ Sub-Site Supervisors සඳහා සීමා රහිත ගිණුම් සාදන්න. "Send Verification Email" ක්ලික් කර apexstox.com (support@apexstox.com) ලින්ක් එක ක්ලික් කළ සැණින් ගිණුම ස්වයංක්‍රීයව Verify වේ.',
       },
     ],
     keyOutputs: [
-      '0001 සිට පිළිවෙළට යන Item Codes සහ Dropdown වල Item Code + Item Name එකට පෙන්වීම',
-      '200KB ට අඩුවෙන් Auto-Compress වන Item Image Upload සහ "Print with Image" පහසුකම',
-      'Team Site Transfer ("Temporary Assigned" -> Permanent "Ref: Old Site") සහ බඩු ගත් Team Name Lock කිරීම',
-      'ශාඛා මට්ටමින් සීමා කළ හැකි ගිණුම් සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
+      'අනිවාර්ය Super Admin Full Name ලියාපදිංචිය සහ First-Name Verified Login ("[නම] (as Super Admin)")',
+      'Unlimited Users & Teams + 1 Central HQ + Site Branches 20ක් මූලික පැකේජයටම (+$10/mo extra)',
+      '3-Tier ශාඛා ව්‍යුහය (Central HQ -> Regional Site -> Sub-Site -> Field Teams) සහ Team Name Lock',
+      '200KB Auto-Compress Item Images, "Print with Image" සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
     ],
   },
   {
@@ -389,37 +389,37 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     number: '03 වන පරිච්ඡේදය',
     category: 'operations',
     categoryLabel: 'ශාඛා හුවමාරු සහ කණ්ඩායම් නිකුත් කිරීම්',
-    title: 'ටැබ් 2කින් යුත් ශාඛා බඩු ඉල්ලුම්පත්, Site Branch Item Forward Summary සහ වැඩ කණ්ඩායම් නිකුත් කිරීම් (IN)',
+    title: '3-Tier Regional/Sub-Site නිකුත් කිරීම්, Requisitions ("Parent Avl:"), Forward Summary සහ Field Teams (IN)',
     summary:
-      'සාමාන්‍ය තොග (Normal Stock) සහ Client Free Stock (FOC) වෙන වෙනම ටැබ් දෙකකින් ඉල්ලුම් කිරීම, ශාඛා ගබඩාවේ (Site Branch Stock) ඕනෑම භාණ්ඩයක් Select කළ විට ඉදිරියට සිදු වූ බෙදීම් හා භාවිතයන් පෙන්වන Printable Summary ලබාගැනීම.',
+      'සාමාන්‍ය හා FOC බඩු ඉල්ලුම්පත් (Sub-Site නම් ඉබේම Parent Regional Site එකට යොමු වේ), Regional Site සිට Sub-Site වෙත සෘජුව "Issue Stock to Sub-Site", Forward Summary සහ Regional/Sub-Site Teams වෙත නිකුත් කිරීම්.',
     icon: Send,
     steps: [
       {
-        stepTitle: '1. Stock Requisition ෆෝම් එකේ ටැබ් 2: Normal Stock සහ Assigned/ALL AREAS Client FOC Request',
+        stepTitle: '1. Stock Requisition ටැබ් 2 — Regional Sites HQ වෙතත්, Sub-Sites ඉබේම Parent Site වෙතත් යොමු වීම',
         detail:
-          '"Stock Requisitions -> + New Stock Requirement Form" විවෘත කර පළමුව බඩු ඉල්ලන "Requesting Site Branch *" තෝරන්න. එහි ටැබ් 2ක් ඇත: (1) "1. Normal Stock Request" — සාමාන්‍ය තොග සඳහා ("Site Low" භාණ්ඩ උඩින්ම පෙන්වන අතර "Main:" හා "Site Avl:" තොග පෙන්වයි). (2) "2. Client Free Stock for Assigned Project Request" — තෝරාගත් Site Branch එකට අදාළ Projects මෙන්ම "ALL AREAS (All Site Branches)" ලෙස සෑදූ පොදු Projects ද පෙන්වන බැවින් Island-wide FOC බඩු ඕනෑම Site එකකට Request කළ හැක.',
+          '"Stock Requisitions -> + New Stock Requirement Form" හි "Requesting Site Branch *" තෝරා "1. Normal Stock Request" ("Site Low" උඩින්ම) හෝ "2. Client Free Stock (ALL AREAS ඇතුළුව)" භාවිත කරන්න. Regional Site Branch එකක ඉල්ලුම්පත් Central HQ වෙත යොමු වන අතර, Sub-Site Branch එකක් Requisition එකක් දැමූ විට එය ස්වයංක්‍රීයව එහි Parent Regional Site Branch එක වෙත යොමු වේ (සජීවී "Parent Avl:" තොගය සමඟ)!',
       },
       {
-        stepTitle: '2. ප්‍රධාන ගබඩාවෙන් Approve කිරීම සහ Main Stock / FOC Pool එකෙන් අඩු වී Site Branch එකට ලැබීම',
+        stepTitle: '2. HQ / Parent Site Approve කිරීම සහ තොග ශ්‍රේණිගතව මාරු වීම',
         detail:
-          'Stock Requisitions වගුවේ සෑම ඉල්ලුම්පතකම Item Code එක සමඟ භාණ්ඩයේ සම්පූර්ණ නම (Material Description) සහ Project විස්තර පැහැදිලිව පෙන්වයි. ප්‍රධාන ගබඩාවෙන් Approve කර ශාඛාවෙන් භාරගත් පසු, සාමාන්‍ය තොග Main Stock එකෙන්ද, FOC තොග ප්‍රධාන FOC Pool එකෙන්ද අඩු වී අදාළ Site Branch Stock එකට නිවැරදිව එකතු වේ.',
+          'Regional Site ඉල්ලුම්පත් Central HQ විසින් Approve කරන අතර, Sub-Site Requisitions එහි Parent Regional Branch Admin හෝ Central Admin විසින් Approve කරයි. භාරගත් පසු Regional සිට Sub-Site දක්වා තොග නිවැරදිව හුවමාරු වන අතර සම්පූර්ණ Item Traceability හිද එම Sub-Site ධුරාවලිය පෙන්වයි.',
       },
       {
-        stepTitle: '3. Site Branch Stock හි "Central FOC" Badge එක සහ පියවර 5 Forward Reconciliation Summary',
+        stepTitle: '3. Site Branch Stock — සෘජු "Issue Stock to Sub-Site", "Central FOC" Badge සහ Forward Summary',
         detail:
-          '"Site Branch Stock (Site Inventories)" තුළ Central Stock වෙතින් ලැබුණු Client FOC බඩු අනෙක් තොග වලින් වෙන් කර හඳුනාගැනීමට පැහැදිලි "Central FOC" Badge/Tag එකක් සහ වර්ණ Highlight එකක් පෙන්වයි. ඕනෑම Item එකක් Select කළ විට එම ශාඛාවට ලැබුණු තොග (Normal vs Central FOC), Field Teams වලට නිකුත් කිරීම්, Projects වල Used/Wasted සහ Site Store / Teams In-Hand ඉතිරිය පියවරෙන් පියවර පෙන්වා "Print A4 Summary" හෝ "Download PDF" මගින් මුද්‍රණය කළ හැක.',
+          '"Site Branch Stock (Site Inventories)" හි ඕනෑම Parent Regional Site Branch එකක් තේරූ විට පෙනෙන "Issue Stock to Sub-Site" බටන් එක මගින් Requisition එකක් නැතිවම Regional Site තොගයෙන් කෙලින්ම තම Sub-Site Branches වෙත බඩු නිකුත් කළ හැක. Central FOC බඩු "Central FOC" Badge එකෙන් Highlight වන අතර Item පේළියක් ක්ලික් කර Printable Forward Reconciliation Summary ලබාගත හැක.',
       },
       {
-        stepTitle: '4. වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Site අනුව වෙන් වූ Team In-Hand Stock ("Stock to Return - [Site Name]")',
+        stepTitle: '4. Regional සහ Sub-Site දෙවර්ගයේම වැඩ කණ්ඩායම් නිකුත් කිරීම් (IN) සහ Site-Separated Team Stock',
         detail:
-          '"Issue to Teams" කොටසින් අදාළ වැඩ කණ්ඩායමේ නායකයා (Team Leader) වෙත අමුද්‍රව්‍ය සහ ටූල්ස් නිකුත් කර Issue Note (IN) මුද්‍රණය කරගන්න. "Team In-Hand Stock" බැලීමේදී Transfer කරපු Team වල බඩු සියල්ල එකට එකතු කර (Combine කර) පෙන්වන්නේ නැත: කලින් සිටි Site එකට භාර නොදුන් බඩු "Stock to Return - [කලින් Site එකේ නම]" යටතේ වෙනමම පෙන්වන අතර, අලුතින් ගිය Site එකෙන් ගත් බඩු එම අලුත් Site එකේ නම යටතේ ("[Current Site Name] — Active Site Stock") වෙනම පෙන්වයි.',
+          'Regional Site Branches වගේම Sub-Site Branches ඇතුළතද සාමාන්‍ය පරිදි "Issue to Teams" හරහා Field Teams වෙත භාණ්ඩ නිකුත් කර Issue Note (IN) මුද්‍රණය කළ හැක. "Team In-Hand Stock" හි Transfer කළ Team වල පරණ Site බඩු "Stock to Return - [Previous Site Name]" ලෙස වෙනම පෙන්වයි.',
       },
     ],
     keyOutputs: [
-      'Normal Stock, Assigned-Site සහ "ALL AREAS" Client FOC සඳහා ටැබ් 2කින් යුත් Requisitions',
+      'Regional Site වෙතින් සෘජු "Issue Stock to Sub-Site" සහ Sub-Site Requisitions ඉබේම Parent Site වෙත යොමු වීම',
+      'Normal Stock ("Site Low" Top Sort) සහ Assigned-Site / "ALL AREAS" Client FOC ටැබ් 2',
       'Site Branch Stock හි "Central FOC" Badge Highlight සහ Forward Reconciliation Summary (Printable A4 / PDF)',
-      'Team In-Hand Stock: "Stock to Return - [පරණ Site නම]" සහ අලුත් Site එකේ බඩු වෙන වෙනම පෙන්වීම',
-      'Material Description සහිත පැහැදිලි Requisition වගුව, IN සහ TSR වාර්තා',
+      'Regional & Sub-Site දෙකේම Teams නිකුත් කිරීම් සහ "Stock to Return - [පරණ Site නම]" වෙන් කර පෙන්වීම',
     ],
   },
   {
@@ -448,16 +448,16 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'Qty Used සමඟ "Wastage Qty" සටහන් කළ හැකි අතර Main Project එකක් තෝරාගත් විට වර්ණ ගැන්වූ Cards මගින් වෙන් වූ ඒ යටතේ ඇති සෑම Sub-Project එකකම (උදා: KT-RGL-0505, KT-ABK-0506) Flow එක වෙන වෙනම පෙන්වා අවසානයේ Project Completion පසු Client වෙත භාර දිය යුතු Returnable Balance ඇතුළත් Full Usage & Balance Report එක ලබාදෙයි. තනි Sub-Project එකක් තේරූ විට එම Sub-Project එකට පමණක් අදාළ Usage Flow එක පෙන්වයි.',
       },
       {
-        stepTitle: '4. Usage Vouchers History — "Full Report for This Site" සහ Item Photo සහිත Multi-Item Returns (RV / BRM)',
+        stepTitle: '4. Usage Vouchers History — "Full Report for This Site" සහ Upstream Multi-Item Returns (RV / BRM)',
         detail:
-          '"Usage Vouchers History" හි Project එකක් තේරූ විට "Full Report for This Site (Project)" මගින් Team Subtotals සහ Full Grand Total ලබාගත හැක. ඉතිරි අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ ආපසු භාරදීමේදී "Team Returns" (RV) සහ "Branch Returns" (BRM) යන ස්ථාන දෙකේදීම Dropdown ලැයිස්තුවල Item Image පෙන්වන අතර "+ Add Item" හෝ "+ Add All Held / Available" මගින් භාණ්ඩ ගණනාවක් එකවර තනි Return Voucher එකකින් Return කළ හැක.',
+          '"Usage Vouchers History" හි Project එකක් තේරූ විට "Full Report for This Site (Project)" මගින් Team Subtotals සහ Full Grand Total ලබාගත හැක. ඉතිරි අමුද්‍රව්‍ය හෝ යන්ත්‍රෝපකරණ ආපසු භාරදීමේදී "Team Returns" (RV -> Regional හෝ Sub-Site වෙත) සහ "Branch Returns" (BRM) දෙකේම "+ Add Item" / "+ Add All" මගින් භාණ්ඩ ගණනාවක් එකවර Return කළ හැක. විශේෂයෙන් Sub-Site Branch එකක Branch Return (BRM) ඉබේම එහි Parent Regional Site Branch එකටත්, Regional Site Return ඉබේම Central HQ වෙතත් ආපසු යොමු වේ!',
       },
     ],
     keyOutputs: [
       'International Section Templates (Telecom, Water, Electric, Solar) + "+ Add Field" සහ "ALL AREAS" Branch විකල්පය',
       'Main Project -> Under New Connections ව්‍යුහය සහ Section අනුව Filter වන Client FOC Dropdown',
       'වර්ණ ගැන්වූ Main Project & Sub-Project 5-Stage Reconciliation සහ Client Completion Returnable Report',
-      '"Full Report for This Site (Project)" සහ Item Images සහිත Multi-Item Team/Branch Returns',
+      '"Full Report for This Site (Project)" සහ Upstream Returns (Sub-Site BRM -> Parent Site, Regional -> Central)',
     ],
   },
   {
@@ -624,13 +624,24 @@ const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
 
 const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
   {
+    group: '3-Tier Company Hierarchy, 20 Sites Default & Super Admin Accountability',
+    items: [
+      '3-Tier Hierarchy: Central HQ -> Regional Site Branches -> Optional Nested Sub-Site Branches -> Field Teams (Teams supported in BOTH tiers)',
+      'Direct Parent-to-Sub-Site Dispatch: "Issue Stock to Sub-Site" button inside Site Branch Stock + Parent-Routed Sub-Site Requisitions ("Parent Avl:")',
+      'Smart Upstream Branch Returns (BRM): Sub-Sites automatically return to Parent Regional Branch; Regional Branches return to Central Main Warehouse',
+      'Included Capacity: Unlimited Users, Unlimited Field Teams & 1 Central HQ + 20 Regional/Sub-Site Branches (+$10/mo extra site)',
+      'Super Admin Personal Accountability: Mandatory Full Name on signup + First-Name check on login stamped as "[Name] (as Super Admin)"',
+      'Hierarchical Branch Directory & Central Item Traceability: Parent Regional Sites sort neatly above child Sub-Sites with full parent-child flow',
+    ],
+  },
+  {
     group: 'Warehouse, 5-Stage Client FOC Reconciliation & End-to-End Traceability',
     items: [
       '5-Stage Standard Client FOC Reconciliation Flow: Initial Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Completion Returnable Balance',
       'Color-Coded Main Project Cards + Sub-Project Individual Flow (KT-RGL-0505, KT-ABK-0506) & Full Consolidated Balance Report',
       'Central FOC A4/PDF Reports: Generate Separate Reports per Issued Item OR One Full Consolidated Report for the Entire Project',
       'Site Branch Stock "Central FOC" Highlight Badge & Forward Traceability Summary (Printable A4 / PDF)',
-      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (PO/Manual/FOC Inbound, Site & Team Distribution, Used/Wasted, Central/Site/Team In-Hand)',
+      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (PO/Manual/FOC Inbound, Site & Sub-Site Distribution, Used/Wasted, In-Hand)',
       'Sequential 0001-Based Codes, IDs & Voucher References (ITM-0001, PO-2026-0001, RN-2026-0001)',
       'Single-Shot Camera & USB Gun Barcode Scanner with Auto-Hide & "Scan Now" Button',
       'Supplier Purchase Orders (PO), Multi-Item Atomic GRN Vouchers & Return to Vendor (RTV) Debit Notes',
@@ -673,13 +684,24 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
 
 const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
   {
+    group: '3-Tier ආයතනික ව්‍යුහය, Site Branches 20 ධාරිතාව සහ Super Admin First-Name වගකීම',
+    items: [
+      '3-Tier ගබඩා ව්‍යුහය: Central HQ -> Regional Site Branches -> Optional Sub-Site Branches -> Field Teams (Tiers දෙකේම Teams ක්‍රියාත්මක වේ)',
+      'Regional Site වෙතින් Sub-Site වෙත සෘජු බඩු නිකුත් කිරීම ("Issue Stock to Sub-Site") සහ Parent-Routed Requisitions ("Parent Avl:")',
+      'ස්වයංක්‍රීය Upstream Branch Returns (BRM): Sub-Site වෙතින් Parent Regional Branch වෙතත් Regional වෙතින් Central HQ වෙතත් Return වේ',
+      'මූලික පැකේජයටම: Unlimited Users, Unlimited Teams & 1 Central HQ + Site Branches 20ක් ඇතුළත් (අමතර Site +$10/mo)',
+      'Super Admin පුද්ගලික වගකීම: ලියාපදිංචියේදී අනිවාර්ය Full Name + Login වීමේදී First-Name පරීක්ෂා කර "[නම] (as Super Admin)" ලෙස සටහන් කිරීම',
+      'Hierarchical Branch Directory & Central Traceability: Parent Regional Site යටතේ Sub-Sites පිළිවෙළට පෙන්වීම',
+    ],
+  },
+  {
     group: 'ගබඩා කළමනාකරණය, පියවර 5 Free Stock Reconciliation සහ Item Lifecycle Summary',
     items: [
       'පියවර 5 Client FOC Reconciliation Flow: Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Project Completion Returnable Balance',
       'වර්ණ ගැන්වූ Main Project Cards + එක් එක් Sub-Project Flow (KT-RGL-0505, KT-ABK-0506) සහ අවසන් Full Usage & Balance Report',
       'Central Stock වෙතින් එක් එක් Issued Item එක වෙන වෙනමත්, Project එකේ සියලු Items එකටත් A4/PDF Report ලබාගැනීම',
       'Site Branch Stock හි "Central FOC" Badge/Highlight සහ Forward Traceability Summary (Printable A4 / PDF)',
-      'Central Stock Item Summary: PO/Manual/FOC ලැබීම්, Site හා Team බෙදීම්, Used/Wasted සහ Central/Site/Team In-Hand පෙන්වීම',
+      'Central Stock Item Summary: PO/Manual/FOC ලැබීම්, Site/Sub-Site/Team බෙදීම්, Used/Wasted සහ Central/Site/Team In-Hand පෙන්වීම',
       '0001 සිට පිළිවෙළට ජනනය වන Item Codes, Project IDs සහ PO / Requisition / Return Dropdown වල Item Images පෙන්වීම',
       'Detect වූ සැණින් නතර වී Camera ඉවත් වන Single-Shot Scanner සහ "Scan Now" බටන් එක',
       'නිල Purchase Orders (PO), Multi-Item GRN සහ Return to Vendor (RTV) Debit Notes / Gate Pass',
@@ -838,11 +860,11 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
     y += 4;
 
     const stages = [
-      'Stage 01: Master & Crew Setup - Register items, site yards, suppliers, clients & field teams (auto crew size: 1 Leader + N Members).',
+      'Stage 01: Master, 20 Sites & First-Name Super Admin Setup - Register with mandatory Super Admin Full Name ("Name (as Super Admin)" logging), 1 HQ + 20 Sites (+$10/mo extra), Unlimited Users/Teams & optional Sub-Site Branches.',
       'Stage 02: PO, GRN & RTV - Issue Supplier Purchase Orders (PO), print batch GRN vouchers, log Client Free Stock (FOC) & RTV Debit Notes.',
-      'Stage 03: Branch Transfer - Site branches submit Stock Requisitions (RN); Central HQ checks stock & dispatches to regional yards.',
-      'Stage 04: Field Crew Issue - Issue materials & tools to Crew Leaders (IN / Gate Pass) with live in-hand custody tracking.',
-      'Stage 05: Daily Progress, Wastage & Full Reports - Log project Installed + Wastage Qty (PU) in Material Usage / Daily Progress Entry, print Full Site Reports (Team + Grand Totals), & return surplus (RV / BRM).',
+      'Stage 03: Regional & Sub-Site Transfers - Regional Sites request from Central HQ; Parent Regional Branches issue stock directly to nested Sub-Sites or approve Sub-Site Requisitions.',
+      'Stage 04: Field Crew Issue (Regional & Sub-Site) - Issue materials & tools to Crew Leaders inside both Regional and Sub-Site branches (IN / Gate Pass).',
+      'Stage 05: Daily Progress, Wastage & Upstream Returns - Log Installed + Wastage Qty (PU), print Full Site Reports, & return surplus upstream (Sub-Site BRM -> Parent Site -> Central HQ).',
       'Stage 06: ISO Formats, Hand-Sign Print & Themes - Configure ISO 9001:2015 Formats, Digital Signatures or "Off Digital Signature" hand-sign mode, plus 9 Glass Tone themes ("Sapphire & Gold" default).',
     ];
 
@@ -1204,12 +1226,12 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
     current.y += 32;
 
     const siStages = [
-      'පියවර 01 (Master Setup): භාණ්ඩ (200KB Photos), "ALL AREAS" හෝ Branch Projects (Main -> New Connections ඇතුළුව) සහ Teams ලියාපදිංචි කිරීම.',
+      'පියවර 01 (Master Setup, Site 20 & Super Admin First-Name): අනිවාර්ය Full Name ලියාපදිංචිය, First-Name Verified Login ("[නම] (as Super Admin)"), Unlimited Users/Teams, Site Branches 20 (+$10/mo extra) සහ Sub-Site Branches සැකසීම.',
       'පියවර 02 (PO, GRN & පියවර 5 FOC): PO නිකුත් කිරීම, GRN, සහ Client FOC (Central -> Site -> Team -> Usage -> Returnable Balance) සටහන් කිරීම.',
-      'පියවර 03 (Branch Transfer & "Central FOC"): ශාඛා මගින් බඩු ඉල්ලීම (ALL AREAS FOC ඇතුළුව) සහ Site Stock හි "Central FOC" ලෙස වෙන් කර පෙන්වීම.',
-      'පියවර 04 (Field Crew Issue): වැඩ කණ්ඩායම් වෙත භාණ්ඩ නිකුත් කිරීම (IN / Gate Pass) සහ Site අනුව වෙන් වූ In-Hand තොග පරීක්ෂාව.',
-      'පියවර 05 (Daily Progress, Wastage & Full Reports): Section අනුව Filter වන FOC, Main/Sub-Project Balance Reports සහ Multi-Item Returns (RV / BRM).',
-      'පියවර 06 (ISO Formats, Hand-Sign & Glass Tone): ISO 9001:2015 Formats, Digital Signatures හෝ පෑනෙන් අත්සන් තැබීමේ "Off Digital Signature" ක්‍රමය සහ Sapphire & Gold ඇතුළු Glass Tone Themes 9 සැකසීම.',
+      'පියවර 03 (Regional & Sub-Site බෙදාහැරීම්): Regional Sites HQ වෙතින්ද, Sub-Site Branches තම Parent Regional Site මගින් ("Issue Stock to Sub-Site" හෝ RN) බඩු ලබාගැනීම.',
+      'පියවර 04 (Field Crew Issue - Tiers 2ම): Regional හා Sub-Site යන දෙකේම Teams වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Site-Separated In-Hand තොග.',
+      'පියවර 05 (Usage, Wastage & Upstream Returns): Main/Sub-Project Balance Reports, සහ Sub-Site -> Parent Site -> Central HQ ලෙස Upstream Returns (RV / BRM).',
+      'පියවර 06 (ISO Formats, Hand-Sign & Glass Tone): ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" ක්‍රමය සහ Sapphire & Gold ඇතුළු Glass Tone Themes 9.',
     ];
 
     current.ctx.font = `600 16.5px ${fontStack}`;
@@ -2082,14 +2104,14 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       <UserCheck className="w-4 h-4 text-amber-600" />
                       <span>
                         {guideLang === 'si'
-                          ? 'ප්‍රධාන කාර්යාල පරිපාලක (Central HQ Admin / Store Manager)'
-                          : 'Central HQ Administrator / Store Manager'}
+                          ? 'Super Admin (First-Name Verified පුද්ගලික වගකීම සහිතයි)'
+                          : 'Central HQ Super Admin (First-Name Verified Accountability)'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-600 mt-1.5 leading-relaxed font-medium">
                       {guideLang === 'si'
-                        ? 'ප්‍රධාන ගබඩාව, Client Free Stock, සැපයුම්කරු ඇණවුම් (PO/GRN/RTV), Master Registrations, Document Format Studio, සියලුම ශාඛා ගබඩා, Audit Trail සහ System Backups පිළිබඳ පූර්ණ බලතල හිමිවේ.'
-                        : 'Full visibility across Central Warehouse, Client-Supplied Free Stock, Supplier Purchase Orders (PO/GRN/RTV), Master Registrations, Document Format Studio, all Regional Site Yards, Audit Trails, and System Backups.'}
+                        ? 'ප්‍රධාන ගබඩාව, PO/GRN/RTV, Regional & Sub-Site ශාඛා 20+, Unlimited Users/Teams සහ Audit Trail පූර්ණ බලතල හිමිවේ. Super Admin Password ගසා පිවිසෙන විට First Name පරීක්ෂා කර සෑම ක්‍රියාවක්ම "[නම] (as Super Admin)" ලෙස සටහන් කෙරේ.'
+                        : 'Full control across Central HQ, 20+ Regional & Sub-Site branches, Unlimited Users/Teams, PO/GRN/RTV, Format Studio & Backups. Requires mandatory real Full Name on signup and verifies First Name on login, stamping every audit & voucher as "[Name] (as Super Admin)".'}
                     </p>
                   </div>
 
@@ -2098,14 +2120,14 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       <Truck className="w-4 h-4 text-sky-700" />
                       <span>
                         {guideLang === 'si'
-                          ? 'ශාඛා වැඩබිම් පරීක්ෂක / ගබඩා භාරකරු (Site Branch Supervisor)'
-                          : 'Site Branch Supervisor / Yard Storekeeper'}
+                          ? 'Regional & Sub-Site ශාඛා පරීක්ෂක / ගබඩා භාරකරු (Site Branch Admin / User)'
+                          : 'Regional & Sub-Site Branch Supervisor / Yard Admin'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-600 mt-1.5 leading-relaxed font-medium">
                       {guideLang === 'si'
-                        ? 'තමන්ට අනුයුක්ත කළ එක් ශාඛාවකට (Single Site) හෝ ශාඛා කිහිපයකට (Multi-Site) පමණක් ප්‍රවේශය සීමා කළ හැක. බඩු ඉල්ලුම්පත් (RN) යොමු කිරීම, ශාඛා තොග පාලනය, වැඩ කණ්ඩායම් වෙත බඩු නිකුත් කිරීම (IN) සහ ව්‍යාපෘති භාවිතයන් (PU) හා Returns (RV/BRM) සටහන් කළ හැක.'
-                        : 'Can be locked to a Single Site Branch or assigned to Multiple Specific Site Branches. Can submit Stock Requisitions (RN) to HQ, manage their assigned Site Yard stock, issue items to Field Crews (IN), and log Project Material Usage (PU) & Returns (RV/BRM).'}
+                        ? 'Regional Site Branch Admin කෙනෙකුට තම ශාඛාවට අමතරව ඒ යටතේ ඇති Sub-Site Branches වලට බඩු නිකුත් කිරීමටත් ("Issue Stock to Sub-Site"), Sub-Site Requisitions Approve කිරීමටත් බලතල ඇත. Sub-Site Supervisor හට තම Sub-Site Teams, Usage (PU) හා Parent Site වෙත Returns (BRM) කළමනාකරණය කළ හැක.'
+                        : 'Can be locked to a Regional Site, Sub-Site, or Multi-Site assignment. Parent Regional Branch Admins hold direct authority to supply stock ("Issue Stock to Sub-Site") and approve/reject Requisitions from their child Sub-Sites, while both tiers run Field Teams (IN), Project Usage (PU) & upstream Returns (RV/BRM).'}
                     </p>
                   </div>
                 </div>

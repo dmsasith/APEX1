@@ -11,7 +11,9 @@ interface SearchableItemSelectProps {
   selectedItemId: string;
   onSelectItem: (item: Item) => void;
   siteId?: string; // If provided, shows that site's available stock. Otherwise shows main warehouse stock.
-  requestingSiteId?: string; // If provided during Stock Requisition, shows BOTH Site Avl: and Main Avl: and sorts Site Low Stock items to the top
+  requestingSiteId?: string; // If provided during Stock Requisition, shows BOTH Site Avl: and Source Avl: and sorts Site Low Stock items to the top
+  sourceSiteId?: string; // Optional Parent Regional Branch ID when a Sub-Site requisitions from its Parent Branch
+  sourceSiteName?: string; // Optional Parent Regional Branch display name
   focProjectId?: string; // If provided, shows that project's Central FOC Warehouse available balance
   placeholder?: string;
   disabled?: boolean;
@@ -28,6 +30,8 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   onSelectItem,
   siteId,
   requestingSiteId,
+  sourceSiteId,
+  sourceSiteName,
   focProjectId,
   placeholder = 'Search & select item by code, barcode, or assembly description...',
   disabled = false,
@@ -38,7 +42,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
   onlyAvailableStock = false,
   onToggleAvailableOnly,
 }) => {
-  const { activeItems, getMainWarehouseStock, getSiteItemStock, getClientFreeStockBalance, config } = useStock();
+  const { sites, activeItems, getMainWarehouseStock, getSiteItemStock, getClientFreeStockBalance, config } = useStock();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'Material' | 'Machinery'>(defaultClassification);
@@ -50,6 +54,8 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
 
   const barcodeEnabled = config.barcodeEnabled !== false;
   const hasRequestingSite = Boolean(requestingSiteId && requestingSiteId !== 'all');
+  const resolvedSourceSite = sourceSiteId ? sites.find((s) => s.id === sourceSiteId) : undefined;
+  const isParentBranchSupply = Boolean(sourceSiteId && (!resolvedSourceSite || !resolvedSourceSite.isMainWarehouse));
 
   useEffect(() => {
     if (defaultClassification) {
@@ -102,6 +108,20 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         siteIsLowActive: siteStock.isLowStock,
         siteIsLowOrZero: siteStock.isLowStock || siteStock.availableBalance <= siteStock.threshold,
         siteHasActivity: siteStock.hasActivity,
+      };
+    } else if (isParentBranchSupply && sourceSiteId) {
+      const parentStock = getSiteItemStock(sourceSiteId, itemId);
+      return {
+        available: parentStock.availableBalance,
+        totalFocReceived: 0,
+        isLow: parentStock.isLowStock,
+        label: sourceSiteName ? `${sourceSiteName} Stock` : resolvedSourceSite?.name ? `${resolvedSourceSite.name} Stock` : 'Parent Branch Stock',
+        isFocMode: false,
+        siteAvailable: reqSiteStk ? reqSiteStk.availableBalance : undefined,
+        siteThreshold: reqSiteStk ? reqSiteStk.threshold : undefined,
+        siteIsLowActive: reqSiteStk ? reqSiteStk.isLowStock : false,
+        siteIsLowOrZero: isSiteLowOrZero,
+        siteHasActivity: reqSiteStk ? reqSiteStk.hasActivity : false,
       };
     } else {
       const mainStock = getMainWarehouseStock(itemId);
@@ -297,7 +317,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                         {stock.isFocMode
                           ? `FOC Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
                           : hasRequestingSite
-                          ? `Main Avl: ${formatNumber(stock.available)} ${selectedItem.unit}`
+                          ? `${isParentBranchSupply ? 'Parent Avl' : 'Main Avl'}: ${formatNumber(stock.available)} ${selectedItem.unit}`
                           : `${formatNumber(stock.available)} ${selectedItem.unit}`}
                       </span>
                     </div>
@@ -636,7 +656,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                               {stock.isFocMode
                                 ? `FOC Avl: ${formatNumber(stock.available)} ${item.unit}`
                                 : hasRequestingSite
-                                ? `Main Avl: ${formatNumber(stock.available)} ${item.unit}`
+                                ? `${isParentBranchSupply ? 'Parent Avl' : 'Main Avl'}: ${formatNumber(stock.available)} ${item.unit}`
                                 : `${formatNumber(stock.available)} ${item.unit}`}
                             </span>
                             <div className="text-[10px] text-slate-400 mt-0.5 font-medium">

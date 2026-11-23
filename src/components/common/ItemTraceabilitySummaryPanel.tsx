@@ -18,7 +18,7 @@ import {
   PenTool,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { Item } from '../../types';
+import { Item, isSubSite, getParentSite, sortSitesHierarchically } from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { matchDigitalSignature } from '../../utils/signatureUtils';
@@ -323,8 +323,14 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
     });
 
     if (!focProjectId) {
+      const mainWarehouseIds = new Set(sites.filter((s) => s.isMainWarehouse).map((s) => s.id));
       branchReturns
-        .filter((br) => !br.isDeleted && br.itemId === item.id)
+        .filter(
+          (br) =>
+            !br.isDeleted &&
+            br.itemId === item.id &&
+            (!br.toSiteId || mainWarehouseIds.has(br.toSiteId))
+        )
         .forEach((br) => {
           records.push({
             id: `br-${br.id}`,
@@ -345,7 +351,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
     }
 
     return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [mainStockEntries, initialCentralFocReceipts, branchReturns, item.id, focProjectId]);
+  }, [mainStockEntries, initialCentralFocReceipts, branchReturns, sites, item.id, focProjectId]);
 
   const inboundBreakdownTotals = useMemo(() => {
     let poReceivedQty = 0;
@@ -364,8 +370,14 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
 
     focReceivedQty = initialCentralFocReceipts.reduce((sum, r) => sum + r.qty, 0);
 
+    const mainWarehouseIds = new Set(sites.filter((s) => s.isMainWarehouse).map((s) => s.id));
     branchReturns
-      .filter((br) => !br.isDeleted && br.itemId === item.id)
+      .filter(
+        (br) =>
+          !br.isDeleted &&
+          br.itemId === item.id &&
+          (!br.toSiteId || mainWarehouseIds.has(br.toSiteId))
+      )
       .forEach((br) => {
         if (br.condition === 'Good / Restock') siteGoodReturnedQty += Number(br.quantity || 0);
         else siteDamagedReturnedQty += Number(br.quantity || 0);
@@ -391,7 +403,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
 
   // 3. SITE BRANCH DISTRIBUTION & SITE IN-HAND BREAKDOWN
   const siteBranchBreakdown = useMemo(() => {
-    const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+    const branchSites = sortSitesHierarchically(activeSites.filter((s) => !s.isMainWarehouse));
 
     return branchSites
       .map((site) => {
@@ -448,6 +460,8 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           inTransitQty > 0 ||
           sStock.issued > 0 ||
           sStock.returned > 0 ||
+          sStock.issuedToSubSites > 0 ||
+          sStock.returnedFromSubSitesGood > 0 ||
           sStock.availableBalance > 0 ||
           siteTeamsInHand > 0 ||
           siteUsedQty > 0 ||
@@ -463,6 +477,8 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           inTransitQty,
           issuedToTeams: sStock.issued,
           returnedFromTeams: sStock.returned,
+          issuedToSubSites: sStock.issuedToSubSites,
+          returnedFromSubSitesGood: sStock.returnedFromSubSitesGood,
           returnedToHqGood,
           returnedToHqDamaged,
           siteInHand: sStock.availableBalance,
@@ -1937,8 +1953,13 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                         }
                       >
                         <td className="py-2.5 px-3 font-bold text-slate-900">
-                          <div className="flex items-center gap-1.5">
-                            <span>{row.site.name}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{isSubSite(row.site) ? `↳ ${row.site.name}` : row.site.name}</span>
+                            {isSubSite(row.site) && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-sky-100 text-sky-900 border border-sky-200">
+                                Sub ({getParentSite(row.site, activeSites)?.name || row.site.parentSiteName || 'Parent'})
+                              </span>
+                            )}
                             {row.focReceived > 0 && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-600 text-white">
                                 Central FOC
@@ -1958,7 +1979,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                           )}
                           {row.normalReceived > 0 && row.focReceived > 0 && (
                             <div className="text-[10px] text-slate-500">
-                              Normal HQ: {formatNumber(row.normalReceived)}
+                              {isSubSite(row.site) ? 'Parent Branch' : 'Normal HQ'}: {formatNumber(row.normalReceived)}
                             </div>
                           )}
                           {row.inTransitQty > 0 && (
@@ -1966,10 +1987,20 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono text-slate-700">
-                          {formatNumber(row.issuedToTeams)}
+                          <div>{formatNumber(row.issuedToTeams)}</div>
+                          {row.issuedToSubSites > 0 && (
+                            <div className="text-[10px] font-sans font-bold text-sky-700">
+                              Sub-Site Iss: -{formatNumber(row.issuedToSubSites)}
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono text-emerald-700">
-                          +{formatNumber(row.returnedFromTeams)}
+                          <div>+{formatNumber(row.returnedFromTeams)}</div>
+                          {row.returnedFromSubSitesGood > 0 && (
+                            <div className="text-[10px] font-sans font-bold text-teal-700">
+                              Sub-Site Ret: +{formatNumber(row.returnedFromSubSitesGood)}
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono">
                           <span className="text-teal-700 font-bold">{formatNumber(row.siteUsedQty)}</span>

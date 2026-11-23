@@ -25,6 +25,10 @@ import {
   isCentralOrAllSiteAdmin,
   isUserAllSites,
   userHasSiteAccess,
+  isSubSite,
+  getParentSite,
+  sortSitesHierarchically,
+  formatSiteHierarchyLabel,
 } from '../../types';
 import { formatNumber, formatDateTimeParts } from '../../utils/exportUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -79,7 +83,7 @@ export const BranchStockReturnView: React.FC = () => {
     isCentralAdmin || isCentralOrAllSiteAdmin(currentUser?.role) || isUserAllSites(currentUser);
 
   // Eligible branch sites (excluding main warehouse), scoped to assigned sites when restricted
-  const branchSites = activeSites.filter((s) => !s.isMainWarehouse);
+  const branchSites = sortSitesHierarchically(activeSites.filter((s) => !s.isMainWarehouse));
   const allowedBranchSites = isAllSitesAdmin
     ? branchSites
     : branchSites.filter((s) => userHasSiteAccess(currentUser, s.id, activeSites));
@@ -88,6 +92,15 @@ export const BranchStockReturnView: React.FC = () => {
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
   const [reason, setReason] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const selectedBranchObj = sites.find((s) => s.id === selectedSiteId);
+  const isSelectedSubSite = Boolean(selectedBranchObj && isSubSite(selectedBranchObj));
+  const parentReturnTarget = isSelectedSubSite && selectedBranchObj
+    ? getParentSite(selectedBranchObj, activeSites)
+    : undefined;
+  const returnDestinationName = isSelectedSubSite
+    ? parentReturnTarget?.name || selectedBranchObj?.parentSiteName || 'Parent Regional Site Branch'
+    : 'Main Central Yard';
 
   // Calculate items with stock > 0 in this branch
   const availableStockItems = activeItems
@@ -288,7 +301,9 @@ export const BranchStockReturnView: React.FC = () => {
         siteName: currentBranch?.name || 'Site Branch',
         fromSiteId: selectedSiteId,
         fromSiteName: currentBranch?.name || 'Site Branch',
-        reason: reason.trim() || 'Excess/surplus stock returned to Main Central Warehouse.',
+        toSiteId: parentReturnTarget?.id,
+        toSiteName: isSelectedSubSite ? returnDestinationName : undefined,
+        reason: reason.trim() || `Excess/surplus stock returned to ${returnDestinationName}.`,
         items: activeRows.map((r) => ({
           itemId: r.itemId,
           quantity: Number(r.quantity),
@@ -299,7 +314,7 @@ export const BranchStockReturnView: React.FC = () => {
       if (createdReturns.length > 0) {
         const firstNote = createdReturns[0];
         setSuccessToast(
-          `Branch Return Note ${firstNote.branchReturnNumber} generated for ${createdReturns.length} item(s)! Returned to Central Yard.`
+          `Branch Return Note ${firstNote.branchReturnNumber} generated for ${createdReturns.length} item(s)! Returned to ${returnDestinationName}.`
         );
         setSelectedReturnForPrint(firstNote);
       }
@@ -314,7 +329,7 @@ export const BranchStockReturnView: React.FC = () => {
       ]);
       setReason('');
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to return stock to Central Warehouse.');
+      setErrorMsg(err instanceof Error ? err.message : `Failed to return stock to ${returnDestinationName}.`);
     }
   };
 
@@ -324,17 +339,21 @@ export const BranchStockReturnView: React.FC = () => {
   const filteredReturns = branchReturns.filter((br) => {
     if (br.isDeleted) return false;
     const bId = br.fromSiteId || br.siteId;
-    if (filterBranchId !== 'all' && bId !== filterBranchId) return false;
-    if (!isAllSitesAdmin && !userHasSiteAccess(currentUser, bId, activeSites)) return false;
+    if (filterBranchId !== 'all' && bId !== filterBranchId && br.toSiteId !== filterBranchId) return false;
+    const hasBranchAccess =
+      userHasSiteAccess(currentUser, bId, activeSites) ||
+      (Boolean(br.toSiteId) && userHasSiteAccess(currentUser, br.toSiteId!, activeSites));
+    if (!isAllSitesAdmin && !hasBranchAccess) return false;
     if (searchFilter.trim()) {
       const q = searchFilter.toLowerCase();
       const matchNum = br.branchReturnNumber.toLowerCase().includes(q);
       const matchSite = (br.siteName || br.fromSiteName || '').toLowerCase().includes(q);
+      const matchDest = (br.toSiteName || '').toLowerCase().includes(q);
       const item = items.find((i) => i.id === br.itemId);
       const matchItem =
         (item?.itemName || '').toLowerCase().includes(q) || (item?.itemCode || '').toLowerCase().includes(q);
       const matchReason = (br.reason || '').toLowerCase().includes(q);
-      return matchNum || matchSite || matchItem || matchReason;
+      return matchNum || matchSite || matchDest || matchItem || matchReason;
     }
     return true;
   });
@@ -390,12 +409,12 @@ export const BranchStockReturnView: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
             <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <RotateCcw className="w-4 h-4 text-indigo-600" />
-              Transfer Branch Stock to Central Main Yard
+              Transfer Branch Stock to {returnDestinationName}
             </h2>
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
               <span>{currentBranchObj?.name || 'Branch'}</span>
               <ArrowRight className="w-3 h-3" />
-              <span>Main Central Yard</span>
+              <span>{returnDestinationName}</span>
             </div>
           </div>
 
@@ -411,7 +430,7 @@ export const BranchStockReturnView: React.FC = () => {
               {/* Site Branch Selection: Central Admin can select any branch; Branch user locked to their own */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Source Site Branch *
+                  Source Site / Sub-Site Branch *
                 </label>
                 <select
                   value={selectedSiteId}
@@ -421,18 +440,20 @@ export const BranchStockReturnView: React.FC = () => {
                   required
                 >
                   {!isAllSitesAdmin && allowedBranchSites.length === 0 ? (
-                    <option value={currentBranchObj?.id}>{currentBranchObj?.name} ({currentBranchObj?.location})</option>
+                    <option value={currentBranchObj?.id}>{currentBranchObj ? formatSiteHierarchyLabel(currentBranchObj, activeSites, true) : ''}</option>
                   ) : (
                     (isAllSitesAdmin ? branchSites : allowedBranchSites).map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name} ({s.location})
+                        {formatSiteHierarchyLabel(s, activeSites, true)}
                       </option>
                     ))
                   )}
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isAllSitesAdmin
-                    ? 'As Central Admin, you can select and return stock from any site branch.'
+                  {isSelectedSubSite
+                    ? `Sub-Site Returns automatically transfer Good / Restock inventory back to Parent Regional Branch (${returnDestinationName}).`
+                    : isAllSitesAdmin
+                    ? 'As Central Admin, you can select and return stock from any site or sub-site branch.'
                     : allowedBranchSites.length > 1
                     ? `You can select any of your ${allowedBranchSites.length} assigned site branches.`
                     : 'Branch users can only return items from their assigned branch.'}
@@ -445,7 +466,7 @@ export const BranchStockReturnView: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <label className="block text-xs font-bold text-slate-800">
-                    Items to Return to Central Main Yard ({returnRows.length} item{returnRows.length === 1 ? '' : 's'}) *
+                    Items to Return to {returnDestinationName} ({returnRows.length} item{returnRows.length === 1 ? '' : 's'}) *
                   </label>
                   <p className="text-[10px] text-slate-500">
                     Add multiple items to return them all together on a single Branch Return Note.
@@ -718,7 +739,7 @@ export const BranchStockReturnView: React.FC = () => {
                               onChange={(e) => handleUpdateReturnRow(idx, 'condition', e.target.value)}
                               className="w-full text-xs font-medium px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             >
-                              <option value="Good / Restock">Good / Restock (Restore to Central Stock)</option>
+                              <option value="Good / Restock">Good / Restock (Restore to {returnDestinationName})</option>
                               <option value="Damaged / Scrap">Damaged / Scrap (Central Quarantine/Scrap)</option>
                             </select>
                           </div>
@@ -733,7 +754,7 @@ export const BranchStockReturnView: React.FC = () => {
             {/* Reason / Notes */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Reason for Return to Central Yard *
+                Reason for Return to {returnDestinationName} *
               </label>
               <textarea
                 value={reason}
@@ -754,7 +775,7 @@ export const BranchStockReturnView: React.FC = () => {
                 <RotateCcw className="w-4 h-4" />
                 <span>
                   Process Return ({returnRows.filter((r) => r.itemId && Number(r.quantity) > 0).length || returnRows.length}{' '}
-                  Item{returnRows.length === 1 ? '' : 's'}) to Main Yard &amp; Print Note
+                  Item{returnRows.length === 1 ? '' : 's'}) to {returnDestinationName} &amp; Print Note
                 </span>
               </button>
             </div>
@@ -844,7 +865,7 @@ export const BranchStockReturnView: React.FC = () => {
                 <option value="all">All Branches</option>
                 {branchSites.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name}
+                    {formatSiteHierarchyLabel(s, activeSites)}
                   </option>
                 ))}
               </select>
@@ -921,7 +942,10 @@ export const BranchStockReturnView: React.FC = () => {
                         {dtParts.time && <div className="text-[11px] text-slate-500 mt-0.5">{dtParts.time}</div>}
                       </td>
                       <td className="py-3 px-2.5 font-bold text-slate-900 align-top">
-                        {ret.siteName || ret.fromSiteName || 'Site Branch'}
+                        <div>{ret.siteName || ret.fromSiteName || 'Site Branch'}</div>
+                        <div className="text-[10px] font-semibold text-indigo-700 mt-0.5">
+                          → {ret.toSiteName || 'Main Central Yard'}
+                        </div>
                       </td>
                       <td className="py-3 px-2.5 align-top">
                         <div className="font-bold text-slate-900 text-sm">{itm?.itemName || 'Item'}</div>
@@ -990,11 +1014,15 @@ export const BranchStockReturnView: React.FC = () => {
         <PrintableDocumentModal
           isOpen={!!selectedReturnForPrint}
           onClose={() => setSelectedReturnForPrint(null)}
-          title="INTER-BRANCH RETURN TO CENTRAL YARD NOTE"
+          title={
+            selectedReturnForPrint.toSiteName
+              ? `INTER-BRANCH RETURN TO ${selectedReturnForPrint.toSiteName.toUpperCase()} NOTE`
+              : 'INTER-BRANCH RETURN TO CENTRAL YARD NOTE'
+          }
           documentNumber={selectedReturnForPrint.branchReturnNumber}
           documentDate={selectedReturnForPrint.returnDate}
           recipientLabel="Receiving Yard"
-          recipientName="Main Central Warehouse"
+          recipientName={selectedReturnForPrint.toSiteName || 'Main Central Warehouse'}
           recipientSubDetails={`Returned from: ${selectedReturnForPrint.siteName || selectedReturnForPrint.fromSiteName} | Processed by: ${selectedReturnForPrint.returnedBy}`}
           notes={`Reason: ${selectedReturnForPrint.reason}`}
           items={(selectedReturnForPrint.batchItems && selectedReturnForPrint.batchItems.length > 0

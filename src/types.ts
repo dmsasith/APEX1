@@ -134,6 +134,8 @@ export interface Site {
   id: string;
   name: string;
   isMainWarehouse: boolean;
+  parentSiteId?: string; // Optional Parent Regional Site Branch ID (when this site is a Sub-Site Branch)
+  parentSiteName?: string; // Cached Parent Regional Site Branch display name
   supervisorName: string;
   supervisorUserId?: string; // Linked registered User ID when assigned to a system user ('' when custom/unassigned)
   location: string;
@@ -259,6 +261,89 @@ export function isUserAssignedToSite(
   }
   if (isUserAllSites(user)) return false;
   return getUserAssignedSiteIds(user, allSites).includes(site.id);
+}
+
+// ============================================================================
+// 3-Tier Site Hierarchy Helpers:
+//   Tier 1: Central Main Warehouse (site.isMainWarehouse === true)
+//   Tier 2: Regional Site Branch (!site.isMainWarehouse && !site.parentSiteId)
+//   Tier 3: Sub-Site Branch (!site.isMainWarehouse && Boolean(site.parentSiteId))
+// ============================================================================
+
+export function isSubSite(site?: Pick<Site, 'isMainWarehouse' | 'parentSiteId'> | null): boolean {
+  return Boolean(site && !site.isMainWarehouse && site.parentSiteId && site.parentSiteId.trim() !== '');
+}
+
+export function isRegionalSiteBranch(site?: Pick<Site, 'isMainWarehouse' | 'parentSiteId'> | null): boolean {
+  return Boolean(site && !site.isMainWarehouse && (!site.parentSiteId || site.parentSiteId.trim() === ''));
+}
+
+export function getParentSite(site: Site | undefined | null, allSites: Site[]): Site | undefined {
+  if (!site || site.isMainWarehouse || !site.parentSiteId) return undefined;
+  return (
+    allSites.find((s) => s.id === site.parentSiteId && !s.isDeleted) ||
+    allSites.find((s) => s.id === site.parentSiteId)
+  );
+}
+
+export function getChildSubSites(parentSiteId: string, allSites: Site[]): Site[] {
+  if (!parentSiteId) return [];
+  return allSites.filter((s) => !s.isDeleted && !s.isMainWarehouse && s.parentSiteId === parentSiteId);
+}
+
+export function formatSiteHierarchyLabel(
+  site: Site | undefined | null,
+  allSites: Site[],
+  includeLocation: boolean = false
+): string {
+  if (!site) return 'Unknown Site';
+  const locPart = includeLocation && site.location ? ` (${site.location})` : '';
+  if (site.isMainWarehouse) {
+    return `${site.name}${locPart} [Main HQ]`;
+  }
+  if (isSubSite(site)) {
+    const parent = getParentSite(site, allSites);
+    const parentLabel = parent?.name || site.parentSiteName || 'Parent Branch';
+    return `↳ Sub-Site: ${site.name}${locPart} (Under ${parentLabel})`;
+  }
+  return `${site.name}${locPart}`;
+}
+
+export function sortSitesHierarchically(sitesList: Site[]): Site[] {
+  const mainSites = sitesList.filter((s) => s.isMainWarehouse);
+  const regionalSites = sitesList.filter((s) => isRegionalSiteBranch(s));
+  const regionalIdSet = new Set(regionalSites.map((s) => s.id));
+  const result: Site[] = [...mainSites];
+
+  regionalSites.forEach((reg) => {
+    result.push(reg);
+    const children = sitesList.filter((s) => !s.isMainWarehouse && s.parentSiteId === reg.id);
+    result.push(...children);
+  });
+
+  // Include any orphaned sub-sites whose parent is archived/missing so they are never hidden
+  const orphans = sitesList.filter(
+    (s) => !s.isMainWarehouse && s.parentSiteId && !regionalIdSet.has(s.parentSiteId)
+  );
+  result.push(...orphans);
+  return result;
+}
+
+export function canUserManageSourceSite(
+  user: Pick<User, 'id' | 'fullName' | 'siteId' | 'siteIds' | 'role' | 'username'> | null | undefined,
+  sourceSiteId: string | undefined,
+  sites: Site[]
+): boolean {
+  if (!user) return false;
+  if (isCentralOrAllSiteAdmin(user.role) || isUserAllSites(user)) return true;
+  if (!sourceSiteId) return false;
+  const sourceSite = sites.find((s) => s.id === sourceSiteId);
+  if (!sourceSite || sourceSite.isMainWarehouse) {
+    return getUserAssignedSiteIds(user, sites).some(
+      (sid) => sites.find((s) => s.id === sid)?.isMainWarehouse === true
+    );
+  }
+  return userHasSiteAccess(user, sourceSiteId, sites);
 }
 
 export interface Item {
@@ -401,6 +486,8 @@ export interface StockTransferRequest {
   id: string;
   requestNoteNumber: string; // RN-2026-0001
   siteId: string;
+  sourceSiteId?: string; // Sending warehouse ID (Main Warehouse by default; Parent Regional Site Branch ID for Sub-Site requests)
+  sourceSiteName?: string; // Sending warehouse display name
   requestedBy: string;
   requestedDate: string;
   status: RequestStatus;
@@ -487,6 +574,7 @@ export type AuditAction =
   | 'SITE_REQUEST_APPROVED'
   | 'SITE_REQUEST_ACCEPTED'
   | 'SITE_REQUEST_REJECTED'
+  | 'DIRECT_SUBSITE_ISSUE'
   | 'TEAM_ISSUE_DISPATCHED'
   | 'TEAM_RETURN_LOGGED'
   | 'RECORD_DELETED'
@@ -744,6 +832,8 @@ export interface BranchReturn {
   siteName: string;
   fromSiteId?: string;
   fromSiteName?: string;
+  toSiteId?: string; // Destination site ID (Parent Regional Site Branch ID when a Sub-Site returns stock; Main Warehouse by default)
+  toSiteName?: string; // Destination site display name
   itemId: string;
   quantity: number;
   condition: ReturnCondition;

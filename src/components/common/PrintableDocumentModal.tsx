@@ -472,6 +472,14 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
       case 'REQUEST_NOTE': {
         const req = document.data;
         const site = sites.find((s) => s.id === req.siteId);
+        const sourceSite = req.sourceSiteId ? sites.find((s) => s.id === req.sourceSiteId) : undefined;
+        const parentSite = site?.parentSiteId ? sites.find((s) => s.id === site.parentSiteId) : undefined;
+        const resolvedSourceLabel =
+          req.sourceSiteName ||
+          sourceSite?.name ||
+          (site?.parentSiteName ? `${site.parentSiteName} (Parent Branch)` : '') ||
+          (parentSite ? `${parentSite.name} (Parent Branch)` : '') ||
+          'Main Central Warehouse (HQ Logistics)';
         return (
           <div className="space-y-4">
             <div className="text-center my-2">
@@ -489,14 +497,23 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
             <div className="grid grid-cols-2 gap-4 bg-slate-50/90 p-3 rounded border border-slate-300 text-xs text-slate-700 mb-2">
               <div>
-                <div className="font-bold text-slate-900">SOURCE WAREHOUSE:</div>
-                <div>Main Central Warehouse (HQ Logistics)</div>
+                <div className="font-bold text-slate-900">SOURCE WAREHOUSE / SUPPLYING BRANCH:</div>
+                <div>{resolvedSourceLabel}</div>
                 <div className="mt-1 font-bold text-slate-900">REQUISITION PURPOSE:</div>
                 <div className="italic text-[11px]">{req.purpose || 'Site maintenance & installation project'}</div>
               </div>
               <div>
-                <div className="font-bold text-slate-900">DESTINATION BRANCH SITE:</div>
-                <div className="font-semibold text-slate-900">{site?.name}</div>
+                <div className="font-bold text-slate-900">
+                  {site?.parentSiteId ? 'DESTINATION SUB-SITE BRANCH:' : 'DESTINATION BRANCH SITE:'}
+                </div>
+                <div className="font-semibold text-slate-900">
+                  {site?.name}
+                  {site?.parentSiteId && (site.parentSiteName || parentSite?.name) && (
+                    <span className="text-[11px] font-normal text-slate-600">
+                      {' '}(Sub-Site under {site.parentSiteName || parentSite?.name})
+                    </span>
+                  )}
+                </div>
                 <div>Location: {site?.location} | Supervisor: {site?.supervisorName}</div>
                 <div className="mt-1 font-mono text-[11px]">
                   Priority: <strong className="text-slate-900">{req.priority}</strong> | Status: <strong>{req.status}</strong>

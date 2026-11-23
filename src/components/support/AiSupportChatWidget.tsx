@@ -35,6 +35,22 @@ interface QuickPrompt {
 
 const QUICK_PROMPTS: QuickPrompt[] = [
   {
+    id: 'sub-site-hierarchy',
+    labelEn: '🏢 Regional Branch -> Sub-Site & Teams?',
+    labelSi: '🏢 Regional Branch -> Sub-Site සහ Teams?',
+    promptEn: 'How does the 3-tier Company Hierarchy (Central Main Warehouse -> Regional Site Branch -> Sub-Site Branch -> Field Teams) work for issuing stock, requisitions, returns, and teams?',
+    promptSi: 'Central Main Warehouse -> Regional Site Branch -> Sub-Site Branch -> Field Teams කියන 3-tier ක්‍රමය යටතේ Sub-Site එකක් හදලා බඩු Issue කරන්නේ, Return කරන්නේ සහ Teams පාවිච්චි කරන්නේ කොහොමද?',
+    targetTab: 'site-stock',
+  },
+  {
+    id: 'super-admin-first-name',
+    labelEn: '🛡️ Super Admin First-Name Login & 20 Sites?',
+    labelSi: '🛡️ Super Admin First-Name Login සහ Sites 20?',
+    promptEn: 'How do mandatory Super Admin name registration, First-Name verified login ("as Super Admin" audit logging), and the 20 Site Branches + Unlimited Users & Teams plan work?',
+    promptSi: 'Super Admin First Name එකෙන් Login වීම, "(as Super Admin)" ලෙස Audit Logs වල සටහන් වීම, සහ Site Branches 20 + Unlimited Users & Teams ක්‍රමය වැඩ කරන්නේ කොහොමද?',
+    targetTab: 'manage-users',
+  },
+  {
     id: 'telecom-new-connection-nc',
     labelEn: '🌐 Telecom, Water, Electric & Solar Templates + "+ Add Field"?',
     labelSi: '🌐 Telecom, Water, Electric, Solar Templates සහ "+ Add Field"?',
@@ -191,8 +207,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through the latest updates including **"Off Digital Signature" Hand-Sign Printing Mode (blank pen-sign & stamp boxes across all reports/vouchers), 9 Live "Glass Tone" Themes ("Sapphire & Gold" default), Uniform Report & Table Typography, Recurring Card Subscriptions (Payments.lk / Stripe with live USD → LKR rate), 5-Stage Client FOC Reconciliation, Main Project -> Under New Connections (Telecom/Water/Electric/Solar), Team Transfers, ISO 9001:2015 Formats, and Digital Signatures**.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\nපද්ධතියේ නවතම විශේෂාංග වන **"Off Digital Signature" ක්‍රමය (Reports හා Vouchers මුද්‍රණයේදී පෑනෙන් අත්සන් තැබීමට ඉඩ තැබීම), "Glass Tone" Live Themes 9 ("Sapphire & Gold" default), පැහැදිලි Uniform අකුරු ප්‍රමාණය, Payments.lk / Stripe ස්වයංක්‍රීය කාඩ් Subscriptions (සජීවී USD → LKR අනුපාතය), පියවර 5 Client FOC Reconciliation, Main Project -> Under New Connections, Team Transfers, ISO 9001:2015 Formats සහ Digital Signatures** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through all **ApexStox** features including the **3-Tier Hierarchy (Central HQ → Regional Site Branch → Optional Sub-Site Branch → Field Teams)**, **Super Admin First-Name Verified Login (`as Super Admin` Audit Accountability)**, **20 Site Branches + HQ with Unlimited Users & Teams**, **"Off Digital Signature" Hand-Sign Printing**, **9 Live "Glass Tone" Themes ("Sapphire & Gold" default)**, **Recurring Card Subscriptions (Payments.lk / Stripe with live USD → LKR)**, **5-Stage Client FOC Reconciliation**, and **Team Transfers**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\n**ApexStox** පද්ධතියේ නවතම විශේෂාංග වන **Central HQ → Regional Site Branch → Sub-Site Branch → Field Teams 3-Tier ව්‍යුහය**, **Super Admin First-Name Login සහ පුද්ගලික වගවීම (`as Super Admin` Audit Logs)**, **Site Branches 20 + HQ (Unlimited Users & Teams)**, **"Off Digital Signature" Hand-Sign Print ක්‍රමය**, **"Glass Tone" Live Themes 9 ("Sapphire & Gold" default)**, **Payments.lk / Stripe Subscriptions (USD → LKR)**, **පියවර 5 FOC Reconciliation**, සහ **Team Transfers** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 

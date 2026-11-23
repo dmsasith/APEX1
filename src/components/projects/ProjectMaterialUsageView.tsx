@@ -49,6 +49,8 @@ import {
   getUserAssignedSiteIds,
   userHasSiteAccess,
   isTelecomNewConnectionSection,
+  sortSitesHierarchically,
+  formatSiteHierarchyLabel,
 } from '../../types';
 import { formatNumber, formatDateTime, exportToCsv } from '../../utils/exportUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
@@ -156,9 +158,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const isAllSitesUser = isUserAllSites(currentUser);
   const isSiteRestricted = !isAllSitesUser;
   const userAssignedSiteIds = getUserAssignedSiteIds(currentUser, activeSites);
-  const branchSites = activeSites;
+  const branchSites = sortSitesHierarchically(activeSites);
   const allowedSites = isSiteRestricted
-    ? activeSites.filter((s) => userAssignedSiteIds.includes(s.id))
+    ? branchSites.filter((s) => userAssignedSiteIds.includes(s.id))
     : branchSites;
   const isSingleSiteLocked = isSiteRestricted && allowedSites.length <= 1;
   const initialSiteId =
@@ -2101,7 +2103,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         >
                           {allowedSites.map((s) => (
                             <option key={s.id} value={s.id}>
-                              {s.name} ({s.location})
+                              {formatSiteHierarchyLabel(s, activeSites, true)}
                             </option>
                           ))}
                         </select>
@@ -2281,13 +2283,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               <option value="ALL_AREAS">
                                 🌐 ALL AREAS (All Site Branches Can Use)
                               </option>
-                              {activeSites
-                                .filter((s) => !s.isMainWarehouse)
-                                .map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    🏢 {s.name} {s.location ? `(${s.location})` : ''}
-                                  </option>
-                                ))}
+                              {sortSitesHierarchically(activeSites.filter((s) => !s.isMainWarehouse)).map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {formatSiteHierarchyLabel(s, activeSites, true)}
+                                </option>
+                              ))}
                             </select>
                           </div>
 
@@ -3107,7 +3107,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         >
                           {allowedSites.map((s) => (
                             <option key={s.id} value={s.id}>
-                              {s.name} ({s.location})
+                              {formatSiteHierarchyLabel(s, activeSites, true)}
                             </option>
                           ))}
                         </select>

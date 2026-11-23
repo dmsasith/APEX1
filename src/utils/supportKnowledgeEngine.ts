@@ -65,6 +65,105 @@ export function detectSinhalaOrSinglishInput(text: string): boolean {
 
 const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
   {
+    id: 'sub-site-branch-hierarchy',
+    suggestedTab: 'site-stock',
+    keywords: [
+      'sub-site',
+      'subsite',
+      'sub site',
+      'parent site',
+      'parent branch',
+      'regional branch',
+      'sub branch',
+      '3-tier',
+      'three tier',
+      'issue stock to sub-site',
+      'sub-site stock',
+      'parent avl',
+      'upstream return',
+    ],
+    phrases: [
+      'sub site branch',
+      'sub-site branch',
+      'create sub-site',
+      'issue stock to sub-site',
+      'parent site branch',
+      'regional site branch',
+      'sub site ekata',
+      'sub-site ekak hadanne',
+      'sub site ekata badu',
+      '3-tier warehouse',
+    ],
+    answerEn: () =>
+      `**How the 3-Tier Tenant Company Hierarchy Works (Central HQ -> Regional Site Branch -> Optional Sub-Site Branch -> Field Teams):**\n\n` +
+      `**1. Register Regional Branches & Optional Nested Sub-Sites:**\n` +
+      `• In **Master Registrations -> Sites / Branches**, select **🏢 Regional Site Branch** (supplied directly by **Central Main Warehouse**) OR **↳ Sub-Site Branch (Under a Regional Site)** and pick its **Parent Regional Site Branch ***.\n` +
+      `• Both Regional Site Branches and Sub-Site Branches can create and manage **Field Teams** normally inside their own branch (plus Regional Branches with active Sub-Sites cannot be deleted until Sub-Sites are removed).\n\n` +
+      `**2. Two Ways to Supply Stock to a Sub-Site Branch:**\n` +
+      `• **Method A — Direct Parent Dispatch ("Issue Stock to Sub-Site"):** Open **Site Branch Stock**, select the **Parent Regional Site Branch**, and click **Issue Stock to Sub-Site** (emerald dispatch card) to transfer stock straight from the Regional Site Store into any child Sub-Site Branch.\n` +
+      `• **Method B — Parent-Routed Stock Requisition (RN):** When a Sub-Site Branch creates a **Stock Requisition**, the system automatically routes it to its **Parent Regional Site Branch** (displaying live **Parent Avl:** balances alongside **Site Avl:**) instead of Central HQ — approved by the **Parent Regional Branch Admin** or **Central Admin**.\n\n` +
+      `**3. Upstream Sub-Site Branch Returns (BRM) & Team Flows:**\n` +
+      `• When a Sub-Site returns surplus/damaged goods in **Branch Returns (BRM)**, stock routes **upstream to its Parent Regional Site Branch** (**Good** restores Parent Site stock; **Damaged** enters Damaged ledger). Regional Site Branches return directly to **Central Main Warehouse**.\n` +
+      `• Inside both Regional and Sub-Site branches, **Issue to Teams (IN)**, **Team Returns (RV)**, **Team Transfers**, **Material Usage (PU)**, and hierarchical sorting in **Branch Directory** & **Central Item Traceability** work seamlessly!`,
+    answerSi: () =>
+      `**3-Tier ආයතනික ගබඩා ව්‍යුහය (Central HQ -> Regional Site Branch -> Sub-Site Branch -> Field Teams):**\n\n` +
+      `**1. Regional Site Branch සහ ඒ යටතේ Sub-Site Branches ලියාපදිංචිය:**\n` +
+      `• **Master Registrations -> Sites / Branches** තුළ **🏢 Regional Site Branch** (Central Main Store හා සම්බන්ධ) හෝ අවශ්‍ය නම් **↳ Sub-Site Branch (Under a Regional Site)** තෝරා එහි **Parent Regional Site Branch *** ලබාදී සාදාගත හැක.\n` +
+      `• Regional Site Branch එකේ මෙන්ම Sub-Site Branch එක තුළද සාමාන්‍ය පරිදි **Field Teams** නිර්මාණය කර පාලනය කළ හැක.\n\n` +
+      `**2. Sub-Site එකකට බඩු නිකුත් කරන ක්‍රම 2:**\n` +
+      `• **ක්‍රමය A — සෘජු නිකුත් කිරීම ("Issue Stock to Sub-Site"):** **Site Branch Stock** වෙත ගොස් අදාළ **Parent Regional Site Branch** එක තේරූ විට පෙනෙන **"Issue Stock to Sub-Site"** බටන් එකෙන් Regional Site තොගයෙන් කෙලින්ම Sub-Site එකට බඩු නිකුත් කළ හැක.\n` +
+      `• **ක්‍රමය B — Stock Requisition මගින්:** Sub-Site එකක් **Stock Requisition (RN)** එකක් දැමූ විට එය Central HQ වෙත නොයා ස්වයංක්‍රීයව එහි **Parent Regional Site Branch** එක වෙත යොමු වේ (**Parent Avl:** සජීවී තොග සමඟ), එය **Parent Regional Branch Admin** හෝ **Central Admin** හට Approve කළ හැක.\n\n` +
+      `**3. Sub-Site ආපසු භාරදීම් (Branch Returns - BRM) සහ Team ක්‍රියාවලිය:**\n` +
+      `• Sub-Site එකක් **Branch Returns (BRM)** දැමූ විට එම බඩු ආපසු ලැබෙන්නේ එහි **Parent Regional Site Branch** එකටයි (Regional Site මගින් Central HQ වෙත Return කරයි).\n` +
+      `• Regional සහ Sub-Site දෙකේම Teams වලට **Issue to Teams**, **Team Returns (RV)**, **Team Transfers**, **Project Material Usage**, සහ **Branch Directory / Traceability** සාමාන්‍ය පරිදි ක්‍රියාත්මක වේ!`,
+  },
+  {
+    id: 'super-admin-first-name-accountability',
+    suggestedTab: 'manage-users',
+    keywords: [
+      'first name',
+      'as super admin',
+      'accountability',
+      'super admin name',
+      'full name',
+      '20 site',
+      '20 branches',
+      'extra site',
+      '$10',
+      '10$',
+      'pricing limit',
+      'branch limit',
+    ],
+    phrases: [
+      'super admin login',
+      'first name verification',
+      'as super admin',
+      '20 site branches',
+      '20 sites',
+      'extra site',
+      'admin password name',
+      'admin login wenakota',
+      'first name eka',
+      'site 20',
+    ],
+    answerEn: () =>
+      `**Super Admin Personal Accountability Login (Mandatory Full Name + First-Name Verification) & Default 20 Site Branches Allowance:**\n\n` +
+      `**1. Mandatory Super Admin Personal Full Name & First-Name Login Verification:**\n` +
+      `• When registering a new company workspace, entering the Super Admin's real **Full Name** is **mandatory** (generic placeholders like "Admin" or "Super Admin" are blocked).\n` +
+      `• Whenever logging into the workspace using the **Super Admin Password**, the person logging in enters their personal name — the system verifies their **First Name** against the registered Super Admin profile and stamps every Audit Trail entry and Voucher as **[Entered Name] (as Super Admin)** for 100% personal accountability.\n\n` +
+      `**2. Default Allowance — Unlimited Users & Teams + 20 Site Branches + HQ (+$10/mo Extra Site):**\n` +
+      `• Every workspace includes **Unlimited Users**, **Unlimited Field Teams**, **1 Central HQ Warehouse**, and **20 Regional / Sub-Site Branches** included by default.\n` +
+      `• Need more than 20 sites? Extra Site Branches can be added anytime for just **+$10/month per extra site**.`,
+    answerSi: () =>
+      `**Super Admin පුද්ගලික වගකීම් පද්ධතිය (Mandatory Full Name + First-Name Verification) සහ මූලික Site Branches 20 පහසුකම:**\n\n` +
+      `**1. Super Admin අනිවාර්ය Full Name සහ Login වීමේදී First Name පරීක්ෂාව:**\n` +
+      `• නව ආයතන ගිණුමක් (Tenant Registry) සෑදීමේදී ප්‍රධාන Super Admin හිමි පුද්ගලයාගේ සැබෑ **Full Name** ඇතුළත් කිරීම **අනිවාර්ය** වේ ("Admin" / "Super Admin" වැනි පොදු නම් භාර නොගනී).\n` +
+      `• **Super Admin Password** ගසා ලොග් වන සෑම විටම ලොග් වන පුද්ගලයාගේ නමේ **First Name** එක නිවැරදිව ගැළපේදැයි පද්ධතිය පරීක්ෂා කරන අතර, Audit Trail සහ වවුචර්වල **[නම] (as Super Admin)** ලෙස පැහැදිලිව සටහන් වේ.\n\n` +
+      `**2. මූලික පැකේජයේ ධාරිතාව — Unlimited Users & Teams + Site Branches 20 + HQ (+$10/mo Extra Site):**\n` +
+      `• සෑම ආයතනයකටම **Unlimited Users**, **Unlimited Field Teams**, **1 Central HQ** සහ **Site Branches 20ක්** මූලික පැකේජයටම නොමිලේ ලැබේ.\n` +
+      `• ශාඛා 20කට වඩා අවශ්‍ය නම් අමතර එක් Site Branch එකකට මසකට **$10** බැගින් ඕනෑම ගණනක් එක් කරගත හැක.`,
+  },
+  {
     id: 'telecom-new-connection-nc-workflow',
     suggestedTab: 'projects',
     keywords: [
@@ -651,26 +750,26 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'eka sare return',
     ],
     answerEn: () =>
-      `**How to Return Multiple Items at Once in Team Returns (RV) & Branch Returns (BRM):**\n\n` +
+      `**How to Return Multiple Items at Once in Team Returns (RV) & Upstream Branch Returns (BRM):**\n\n` +
       `• **Option A — Multi-Item Team Returns to Branch Yard ("Team Returns"):**\n` +
       `  1. Open **Team Returns** from the sidebar.\n` +
-      `  2. Select the **Receiving Site Branch** and the **Field Team** (for transferred teams, selecting the previous site loads their **"Stock to Return - [Previous Site Name]"** items; selecting their current site loads their active site stock).\n` +
+      `  2. Select the **Receiving Site Branch** (Regional Site or Sub-Site Branch) and the **Field Team** (for transferred teams, selecting the previous site loads their **"Stock to Return - [Previous Site Name]"** items; selecting their current site loads their active site stock).\n` +
       `  3. Click **+ Add Item** to add as many item rows as needed (or click **+ Add All Held** to load all held items at once, or scan barcodes).\n` +
-      `  4. For each row, enter the **Quantity to Return** (or click **Max**) and select its **Condition** (**Good** restores usable Site Branch Stock; **Damaged** logs into the Damaged Stock ledger).\n` +
+      `  4. For each row, enter the **Quantity to Return** (or click **Max**) and select its **Condition** (**Good** restores usable Branch Stock; **Damaged** logs into the Damaged Stock ledger).\n` +
       `  5. Click **Process Return** — all items are returned together in one submission under a single shared **Return Voucher (RV-2026-XXXX)** which you can print (with optional **Print with Image**).\n\n` +
-      `• **Option B — Multi-Item Branch Return to Central Main Warehouse ("Branch Returns"):**\n` +
+      `• **Option B — Multi-Item Upstream Branch Return (Sub-Site -> Parent Site / Regional -> Central HQ) ("Branch Returns"):**\n` +
       `  1. Open **Branch Returns** from the sidebar and select your **Returning Site Branch**.\n` +
-      `  2. Click **+ Add Item**, click **+ Add All Available**, or click any item card in the right-hand inventory panel to add multiple items to your return list.\n` +
-      `  3. Set the quantity and condition (**Good** or **Damaged**) for each row and submit to generate a single multi-item **Branch Return Voucher (BRM-2026-XXXX)**.`,
+      `  2. **Smart Hierarchy Destination:** If returning from a **Regional Site Branch**, stock routes back to **Central Main Warehouse**. If returning from a **Sub-Site Branch**, stock automatically routes **upstream to its Parent Regional Site Branch**!\n` +
+      `  3. Click **+ Add Item**, click **+ Add All Available**, or click any item card in the right-hand inventory panel to add multiple items, set **Good/Damaged**, and generate a single multi-item **Branch Return Voucher (BRM-2026-XXXX)**.`,
     answerSi: () =>
-      `**Team Returns සහ Branch Returns දෙකේම භාණ්ඩ ගණනාවක් එකතු කර එක සැරේ Return කරන ආකාරය (Multi-Item Batch Returns):**\n\n` +
-      `• **1. Team එකක සිට Branch එකට භාණ්ඩ කිහිපයක් එකවර Return කිරීම ("Team Returns"):**\n` +
-      `  - වම් පස මෙනුවෙන් **"Team Returns"** වෙත ගොස් අදාළ **Receiving Site Branch** එක සහ **Field Team** එක තෝරන්න (Transfer කළ Team එකක් නම් පරණ Site එක තේරූ විට එම පරණ Site එකට අදාළ **"Stock to Return - [Site Name]"** බඩු ලැයිස්තුව පෙන්වයි).\n` +
-      `  - එක වරකට එක Item එකක් පමණක් නොව, **"+ Add Item"** බටන් එකෙන් අවශ්‍ය තරම් Items පේළි ගණනාවක් එකතු කරන්න (නැතිනම් **"+ Add All Held"** එබීමෙන් Team එක අතේ ඇති සියලුම බඩු එකවර ලැයිස්තුවට ගත හැක).\n` +
-      `  - එක් එක් Item එකට අදාළ ප්‍රමාණය (**Max** බටන් එකෙන් සම්පූර්ණ ගණනම ගත හැක) සහ තත්ත්වය (**Good** හෝ **Damaged**) තෝරා Submit කරන්න. එම සියලුම භාණ්ඩ තනි **Return Voucher (RV)** එකකින් එක සැරේ Return වී Print කරගත හැක.\n\n` +
-      `• **2. Branch එකක සිට ප්‍රධාන ගබඩාවට (Main Stock) භාණ්ඩ කිහිපයක් එකවර Return කිරීම ("Branch Returns"):**\n` +
-      `  - වම් පස මෙනුවෙන් **"Branch Returns"** වෙත ගොස් Branch එක තෝරන්න.\n` +
-      `  - **"+ Add Item"** හෝ **"+ Add All Available"** මගින් (හෝ දකුණු පස ඇති භාණ්ඩ ලැයිස්තුව මත ක්ලික් කිරීමෙන්) Items ගණනාවක් එකවර එකතු කර තනි **BRM Return Voucher** එකකින් ප්‍රධාන ගබඩාව (HQ) වෙත එක සැරේ යැවිය හැක.`,
+      `**Team Returns සහ Branch Returns (Sub-Site -> Parent Site / Regional -> Central HQ) එක සැරේ Return කරන ආකාරය:**\n\n` +
+      `• **1. Team එකක සිට Regional Site හෝ Sub-Site Branch එකට Return කිරීම ("Team Returns"):**\n` +
+      `  - වම් පස මෙනුවෙන් **"Team Returns"** වෙත ගොස් අදාළ **Receiving Site Branch** (Regional හෝ Sub-Site) සහ **Field Team** එක තෝරන්න (Transfer කළ Team එකක් නම් පරණ Site එකට අදාළ **"Stock to Return - [Site Name]"** බඩු ලැයිස්තුව පෙන්වයි).\n` +
+      `  - **"+ Add Item"** හෝ **"+ Add All Held"** මගින් භාණ්ඩ ගණනාවක් එකතු කර **Good / Damaged** තෝරා තනි **Return Voucher (RV)** එකකින් එක සැරේ Return කරන්න.\n\n` +
+      `• **2. Branch Returns (BRM) — ස්වයංක්‍රීය Upstream ගමන් මග:**\n` +
+      `  - **"Branch Returns"** වෙතින් Returning Site Branch එක තෝරන්න.\n` +
+      `  - **Regional Site Branch** එකක් නම් බඩු **Central Main Warehouse** වෙත ආපසු යයි. **Sub-Site Branch** එකක් නම් බඩු ස්වයංක්‍රීයව එහි **Parent Regional Site Branch** වෙත ආපසු යොමු වේ!\n` +
+      `  - **"+ Add Item"** හෝ **"+ Add All Available"** මගින් Items ගණනාවක් එකතු කර තනි **BRM Return Voucher** එකකින් ආපසු යැවිය හැක.`,
   },
   {
     id: 'procurement-po',
@@ -782,27 +881,27 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'team ekak hadanne',
     ],
     answerEn: (ctx) =>
-      `**How to Register Items, Branches, Field Teams, Suppliers, Clients & Users (Master Registrations):**\n\n` +
+      `**How to Register Items, 3-Tier Branches (Regional & Sub-Sites), Field Teams, Suppliers, Clients & Users:**\n\n` +
       `Open **Master Registrations** from the left sidebar and select the tab you need:\n` +
       `• **Items:** Register Materials or Machinery with Item Code, Unit, Unit Price, Low-Stock Threshold, and optional Project Reservation.\n` +
-      `• **Sites / Branches:** Add Branch Yards, location/contact details, and link a designated Branch Supervisor.\n` +
-      `• **Field Teams:** Register squads with Team Name, Team Leader Name & NIC, Assigned Site Base, and individual **Team Members** (Name, NIC/ID, Role, Phone).\n` +
+      `• **Sites / Branches (3-Tier Hierarchy · 20 Included + HQ):** Register **🏢 Regional Site Branches** (under Central HQ) or nested **↳ Sub-Site Branches** (under a Regional Site). Parent sites with active Sub-Sites cannot be deleted.\n` +
+      `• **Field Teams:** Register unlimited squads inside either a **Regional Site Branch** or a **Sub-Site Branch** with Team Leader Name & NIC, and individual **Team Members**.\n` +
       `• **Suppliers & Clients:** Maintain master directories for Procurement POs and Client FOC stock.\n` +
-      `• **Users:** Create staff accounts, assign Roles, and link one or more Branches.\n\n` +
+      `• **Users (Unlimited):** Create staff accounts, assign Roles, and link one or more Branches (with First-Name accountability on Super Admin password logins).\n\n` +
       `📌 *Workspace Summary:* **${ctx.activeItemsCount ?? 0}** Items · **${ctx.activeSitesCount ?? 0}** Branches · **${ctx.activeTeamsCount ?? 0}** Teams.`,
     answerSi: (ctx) =>
-      `**Master Registrations හරහා Items, Branches, Field Teams සහ Users ලියාපදිංචි කරන ආකාරය:**\n\n` +
+      `**Master Registrations හරහා Items, Regional/Sub-Site Branches, Field Teams සහ Users ලියාපදිංචි කරන ආකාරය:**\n\n` +
       `වම් පස මෙනුවෙන් **"Master Registrations"** වෙත ගොස් අදාළ ටැබ් එක තෝරන්න:\n` +
       `• **Items:** අලුත් Materials සහ Machinery ලියාපදිංචි කිරීමට.\n` +
-      `• **Sites / Branches:** අලුත් Branch Yards සහ Branch Supervisors ඇතුළත් කිරීමට.\n` +
-      `• **Teams:** Field Teams, Team Leader සහ **Team Members** (නම, NIC අංකය, Role, දුරකථන අංකය) ඇතුළත් කිරීමට.\n` +
-      `• **Users:** සිස්ටම් එකට ලොග් වන Users, ඔවුන්ගේ Role එක සහ Branch එක ලබාදීමට.\n\n` +
+      `• **Sites / Branches (මූලිකව 20ක් ඇතුළත්):** **🏢 Regional Site Branches** (Central HQ යටතේ) මෙන්ම අවශ්‍ය නම් **↳ Sub-Site Branches** (Regional Site එකක් යටතේ) ලියාපදිංචි කිරීමට.\n` +
+      `• **Teams (සීමා රහිතයි):** **Regional Site Branch** හෝ **Sub-Site Branch** දෙක තුළම සාමාන්‍ය පරිදි Field Teams, Team Leader සහ **Team Members** ඇතුළත් කිරීමට.\n` +
+      `• **Users (සීමා රහිතයි):** සිස්ටම් එකට ලොග් වන Users, Role එක සහ Branch එක ලබාදීමට.\n\n` +
       `📌 *දැනට පද්ධතියේ:* Items **${ctx.activeItemsCount ?? 0}**ක් · Branches **${ctx.activeSitesCount ?? 0}**ක් · Teams **${ctx.activeTeamsCount ?? 0}**ක් ඇත.`,
   },
   {
     id: 'users-roles-permissions',
     suggestedTab: 'manage-users',
-    keywords: ['role', 'permission', 'access', 'user', 'password', 'login', 'supervisor', 'storekeeper', 'admin', 'view as'],
+    keywords: ['role', 'permission', 'access', 'user', 'password', 'login', 'supervisor', 'storekeeper', 'admin', 'view as', 'first name', 'super admin'],
     phrases: [
       'what permissions',
       'my role',
@@ -811,20 +910,22 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'cannot see',
       'user kenek',
       'mage role',
+      'super admin login',
     ],
     answerEn: (ctx) =>
-      `**User Roles, Multi-Site Access & Permissions Guide:**\n\n` +
+      `**User Roles, Super Admin First-Name Accountability, Parent-Site Authority & Multi-Site Permissions:**\n\n` +
       `You are logged in as **${ctx.userName || 'User'}** with role **${ctx.userRole || 'Staff'}** (Branch: **${ctx.branchName || 'All Branches'}**).\n\n` +
-      `• **Super Admin Central:** Full access to all branches, Main Stock, Supplier POs, Master Registrations, User Management, Document Templates, Backups, Audit Trail, Recycle Bin, and **View-As User Preview Mode**.\n` +
-      `• **All Site Branch Admin:** Cross-branch operational access to Main Stock, Supplier POs, Requisitions, and all Branch Yards.\n` +
-      `• **Branch Admin:** Manages their assigned Branch Yard(s) — creates Stock Requisitions, confirms received transfers, issues stock to Field Teams, records Project Material Usage, and handles Team/Branch Returns.\n` +
-      `• **Branch System User:** Standard operational access for their assigned Branch Yard(s).`,
+      `• **Super Admin Central (First-Name Verified):** Full access across HQ, all Regional & Sub-Site branches, POs, Templates, Backups, Audit Trail, Recycle Bin, and **View-As Mode**. Tenant creation requires a real personal Full Name, and Super Admin password logins verify First Name and stamp actions as **[Name] (as Super Admin)**.\n` +
+      `• **All Site Branch Admin:** Cross-branch operational access to Main Stock, Supplier POs, Requisitions, and all Regional & Sub-Site Yards.\n` +
+      `• **Branch Admin (Parent Authority over Sub-Sites):** Manages their assigned Regional/Sub-Site Branch(es). A Parent Regional Branch Admin can also supply stock (**Issue Stock to Sub-Site**) and approve/reject Requisitions submitted by its child **Sub-Site Branches**.\n` +
+      `• **Branch System User:** Standard operational access for their assigned Regional or Sub-Site Branch(es).`,
     answerSi: (ctx) =>
-      `**User Roles සහ බලතල (Permissions) පිළිබඳ විස්තරය:**\n\n` +
+      `**User Roles, Super Admin First-Name වගකීම් පද්ධතිය සහ Parent-Site බලතල:**\n\n` +
       `ඔබ දැනට ලොග් වී සිටින්නේ **${ctx.userName || 'User'}** ලෙස **${ctx.userRole || 'Staff'}** තනතුරෙන් (Branch: **${ctx.branchName || 'All Branches'}**).\n\n` +
-      `• **Super Admin Central:** සියලුම Branches, Main Stock, Supplier PO, Master Registrations, User Management, Backups සහ Recycle Bin සඳහා සම්පූර්ණ බලතල ඇත.\n` +
+      `• **Super Admin Central (First-Name Verified):** සියලුම Regional/Sub-Site Branches, Main Stock, PO, Backups සහ Recycle Bin සඳහා පූර්ණ බලතල. නව ගිණුමේදී සැබෑ Full Name අනිවාර්ය වන අතර Super Admin Password මගින් ලොග් වීමේදී First Name ගැළපීම පරීක්ෂා කර **[නම] (as Super Admin)** ලෙස සටහන් වේ.\n` +
       `• **All Site Branch Admin:** සියලුම Branches සහ ප්‍රධාන ගබඩාවේ මෙහෙයුම් කටයුතු පාලනය කළ හැක.\n` +
-      `• **Branch Admin / Branch System User:** තමන්ට අදාළ Branch එකට බඩු ඉල්ලුම් කිරීම (Stock Requisitions), ලැබුණු බඩු භාරගැනීම, Teams වලට බඩු නිකුත් කිරීම සහ Project Usage සටහන් කිරීම සිදු කරයි.`,
+      `• **Branch Admin (Sub-Sites පාලනය සහිතයි):** තම Branch එකේ මෙහෙයුම් වලට අමතරව, Parent Regional Branch Admin කෙනෙකුට තමන් යටතේ ඇති **Sub-Site Branches** වෙත බඩු නිකුත් කිරීමට සහ Sub-Site Requisitions Approve කිරීමට හැකිය.\n` +
+      `• **Branch System User:** තමන්ට අදාළ Regional හෝ Sub-Site Branch එකේ වැඩ කටයුතු සිදු කරයි.`,
   },
   {
     id: 'recycle-bin-delete',
@@ -1143,14 +1244,14 @@ export function resolveSmartSystemSupportAnswer(
     return {
       suggestedTab: ctx.currentTab || 'dashboard',
       reply:
-        `**Apex Stock & Site Management System — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
+        `**ApexStox (Apex Stock) Enterprise — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
         `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන සහ නවතම කොටස්:\n` +
-        `1. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Completion Returnable Balance පිළිවෙළ, වර්ණ ගැන්වූ Main/Sub-Project Cards, Central Item/Project PDF Reports, Site Stock හි **"Central FOC"** Badge සහ **"ALL AREAS"** Projects.\n` +
-        `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** New Connection Section 4 සඳහාම Main Project යටතේ FOC කළමනාකරණය සහ Section අනුව Filter වන Dropdowns.\n` +
-        `3. **Master Registrations & PO/Return Item Images (<200KB):** Items (PO/Requisition/Return Dropdown වල Photo සමඟ), Branches, Teams (Transfer & Name Lock), Clients සහ Users.\n` +
+        `1. **3-Tier ගබඩා ව්‍යුහය (Central HQ -> Regional Site Branch -> Sub-Site Branch -> Field Teams):** Regional Site එකක් යටතේ Sub-Site Branches සෑදීම, **Site Branch Stock** හි **"Issue Stock to Sub-Site"** හෝ Parent-routed **Stock Requisitions**, upstream **Branch Returns (BRM)** සහ Tier දෙකේම **Field Teams** පාලනය.\n` +
+        `2. **Super Admin First-Name වගකීම් පද්ධතිය සහ Site 20 ධාරිතාව:** අනිවාර්ය Full Name ලියාපදිංචිය, First-Name ගැළපීම් පරීක්ෂාව (**[Name] (as Super Admin)**), සහ මූලික පැකේජයේ **Unlimited Users & Teams + Site Branches 20 + HQ** (+$10/mo අමතර Site).\n` +
+        `3. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Returnable Balance පිළිවෙළ, වර්ණ ගැන්වූ Main/Sub-Project Cards, **"Central FOC"** Badge, **"Main Project -> Under New Connections"**, සහ **"ALL AREAS"** Projects.\n` +
         `4. **Field Team Site Transfer & Site-Separated Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Old Site])"** සහ **"Stock to Return - [Site Name]"**.\n` +
         `5. **Material Usage & Multi-Item Returns (RV / BRM):** 1-2-3 Connection Flow, **Qty Used + Wastage Qty**, **Full Report for This Site**, සහ භාණ්ඩ කිහිපයක් එකවර Return කිරීම.\n` +
-        `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 Formats, Digital Signatures සහ පෑනෙන් අත්සන් තැබීමට ඉඩ තබන **"Off Digital Signature"** (Per-Print, Edit Signers හෝ Tab 3 Global Default) + **13.5px** පැහැදිලි වගු/වාර්තා අකුරු.\n` +
+        `6. **Document Templates & "Off Digital Signature":** ISO 9001:2015 Formats, Digital Signatures, පෑනෙන් අත්සන් තැබීමේ **"Off Digital Signature"** ක්‍රමය, සහ **13.5px** පැහැදිලි වගු/වාර්තා අකුරු.\n` +
         `7. **"Glass Tone" Live Themes 9 & Auto-Renew Subscriptions:** **"Sapphire & Gold"** Default ලෙස Header හි **"Glass Tone"** වෙතින් Theme 9ක් අතර මාරු වීම සහ Payments.lk / Stripe (USD → LKR) Subscriptions.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
@@ -1159,15 +1260,15 @@ export function resolveSmartSystemSupportAnswer(
   return {
     suggestedTab: ctx.currentTab || 'dashboard',
     reply:
-      `**Apex Stock & Site Management System — Complete Feature Guide:**\n\n` +
+      `**ApexStox (Apex Stock) Enterprise — Complete Feature Guide:**\n\n` +
       `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules & latest updates available:\n` +
-      `1. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central -> Site -> Team -> Usage & Wastage -> Returnable Balance), color-coded Main/Sub-Project cards, per-item & full-project Central Reports, **"Central FOC"** badge in Site Stock, and **"ALL AREAS"** projects.\n` +
-      `2. **Main Project -> Under New Connections (Telecom, Water, Electric, Solar):** Unified Main Project FOC hierarchy across all 4 utility sections with section-filtered FOC dropdowns.\n` +
-      `3. **Master Registrations & Item Photos (<200KB):** Register Items (thumbnails in PO/RV/BRM dropdowns + "Print with Image"), Branches, Teams (with Name Lock), Suppliers, Clients, and Users.\n` +
+      `1. **3-Tier Company Hierarchy (Central HQ -> Regional Site -> Optional Sub-Site -> Field Teams):** Nest **Sub-Site Branches** under Regional Sites, use **Issue Stock to Sub-Site** or parent-routed **Stock Requisitions (Parent Avl:)**, route Sub-Site **Branch Returns (BRM)** upstream to Parent Sites, and run **Field Teams** inside both tiers.\n` +
+      `2. **Super Admin First-Name Accountability & 20-Site Default Allowance:** Mandatory personal Full Name signup, First-Name check on Super Admin password logins stamped as **[Name] (as Super Admin)**, plus **Unlimited Users & Teams + 1 HQ + 20 Site Branches** (+$10/mo extra site).\n` +
+      `3. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central -> Site -> Team -> Usage & Wastage -> Returnable Balance), color-coded Main/Sub-Project cards, **"Central FOC"** badge, **"Main Project -> Under New Connections"**, and **"ALL AREAS"** projects.\n` +
       `4. **Field Team Site Transfer & Site-Separated In-Hand Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** and **"Stock to Return - [Previous Site Name]"**.\n` +
       `5. **Material Usage & Multi-Item Batch Returns (RV / BRM):** 1-2-3 Connection workflow, **Qty Used + Wastage Qty**, **Full Report for This Site (Project)**, and single-voucher batch returns.\n` +
-      `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 formats, Signers, Digital Signatures, plus **"Off Digital Signature"** (per-print toolbar, Edit Signers & Tab 3 default) for generous blank pen-signing & stamp boxes + crisp uniform **13.5px** table/report typography.\n` +
-      `7. **9 Live "Glass Tone" Themes ("Sapphire & Gold" Default) & Recurring Billing:** Switch themes live from Header **Glass Tone** (syncs Header, Sidebar & Canvas) and manage Payments.lk / Stripe auto-renewing card subscriptions with live **USD → LKR** rate conversion.\n\n` +
+      `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 formats, Signers, Digital Signatures, plus **"Off Digital Signature"** (per-print toolbar, Edit Signers & Tab 3 default) for generous blank pen-signing & stamp boxes.\n` +
+      `7. **9 Live "Glass Tone" Themes ("Sapphire & Gold" Default) & Recurring Billing:** Switch themes live from Header **Glass Tone** and manage Payments.lk / Stripe auto-renewing card subscriptions with live **USD → LKR** rate conversion.\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

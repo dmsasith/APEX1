@@ -39,6 +39,11 @@ import {
   isSuperAdmin,
   isCentralOrAllSiteAdmin,
   normalizeRole,
+  isSubSite,
+  getParentSite,
+  getChildSubSites,
+  sortSitesHierarchically,
+  formatSiteHierarchyLabel,
 } from '../../types';
 import { TeamTransferAndDetailsModal } from '../common/TeamTransferAndDetailsModal';
 import {
@@ -86,11 +91,13 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
     normalizeRole(currentUser.role) === 'Branch Admin' ||
     currentUser.username === 'admin';
 
+  const orderedActiveSites = useMemo(() => sortSitesHierarchically(activeSites), [activeSites]);
+
   // Filtered branches
   const filteredSites = useMemo(() => {
-    if (selectedSiteId === 'all') return activeSites;
-    return activeSites.filter((s) => s.id === selectedSiteId);
-  }, [activeSites, selectedSiteId]);
+    if (selectedSiteId === 'all') return orderedActiveSites;
+    return orderedActiveSites.filter((s) => s.id === selectedSiteId);
+  }, [orderedActiveSites, selectedSiteId]);
 
   // Search matching logic across Branch, Supervisor, Teams, Leader, and Members
   const searchLower = searchQuery.trim().toLowerCase();
@@ -180,11 +187,22 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
     const rows: Record<string, unknown>[] = [];
 
     branchData.forEach(({ site, teams, siteUsers, displaySupervisorName }) => {
+      const parentSiteObj = isSubSite(site) ? getParentSite(site, activeSites) : undefined;
+      const branchTypeLabel = site.isMainWarehouse
+        ? 'Main Warehouse / HQ'
+        : isSubSite(site)
+        ? 'Sub-Site Branch'
+        : 'Regional Site Branch';
+      const parentBranchLabel = site.isMainWarehouse
+        ? 'Central HQ'
+        : parentSiteObj?.name || site.parentSiteName || 'Main Warehouse';
+
       if (teams.length === 0) {
         rows.push({
           'Branch Name': site.name,
           'Branch Location': site.location,
-          'Branch Type': site.isMainWarehouse ? 'Main Warehouse / HQ' : 'Site Branch Yard',
+          'Branch Type': branchTypeLabel,
+          'Parent Branch': parentBranchLabel,
           'Supervisor / Manager': displaySupervisorName,
           'Supervisor Phone': site.contactNumber,
           'Assigned Staff Admins': siteUsers.map((u) => `${u.fullName} (${u.role})`).join('; ') || 'None',
@@ -201,7 +219,8 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
           rows.push({
             'Branch Name': site.name,
             'Branch Location': site.location,
-            'Branch Type': site.isMainWarehouse ? 'Main Warehouse / HQ' : 'Site Branch Yard',
+            'Branch Type': branchTypeLabel,
+            'Parent Branch': parentBranchLabel,
             'Supervisor / Manager': displaySupervisorName,
             'Supervisor Phone': site.contactNumber,
             'Assigned Staff Admins': siteUsers.map((u) => `${u.fullName} (${u.role})`).join('; ') || 'None',
@@ -219,7 +238,8 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               rows.push({
                 'Branch Name': site.name,
                 'Branch Location': site.location,
-                'Branch Type': site.isMainWarehouse ? 'Main Warehouse / HQ' : 'Site Branch Yard',
+                'Branch Type': branchTypeLabel,
+                'Parent Branch': parentBranchLabel,
                 'Supervisor / Manager': displaySupervisorName,
                 'Supervisor Phone': site.contactNumber,
                 'Assigned Staff Admins': siteUsers.map((u) => `${u.fullName} (${u.role})`).join('; ') || 'None',
@@ -376,12 +396,12 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               className="px-3 py-2 bg-slate-50 hover:bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent flex-1 max-w-md transition-all shadow-2xs"
             >
               <option value="all">🏢 All Branches & Yards (All Members)</option>
-              {activeSites.map((site) => {
+              {orderedActiveSites.map((site) => {
                 const teamCount = activeTeams.filter((t) => t.assignedSiteId === site.id).length;
                 return (
                   <option key={site.id} value={site.id}>
-                    {site.isMainWarehouse ? '⭐ ' : '📍 '}
-                    {site.name} ({site.location}) — {teamCount} team{teamCount !== 1 ? 's' : ''}
+                    {site.isMainWarehouse ? '⭐ ' : isSubSite(site) ? '' : '📍 '}
+                    {formatSiteHierarchyLabel(site, activeSites, true)} — {teamCount} team{teamCount !== 1 ? 's' : ''}
                   </option>
                 );
               })}
@@ -424,9 +444,10 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
           >
             All Branches ({activeSites.length})
           </button>
-          {activeSites.map((site) => {
+          {orderedActiveSites.map((site) => {
             const isSel = selectedSiteId === site.id;
             const teamsAtSite = activeTeams.filter((t) => t.assignedSiteId === site.id).length;
+            const subFlag = isSubSite(site);
             return (
               <button
                 key={site.id}
@@ -434,12 +455,16 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                 onClick={() => setSelectedSiteId(site.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 ${
                   isSel
-                    ? 'bg-emerald-700 text-white shadow-xs'
+                    ? subFlag
+                      ? 'bg-sky-700 text-white shadow-xs'
+                      : 'bg-emerald-700 text-white shadow-xs'
+                    : subFlag
+                    ? 'bg-sky-50 text-sky-900 border border-sky-200 hover:bg-sky-100'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
-                <span>{site.name}</span>
-                <span className={`px-1.5 py-0.2 rounded text-[10px] ${isSel ? 'bg-emerald-900 text-emerald-100' : 'bg-slate-200 text-slate-700'}`}>
+                <span>{subFlag ? `↳ ${site.name}` : site.name}</span>
+                <span className={`px-1.5 py-0.2 rounded text-[10px] ${isSel ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
                   {teamsAtSite}
                 </span>
               </button>
@@ -506,17 +531,28 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4 text-emerald-600" />
-                      <span>{site.name}</span>
+                      <Building2 className={`w-4 h-4 ${isSubSite(site) ? 'text-sky-600' : 'text-emerald-600'}`} />
+                      <span>{isSubSite(site) ? `↳ ${site.name}` : site.name}</span>
                     </span>
                     {site.isMainWarehouse ? (
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
                         Central Main Yard (HQ)
                       </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300">
-                        Operational Branch Yard
+                    ) : isSubSite(site) ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 text-sky-900 border border-sky-300">
+                        Sub-Site Branch (Under {getParentSite(site, activeSites)?.name || site.parentSiteName || 'Parent Branch'})
                       </span>
+                    ) : (
+                      <>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300">
+                          Regional Site Branch
+                        </span>
+                        {getChildSubSites(site.id, activeSites).length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                            {getChildSubSites(site.id, activeSites).length} Sub-Site(s)
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-600 flex-wrap">

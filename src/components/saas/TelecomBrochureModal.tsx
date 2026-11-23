@@ -50,8 +50,8 @@ export const TelecomBrochureModal: React.FC<TelecomBrochureModalProps> = ({ isOp
 
 මෙම පද්ධතියේ විශේෂත්වයන් කිහිපයක්:
 ✅ භාවිතයේ අතිශය පහසුව — සංකීර්ණ පුහුණුවකින් තොරව විනාඩි 10න් ක්‍රියාත්මක කළ හැක (සිංහල සහ ඉංග්‍රීසි AI Support Assistant සහිතයි).
-✅ Unlimited Users & Unlimited Field Teams + Central HQ Warehouse & ප්‍රාදේශීය Site Branches ${pricing.includedSiteBranches}ක් මූලික පැකේජයටම නොමිලේ! (අමතර Site Branch එකකට මසකට $${pricing.extraSiteMonthlyPriceClean}ක් පමණි).
-✅ Telecom FTTH & Client FOC Full Reconciliation — Client ලබා දෙන FOC (Drop Cable, ONT, Splitters, Poles) Main Store -> Branch -> Team -> Connection Usage & Wastage -> Returnable Balance දක්වා තනි Click එකෙන් A4/PDF Reports.
+✅ Unlimited Users & Unlimited Field Teams + Central HQ Warehouse & ප්‍රාදේශීය Site Branches ${pricing.includedSiteBranches}ක් මූලික පැකේජයටම නොමිලේ! (අවශ්‍ය නම් Regional Site යටතේ Sub-Site Branches සහ Field Teams සෑදිය හැක; අමතර Site එකකට $${pricing.extraSiteMonthlyPriceClean}/mo).
+✅ Telecom FTTH & Client FOC Full Reconciliation — Client ලබා දෙන FOC (Drop Cable, ONT, Splitters, Poles) Main Store -> Branch -> Sub-Site -> Team -> Connection Usage & Wastage -> Returnable Balance දක්වා තනි Click එකෙන් A4/PDF Reports.
 ✅ Team Transfers වලදී Stock පටලැවෙන්නේ නැත — පැරණි Site එකේ Stock ("Stock to Return") සහ අලුත් Site එකේ Stock වෙන් වෙන්ව පාලනය වේ.
 ✅ ඉතාම සාධාරණ මිල — මසකට $${pricing.monthlyPriceFormatted} (හෝ වාර්ෂිකව $${pricing.annualPriceClean}/yr — මසකට ~$${pricing.annualMonthlyEquivalentFormatted} ක් පමණයි!). අනෙකුත් විදේශීය Systems වලට වඩා 90%කට වඩා මුදල් ඉතිරියක්.
 
@@ -371,10 +371,10 @@ Apex Stock Platform (${OFFICIAL_SYSTEM_URL})`;
 
                       <div className="border border-slate-200 rounded-xl p-3 bg-white">
                         <div className="font-black text-slate-900 text-[12px] mb-1">
-                          3. Field Team Site Transfers (බඩු පටලැවීම 0%)
+                          3. Regional &rarr; Sub-Site Branches &amp; Team Transfers (0% පටලැවිල්ල)
                         </div>
                         <p className="text-slate-600 leading-relaxed">
-                          Team එකක් වෙනත් Site Branch එකකට මාරු කළ විට, පැරණි Site එකේ ඉතිරි Stock <strong>(&quot;Stock to Return&quot;)</strong> සහ අලුත් Site එකේ Active Stock වෙන් වෙන්ව පෙන්වයි. Team Name එක Stock issue කළ පසු Lock වන නිසා Audit ගැටලු ඇති නොවේ.
+                          Regional Site Branch එකක් යටතේ අවශ්‍ය නම් <strong>Sub-Site Branches</strong> සාදා Regional Site මගින් බඩු නිකුත් කර, Tiers දෙකේම Teams පාලනය කළ හැක. Team Transfer වලදී <strong>(&quot;Stock to Return&quot;)</strong> සහ අලුත් Site Stock වෙන් වෙන්ව පෙන්වයි.
                         </p>
                       </div>
 

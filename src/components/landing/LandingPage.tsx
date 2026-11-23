@@ -170,11 +170,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       icon: Warehouse,
       badge: 'Warehousing & Supply',
       title: 'Multi-Branch Hardware & Central Distributors',
-      subtitle: 'Central Distribution Hubs & Regional Branch Stores',
-      desc: 'Operate a Central HQ Warehouse that supplies multiple regional branches. Branch supervisors only access and manage their own assigned branch stock with strict security locks.',
+      subtitle: 'Central HQ, Regional Hubs & Optional Sub-Site Stores',
+      desc: 'Operate a Central HQ Warehouse that supplies up to 20 included Regional & nested Sub-Site Branches (+$10/mo extra site). Parent branches supply Sub-Sites directly while branch staff stay securely locked.',
       features: [
-        'Branch-Locked Supervisor Access',
-        'Automated Low-Stock Threshold Alerts',
+        'Central -> Regional -> Sub-Site Hierarchy',
+        'Automated Low-Stock Priority Requisitions',
         'Official Printable Dispatch & Gate Passes',
       ],
     },
@@ -210,12 +210,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       a: 'Across Telecom, Water, Electrical, and Solar sections, you can register a Main Project and nest New Connections underneath it. When recording Daily Progress, only FOC stock allocated to that active section appears in the FOC dropdown—zero cross-section confusion. Plus, selecting "🌐 ALL AREAS (All Site Branches)" on a Project lets any site branch request and consume that project’s FOC stock with consolidated cross-branch reporting.',
     },
     {
+      q: 'How does the 3-Tier Hierarchy (Central HQ -> Regional Site -> Optional Sub-Site -> Teams) work?',
+      a: 'Under your Central Main Warehouse, you can register Regional Site Branches and optionally nest Sub-Site Branches underneath any Regional Site. Field Teams can be created and managed inside BOTH Regional Site Branches and Sub-Site Branches normally. Parent Regional Branches supply child Sub-Sites either directly via "Issue Stock to Sub-Site" in Site Branch Stock or by approving Stock Requisitions routed upstream from the Sub-Site ("Parent Avl:" live balances), and Sub-Site Branch Returns (BRM) route upstream back to the Parent Regional Site.',
+    },
+    {
+      q: 'How does Super Admin First-Name Accountability Login work?',
+      a: 'During workspace registration, entering the Super Admin’s real Personal Full Name is mandatory (generic labels like "Admin" or "Super Admin" are rejected). Whenever someone logs in using the Super Admin password, they enter their personal name—the system verifies their First Name against the registered Super Admin profile and stamps every Audit Trail entry and Voucher as "[Name] (as Super Admin)" for clear individual accountability.',
+    },
+    {
       q: 'How is our company data kept separate from other clients (Multi-Tenant Security)?',
-      a: 'Apex Stock runs on a strict multi-tenant cloud architecture on Firebase. Each registered company receives an isolated cryptographic tenant partition (tenantId). Company A can never view, search, or access Company B records.',
+      a: 'ApexStox runs on a strict multi-tenant cloud architecture on Firebase. Each registered company receives an isolated cryptographic tenant partition (tenantId). Company A can never view, search, or access Company B records.',
     },
     {
       q: 'Can site branch supervisors view or issue materials from other branches?',
-      a: 'No. When you create a user account assigned to a specific Site Branch, their workspace automatically locks to that branch. They can only request Normal stock or their branch’s / ALL AREAS FOC projects from Central HQ, manage their own branch inventory, and issue items to field teams under their branch.',
+      a: 'No. When you create a user account assigned to a specific Regional or Sub-Site Branch, their workspace locks to that branch (and Parent Regional Branch Admins hold oversight to supply and approve requisitions for their own nested Sub-Site Branches only).',
     },
     {
       q: 'Can we import our existing inventory catalog from Excel and back up our data?',
@@ -274,8 +282,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'pricing',
       categoryLabel: 'Pricing & Scale',
-      feature: `Regional Site Branches & Yards (${pricingMetrics.includedSiteBranches} Included + Expandable)`,
-      detail: `Includes 1 Central HQ Warehouse + ${pricingMetrics.includedSiteBranches} Regional Site Branches with full RBAC & real-time sync. Need more? Unlock extra site branches anytime for just +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo each.`,
+      feature: `3-Tier Regional & Sub-Site Branches (${pricingMetrics.includedSiteBranches} Included + Expandable)`,
+      detail: `Includes 1 Central HQ Warehouse + ${pricingMetrics.includedSiteBranches} Regional & Optional Nested Sub-Site Branches with full RBAC & real-time sync. Need more? Add extra site branches anytime for just +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo each.`,
       apex: `✓ ${pricingMetrics.includedSiteBranches} Sites + HQ Included (+$${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site)`,
       sortly: '✕ Folder-based only (No branch RBAC)',
       zoho: '✕ Limited warehouses per tier (Extra locations paid)',
@@ -435,6 +443,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       zoho: '✕ Designed for customers, not field crews',
       inflowCin7: '✕ No crew custody balance',
       legacyErp: '✕ Requires custom sub-warehouse per crew',
+    },
+    {
+      category: 'field',
+      categoryLabel: 'Site & Field Crews',
+      feature: '3-Tier Hierarchy: Central HQ -> Regional Branch -> Sub-Site Branch -> Field Teams',
+      detail: 'Nest Sub-Site Branches under any Regional Site; supply via direct "Issue Stock to Sub-Site" or parent-routed Requisitions ("Parent Avl:"), run Field Teams in both tiers & route Sub-Site BRM returns upstream to the Parent Site.',
+      isSpecialHighlight: true,
+      apex: '✓ Full 3-Tier Sub-Site & Team Routing',
+      sortly: '✕ Basic folders (No dispatch chain)',
+      zoho: '✕ Flat warehouses only',
+      inflowCin7: '✕ Flat locations only (No team tier)',
+      legacyErp: '◐ Requires complex ERP sub-org config',
     },
     {
       category: 'field',
@@ -677,6 +697,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'security',
       categoryLabel: 'ISO Formats & Security',
+      feature: 'Super Admin Mandatory Full Name, First-Name Login Check & "(as Super Admin)" Audit',
+      detail: 'Requires real Personal Full Name on workspace registration and verifies First Name on every Super Admin password login, stamping all Audit Trail logs & Vouchers as "[Name] (as Super Admin)".',
+      isSpecialHighlight: true,
+      apex: '✓ First-Name Verified Personal Audit',
+      sortly: '✕ Shared generic admin login',
+      zoho: '✕ Generic admin account only',
+      inflowCin7: '✕ Generic admin login',
+      legacyErp: '◐ Paid SSO/IAM audit add-on',
+    },
+    {
+      category: 'security',
+      categoryLabel: 'ISO Formats & Security',
       feature: '1-Click JSON Offline Backup Viewer, Admin View-As Mode & Bilingual (EN/SI) Help',
       detail: 'Export/inspect full JSON backups offline, preview the workspace as any staff user (View-As Mode), and access built-in English & Sinhala User Guides + 24/7 AI Chat Support.',
       isSpecialHighlight: true,
@@ -694,6 +726,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       : comparisonRows.filter((r) => r.category === comparisonCategory);
 
   const microFeaturesSpotlight = [
+    {
+      title: '3-Tier Branches: Central HQ -> Regional -> Optional Sub-Site',
+      desc: 'Nest Sub-Site Branches under Regional Sites with Field Teams in both tiers, direct "Issue Stock to Sub-Site" dispatch, parent-routed Requisitions ("Parent Avl:") & upstream Sub-Site returns.',
+    },
+    {
+      title: 'Super Admin First-Name Verified Login & Personal Audit',
+      desc: 'Mandatory real Full Name on signup and First-Name verification on every Super Admin password login—stamping vouchers & audit trails as "[Name] (as Super Admin)".',
+    },
     {
       title: '5-Stage Client FOC Reconciliation & Color-Coded Project Cards',
       desc: 'Tracks 1. Central Receipt -> 2. Site Issue -> 3. Team Issue -> 4. Usage & Wastage -> 5. Client Returnable Balance with distinct Main Project cards & per-Sub-Project flows.',
@@ -723,24 +763,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       desc: 'Never sums transferred team stock across sites—old-site items stay under "Stock to Return - [Old Site]" and cannot be consumed on new-site projects.',
     },
     {
-      title: 'Multi-Item Batch Team (RV) & Branch Returns (BRM)',
-      desc: 'Add multiple items at once ("+ Add Item" / "+ Add All Held") with Good/Damaged conditions and return the entire batch on a single shared voucher.',
+      title: 'Multi-Item Batch RV/BRM Returns & Item Dropdown Photos',
+      desc: 'Add multiple items at once ("+ Add Item" / "+ Add All"), view <200KB item thumbnails inside PO & Return dropdowns, and toggle "Print with Image".',
     },
     {
-      title: 'Item Thumbnails in PO & Return Dropdowns + "Print with Image"',
-      desc: 'View item photos directly inside Purchase Order (PO), Team/Branch Return (RV/BRM) & Requisition dropdowns (<200KB auto-compress) and toggle "Print with Image".',
+      title: 'Auto Low-Stock Priority Requisitions & Team-Locked 1-2-3 Usage',
+      desc: 'Low-stock items float to the top of requisitions with live "Site Avl:" / "Parent Avl:" / "Main:" balances, while 1-2-3 Usage locks Team & Area until refresh.',
     },
     {
-      title: '3-Step Connection Progress with Session-Locked Team',
-      desc: 'Locks Field Team & Working Area until page refresh so supervisors can enter 20+ daily Telecom/Water/Electric/Solar connections without re-selecting the team.',
-    },
-    {
-      title: 'Auto Low-Stock Top Sorting in Requisitions',
-      desc: 'Items running low at a requesting site automatically jump to the top of the requisition list with live "Site Avl:" and "Main:" balances.',
-    },
-    {
-      title: 'Single-Shot Barcode Scan ("Scan Now") & Admin Delete Gate',
-      desc: 'Camera scanner detects once and auto-hides to prevent duplicates, while every delete action across the system requires Admin Password verification.',
+      title: '"Off Digital Signature" Hand-Sign Mode & 9 Glass Tone Themes',
+      desc: 'Switch live across 9 Apple Liquid Glass themes ("Sapphire & Gold" default) and toggle "Off Digital Signature" on any voucher/report for wet-ink pen signing & stamping.',
     },
   ];
 
@@ -967,7 +999,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <p className="relative z-10 mt-3.5 sm:mt-5 text-xs sm:text-base lg:text-lg text-slate-200/95 max-w-3xl mx-auto leading-relaxed font-medium">
                   Stop losing track of construction materials, tools, and site stock across spreadsheets. Manage your{' '}
                   <strong className="text-white font-bold">Central Warehouse</strong>,{' '}
-                  <strong className="text-white font-bold">Regional Site Branches</strong>,{' '}
+                  <strong className="text-white font-bold">Regional &amp; Sub-Site Branches</strong>,{' '}
                   <strong className="text-amber-300 font-bold">Client-Supplied Free Materials</strong>,{' '}
                   <strong className="text-white font-bold">Heavy Machinery Fleets</strong>, and{' '}
                   <strong className="text-white font-bold">Daily Crew Dispatches</strong> in one real-time cloud workspace.
@@ -1015,7 +1047,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-snug">
-                          Included free (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo per extra site)
+                          Regional &amp; Sub-Site hierarchy (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra)
                         </p>
                       </div>
                     </div>
@@ -1391,14 +1423,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     desc: 'Receive Supplier Purchase Orders (GRN) or log Client-Supplied Free Materials into your Central Warehouse.',
                   },
                   {
-                    step: '02. Regional Transfers',
-                    title: 'Branch Site Requisitions',
-                    desc: 'Regional Site Yards request materials; Central HQ dispatches stock with smart shortage verification.',
+                    step: '02. 3-Tier Distribution',
+                    title: 'Regional & Sub-Site Branches',
+                    desc: 'Central HQ supplies Regional Site Yards, which can create optional Sub-Site Branches via "Issue Stock to Sub-Site" or parent-routed requests.',
                   },
                   {
                     step: '03. Field Dispatch',
-                    title: 'Field Crew Issuance',
-                    desc: 'Site Supervisors issue materials & machinery to Field Crews with official numbered Issue Notes.',
+                    title: 'Teams in Regional & Sub-Sites',
+                    desc: 'Both Regional and Sub-Site managers run unlimited Field Teams, issue materials & tools (IN), and log site-separated crew custody.',
                   },
                   {
                     step: '04. Site Audit',
@@ -1467,10 +1499,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <Send className="w-5 h-5" />
                   </div>
                   <h3 className="font-extrabold text-base text-white">
-                    Inter-Branch Requisitions & Shortage Review
+                    3-Tier Sub-Site Dispatch, Requisitions &amp; Upstream Returns
                   </h3>
                   <p className="text-xs text-slate-300 mt-2 leading-relaxed font-medium">
-                    Site yards request stock from Central HQ. Central logistics officers review live warehouse balances with 1-click &ldquo;Send Available Only&rdquo; or shortage adjustments.
+                    Regional yards supply nested Sub-Site Branches via direct &ldquo;Issue Stock to Sub-Site&rdquo; or approve parent-routed Requisitions (&ldquo;Parent Avl:&rdquo;), while Sub-Site Returns route upstream cleanly to their Parent Branch.
                   </p>
                 </div>
 
@@ -1565,9 +1597,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                           <CheckCheck className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="text-xs sm:text-sm font-bold text-white">Branch-Level Site Yard Locks</h4>
+                          <h4 className="text-xs sm:text-sm font-bold text-white">3-Tier Regional &amp; Sub-Site Branch Locks</h4>
                           <p className="text-[11px] sm:text-xs text-slate-300">
-                            Branch supervisors are automatically restricted to their assigned site yard with zero access to other branches.
+                            Supervisors stay locked to their assigned Regional or Sub-Site branch, while Parent Regional Admins can dispatch to and approve requests from their own nested Sub-Sites.
                           </p>
                         </div>
                       </div>
@@ -1577,9 +1609,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                           <CheckCheck className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="text-xs sm:text-sm font-bold text-white">Safe Flush & 1-Click JSON Backups</h4>
+                          <h4 className="text-xs sm:text-sm font-bold text-white">First-Name Super Admin Accountability &amp; 1-Click Backups</h4>
                           <p className="text-[11px] sm:text-xs text-slate-300">
-                            Export full JSON backups anytime. Even when flushing stock transactions, your tenant account and user logins remain safe.
+                            Enforces mandatory Super Admin Full Name + First-Name login checks (&ldquo;as Super Admin&rdquo; audit stamps), Admin-password deletion gates, and instant JSON offline backups.
                           </p>
                         </div>
                       </div>

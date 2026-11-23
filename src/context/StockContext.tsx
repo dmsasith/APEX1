@@ -52,6 +52,10 @@ import {
   normalizeRole,
   isUserAllSites,
   getUserAssignedSiteIds,
+  isSubSite,
+  isRegionalSiteBranch,
+  getParentSite,
+  RequestPriority,
   TeamSiteAssignmentHistoryRecord,
   TeamSiteStockBreakdown,
   ReturnCondition,
@@ -406,6 +410,19 @@ interface StockContextType {
   createStockRequest: (
     data: Omit<StockTransferRequest, 'id' | 'requestNoteNumber' | 'status' | 'requestedDate' | 'requestedBy'>
   ) => StockTransferRequest;
+  issueStockToSubSite: (data: {
+    sourceSiteId: string;
+    subSiteId: string;
+    items: Array<{ itemId: string; quantity: number }>;
+    purpose?: string;
+    priority?: RequestPriority;
+    autoAccept?: boolean;
+    requestCategory?: 'normal' | 'foc';
+    focProjectId?: string;
+    focProjectCode?: string;
+    focProjectName?: string;
+    focClientName?: string;
+  }) => StockTransferRequest;
   approveStockRequest: (
     requestId: string,
     approvedItems: Array<{ itemId: string; approvedQty: number }>,
@@ -516,7 +533,7 @@ interface StockContextType {
     }>;
   }>;
 
-  // Branch Stock Return (To Main Yard)
+  // Branch Stock Return (To Main Yard or Parent Site Branch)
   returnStockFromBranchToMain: (
     data: Omit<BranchReturn, 'id' | 'branchReturnNumber' | 'returnDate' | 'returnedBy'>
   ) => BranchReturn;
@@ -525,6 +542,8 @@ interface StockContextType {
     siteName?: string;
     fromSiteId?: string;
     fromSiteName?: string;
+    toSiteId?: string;
+    toSiteName?: string;
     reason: string;
     items: Array<{ itemId: string; quantity: number; condition: ReturnCondition }>;
   }) => BranchReturn[];
@@ -570,7 +589,9 @@ interface StockContextType {
     normalReceived: number;
     focReceived: number;
     returned: number;
+    returnedFromSubSitesGood: number;
     issued: number;
+    issuedToSubSites: number;
     availableBalance: number;
     threshold: number;
     isLowStock: boolean;
@@ -5086,6 +5107,20 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
+    // Validate optional Parent Regional Site Branch for Sub-Site creation
+    let resolvedParentSiteId: string | undefined = undefined;
+    let resolvedParentSiteName: string | undefined = undefined;
+    if (!siteData.isMainWarehouse && siteData.parentSiteId && siteData.parentSiteId.trim() !== '') {
+      const parentSite = sites.find((s) => !s.isDeleted && s.id === siteData.parentSiteId);
+      if (!parentSite || !isRegionalSiteBranch(parentSite)) {
+        throw new Error(
+          'INVALID_PARENT_SITE: A Sub-Site Branch must belong to an active Regional Site Branch.'
+        );
+      }
+      resolvedParentSiteId = parentSite.id;
+      resolvedParentSiteName = parentSite.name;
+    }
+
     const normSupName = (siteData.supervisorName || '').trim().toLowerCase();
     const matchedSup = users.find(
       (u) =>
@@ -5096,6 +5131,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const newSite: Site = {
       ...siteData,
+      parentSiteId: resolvedParentSiteId,
+      parentSiteName: resolvedParentSiteName,
       supervisorName: matchedSup ? matchedSup.fullName : siteData.supervisorName,
       supervisorUserId: matchedSup ? matchedSup.id : '',
       id: `site-${Date.now()}`,
@@ -5158,7 +5195,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     }
 
-    addAuditLog('MASTER_SITE_CREATED', newSite.name, newSite.name, `New site registered: ${newSite.name} (${newSite.location})`);
+    addAuditLog(
+      'MASTER_SITE_CREATED',
+      newSite.name,
+      newSite.name,
+      resolvedParentSiteName
+        ? `New Sub-Site registered under ${resolvedParentSiteName}: ${newSite.name} (${newSite.location})`
+        : `New site registered: ${newSite.name} (${newSite.location})`
+    );
     return newSite;
   };
 
@@ -5698,17 +5742,61 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         )
       : undefined;
 
+    // Validate & sync optional parentSiteId on update
+    let nextParentSiteId = updates.parentSiteId !== undefined ? updates.parentSiteId : oldSite?.parentSiteId;
+    let nextParentSiteName = updates.parentSiteName !== undefined ? updates.parentSiteName : oldSite?.parentSiteName;
+
+    if (oldSite?.isMainWarehouse || updates.isMainWarehouse) {
+      nextParentSiteId = undefined;
+      nextParentSiteName = undefined;
+    } else if (nextParentSiteId && nextParentSiteId.trim() !== '') {
+      if (nextParentSiteId === id) {
+        throw new Error('INVALID_PARENT_SITE: A site branch cannot be its own parent.');
+      }
+      const hasActiveChildren = sites.some((s) => !s.isDeleted && s.parentSiteId === id);
+      if (hasActiveChildren) {
+        throw new Error(
+          'INVALID_PARENT_SITE: This Regional Site Branch currently has active Sub-Sites under it and cannot become a Sub-Site itself.'
+        );
+      }
+      const parentObj = sites.find((s) => !s.isDeleted && s.id === nextParentSiteId);
+      if (!parentObj || !isRegionalSiteBranch(parentObj)) {
+        throw new Error(
+          'INVALID_PARENT_SITE: Sub-Site parent must be an active Regional Site Branch.'
+        );
+      }
+      nextParentSiteId = parentObj.id;
+      nextParentSiteName = parentObj.name;
+    } else {
+      nextParentSiteId = undefined;
+      nextParentSiteName = undefined;
+    }
+
     const finalSiteUpdates: Partial<Site> = {
       ...updates,
+      parentSiteId: nextParentSiteId,
+      parentSiteName: nextParentSiteName,
       supervisorName: matchedNewSup ? matchedNewSup.fullName : nextSupName,
       supervisorUserId: matchedNewSup ? matchedNewSup.id : '',
       updatedAt: nowIso,
     };
 
-    const nextSitesSnapshot = sites.map((s) => (s.id === id ? { ...s, ...finalSiteUpdates } : s));
+    const nextSitesSnapshot = sites.map((s) => {
+      if (s.id === id) return { ...s, ...finalSiteUpdates };
+      if (s.parentSiteId === id && updates.name) {
+        return { ...s, parentSiteName: updates.name, updatedAt: nowIso };
+      }
+      return s;
+    });
 
     setSites((prev) => {
-      const updated = prev.map((s) => (s.id === id ? { ...s, ...finalSiteUpdates } : s));
+      const updated = prev.map((s) => {
+        if (s.id === id) return { ...s, ...finalSiteUpdates };
+        if (s.parentSiteId === id && updates.name) {
+          return { ...s, parentSiteName: updates.name, updatedAt: nowIso };
+        }
+        return s;
+      });
       saveTenantData(activeTenantId, 'sites', updated);
       if (isMaster) {
         writeSitesToFirebase(updated).catch(console.warn);
@@ -6934,6 +7022,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
 
+    const activeChildSubSites = sites.filter((s) => !s.isDeleted && s.parentSiteId === id);
+    if (activeChildSubSites.length > 0) {
+      const targetSite = sites.find((s) => s.id === id);
+      throw new Error(
+        `SUBSITES_EXIST: Cannot archive "${targetSite?.name || 'Site Branch'}" while ${activeChildSubSites.length} active Sub-Site Branch(es) depend on it. Archive or reassign those Sub-Sites first.`
+      );
+    }
+
     setSites((prev) => {
       const updated = prev.map((s) =>
         s.id === id ? { ...s, isDeleted: true, deletedAt: timestamp, deletedBy, updatedAt: timestamp } : s
@@ -7804,8 +7900,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nextNum = stockRequests.length + 1;
     const requestNoteNumber = `RN-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
     const nowIso = new Date().toISOString();
+    const targetSite = sites.find((s) => s.id === data.siteId);
+    const parentSite = targetSite && isSubSite(targetSite) ? getParentSite(targetSite, sites) : undefined;
+    const mainSite = sites.find((s) => s.isMainWarehouse);
+
+    const resolvedSourceSiteId =
+      data.sourceSiteId || (parentSite ? parentSite.id : mainSite?.id);
+    const resolvedSourceSiteName =
+      data.sourceSiteName ||
+      (parentSite
+        ? parentSite.name
+        : targetSite && isSubSite(targetSite)
+        ? targetSite.parentSiteName || 'Parent Site Branch'
+        : mainSite?.name || 'Main Central Warehouse');
+
     const newRequest: StockTransferRequest = {
       ...data,
+      sourceSiteId: resolvedSourceSiteId,
+      sourceSiteName: resolvedSourceSiteName,
       id: `req-${Date.now()}`,
       requestNoteNumber,
       status: 'Pending Approval',
@@ -7820,14 +7932,118 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       writeStockRequestsToFirebase(nextRequests).catch(() => {});
     }
 
-    const site = sites.find((s) => s.id === newRequest.siteId);
     addAuditLog(
       'SITE_REQUEST_CREATED',
       requestNoteNumber,
-      site?.name || 'Site',
-      `Submitted requirement for ${newRequest.items.length} item line(s). Purpose: ${newRequest.purpose}`
+      targetSite?.name || 'Site',
+      parentSite
+        ? `Sub-Site submitted requisition to Parent Site Branch [${resolvedSourceSiteName}] for ${newRequest.items.length} item line(s). Purpose: ${newRequest.purpose}`
+        : `Submitted requirement for ${newRequest.items.length} item line(s). Purpose: ${newRequest.purpose}`
     );
     return newRequest;
+  };
+
+  // Direct Issue from Regional Site Branch -> Child Sub-Site Branch
+  const issueStockToSubSite = (data: {
+    sourceSiteId: string;
+    subSiteId: string;
+    items: Array<{ itemId: string; quantity: number }>;
+    purpose?: string;
+    priority?: RequestPriority;
+    autoAccept?: boolean;
+    requestCategory?: 'normal' | 'foc';
+    focProjectId?: string;
+    focProjectCode?: string;
+    focProjectName?: string;
+    focClientName?: string;
+  }): StockTransferRequest => {
+    const sourceSite = sites.find((s) => !s.isDeleted && s.id === data.sourceSiteId);
+    const subSite = sites.find((s) => !s.isDeleted && s.id === data.subSiteId);
+    if (!sourceSite || sourceSite.isMainWarehouse) {
+      throw new Error('Invalid Parent Regional Site Branch selected for Sub-Site issue.');
+    }
+    if (!subSite || subSite.parentSiteId !== sourceSite.id) {
+      throw new Error('Selected destination is not an active Sub-Site of this Regional Site Branch.');
+    }
+
+    const validRows = (data.items || []).filter((r) => r.itemId && Number(r.quantity) > 0);
+    if (validRows.length === 0) {
+      throw new Error('Please add at least one item with a valid issue quantity greater than zero.');
+    }
+
+    // Aggregate quantities per itemId and verify Parent Regional Branch stock balance
+    const totalsByItem = new Map<string, number>();
+    for (const row of validRows) {
+      totalsByItem.set(row.itemId, (totalsByItem.get(row.itemId) || 0) + Number(row.quantity));
+    }
+
+    for (const [itmId, totalQty] of totalsByItem.entries()) {
+      const parentStk = getSiteItemStock(sourceSite.id, itmId);
+      if (parentStk.availableBalance < totalQty) {
+        const itmObj = items.find((i) => i.id === itmId);
+        throw new Error(
+          `Insufficient stock at ${sourceSite.name} for "${itmObj?.itemName || itmId}". Requested: ${totalQty} ${itmObj?.unit || 'units'}, Available: ${parentStk.availableBalance} ${itmObj?.unit || 'units'}.`
+        );
+      }
+    }
+
+    const nextNum = stockRequests.length + 1;
+    const requestNoteNumber = `RN-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
+    const nowIso = new Date().toISOString();
+    const consolidatedItems = Array.from(totalsByItem.entries()).map(([itemId, qty]) => ({
+      itemId,
+      requestedQty: qty,
+      approvedQty: qty,
+      receivedQty: qty,
+    }));
+
+    const isAutoAccepted = Boolean(data.autoAccept);
+    const newTransfer: StockTransferRequest = {
+      id: `req-${Date.now()}`,
+      requestNoteNumber,
+      siteId: subSite.id,
+      sourceSiteId: sourceSite.id,
+      sourceSiteName: sourceSite.name,
+      requestedBy: actorDisplayName,
+      requestedDate: nowIso,
+      approvalDate: nowIso,
+      approvedBy: actorDisplayName,
+      approvalNotes: `Direct issue from Parent Branch (${sourceSite.name}) to Sub-Site (${subSite.name}).`,
+      ...(isAutoAccepted
+        ? {
+            acceptanceDate: nowIso,
+            acceptedBy: actorDisplayName,
+            acceptanceNotes: 'Auto-accepted into Sub-Site yard on direct branch issue.',
+          }
+        : {}),
+      updatedAt: nowIso,
+      status: isAutoAccepted ? 'Accepted' : 'Approved / In-Transit',
+      priority: data.priority || 'Normal',
+      purpose: data.purpose?.trim() || `Direct Sub-Site issue from ${sourceSite.name}`,
+      requestCategory: data.requestCategory || 'normal',
+      focProjectId: data.focProjectId,
+      focProjectCode: data.focProjectCode,
+      focProjectName: data.focProjectName,
+      focClientName: data.focClientName,
+      items: consolidatedItems,
+    };
+
+    const nextRequests = [newTransfer, ...stockRequests];
+    setStockRequests(nextRequests);
+    saveTenantData(currentTenantIdRef.current, 'stockRequests', nextRequests);
+    if (isMasterWorkspaceActive()) {
+      writeStockRequestsToFirebase(nextRequests).catch(() => {});
+    }
+
+    const totalQty = consolidatedItems.reduce((sum, i) => sum + i.requestedQty, 0);
+    addAuditLog(
+      'DIRECT_SUBSITE_ISSUE',
+      requestNoteNumber,
+      subSite.name,
+      `Parent Site Branch [${sourceSite.name}] directly issued ${totalQty} unit(s) across ${consolidatedItems.length} item(s) to Sub-Site [${subSite.name}] (${newTransfer.status}).`
+    );
+
+    return newTransfer;
   };
 
   const approveStockRequest = (
@@ -7869,16 +8085,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const targetReq = stockRequests.find((r) => r.id === requestId);
     const site = sites.find((s) => s.id === targetReq?.siteId);
+    const sourceSite = targetReq?.sourceSiteId ? sites.find((s) => s.id === targetReq.sourceSiteId) : undefined;
+    const isParentBranchSupply = Boolean(sourceSite && !sourceSite.isMainWarehouse);
     addAuditLog(
       'SITE_REQUEST_APPROVED',
       targetReq?.requestNoteNumber || 'RN-REQ',
       site?.name || 'Site',
-      `Main Branch approved transfer request. Stock deducted from Central Pool and allocated to ${site?.name || 'Site'}.`
+      isParentBranchSupply
+        ? `Parent Branch (${sourceSite?.name}) approved Sub-Site transfer request. Stock deducted from ${sourceSite?.name} and allocated to ${site?.name || 'Sub-Site'}.`
+        : `Main Branch approved transfer request. Stock deducted from Central Pool and allocated to ${site?.name || 'Site'}.`
     );
   };
 
   const rejectStockRequest = (requestId: string, notes?: string) => {
     const nowIso = new Date().toISOString();
+    const targetReq = stockRequests.find((r) => r.id === requestId);
+    const sourceSite = targetReq?.sourceSiteId ? sites.find((s) => s.id === targetReq.sourceSiteId) : undefined;
+    const isParentBranchSupply = Boolean(sourceSite && !sourceSite.isMainWarehouse);
+
     setStockRequests((prev) => {
       const next = prev.map((req) => {
         if (req.id !== requestId) return req;
@@ -7888,7 +8112,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           approvalDate: nowIso,
           updatedAt: nowIso,
           approvedBy: actorDisplayName,
-          approvalNotes: notes || 'Rejected by Main Branch Admin',
+          approvalNotes: notes || (isParentBranchSupply ? `Rejected by ${sourceSite?.name || 'Parent Site Branch'}` : 'Rejected by Main Branch Admin'),
         };
       });
       setTimeout(() => {
@@ -7900,13 +8124,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return next;
     });
 
-    const targetReq = stockRequests.find((r) => r.id === requestId);
     const site = sites.find((s) => s.id === targetReq?.siteId);
     addAuditLog(
       'SITE_REQUEST_REJECTED',
       targetReq?.requestNoteNumber || 'RN-REQ',
       site?.name || 'Site',
-      `Main Branch rejected transfer request. Reason: ${notes || 'No reason provided'}`
+      `${isParentBranchSupply ? `Parent Branch (${sourceSite?.name})` : 'Main Branch'} rejected transfer request. Reason: ${notes || 'No reason provided'}`
     );
   };
 
@@ -8505,6 +8728,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const dispatchedToSites = stockRequests
       .filter((req) => {
         if (req.status !== 'Approved / In-Transit' && req.status !== 'Accepted') return false;
+        // Sub-site transfers sourced from a Regional Parent Site Branch do NOT deduct from Central FOC HQ pool again
+        if (req.sourceSiteId && !mainWarehouseSiteIdsSet.has(req.sourceSiteId)) return false;
         const hasItem = req.items.some((i) => i.itemId === itemId);
         if (!hasItem) return false;
 
@@ -8777,7 +9002,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditLog('RECORD_DELETED', 'CLEAR-USAGES', 'Project Office', `Cleared all ${count} project material usage records.`);
   };
 
-  // Operational Workflows: Branch Stock Return (Site Branch to Central Main Yard)
+  // Operational Workflows: Branch Stock Return (Site Branch -> Main Yard OR Sub-Site -> Parent Site Branch)
   const returnStockFromBranchToMain = (
     data: Omit<BranchReturn, 'id' | 'branchReturnNumber' | 'returnDate' | 'returnedBy'>
   ): BranchReturn => {
@@ -8792,12 +9017,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const fromSite = sites.find((s) => s.id === sourceSiteId);
     const siteName = data.siteName || data.fromSiteName || fromSite?.name || 'Site Branch';
 
+    const parentSite = fromSite && isSubSite(fromSite) ? getParentSite(fromSite, sites) : undefined;
+    const mainSite = sites.find((s) => s.isMainWarehouse);
+    const explicitDest = data.toSiteId ? sites.find((s) => s.id === data.toSiteId) : undefined;
+    const toSiteId = data.toSiteId || parentSite?.id || mainSite?.id;
+    const toSiteName =
+      data.toSiteName ||
+      explicitDest?.name ||
+      parentSite?.name ||
+      (fromSite && isSubSite(fromSite) ? fromSite.parentSiteName || 'Parent Site Branch' : mainSite?.name || 'Central Main Yard');
+
     const newBranchReturn: BranchReturn = {
       ...data,
       siteId: sourceSiteId,
       siteName,
       fromSiteId: sourceSiteId,
       fromSiteName: siteName,
+      toSiteId,
+      toSiteName,
       id: `br-${Date.now()}`,
       branchReturnNumber,
       returnDate: new Date().toISOString(),
@@ -8814,19 +9051,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       'BRANCH_RETURN_TO_MAIN',
       branchReturnNumber,
       siteName,
-      `Transferred ${data.quantity} ${item?.unit || 'units'} of ${item?.itemName} from ${siteName} back to Central Main Yard (${data.condition}). Reason: ${data.reason}`,
+      `Transferred ${data.quantity} ${item?.unit || 'units'} of ${item?.itemName} from ${siteName} back to ${toSiteName} (${data.condition}). Reason: ${data.reason}`,
       item?.itemCode,
       data.quantity
     );
     return newBranchReturn;
   };
 
-  // Multi-Item Batch Return from Site Branch to Central Main Warehouse
+  // Multi-Item Batch Return from Site Branch to Central Main Warehouse (or Sub-Site to Parent Branch)
   const returnMultipleStockFromBranchToMain = (data: {
     siteId: string;
     siteName?: string;
     fromSiteId?: string;
     fromSiteName?: string;
+    toSiteId?: string;
+    toSiteName?: string;
     reason: string;
     items: Array<{ itemId: string; quantity: number; condition: ReturnCondition }>;
   }): BranchReturn[] => {
@@ -8838,6 +9077,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const fromSite = sites.find((s) => s.id === sourceSiteId);
     const siteName = data.siteName || data.fromSiteName || fromSite?.name || 'Site Branch';
+
+    const parentSite = fromSite && isSubSite(fromSite) ? getParentSite(fromSite, sites) : undefined;
+    const mainSite = sites.find((s) => s.isMainWarehouse);
+    const explicitDest = data.toSiteId ? sites.find((s) => s.id === data.toSiteId) : undefined;
+    const toSiteId = data.toSiteId || parentSite?.id || mainSite?.id;
+    const toSiteName =
+      data.toSiteName ||
+      explicitDest?.name ||
+      parentSite?.name ||
+      (fromSite && isSubSite(fromSite) ? fromSite.parentSiteName || 'Parent Site Branch' : mainSite?.name || 'Central Main Yard');
 
     // Aggregate quantities per itemId across rows
     const totalsByItem = new Map<string, number>();
@@ -8873,6 +9122,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       siteName,
       fromSiteId: sourceSiteId,
       fromSiteName: siteName,
+      toSiteId,
+      toSiteName,
       itemId: row.itemId,
       quantity: Number(row.quantity),
       condition: row.condition,
@@ -8899,7 +9150,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       'BRANCH_RETURN_TO_MAIN',
       branchReturnNumber,
       siteName,
-      `Transferred batch return (${createdBranchReturns.length} item(s): ${summaryText}) from ${siteName} back to Central Main Yard. Reason: ${data.reason}`,
+      `Transferred batch return (${createdBranchReturns.length} item(s): ${summaryText}) from ${siteName} back to ${toSiteName}. Reason: ${data.reason}`,
       items.find((i) => i.id === createdBranchReturns[0]?.itemId)?.itemCode,
       createdBranchReturns.reduce((acc, r) => acc + r.quantity, 0)
     );
@@ -8927,10 +9178,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditLog('RECORD_DELETED', 'CLEAR-BRANCH-RETURNS', 'Main Central Warehouse', `Cleared all ${count} branch stock return records.`);
   };
 
-  // Damaged Stock Calculations
+  // Damaged Stock Calculations (only count returns bound to Central Main Warehouse)
   const getDamagedStock = (itemId: string) => {
     const totalDamagedReceived = branchReturns
-      .filter((br) => br.itemId === itemId && !br.isDeleted && br.condition === 'Damaged / Scrap')
+      .filter(
+        (br) =>
+          br.itemId === itemId &&
+          !br.isDeleted &&
+          br.condition === 'Damaged / Scrap' &&
+          (!br.toSiteId || mainWarehouseSiteIdsSet.has(br.toSiteId))
+      )
       .reduce((sum, br) => sum + Number(br.quantity), 0);
 
     const totalRestored = damagedRestorations
@@ -9492,9 +9749,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const totalReceived = companyReceived + focReceived;
 
-    // Only good/restocked returns add back to available main stock
+    // Only good/restocked returns sent back to Main Central Warehouse add back to available main stock
     const goodBranchReturnsToMain = branchReturns
-      .filter((br) => br.itemId === itemId && !br.isDeleted && br.condition === 'Good / Restock')
+      .filter(
+        (br) =>
+          br.itemId === itemId &&
+          !br.isDeleted &&
+          br.condition === 'Good / Restock' &&
+          (!br.toSiteId || mainWarehouseSiteIds.has(br.toSiteId))
+      )
       .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
 
     // Good returns from teams assigned directly to Main Warehouse
@@ -9510,8 +9773,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let companyDispatched = 0;
     let focDispatched = 0;
 
+    // Only count stock requests sourced from Central Main Warehouse (legacy requests without sourceSiteId default to Main HQ).
+    // Requests supplied by a Parent Regional Site Branch to a Sub-Site do NOT deduct from Central Main Warehouse.
     stockRequests
-      .filter((req) => req.status === 'Approved / In-Transit' || req.status === 'Accepted')
+      .filter(
+        (req) =>
+          (req.status === 'Approved / In-Transit' || req.status === 'Accepted') &&
+          (!req.sourceSiteId || mainWarehouseSiteIds.has(req.sourceSiteId))
+      )
       .forEach((req) => {
         const row = req.items.find((i) => i.itemId === itemId);
         if (!row) return;
@@ -9600,14 +9869,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         .filter((ret) => ret.siteId === siteId && ret.itemId === itemId && ret.condition === 'Good / Restock')
         .reduce((sum, ret) => sum + Number(ret.quantity || 0), 0);
       const goodBranchReturnsToMain = branchReturns
-        .filter((br) => br.itemId === itemId && !br.isDeleted && br.condition === 'Good / Restock')
+        .filter(
+          (br) =>
+            br.itemId === itemId &&
+            !br.isDeleted &&
+            br.condition === 'Good / Restock' &&
+            (!br.toSiteId || mainWarehouseSiteIdsSet.has(br.toSiteId))
+        )
         .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
       return {
         received: mainStk.totalReceived,
         normalReceived: mainStk.companyReceived,
         focReceived: mainStk.focReceived,
         returned: returnedFromMainTeams + goodBranchReturnsToMain,
+        returnedFromSubSitesGood: 0,
         issued: mainStk.dispatched,
+        issuedToSubSites: 0,
         availableBalance: mainStk.availableBalance,
         threshold: mainStk.threshold,
         isLowStock: mainStk.isLowStock,
@@ -9621,7 +9898,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let normalReceived = 0;
     let focReceived = 0;
 
-    // Count BOTH 'Approved / In-Transit' and 'Accepted' stock requests so approved stock immediately reflects at the Site Branch
+    // Count BOTH 'Approved / In-Transit' and 'Accepted' stock requests so approved stock immediately reflects at the Site Branch / Sub-Site
     stockRequests
       .filter(
         (req) =>
@@ -9668,6 +9945,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .filter((ret) => ret.siteId === siteId && ret.itemId === itemId && ret.condition === 'Good / Restock')
       .reduce((sum, ret) => sum + Number(ret.quantity || 0), 0);
 
+    // Good/restock returns received back by this Regional Site Branch from its child Sub-Sites
+    const returnedFromSubSitesGood = branchReturns
+      .filter(
+        (br) =>
+          !br.isDeleted &&
+          br.toSiteId === siteId &&
+          br.itemId === itemId &&
+          br.condition === 'Good / Restock'
+      )
+      .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
+
     const teamIssuedAtSite = teamIssues
       .filter((iss) => iss.siteId === siteId)
       .reduce((sum, iss) => {
@@ -9685,6 +9973,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }, 0);
 
     const issued = Math.max(teamIssuedAtSite, projectUsedAtSite);
+
+    // Stock issued/allocated from this Regional Site Branch down to its child Sub-Sites
+    const issuedToSubSites = stockRequests
+      .filter(
+        (req) =>
+          req.sourceSiteId === siteId &&
+          (req.status === 'Approved / In-Transit' || req.status === 'Accepted')
+      )
+      .reduce((sum, req) => {
+        const row = req.items.find((i) => i.itemId === itemId);
+        if (!row) return sum;
+        const qty =
+          Number(
+            req.status === 'Accepted'
+              ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
+              : (row.approvedQty ?? row.requestedQty)
+          ) || 0;
+        return sum + qty;
+      }, 0);
 
     const returnedToMain = branchReturns
       .filter((br) => (br.fromSiteId === siteId || br.siteId === siteId) && br.itemId === itemId && !br.isDeleted)
@@ -9704,8 +10011,23 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return sum + (row ? Number(row.quantity || 0) : 0);
       }, 0);
 
-    const availableBalance = Math.max(0, received + returned - issued - returnedToMain - returnedToSuppliersFromSite);
-    const hasActivity = received > 0 || returned > 0 || issued > 0 || returnedToMain > 0;
+    const availableBalance = Math.max(
+      0,
+      received +
+        returned +
+        returnedFromSubSitesGood -
+        issued -
+        issuedToSubSites -
+        returnedToMain -
+        returnedToSuppliersFromSite
+    );
+    const hasActivity =
+      received > 0 ||
+      returned > 0 ||
+      returnedFromSubSitesGood > 0 ||
+      issued > 0 ||
+      issuedToSubSites > 0 ||
+      returnedToMain > 0;
     const isLowStock = hasActivity && availableBalance <= threshold;
 
     return {
@@ -9713,7 +10035,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       normalReceived,
       focReceived,
       returned,
+      returnedFromSubSitesGood,
       issued,
+      issuedToSubSites,
       availableBalance,
       threshold,
       isLowStock,
@@ -10090,6 +10414,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         emptyRecycleBin,
         addMainStockEntry,
         createStockRequest,
+        issueStockToSubSite,
         approveStockRequest,
         rejectStockRequest,
         removeStockRequestItem,
