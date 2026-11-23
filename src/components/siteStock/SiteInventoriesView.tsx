@@ -999,7 +999,7 @@ export const SiteInventoriesView: React.FC = () => {
           </div>
 
           {/* Site Branch Stock Table (Ordered by Standard 5-Stage Reconciliation Flow with Distinct Central FOC Identification) */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-visible">
             <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
               <div className="flex flex-wrap items-center gap-2">
                 <span>
@@ -1028,7 +1028,7 @@ export const SiteInventoriesView: React.FC = () => {
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto pb-2">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
                   <tr>
@@ -1046,10 +1046,10 @@ export const SiteInventoriesView: React.FC = () => {
                     <th className="py-3.5 px-3.5 text-right">
                       4. Usage &amp; Wastage
                     </th>
-                    <th className="py-3.5 px-4 text-right bg-emerald-50/60 text-emerald-950">
+                    <th className="py-3.5 px-5 text-right bg-emerald-50/60 text-emerald-950">
                       5. Balance / Returnable
                     </th>
-                    <th className="py-3.5 px-3.5 text-center">5-Stage Report</th>
+                    <th className="py-3.5 px-4 text-center">5-Stage Report</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1228,7 +1228,7 @@ export const SiteInventoriesView: React.FC = () => {
                             </td>
 
                             {/* STAGE 5: BALANCE / RETURNABLE STOCK ON COMPLETION */}
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap bg-emerald-50/20">
+                            <td className="py-3.5 px-5 text-right whitespace-nowrap bg-emerald-50/20">
                               <div className="flex flex-col items-end gap-1">
                                 {stock.focReceived > 0 && (
                                   <div className="text-right">
@@ -1334,7 +1334,7 @@ export const SiteInventoriesView: React.FC = () => {
 
           {/* 5-Stage FOC Reconciliation Master Table for this Site */}
           {siteFocItemsList.length > 0 && (
-            <div className="bg-white rounded-xl border-2 border-indigo-300 shadow-xs overflow-hidden">
+            <div className="bg-white rounded-xl border-2 border-indigo-300 shadow-xs overflow-visible">
               <div className="px-4 py-3 bg-indigo-50/80 border-b border-indigo-200 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-600 text-white uppercase">
@@ -1349,7 +1349,7 @@ export const SiteInventoriesView: React.FC = () => {
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pb-2">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-50 text-slate-700 uppercase border-b border-slate-200 font-bold">
                     <tr>

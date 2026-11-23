@@ -865,7 +865,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       'Stage 03: Regional & Sub-Site Transfers - Regional Sites request from Central HQ; Parent Regional Branches issue stock directly to nested Sub-Sites or approve Sub-Site Requisitions.',
       'Stage 04: Field Crew Issue (Regional & Sub-Site) - Issue materials & tools to Crew Leaders inside both Regional and Sub-Site branches (IN / Gate Pass).',
       'Stage 05: Daily Progress, Wastage & Upstream Returns - Log Installed + Wastage Qty (PU), print Full Site Reports, & return surplus upstream (Sub-Site BRM -> Parent Site -> Central HQ).',
-      'Stage 06: ISO Formats, Hand-Sign Print & Themes - Configure ISO 9001:2015 Formats, Digital Signatures or "Off Digital Signature" hand-sign mode, plus 9 Glass Tone themes ("Sapphire & Gold" default).',
+      'Stage 06: ISO Formats, Hand-Sign Print & Official Reports - Configure ISO 9001:2015 Formats, Digital Signatures or "Off Digital Signature" wet-ink signing, plus isolated A4 print & PDF report generation for all vouchers and logs.',
     ];
 
     doc.setFont('helvetica', 'normal');
@@ -1231,7 +1231,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
       'පියවර 03 (Regional & Sub-Site බෙදාහැරීම්): Regional Sites HQ වෙතින්ද, Sub-Site Branches තම Parent Regional Site මගින් ("Issue Stock to Sub-Site" හෝ RN) බඩු ලබාගැනීම.',
       'පියවර 04 (Field Crew Issue - Tiers 2ම): Regional හා Sub-Site යන දෙකේම Teams වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Site-Separated In-Hand තොග.',
       'පියවර 05 (Usage, Wastage & Upstream Returns): Main/Sub-Project Balance Reports, සහ Sub-Site -> Parent Site -> Central HQ ලෙස Upstream Returns (RV / BRM).',
-      'පියවර 06 (ISO Formats, Hand-Sign & Glass Tone): ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" ක්‍රමය සහ Sapphire & Gold ඇතුළු Glass Tone Themes 9.',
+      'පියවර 06 (ISO Formats, Hand-Sign & Print Reports): ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" අත්සන් කිරීමේ ක්‍රමය, සහ සියලුම Vouchers & Reports සඳහා A4 මුද්‍රණය සහ PDF වාර්තාකරණ පහසුකම්.',
     ];
 
     current.ctx.font = `600 16.5px ${fontStack}`;
@@ -1706,8 +1706,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'පියවර 06',
-                        title: 'ISO Formats, Hand-Sign සහ Glass Tone',
-                        desc: 'ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" (Hand-Sign), සහ Glass Tone Themes 9.',
+                        title: 'ISO Formats, Hand-Sign සහ Print Reports',
+                        desc: 'ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" (Hand-Sign), සහ A4 මුද්‍රණය හා PDF වාර්තාකරණ පහසුකම්.',
                         icon: Upload,
                       },
                     ]
@@ -1744,8 +1744,8 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                       },
                       {
                         stage: 'Stage 06',
-                        title: 'ISO Formats, Hand-Sign & Themes',
-                        desc: 'ISO 9001:2015 formats, Digital Signatures or "Off Digital Signature" hand-sign mode, and 9 Glass Tone themes.',
+                        title: 'ISO Formats, Hand-Sign & Print Reports',
+                        desc: 'ISO 9001:2015 formats, Digital Signatures or "Off Digital Signature" hand-sign mode, and official A4 print & PDF report generation.',
                         icon: Upload,
                       },
                     ]
