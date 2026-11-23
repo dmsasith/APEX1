@@ -29,6 +29,7 @@ import {
   Warehouse,
   BookOpen,
   Play,
+  Infinity as InfinityIcon,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 import { SystemUserGuideView } from './SystemUserGuideView';
@@ -765,12 +766,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           <button
             type="button"
             onClick={() => handleSwitchToOverviewSection()}
-            className="flex items-center gap-2 sm:gap-2.5 whitespace-nowrap shrink-0 cursor-pointer"
+            className="group flex items-center gap-2.5 sm:gap-3 whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/25 ring-1 ring-white/45">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/25 ring-1 ring-white/45 transition-transform duration-200 group-hover:scale-105">
               <Boxes className="w-4 h-4 sm:w-5 sm:h-5 text-[#071026] stroke-[2.25]" />
             </div>
-            <span className="font-black text-base sm:text-lg text-white tracking-tight">Apex Stock</span>
+            <span
+              className="text-xl sm:text-[23px] font-extrabold tracking-[-0.03em] leading-none select-none flex items-baseline"
+              style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif" }}
+            >
+              <span className="text-white">Apex</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-300">
+                Stox
+              </span>
+            </span>
           </button>
 
           {/* Zone 2: Primary Top Tabs & Section Links */}
@@ -963,6 +972,71 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <strong className="text-white font-bold">Heavy Machinery Fleets</strong>, and{' '}
                   <strong className="text-white font-bold">Daily Crew Dispatches</strong> in one real-time cloud workspace.
                 </p>
+
+                {/* Eye-Catching Unlimited Capacity Showcase Dock (Users · Sites · Teams) */}
+                <div className="relative z-10 mt-6 sm:mt-7 max-w-4xl mx-auto rounded-2xl bg-gradient-to-r from-[#07132f]/95 via-[#0d2252]/90 to-[#07132f]/95 border border-amber-300/40 shadow-[0_18px_40px_-14px_rgba(251,191,36,0.28),inset_0_1px_0_rgba(255,255,255,0.2)] overflow-hidden">
+                  {/* Top Gold Specular Hairline */}
+                  <div className="h-[1.5px] w-full bg-gradient-to-r from-transparent via-amber-300/90 to-transparent" />
+                  <div className="px-4 py-2 border-b border-white/10 bg-white/[0.03] flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-bold text-amber-200 tracking-wide">
+                    <Crown className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>Zero Per-Seat or Per-Branch Fees — Everything Included Unlimited in Every Workspace</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/12 text-left">
+                    {/* Pillar 1: Unlimited Users */}
+                    <div className="px-4 sm:px-5 py-3.5 sm:py-4 flex items-center gap-3.5 hover:bg-white/[0.03] transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-300/20 to-amber-500/10 border border-amber-300/40 flex items-center justify-center text-amber-300 shrink-0 shadow-inner">
+                        <Users2 className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <InfinityIcon className="w-4 h-4 text-amber-300 stroke-[2.5] shrink-0" />
+                          <span className="text-sm sm:text-[15px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-200 tracking-tight whitespace-nowrap">
+                            Unlimited Users
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-snug">
+                          Storekeepers, admins &amp; supervisors at $0 extra
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Pillar 2: Unlimited Sites */}
+                    <div className="px-4 sm:px-5 py-3.5 sm:py-4 flex items-center gap-3.5 hover:bg-white/[0.03] transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-300/20 to-blue-500/10 border border-sky-300/40 flex items-center justify-center text-sky-300 shrink-0 shadow-inner">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <InfinityIcon className="w-4 h-4 text-sky-300 stroke-[2.5] shrink-0" />
+                          <span className="text-sm sm:text-[15px] font-extrabold text-white tracking-tight whitespace-nowrap">
+                            Unlimited Sites
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-snug">
+                          Central HQ + all regional branches &amp; yards
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Pillar 3: Unlimited Teams */}
+                    <div className="px-4 sm:px-5 py-3.5 sm:py-4 flex items-center gap-3.5 hover:bg-white/[0.03] transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-300/20 to-teal-500/10 border border-emerald-300/40 flex items-center justify-center text-emerald-300 shrink-0 shadow-inner">
+                        <HardHat className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <InfinityIcon className="w-4 h-4 text-emerald-300 stroke-[2.5] shrink-0" />
+                          <span className="text-sm sm:text-[15px] font-extrabold text-emerald-200 tracking-tight whitespace-nowrap">
+                            Unlimited Teams
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-snug">
+                          Field crews, tool custody &amp; daily issue logs
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* 4 Core Operational Pillars (Clean Unboxed Strip) */}
                 <div className="relative z-10 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-white/12 flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6 gap-y-2 max-w-4xl mx-auto text-[11px] sm:text-xs font-bold text-slate-200">
@@ -2265,7 +2339,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <Boxes className="w-4 h-4 text-[#071026] stroke-[2.25]" />
               </div>
               <div>
-                <span className="font-black text-sm text-white">Apex Stock Enterprise SaaS</span>
+                <span
+                  className="font-extrabold text-base tracking-[-0.02em] inline-flex items-baseline"
+                  style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif" }}
+                >
+                  <span className="text-white">Apex</span>
+                  <span className="text-amber-300">Stox</span>
+                  <span className="text-slate-300 font-semibold text-xs ml-1.5">Enterprise SaaS</span>
+                </span>
                 <span className="text-[11px] text-slate-300 block font-medium">
                   Centralized Multi-Site Inventory, Project Materials &amp; Field Crew Dispatch
                 </span>
@@ -2322,7 +2403,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
           <div className="pt-5 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
             <div className="font-semibold text-slate-300">
-              Apex Stock SaaS © {new Date().getFullYear()} · All Rights Reserved
+              ApexStox SaaS © {new Date().getFullYear()} · All Rights Reserved
             </div>
             <div className="text-[11px] text-amber-300 font-extrabold">
               Apex Developer | System Developed By Sasith Dissanayake
