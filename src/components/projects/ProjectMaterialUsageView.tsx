@@ -95,6 +95,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
     activeProjectTypes,
     projectUsages,
     currentUser,
+    actorDisplayName,
     getTeamInHandStock,
     getTeamSiteInHandStock,
     logProjectMaterialUsage,
@@ -1255,7 +1256,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
           'RESERVED_ITEM_CROSS_PROJECT_OVERRIDE',
           newUsage.usageVoucherNumber,
           sites.find((s) => s.id === selectedSiteId)?.name || 'Main Base',
-          `Admin Cross-Project Stock Override Authorized by ${currentUser?.fullName} (@${currentUser?.username}): Issued project-reserved item(s) to project "${finalProjectName}". Override details: [${conflictDetails}]`
+          `Admin Cross-Project Stock Override Authorized by ${actorDisplayName} (@${currentUser?.username}): Issued project-reserved item(s) to project "${finalProjectName}". Override details: [${conflictDetails}]`
         );
       }
 

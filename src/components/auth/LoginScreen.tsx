@@ -29,6 +29,7 @@ import { getMasterAuthStatus, claimMasterAdminPasscode } from '../../utils/secur
 import { TenantSignupModal } from '../landing/TenantSignupModal';
 import { TermsConditionsModal } from '../landing/TermsConditionsModal';
 import { LegalDocId } from '../landing/legalPoliciesData';
+import { isGenericSuperAdminName, stripSuperAdminSuffix } from '../../types';
 
 const PRESET_ICONS = [
   { id: 'building', icon: Building2 },
@@ -68,6 +69,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
   const [resetNoticeMsg, setResetNoticeMsg] = useState<string | null>(null);
   const [collisionCompanies, setCollisionCompanies] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [superAdminIdentityStep, setSuperAdminIdentityStep] = useState<{
+    mode: 'verify-first-name' | 'register-initial-name';
+    accountLabel: string;
+    workspaceName: string;
+  } | null>(null);
+  const [actingAdminName, setActingAdminName] = useState('');
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [legalModalDoc, setLegalModalDoc] = useState<LegalDocId | null>(null);
 
@@ -280,10 +287,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
       return;
     }
     setMasterNeedsClaim(false);
+    setUsername('admin');
+    setPassword(claimPassInput.trim());
     const loginRes = await login('admin', claimPassInput.trim());
     setClaimingMaster(false);
     if (!loginRes.success) {
-      setErrorMessage(loginRes.message);
+      if (loginRes.requiresSuperAdminIdentity) {
+        setActingAdminName('');
+        setSuperAdminIdentityStep({
+          mode: loginRes.superAdminVerificationMode || 'verify-first-name',
+          accountLabel: loginRes.matchedAdminAccountLabel || 'admin',
+          workspaceName: loginRes.matchedWorkspaceName || 'Apex Developer',
+        });
+      } else {
+        setErrorMessage(loginRes.message);
+      }
     }
   };
 
@@ -302,6 +320,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
     setIsSubmitting(true);
     const res = await login(inputUser, inputPass, workspaceCode.trim() || undefined);
     if (!res.success) {
+      if (res.requiresSuperAdminIdentity) {
+        setCollisionCompanies([]);
+        setErrorMessage(null);
+        setActingAdminName('');
+        setSuperAdminIdentityStep({
+          mode: res.superAdminVerificationMode || 'verify-first-name',
+          accountLabel: res.matchedAdminAccountLabel || inputUser,
+          workspaceName: res.matchedWorkspaceName || 'Workspace',
+        });
+        setIsSubmitting(false);
+        return;
+      }
       setErrorMessage(res.message);
       if (res.collisionCompanies && res.collisionCompanies.length > 0) {
         setCollisionCompanies(res.collisionCompanies);
@@ -311,6 +341,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
       setIsSubmitting(false);
     } else {
       setCollisionCompanies([]);
+    }
+  };
+
+  const handleConfirmSuperAdminIdentity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    const cleanName = stripSuperAdminSuffix(actingAdminName);
+    if (!cleanName || isGenericSuperAdminName(cleanName)) {
+      setErrorMessage(
+        superAdminIdentityStep?.mode === 'verify-first-name'
+          ? 'Please enter your registered First Name. Generic labels like "System Super Admin" cannot be used.'
+          : 'Please enter the acting person’s actual Full Name (e.g. Sasith Dissanayake). Generic labels like "System Super Admin" cannot be used.'
+      );
+      return;
+    }
+    setIsSubmitting(true);
+    const res = await login(
+      username.trim(),
+      password,
+      workspaceCode.trim() || undefined,
+      cleanName
+    );
+    if (!res.success) {
+      setErrorMessage(res.message);
+      setIsSubmitting(false);
     }
   };
 
@@ -408,7 +463,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                           setIsSubmitting(true);
                           const res = await login(username.trim(), password, comp.slug);
                           if (!res.success) {
-                            setErrorMessage(res.message);
+                            if (res.requiresSuperAdminIdentity) {
+                              setActingAdminName('');
+                              setSuperAdminIdentityStep({
+                                mode: res.superAdminVerificationMode || 'verify-first-name',
+                                accountLabel: res.matchedAdminAccountLabel || username.trim(),
+                                workspaceName: res.matchedWorkspaceName || comp.name,
+                              });
+                            } else {
+                              setErrorMessage(res.message);
+                            }
                             setIsSubmitting(false);
                           }
                         }}
@@ -460,110 +524,210 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToLanding }) => 
                 </div>
               )}
 
-              {/* Secure Sign In Form */}
-              <form onSubmit={handleFormLogin} className="space-y-4">
-                {/* Username / Email Input */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Username or Work Email
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <UserIcon className="w-4 h-4 text-emerald-600" />
+              {superAdminIdentityStep ? (
+                <form onSubmit={handleConfirmSuperAdminIdentity} className="space-y-4 animate-in fade-in duration-150">
+                  <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300/90 space-y-1.5 shadow-2xs">
+                    <div className="flex items-center gap-2 text-xs font-extrabold text-amber-950">
+                      <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>
+                        {superAdminIdentityStep.mode === 'verify-first-name'
+                          ? 'Verify Registered Super Admin First Name'
+                          : 'Register Personal Super Admin Name'}
+                      </span>
                     </div>
-                    <input
-                      type="text"
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. admin or yourname@company.com"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-sm text-slate-900 placeholder-slate-400 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
-                    />
+                    <p className="text-[11px] text-amber-900 leading-relaxed">
+                      {superAdminIdentityStep.mode === 'verify-first-name' ? (
+                        <>
+                          Credentials verified for <strong>{superAdminIdentityStep.accountLabel}</strong> ({superAdminIdentityStep.workspaceName}). Enter the registered Super Admin’s <strong>First Name</strong> to match your account and attribute logs individually.
+                        </>
+                      ) : (
+                        <>
+                          Signed in as <strong>{superAdminIdentityStep.accountLabel}</strong> ({superAdminIdentityStep.workspaceName}). Register your personal Full Name once so all future logins verify your First Name and logs identify you individually.
+                        </>
+                      )}
+                    </p>
                   </div>
-                </div>
 
-                {/* Password Input */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      className="w-full pl-10 pr-10 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-sm text-slate-900 placeholder-slate-400 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <div className="mt-1.5 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={openForgotPasswordModal}
-                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline transition cursor-pointer"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                </div>
-
-                {/* Company Workspace Code (Optional) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Company Workspace Code <span className="text-slate-400 font-medium">(Optional)</span>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      {superAdminIdentityStep.mode === 'verify-first-name'
+                        ? 'Registered Admin First Name *'
+                        : 'Acting Administrator Full Name *'}
                     </label>
-                    {workspaceCode && (
-                      <button
-                        type="button"
-                        onClick={() => setWorkspaceCode('')}
-                        className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline cursor-pointer"
-                      >
-                        Clear Code
-                      </button>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <UserIcon className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        autoFocus
+                        autoComplete="off"
+                        value={actingAdminName}
+                        onChange={(e) => setActingAdminName(e.target.value)}
+                        placeholder={
+                          superAdminIdentityStep.mode === 'verify-first-name'
+                            ? 'Enter your registered First Name'
+                            : 'e.g. Sasith Dissanayake / Kamal Perera'
+                        }
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-amber-300 rounded-2xl text-sm font-semibold text-slate-900 placeholder-slate-400 shadow-2xs focus:outline-none focus:border-amber-600 focus:ring-4 focus:ring-amber-500/15 transition-all"
+                      />
+                    </div>
+                    {superAdminIdentityStep.mode === 'verify-first-name' && (
+                      <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                        Unregistered or mismatching names are rejected. Actions are logged under the registered admin’s full name <code className="font-mono">(as Super Admin)</code>.
+                      </p>
                     )}
                   </div>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Building2 className="w-4 h-4 text-slate-500" />
-                    </div>
-                    <input
-                      type="text"
-                      value={workspaceCode}
-                      onChange={(e) => setWorkspaceCode(e.target.value)}
-                      placeholder="e.g. apex-telecom (or leave blank)"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-xs text-slate-900 placeholder-slate-400 font-mono shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                    If your username exists in multiple companies, specify your Workspace Code or use your direct company link.
-                  </p>
-                </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full mt-2 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 border border-white/30 shadow-[0_10px_25px_-5px_rgba(16,185,129,0.45),inset_0_1.5px_0_rgba(255,255,255,0.45)] transition-all duration-200 hover:-translate-y-0.5 active:scale-98 cursor-pointer disabled:opacity-50"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Signing In...' : 'Log In to Workspace'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
+                  {superAdminIdentityStep.mode === 'register-initial-name' && (
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                      <div className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">
+                        Audit Log &amp; Header Attribution Preview
+                      </div>
+                      <div className="font-extrabold text-slate-900 text-xs">
+                        {stripSuperAdminSuffix(actingAdminName) && !isGenericSuperAdminName(actingAdminName)
+                          ? `${stripSuperAdminSuffix(actingAdminName)} (as Super Admin)`
+                          : 'Your Name (as Super Admin)'}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuperAdminIdentityStep(null);
+                        setActingAdminName('');
+                        setErrorMessage(null);
+                      }}
+                      className="px-4 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-400/40 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-amber-300 shrink-0" />
+                      <span>
+                        {isSubmitting
+                          ? 'Verifying...'
+                          : superAdminIdentityStep.mode === 'verify-first-name'
+                          ? 'Verify First Name & Enter'
+                          : 'Register Name & Enter'}
+                      </span>
+                      <ArrowRight className="w-4 h-4 shrink-0" />
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* Secure Sign In Form */
+                <form onSubmit={handleFormLogin} className="space-y-4">
+                  {/* Username / Email Input */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Username or Work Email
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <UserIcon className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="e.g. admin or yourname@company.com"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-sm text-slate-900 placeholder-slate-400 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password Input */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Lock className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        className="w-full pl-10 pr-10 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-sm text-slate-900 placeholder-slate-400 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <div className="mt-1.5 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={openForgotPasswordModal}
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline transition cursor-pointer"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Company Workspace Code (Optional) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Company Workspace Code <span className="text-slate-400 font-medium">(Optional)</span>
+                      </label>
+                      {workspaceCode && (
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceCode('')}
+                          className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline cursor-pointer"
+                        >
+                          Clear Code
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Building2 className="w-4 h-4 text-slate-500" />
+                      </div>
+                      <input
+                        type="text"
+                        value={workspaceCode}
+                        onChange={(e) => setWorkspaceCode(e.target.value)}
+                        placeholder="e.g. apex-telecom (or leave blank)"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-white/90 border border-slate-200/90 rounded-2xl text-xs text-slate-900 placeholder-slate-400 font-mono shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                      If your username exists in multiple companies, specify your Workspace Code or use your direct company link.
+                    </p>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full mt-2 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 border border-white/30 shadow-[0_10px_25px_-5px_rgba(16,185,129,0.45),inset_0_1.5px_0_rgba(255,255,255,0.45)] transition-all duration-200 hover:-translate-y-0.5 active:scale-98 cursor-pointer disabled:opacity-50"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>{isSubmitting ? 'Signing In...' : 'Log In to Workspace'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </form>
+              )}
 
               {masterNeedsClaim && (
                 <form

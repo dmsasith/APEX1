@@ -62,7 +62,7 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
     getSiteItemStock,
     addSupplierReturn,
     updateSupplierReturn,
-    currentUser,
+    actorDisplayName,
   } = useStock();
 
   // Form states
@@ -289,9 +289,9 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
         vehicleNo: vehicleNo.trim() || undefined,
         driverContact: driverContact.trim() || undefined,
         notes: notes.trim() || undefined,
-        preparedBy: currentUser?.fullName || 'Super Admin Central',
+        preparedBy: actorDisplayName,
         dispatchedDate: dispatchNow ? new Date().toISOString() : undefined,
-        dispatchedBy: dispatchNow ? currentUser?.fullName || 'Central Storekeeper' : undefined,
+        dispatchedBy: dispatchNow ? actorDisplayName : undefined,
       });
 
       onSuccess(

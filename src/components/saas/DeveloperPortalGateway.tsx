@@ -17,7 +17,7 @@ import {
   Warehouse,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { computePlatformPricingMetrics } from '../../types';
+import { computePlatformPricingMetrics, isGenericSuperAdminName, stripSuperAdminSuffix } from '../../types';
 
 interface DeveloperPortalGatewayProps {
   onSelectSaasOwner: () => void;
@@ -28,9 +28,13 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
   onSelectSaasOwner,
   onSelectStockManager,
 }) => {
-  const { logout, switchToMasterStock, platformPricing } = useStock();
+  const { logout, switchToMasterStock, platformPricing, authUser, superAdminOperatorName, superAdminDisplayLabel } = useStock();
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
   const [resetToast, setResetToast] = useState<string | null>(null);
+  const actingPersonName =
+    stripSuperAdminSuffix(superAdminOperatorName) ||
+    (!isGenericSuperAdminName(authUser?.fullName) ? stripSuperAdminSuffix(authUser?.fullName) : '') ||
+    'Sasith Dissanayake';
 
   const handleOpenMyStock = () => {
     // 100% Guaranteed switch: resets URL parameters, wipes preview/viewAs, locks state to Apex Developer
@@ -66,7 +70,8 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
             Developer Admin Portal Gateway
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto leading-relaxed font-medium">
-            Welcome back, <strong className="text-slate-900 font-extrabold">Sasith Dissanayake</strong>. Select your destination below. Your master account provides direct access to your personal stock as well as full SaaS administration.
+            Welcome back, <strong className="text-slate-900 font-extrabold">{actingPersonName}</strong>{' '}
+            <span className="text-emerald-700 font-bold">(as Super Admin)</span>. Select your destination below. Your master account provides direct access to your personal stock as well as full SaaS administration.
           </p>
         </div>
 
@@ -152,7 +157,7 @@ export const DeveloperPortalGateway: React.FC<DeveloperPortalGatewayProps> = ({
                   <Crown className="w-7 h-7" />
                 </div>
                 <span className="text-[11px] font-extrabold text-sky-800 bg-sky-100/80 px-3 py-1 rounded-full border border-sky-200/90">
-                  Super Admin
+                  {superAdminDisplayLabel}
                 </span>
               </div>
 

@@ -56,6 +56,10 @@ import {
   TeamSiteStockBreakdown,
   ReturnCondition,
   getSubscriptionStatusSummary,
+  formatActorDisplayName,
+  isGenericSuperAdminName,
+  stripSuperAdminSuffix,
+  doesAdminFirstNameMatch,
 } from '../types';
 import { DEFAULT_SECTION_FORMATS, deriveCompanyMonogram } from '../utils/formatAnalyzerUtils';
 import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
@@ -178,6 +182,11 @@ interface StockContextType {
   authUser: User;
   currentUser: User;
   viewAsUser: User | null;
+  superAdminOperatorName: string;
+  setSuperAdminOperatorName: (name: string, syncToUserProfile?: boolean) => void;
+  actorDisplayName: string;
+  superAdminDisplayLabel: string;
+  needsSuperAdminIdentity: boolean;
   setCurrentUser: (user: User) => void;
   setViewAsUser: (user: User | null) => void;
   exitViewAsMode: () => void;
@@ -186,8 +195,18 @@ interface StockContextType {
   login: (
     usernameOrUser: string | User,
     password?: string,
-    workspaceSlugOrId?: string
-  ) => Promise<{ success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] }>;
+    workspaceSlugOrId?: string,
+    superAdminActorName?: string
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    collisionCompanies?: { id: string; name: string; slug: string }[];
+    requiresSuperAdminIdentity?: boolean;
+    superAdminVerificationMode?: 'verify-first-name' | 'register-initial-name';
+    suggestedAdminName?: string;
+    matchedAdminAccountLabel?: string;
+    matchedWorkspaceName?: string;
+  }>;
   requestTenantPasswordReset: (
     email: string,
     workspaceSlugOrId?: string
@@ -2348,6 +2367,42 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setViewAsUserId(null);
   };
 
+  const [superAdminOperatorName, setSuperAdminOperatorNameState] = useState<string>(() => {
+    try {
+      return stripSuperAdminSuffix(localStorage.getItem(STORAGE_KEY_PREFIX + 'super_admin_operator_name') || '');
+    } catch {
+      return '';
+    }
+  });
+
+  const isAuthSuperAdmin = Boolean(authUser && (isSuperAdmin(authUser.role) || authUser.username === 'admin'));
+
+  const resolvedSuperAdminPersonalName = useMemo(() => {
+    const cleanSessionOp = stripSuperAdminSuffix(superAdminOperatorName);
+    if (cleanSessionOp && !isGenericSuperAdminName(cleanSessionOp)) {
+      return cleanSessionOp;
+    }
+    if (authUser && !isGenericSuperAdminName(authUser.fullName)) {
+      return stripSuperAdminSuffix(authUser.fullName);
+    }
+    return '';
+  }, [superAdminOperatorName, authUser]);
+
+  const superAdminDisplayLabel = useMemo(() => {
+    return formatActorDisplayName(authUser, superAdminOperatorName);
+  }, [authUser, superAdminOperatorName]);
+
+  const actorDisplayName = useMemo(() => {
+    if (viewAsUser) {
+      return formatActorDisplayName(viewAsUser, null);
+    }
+    return formatActorDisplayName(authUser, superAdminOperatorName);
+  }, [viewAsUser, authUser, superAdminOperatorName]);
+
+  const needsSuperAdminIdentity = Boolean(
+    isAuthenticated && isAuthSuperAdmin && !resolvedSuperAdminPersonalName
+  );
+
   // Switch memory state when tenant changes
   const loadTenantStateIntoMemory = (tenantId: string) => {
     isHydratingTenantRef.current = true;
@@ -2479,8 +2534,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const login = async (
     usernameOrUser: string | User,
     password?: string,
-    workspaceSlugOrId?: string
-  ): Promise<{ success: boolean; message: string; collisionCompanies?: { id: string; name: string; slug: string }[] }> => {
+    workspaceSlugOrId?: string,
+    superAdminActorName?: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    collisionCompanies?: { id: string; name: string; slug: string }[];
+    requiresSuperAdminIdentity?: boolean;
+    superAdminVerificationMode?: 'verify-first-name' | 'register-initial-name';
+    suggestedAdminName?: string;
+    matchedAdminAccountLabel?: string;
+    matchedWorkspaceName?: string;
+  }> => {
     let matchedTenant: Tenant | undefined;
     let matchedUser: User | undefined;
     let masterAuthAlreadyVerified = false;
@@ -2828,18 +2893,108 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
+    const isTargetSuperAdmin = Boolean(isSuperAdmin(matchedUser.role) || matchedUser.username === 'admin');
+    const userNonGeneric = !isGenericSuperAdminName(matchedUser.fullName)
+      ? stripSuperAdminSuffix(matchedUser.fullName)
+      : '';
+    const tenantAdminNonGeneric = !isGenericSuperAdminName(matchedTenant.adminFullName)
+      ? stripSuperAdminSuffix(matchedTenant.adminFullName)
+      : '';
+    const registeredAdminName = userNonGeneric || tenantAdminNonGeneric;
+    let cleanOperatorForSession = '';
+
+    if (typeof usernameOrUser === 'string' && password !== undefined && isTargetSuperAdmin) {
+      const providedClean = stripSuperAdminSuffix(superAdminActorName || '');
+      if (registeredAdminName) {
+        if (!providedClean) {
+          return {
+            success: false,
+            requiresSuperAdminIdentity: true,
+            superAdminVerificationMode: 'verify-first-name',
+            matchedAdminAccountLabel: `${matchedUser.username}${matchedUser.email ? ` (${matchedUser.email})` : ''}`,
+            matchedWorkspaceName: matchedTenant.companyName,
+            message: 'Enter your registered Admin First Name to verify Super Admin access.',
+          };
+        }
+        if (!doesAdminFirstNameMatch(providedClean, registeredAdminName)) {
+          return {
+            success: false,
+            requiresSuperAdminIdentity: true,
+            superAdminVerificationMode: 'verify-first-name',
+            matchedAdminAccountLabel: `${matchedUser.username}${matchedUser.email ? ` (${matchedUser.email})` : ''}`,
+            matchedWorkspaceName: matchedTenant.companyName,
+            message:
+              'First Name does not match the registered Super Admin for this workspace. Access is blocked to protect individual accountability.',
+          };
+        }
+        cleanOperatorForSession = registeredAdminName;
+      } else {
+        if (!providedClean || providedClean.length < 2 || isGenericSuperAdminName(providedClean)) {
+          return {
+            success: false,
+            requiresSuperAdminIdentity: true,
+            superAdminVerificationMode: 'register-initial-name',
+            matchedAdminAccountLabel: `${matchedUser.username}${matchedUser.email ? ` (${matchedUser.email})` : ''}`,
+            matchedWorkspaceName: matchedTenant.companyName,
+            message: 'Please register your personal Full Name for individual Super Admin accountability.',
+          };
+        }
+        cleanOperatorForSession = providedClean;
+      }
+    } else if (isTargetSuperAdmin) {
+      cleanOperatorForSession = registeredAdminName;
+    }
+
     if (!isMasterAdminTarget) {
       issueWorkspaceSessionToken(matchedUser.id, matchedTenant.id).catch(() => undefined);
+    }
+
+    // If matched Super Admin still had a generic placeholder name ('System Super Admin'), bind the registered personal name
+    if (isTargetSuperAdmin && cleanOperatorForSession && isGenericSuperAdminName(matchedUser.fullName)) {
+      const updatedAdminUser: User = {
+        ...matchedUser,
+        fullName: cleanOperatorForSession,
+        updatedAt: new Date().toISOString(),
+      };
+      matchedUser = updatedAdminUser;
+      const existingTenantUsers = loadTenantData<User[]>(
+        matchedTenant.id,
+        'users',
+        matchedTenant.id === DEFAULT_TENANT.id ? INITIAL_USERS : []
+      );
+      const nextTenantUsers = existingTenantUsers.map((u) =>
+        u.id === updatedAdminUser.id ? updatedAdminUser : u
+      );
+      saveTenantData(matchedTenant.id, 'users', nextTenantUsers);
+      if (isMasterAdminTarget) {
+        writeUsersToFirebase(nextTenantUsers).catch(console.warn);
+      }
+    }
+
+    if (isTargetSuperAdmin && cleanOperatorForSession && isGenericSuperAdminName(matchedTenant.adminFullName)) {
+      const baseList = tenantsRef.current.length > 0 ? tenantsRef.current : allTenants;
+      const nextTenants = persistTenantsLocal(
+        baseList.map((t) => (t.id === matchedTenant.id ? { ...t, adminFullName: cleanOperatorForSession } : t))
+      );
+      tenantsRef.current = nextTenants;
+      setTenants(nextTenants);
+      writeTenantsToFirebase(nextTenants).catch(console.warn);
     }
 
     // Clear any preview mode and switch tenant context
     setPreviewTenantId(null);
     setCurrentTenantId(matchedTenant.id);
     currentTenantIdRef.current = matchedTenant.id;
+    setSuperAdminOperatorNameState(isTargetSuperAdmin ? cleanOperatorForSession : '');
     try {
       localStorage.setItem(STORAGE_KEY_PREFIX + 'current_tenant_id', matchedTenant.id);
       localStorage.setItem(STORAGE_KEY_PREFIX + 'is_authenticated', 'true');
       localStorage.setItem(STORAGE_KEY_PREFIX + 'auth_user_id', matchedUser.id);
+      if (isTargetSuperAdmin && cleanOperatorForSession) {
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'super_admin_operator_name', cleanOperatorForSession);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_PREFIX + 'super_admin_operator_name');
+      }
       if (typeof window !== 'undefined' && window.location.search.includes('workspace=')) {
         const url = new URL(window.location.href);
         if (url.searchParams.get('workspace') !== matchedTenant.slug) {
@@ -2857,15 +3012,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // which runs syncTenantCollectionsFromFirebase(matchedTenant.id) once and attaches the active tenant's operational listeners
     setIsAuthenticated(true);
 
-    return { success: true, message: `Welcome back, ${matchedUser.fullName} (${matchedTenant.companyName})!` };
+    const welcomeLabel = formatActorDisplayName(matchedUser, isTargetSuperAdmin ? cleanOperatorForSession : undefined);
+    return { success: true, message: `Welcome back, ${welcomeLabel} (${matchedTenant.companyName})!` };
   };
 
   const logout = () => {
     clearApiSessionToken();
     setIsAuthenticated(false);
+    setSuperAdminOperatorNameState('');
     try {
       localStorage.setItem(STORAGE_KEY_PREFIX + 'is_authenticated', 'false');
       localStorage.removeItem(STORAGE_KEY_PREFIX + 'auth_user_id');
+      localStorage.removeItem(STORAGE_KEY_PREFIX + 'super_admin_operator_name');
     } catch (e) {
       console.warn('Could not save logout state:', e);
     }
@@ -3234,8 +3392,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ): { success: boolean; message: string; tenant?: Tenant } => {
     try {
       const cleanName = form.companyName.trim();
+      const cleanAdminFullName = stripSuperAdminSuffix(form.adminFullName);
       if (!cleanName) {
         return { success: false, message: 'Company Name is required.' };
+      }
+      if (!cleanAdminFullName || cleanAdminFullName.length < 2 || isGenericSuperAdminName(cleanAdminFullName)) {
+        return {
+          success: false,
+          message:
+            'Super Admin personal Full Name is mandatory (e.g. Kamal Perera). Generic names like "Admin" or "Super Admin" are not allowed.',
+        };
       }
       if (!form.adminEmail.trim()) {
         return { success: false, message: 'Admin email is required.' };
@@ -3274,6 +3440,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         },
         createdAt: new Date().toISOString(),
         ownerUserId: `usr-${slug}-admin`,
+        adminFullName: cleanAdminFullName,
         isActive: true,
       };
 
@@ -3282,7 +3449,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         id: `usr-${slug}-admin`,
         username: form.adminEmail.trim(),
         email: form.adminEmail.trim().toLowerCase(),
-        fullName: form.adminFullName.trim() || `${cleanName} Admin`,
+        fullName: cleanAdminFullName,
         siteId: 'all',
         role: 'Super Admin Central',
         password: form.adminPassword,
@@ -3295,7 +3462,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         id: `site-${slug}-main`,
         name: form.initialWarehouseName?.trim() || 'Central Main Warehouse',
         isMainWarehouse: true,
-        supervisorName: form.adminFullName.trim() || 'Warehouse Manager',
+        supervisorName: cleanAdminFullName,
         location: `${cleanName} Logistics Yard`,
         contactNumber: form.contactPhone?.trim() || '+94 77 123 4567',
         createdAt: new Date().toISOString(),
@@ -3378,11 +3545,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       loadTenantStateIntoMemory(newTenant.id);
 
       // Log in automatically & immediately upgrade stored password to salted SHA-256 hash
+      setSuperAdminOperatorNameState(cleanAdminFullName);
       setCurrentUser(newAdminUser);
       setIsAuthenticated(true);
       try {
         localStorage.setItem(STORAGE_KEY_PREFIX + 'is_authenticated', 'true');
         localStorage.setItem(STORAGE_KEY_PREFIX + 'auth_user_id', newAdminUser.id);
+        localStorage.setItem(STORAGE_KEY_PREFIX + 'super_admin_operator_name', cleanAdminFullName);
       } catch (e) {
         console.warn('Could not save auth state:', e);
       }
@@ -3958,7 +4127,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: false, message: 'Cannot receive items against a cancelled Purchase Order.', count: 0 };
     }
 
-    const receiverName = batchReceipt?.receivedBy || currentUser?.fullName || 'Central Store In-Charge';
+    const receiverName = batchReceipt?.receivedBy || actorDisplayName;
     const nowIso = batchReceipt?.receiptDate || new Date().toISOString();
     const batchGrnNumber = `GRN-${po.poNumber}-${String((po.receiptHistory?.length || 0) + 1).padStart(4, '0')}`;
 
@@ -4305,7 +4474,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!target) return { success: false, message: 'Supplier return record not found.' };
 
     const dispatchedDate = new Date().toISOString();
-    const dispatcher = dispatchDetails.dispatchedBy || currentUser?.fullName || 'Central Storekeeper';
+    const dispatcher = dispatchDetails.dispatchedBy || actorDisplayName;
 
     updateSupplierReturn(id, {
       status: 'Dispatched to Supplier',
@@ -4344,7 +4513,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!target) return { success: false, message: 'Supplier return record not found.' };
 
     const settledDate = new Date().toISOString();
-    const settledBy = settlementDetails.settledBy || currentUser?.fullName || 'Central Finance Admin';
+    const settledBy = settlementDetails.settledBy || actorDisplayName;
     const newStatus: SupplierReturnStatus =
       settlementDetails.settlementType === 'Replacement Material'
         ? 'Replacement Stock Received'
@@ -4442,7 +4611,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       action,
       referenceNo,
       siteName,
-      performedBy: currentUser?.fullName || 'System Administrator',
+      performedBy: actorDisplayName,
       details,
       itemCode,
       quantityChanged,
@@ -5166,7 +5335,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         quantity: initialReceivedQty,
         unitCost: savedItem.unitPrice,
         notes: 'Initial received stock during item registration',
-        receivedBy: currentUser?.fullName || 'Sasith Dissanayake',
+        receivedBy: actorDisplayName,
       };
       setMainStockEntries((prev) => [newEntry, ...prev]);
       addAuditLog(
@@ -5249,7 +5418,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ...i,
           isDeleted: true,
           deletedAt: now,
-          deletedBy: currentUser?.fullName || 'Excel Swap Import',
+          deletedBy: actorDisplayName,
         }));
       }
 
@@ -5355,7 +5524,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       pendingStockUnitsAtTransfer: 0,
       stockCleared: true,
       assignedAt: nowIso,
-      assignedBy: currentUser?.fullName || 'System Admin',
+      assignedBy: actorDisplayName,
       notes: `Initial team registration at ${initialSiteName}`,
     };
 
@@ -5769,7 +5938,52 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     if (authUser?.id === id) {
       setAuthUser((prev) => ({ ...prev, ...finalUserUpdates }));
+      if ((isSuperAdmin(nextRole) || nextUsername === 'admin') && nextFullName && !isGenericSuperAdminName(nextFullName)) {
+        const cleanNext = stripSuperAdminSuffix(nextFullName);
+        setSuperAdminOperatorNameState(cleanNext);
+        try {
+          localStorage.setItem(STORAGE_KEY_PREFIX + 'super_admin_operator_name', cleanNext);
+        } catch {}
+      }
     }
+  };
+
+  const setSuperAdminOperatorName = (name: string, syncToUserProfile: boolean = true) => {
+    const clean = stripSuperAdminSuffix(name);
+    if (!clean || isGenericSuperAdminName(clean)) return;
+    setSuperAdminOperatorNameState(clean);
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + 'super_admin_operator_name', clean);
+    } catch {}
+    if (authUser && (syncToUserProfile || isGenericSuperAdminName(authUser.fullName))) {
+      updateUser(authUser.id, { fullName: clean });
+      const activeTid = currentTenantIdRef.current;
+      const baseList = tenantsRef.current.length > 0 ? tenantsRef.current : tenants;
+      const targetTenant = baseList.find((t) => t.id === activeTid);
+      if (targetTenant && (targetTenant.ownerUserId === authUser.id || authUser.username === 'admin')) {
+        const nextTenants = persistTenantsLocal(
+          baseList.map((t) => (t.id === activeTid ? { ...t, adminFullName: clean } : t))
+        );
+        tenantsRef.current = nextTenants;
+        setTenants(nextTenants);
+        writeTenantsToFirebase(nextTenants).catch(console.warn);
+      }
+    }
+    const attributed = `${clean} (as Super Admin)`;
+    setAuditLogs((prev) => {
+      const logEntry: AuditLogEntry = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        action: 'OTHER',
+        referenceNo: 'ADMIN-IDENTITY',
+        siteName: 'Main Central Warehouse',
+        performedBy: attributed,
+        details: `Super Admin operator identity set to ${attributed} for individual accountability.`,
+      };
+      const next = [logEntry, ...prev];
+      saveTenantData(currentTenantIdRef.current, 'auditLogs', next);
+      return next;
+    });
   };
 
   // Compute site-specific or total in-hand stock for a team
@@ -5975,7 +6189,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       pendingStockUnitsAtTransfer: pendingUnitsOnPrevSite,
       stockCleared: pendingUnitsOnPrevSite <= 0,
       assignedAt: nowIso,
-      assignedBy: currentUser?.fullName || 'Branch Admin',
+      assignedBy: actorDisplayName,
       notes:
         notes?.trim() ||
         (pendingUnitsOnPrevSite > 0
@@ -6133,7 +6347,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               stockClearedAt: canRestoreImmediatelyAsPermanent ? nowIso : h.stockClearedAt,
               promotedToPermanentAt: canRestoreImmediatelyAsPermanent ? nowIso : h.promotedToPermanentAt,
               promotedBy: canRestoreImmediatelyAsPermanent
-                ? currentUser?.fullName || 'Branch Admin'
+                ? actorDisplayName
                 : h.promotedBy,
               notes:
                 notes?.trim() ||
@@ -6157,10 +6371,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         stockCleared: canRestoreImmediatelyAsPermanent,
         stockClearedAt: canRestoreImmediatelyAsPermanent ? nowIso : undefined,
         assignedAt: nowIso,
-        assignedBy: currentUser?.fullName || 'Site Manager',
+        assignedBy: actorDisplayName,
         promotedToPermanentAt: canRestoreImmediatelyAsPermanent ? nowIso : undefined,
         promotedBy: canRestoreImmediatelyAsPermanent
-          ? currentUser?.fullName || 'Site Manager'
+          ? actorDisplayName
           : undefined,
         notes:
           notes?.trim() ||
@@ -6185,7 +6399,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       pendingClearanceSiteName: canRestoreImmediatelyAsPermanent ? undefined : primaryVisitingUncleared?.siteName,
       permanentConfirmedAt: canRestoreImmediatelyAsPermanent ? nowIso : team.permanentConfirmedAt,
       permanentConfirmedBy: canRestoreImmediatelyAsPermanent
-        ? currentUser?.fullName || 'Site Manager'
+        ? actorDisplayName
         : team.permanentConfirmedBy,
       updatedAt: nowIso,
       siteAssignmentHistory: finalHistory,
@@ -6286,7 +6500,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           stockCleared: true,
           stockClearedAt: nowIso,
           promotedToPermanentAt: nowIso,
-          promotedBy: currentUser?.fullName || 'Branch Admin',
+          promotedBy: actorDisplayName,
           notes: prevSiteName
             ? `Promoted to Permanent at ${currentSiteName} (Ref: ${prevSiteName})`
             : `Confirmed Permanent at ${currentSiteName}`,
@@ -6311,7 +6525,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       pendingClearanceSiteId: undefined,
       pendingClearanceSiteName: undefined,
       permanentConfirmedAt: nowIso,
-      permanentConfirmedBy: currentUser?.fullName || 'Branch Admin',
+      permanentConfirmedBy: actorDisplayName,
       updatedAt: nowIso,
       siteAssignmentHistory: updatedHistory,
     };
@@ -6418,7 +6632,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           pendingClearanceSiteId: undefined,
           pendingClearanceSiteName: undefined,
           permanentConfirmedAt: nowIso,
-          permanentConfirmedBy: currentUser?.fullName || 'Auto Stock Clearance',
+          permanentConfirmedBy: actorDisplayName || 'Auto Stock Clearance',
           updatedAt: nowIso,
           siteAssignmentHistory: nextHistory,
         };
@@ -6675,7 +6889,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Soft Delete Mechanism (is_deleted = true, deleted_at, deleted_by)
   const softDeleteItem = (id: string) => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setItems((prev) => {
       const updated = prev.map((i) => (i.id === id ? { ...i, isDeleted: true, deletedAt: timestamp, deletedBy } : i));
@@ -6698,7 +6912,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const softDeleteSite = (id: string) => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
 
@@ -6753,7 +6967,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const softDeleteUser = (id: string) => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
     const targetUser = users.find((u) => u.id === id);
@@ -6806,7 +7020,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const softDeleteTeam = (id: string) => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setTeams((prev) => {
       const updated = prev.map((t) =>
@@ -6832,7 +7046,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const softDeleteProject = (id: string) => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setProjects((prev) => {
       const updated = prev.map((p) => (p.id === id ? { ...p, isDeleted: true, deletedAt: timestamp, deletedBy } : p));
@@ -6866,7 +7080,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!ids || ids.length === 0) return;
     const idSet = new Set(ids);
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setTeams((prev) => {
       const updated = prev.map((t) =>
@@ -7358,7 +7572,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       action: 'DEMO_DATA_CLEARED',
       referenceNo: 'RESET-LOGS',
       siteName: 'Main Central Warehouse',
-      performedBy: currentUser?.fullName || 'System Administrator',
+      performedBy: actorDisplayName,
       details: 'Audit trail history cleared.',
     };
     setAuditLogs([resetLog]);
@@ -7367,7 +7581,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const clearAllItems = () => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     setItems((prev) => {
       const updated = prev.map((i) => ({ ...i, isDeleted: true, deletedAt: timestamp, deletedBy }));
       saveTenantData(currentTenantIdRef.current, 'items', updated);
@@ -7378,7 +7592,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const clearAllSites = () => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     setSites((prev) => {
       const updated = prev.map((s) => (s.isMainWarehouse ? s : { ...s, isDeleted: true, deletedAt: timestamp, deletedBy }));
       saveTenantData(currentTenantIdRef.current, 'sites', updated);
@@ -7389,7 +7603,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const clearAllTeams = () => {
     const timestamp = new Date().toISOString();
-    const deletedBy = currentUser?.fullName || 'Administrator';
+    const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     setTeams((prev) => {
       const updated = prev.map((t) => ({
@@ -7529,7 +7743,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...entryData,
       id: `mse-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       timestamp: new Date().toISOString(),
-      receivedBy: currentUser?.fullName || 'Sasith Dissanayake',
+      receivedBy: actorDisplayName,
     };
     setMainStockEntries((prev) => {
       const next = [newEntry, ...prev];
@@ -7568,7 +7782,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       status: 'Pending Approval',
       requestedDate: nowIso,
       updatedAt: nowIso,
-      requestedBy: currentUser?.fullName || 'Branch Admin',
+      requestedBy: actorDisplayName,
     };
     const nextRequests = [newRequest, ...stockRequests];
     setStockRequests(nextRequests);
@@ -7610,7 +7824,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           status: 'Approved / In-Transit' as const,
           approvalDate: nowIso,
           updatedAt: nowIso,
-          approvedBy: currentUser?.fullName || 'Sasith Dissanayake',
+          approvedBy: actorDisplayName,
           approvalNotes,
           items: updatedItems,
         };
@@ -7644,7 +7858,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           status: 'Rejected' as const,
           approvalDate: nowIso,
           updatedAt: nowIso,
-          approvedBy: currentUser?.fullName || 'Sasith Dissanayake',
+          approvedBy: actorDisplayName,
           approvalNotes: notes || 'Rejected by Main Branch Admin',
         };
       });
@@ -7684,7 +7898,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             status: 'Rejected' as const,
             approvalDate: nowIso,
             updatedAt: nowIso,
-            approvedBy: currentUser?.fullName || 'Main Branch Admin',
+            approvedBy: actorDisplayName,
             approvalNotes: 'All items removed due to stock unavailability.',
           };
         }
@@ -7735,7 +7949,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           status: 'Accepted' as const,
           acceptanceDate: nowIso,
           updatedAt: nowIso,
-          acceptedBy: currentUser?.fullName || 'Branch Admin',
+          acceptedBy: actorDisplayName,
           acceptanceNotes,
           items: updatedItems,
         };
@@ -7770,7 +7984,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `issue-${Date.now()}`,
       issueNoteNumber,
       issueDate: new Date().toISOString(),
-      issuedBy: currentUser?.fullName || 'Branch Admin',
+      issuedBy: actorDisplayName,
     };
     setTeamIssues((prev) => {
       const next = [newIssue, ...prev];
@@ -7820,7 +8034,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `ret-${Date.now()}`,
       returnVoucherNumber,
       returnDate: new Date().toISOString(),
-      returnedBy: currentUser?.fullName || 'Branch Admin',
+      returnedBy: actorDisplayName,
     };
     setTeamReturns((prev) => {
       const next = [newReturn, ...prev];
@@ -7887,7 +8101,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const returnVoucherNumber = `RV-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
     const nowIso = new Date().toISOString();
     const returnedByPerson =
-      (data.returnedBy && data.returnedBy.trim()) || currentUser?.fullName || 'Branch Admin';
+      (data.returnedBy && data.returnedBy.trim()) || actorDisplayName;
     const batchItemsSnapshot = validRows.map((r) => ({
       itemId: r.itemId,
       quantity: Number(r.quantity),
@@ -8009,7 +8223,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           : proj?.customFieldValues || undefined,
       supervisorOrLeader: leaderName,
       supervisorOrLeaderName: leaderName,
-      loggedBy: currentUser?.fullName || 'Field Supervisor',
+      loggedBy: actorDisplayName,
     };
     if (
       proj &&
@@ -8051,7 +8265,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       requestNumber,
       status: 'Pending Admin Review',
       requestedDate: new Date().toISOString(),
-      requestedBy: currentUser?.fullName || 'Field Supervisor',
+      requestedBy: actorDisplayName,
     };
     setCrossProjectRequests((prev) => {
       const next = [newReq, ...prev];
@@ -8558,7 +8772,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `br-${Date.now()}`,
       branchReturnNumber,
       returnDate: new Date().toISOString(),
-      returnedBy: currentUser?.fullName || 'Branch Admin',
+      returnedBy: actorDisplayName,
     };
     setBranchReturns((prev) => {
       const next = [newBranchReturn, ...prev];
@@ -8616,7 +8830,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nextNum = Math.max(branchReturns.length, distinctNotes) + 1;
     const branchReturnNumber = `BRM-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
     const nowIso = new Date().toISOString();
-    const returnedByPerson = currentUser?.fullName || 'Branch Admin';
+    const returnedByPerson = actorDisplayName;
     const batchItemsSnapshot = validRows.map((r) => ({
       itemId: r.itemId,
       quantity: Number(r.quantity),
@@ -8733,7 +8947,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       itemId,
       quantity: numQty,
       restoredDate: new Date().toISOString(),
-      restoredBy: currentUser?.fullName || 'Super Admin Central',
+      restoredBy: actorDisplayName,
       notes: notes?.trim() || 'Repaired and restored to central usable inventory',
       isDeleted: false,
     };
@@ -8958,7 +9172,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       backupNumber,
       name: assignedName,
       createdAt: flushIso,
-      createdBy: currentUser?.fullName || 'System Administrator',
+      createdBy: actorDisplayName,
       itemCount: items.length,
       transactionCount:
         mainStockEntries.length +
@@ -9012,7 +9226,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const cleanAdminUser: User = {
       id: currentUser?.id || `usr-${activeTenant.slug}-admin`,
       username: currentUser?.username || 'admin',
-      fullName: currentUser?.fullName || `${activeTenant.companyName} Super Admin`,
+      fullName:
+        stripSuperAdminSuffix(superAdminOperatorName) ||
+        (!isGenericSuperAdminName(currentUser?.fullName) ? stripSuperAdminSuffix(currentUser?.fullName) : '') ||
+        (!isGenericSuperAdminName(activeTenant.adminFullName) ? stripSuperAdminSuffix(activeTenant.adminFullName) : '') ||
+        `${activeTenant.companyName} Super Admin`,
       siteId: 'all',
       role: 'Super Admin Central',
       password: isMaster ? '' : (currentUser?.password || ''),
@@ -9026,14 +9244,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       action: 'SYSTEM_FLUSHED_WITH_BACKUP',
       referenceNo: `FLUSH-#${backupNumber}`,
       siteName: 'Main Central Warehouse',
-      performedBy: currentUser?.fullName || 'System Super Admin',
+      performedBy: actorDisplayName,
       details: `Full System Flush completed under admin authorization. Prior inventory and records saved as Backup #${backupNumber} ("${assignedName}"). System reset to clean state.`,
     };
     const flushMeta: FlushMeta = {
       flushId: `flush-${flushMs}`,
       flushedAt: flushIso,
       flushedAtMs: flushMs,
-      flushedBy: currentUser?.fullName || 'System Super Admin',
+      flushedBy: actorDisplayName,
       backupNumber,
     };
 
@@ -9945,6 +10163,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         firebaseDbUrl: firebaseConfig.databaseURL,
         authUser,
         viewAsUser,
+        superAdminOperatorName,
+        setSuperAdminOperatorName,
+        actorDisplayName,
+        superAdminDisplayLabel,
+        needsSuperAdminIdentity,
         setViewAsUser,
         exitViewAsMode,
         tenants,

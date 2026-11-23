@@ -51,6 +51,8 @@ import {
   getUserAssignedSiteIds,
   getUserSupervisedSites,
   isUserAssignedToSite,
+  isGenericSuperAdminName,
+  stripSuperAdminSuffix,
 } from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
 import {
@@ -83,6 +85,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const {
     config,
     currentUser,
+    actorDisplayName,
     activeSites,
     activeUsers,
     activeItems,
@@ -392,13 +395,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       return;
     }
 
+    const cleanFullName = stripSuperAdminSuffix(fullName);
+    if (isSuperAdmin(userRole) && (!cleanFullName || cleanFullName.length < 2 || isGenericSuperAdminName(cleanFullName))) {
+      showToast('Enter the person’s actual Full Name for Super Admin Central (generic names like "Super Admin" are blocked).');
+      return;
+    }
+
     const finalSiteIds = isAllSitesSelected ? ['all'] : userSelectedSiteIds;
     const finalPrimarySiteId = isAllSitesSelected ? 'all' : (userSelectedSiteIds[0] || 'unassigned');
 
     addUser({
       username: normalizedUsername,
       email: normalizedEmail || (normalizedUsername.includes('@') ? normalizedUsername : undefined),
-      fullName: fullName.trim(),
+      fullName: isSuperAdmin(userRole) ? cleanFullName : fullName.trim(),
       siteId: finalPrimarySiteId,
       siteIds: finalSiteIds,
       role: userRole,
@@ -1619,7 +1628,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               Site branch personnel can view items, units, and codes. Adding or modifying master item specifications is managed by <strong>Super Admin Central</strong>.
             </p>
             <div className="mt-4 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
-              Role: <strong className="text-slate-800 dark:text-slate-200">{currentUser.fullName}</strong> ({currentUser.role})
+              Role: <strong className="text-slate-800 dark:text-slate-200">{actorDisplayName}</strong> ({currentUser.role})
             </div>
           </div>
         )}
@@ -2090,7 +2099,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 Branch creation, supervisor assignment, and location configurations are managed exclusively by <strong>Super Admin Central</strong>.
               </p>
               <div className="mt-4 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
-                Logged in as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.fullName}</strong> ({currentUser.role})
+                Logged in as: <strong className="text-slate-800 dark:text-slate-200">{actorDisplayName}</strong> ({currentUser.role})
               </div>
             </div>
           )}
@@ -2386,7 +2395,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               Adding new user accounts, modifying credentials, and configuring permissions is restricted to <strong>Super Admin Central</strong>.
             </p>
             <div className="mt-4 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 inline-block">
-              Logged in as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.fullName}</strong> ({currentUser.role})
+              Logged in as: <strong className="text-slate-800 dark:text-slate-200">{actorDisplayName}</strong> ({currentUser.role})
             </div>
           </div>
         ) : (

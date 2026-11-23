@@ -65,6 +65,7 @@ export const ClientFreeIssueView: React.FC = () => {
     config,
     currentTenant,
     currentUser,
+    actorDisplayName,
     activeItems,
     items,
     projects,
@@ -263,7 +264,7 @@ export const ClientFreeIssueView: React.FC = () => {
   const [formAssignedSiteId, setFormAssignedSiteId] = useState('');
   const [formDispatchNoteNo, setFormDispatchNoteNo] = useState('');
   const [formReceivedDate, setFormReceivedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formReceivedBy, setFormReceivedBy] = useState(currentUser?.fullName || 'Logistics Coordinator');
+  const [formReceivedBy, setFormReceivedBy] = useState(actorDisplayName || 'Logistics Coordinator');
   const [formStorageLocation, setFormStorageLocation] = useState('Main Central Warehouse');
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -927,7 +928,7 @@ export const ClientFreeIssueView: React.FC = () => {
     setFormAssignedSiteId(resolvedBranch.siteId || branchSites[0]?.id || '');
     setFormDispatchNoteNo(`DN-${new Date().getFullYear()}-${String(clientFreeIssues.length + 1).padStart(4, '0')}`);
     setFormReceivedDate(new Date().toISOString().split('T')[0]);
-    setFormReceivedBy(currentUser?.fullName || 'Logistics Coordinator');
+    setFormReceivedBy(actorDisplayName || 'Logistics Coordinator');
     setFormStorageLocation(mainWarehouseName);
     setFormNotes('');
     setFormItems([{ itemId: '', itemCode: '', itemName: '', quantity: '', unit: 'm', remarks: '' }]);
@@ -958,7 +959,7 @@ export const ClientFreeIssueView: React.FC = () => {
     setFormReceivedDate(
       entry.receivedDate ? entry.receivedDate.split('T')[0] : new Date().toISOString().split('T')[0]
     );
-    setFormReceivedBy(entry.receivedBy || currentUser?.fullName || 'Logistics Coordinator');
+    setFormReceivedBy(entry.receivedBy || actorDisplayName || 'Logistics Coordinator');
     setFormStorageLocation(mainWarehouseName);
     setFormNotes(entry.notes || '');
     setFormItems(

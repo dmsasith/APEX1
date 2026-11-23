@@ -66,6 +66,7 @@ export const ProcurementView: React.FC = () => {
     currentTenant,
     config,
     currentUser,
+    actorDisplayName,
     activeItems,
     suppliers,
     activeSuppliers,
@@ -468,7 +469,7 @@ export const ProcurementView: React.FC = () => {
       discountAmount,
       grandTotal: calculatedGrandTotal,
       notes: orderNotes,
-      preparedBy: currentUser?.fullName || 'Super Administrator',
+      preparedBy: actorDisplayName,
       reservedProjectId: poReservedProjectId !== 'none' ? poReservedProjectId : undefined,
       reservedProjectName: poReservedProjectId !== 'none' ? (selectedProj?.projectName || selectedProj?.projectId) : undefined,
     });
@@ -507,7 +508,7 @@ export const ProcurementView: React.FC = () => {
     setReceivingOrder(order);
     setGrnDeliveryNote('');
     setGrnNotes('');
-    setGrnReceivedBy(currentUser?.fullName || 'Central Store In-Charge');
+    setGrnReceivedBy(actorDisplayName || 'Central Store In-Charge');
     setGrnReceiptDate(new Date().toISOString().split('T')[0]);
     setGrnError('');
 
@@ -586,7 +587,7 @@ export const ProcurementView: React.FC = () => {
     }
 
     const res = receivePurchaseOrderToMainStock(receivingOrder.id, {
-      receivedBy: grnReceivedBy.trim() || currentUser?.fullName || 'Central Store In-Charge',
+      receivedBy: grnReceivedBy.trim() || actorDisplayName || 'Central Store In-Charge',
       deliveryNoteNo: grnDeliveryNote.trim(),
       notes: grnNotes.trim(),
       receiptDate: grnReceiptDate ? new Date(grnReceiptDate).toISOString() : new Date().toISOString(),
@@ -660,7 +661,7 @@ Kindly review and reply to this email to confirm acceptance and scheduled delive
 
 Best regards,
 
-${po.preparedBy || currentUser?.fullName || 'Procurement Team'}
+${po.preparedBy || actorDisplayName || 'Procurement Team'}
 Central Logistics & Warehouse Operations
 ${tenantCompanyName}
 Contact: ${tenantPhone}
@@ -797,7 +798,7 @@ Email: ${tenantEmail}`;
       isDestructive: false,
       onConfirm: () => {
         const res = dispatchSupplierReturn(ret.id, {
-          dispatchedBy: currentUser?.fullName || 'Central Storekeeper',
+          dispatchedBy: actorDisplayName || 'Central Storekeeper',
           gatePassNo: ret.gatePassNo,
           transporterName: ret.transporterName,
           vehicleNo: ret.vehicleNo,
@@ -834,7 +835,7 @@ Email: ${tenantEmail}`;
           <span className="font-semibold text-slate-800">Super Admin Central / All Site Branch Admin</span>.
         </p>
         <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
-          Currently logged in as: <strong className="text-slate-700">{currentUser?.fullName}</strong> ({currentUser?.role})
+          Currently logged in as: <strong className="text-slate-700">{actorDisplayName}</strong> ({currentUser?.role})
         </div>
       </div>
     );

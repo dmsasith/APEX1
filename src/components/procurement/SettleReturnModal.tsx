@@ -25,7 +25,7 @@ export const SettleReturnModal: React.FC<SettleReturnModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { config, settleSupplierReturn, currentUser, supplierReturns } = useStock();
+  const { config, settleSupplierReturn, actorDisplayName, supplierReturns } = useStock();
 
   const [settlementType, setSettlementType] = useState<SettlementType>(
     supplierReturn?.settlementType || 'Debit Note / Refund Credit'
@@ -47,7 +47,7 @@ export const SettleReturnModal: React.FC<SettleReturnModalProps> = ({
     }
 
     const res = settleSupplierReturn(supplierReturn.id, {
-      settledBy: currentUser?.fullName || 'Central Finance & Procurement Admin',
+      settledBy: actorDisplayName || 'Central Finance & Procurement Admin',
       settlementRef: settlementRef.trim(),
       settlementType,
       settlementNotes: settlementNotes.trim() || undefined,

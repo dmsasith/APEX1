@@ -41,6 +41,9 @@ import {
   isUserAllSites,
   getUserAssignedSiteIds,
   getSubscriptionStatusSummary,
+  formatActorDisplayName,
+  stripSuperAdminSuffix,
+  isGenericSuperAdminName,
 } from '../types';
 
 interface HeaderProps {
@@ -88,11 +91,19 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
     syncWithFirebaseNow,
     firebaseDbUrl,
     currentTenant,
+    superAdminOperatorName,
+    setSuperAdminOperatorName,
+    actorDisplayName,
+    superAdminDisplayLabel,
+    needsSuperAdminIdentity,
   } = useStock();
 
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
+  const [dismissedIdentityPrompt, setDismissedIdentityPrompt] = useState(false);
+  const [identityInput, setIdentityInput] = useState('');
+  const [identityError, setIdentityError] = useState<string | null>(null);
 
   const isAdmin = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin' || authUser?.username === 'admin';
 
@@ -153,6 +164,28 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
       document.documentElement.setAttribute('data-theme', currentThemeId);
     }
   }, [currentTheme, currentThemeId]);
+
+  useEffect(() => {
+    if (!needsSuperAdminIdentity) {
+      setIdentityInput('');
+      setIdentityError(null);
+    }
+  }, [needsSuperAdminIdentity]);
+
+  const handleSaveSuperAdminIdentity = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = stripSuperAdminSuffix(identityInput);
+    if (!clean || isGenericSuperAdminName(clean)) {
+      setIdentityError(
+        'Please enter your actual personal Full Name (e.g. Sasith Dissanayake). Generic labels like "System Super Admin" cannot be used for audit logs.'
+      );
+      return;
+    }
+    setSuperAdminOperatorName(clean, true);
+    setIdentityError(null);
+    setDismissedIdentityPrompt(false);
+    showStatus(`Signed in for audit logs as: ${clean} (as Super Admin)`);
+  };
 
   useEffect(() => {
     if (!showToneMenu) return;
@@ -488,24 +521,40 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                   className={`w-6 h-6 rounded-lg ${currentTheme.logoBadgeBg} ${currentTheme.logoBadgeText} font-extrabold text-[10px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs`}
                   title="Click to edit account profile & email"
                 >
-                  {currentUser?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+                  {(() => {
+                    const opName =
+                      currentUser?.id === authUser?.id && stripSuperAdminSuffix(superAdminOperatorName)
+                        ? stripSuperAdminSuffix(superAdminOperatorName)
+                        : stripSuperAdminSuffix(currentUser?.fullName || '');
+                    const source = opName || currentUser?.username || 'U';
+                    return source.split(/\s+/).filter(Boolean).map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'U';
+                  })()}
                 </button>
                 <div className="flex items-center gap-1.5 min-w-0">
                   {isCentralAdmin ? (
                     <select
                       value={currentUser.id}
                       onChange={(e) => setViewAsUser(activeUsers.find((u) => u.id === e.target.value)!)}
-                      className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[130px] 2xl:max-w-[165px]"
+                      className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer truncate max-w-[230px] sm:max-w-[290px] xl:max-w-[340px]"
+                      title={
+                        currentUser.id === authUser.id
+                          ? superAdminDisplayLabel
+                          : formatActorDisplayName(currentUser)
+                      }
                     >
                       {activeUsers.map((u) => (
                         <option key={u.id} value={u.id} className="bg-[#09132c] text-white">
-                          {u.id === authUser.id ? `★ ${u.fullName}` : u.fullName}
+                          {u.id === authUser.id
+                            ? `★ ${superAdminDisplayLabel}`
+                            : isSuperAdmin(u.role) || u.username === 'admin'
+                            ? formatActorDisplayName(u)
+                            : u.fullName}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <span className="font-bold text-white text-xs truncate max-w-[140px] 2xl:max-w-[175px]">
-                      {currentUser?.fullName} ({currentUser?.role})
+                    <span className="font-bold text-white text-xs truncate max-w-[210px] sm:max-w-[270px]">
+                      {actorDisplayName} ({currentUser?.role})
                     </span>
                   )}
                   <span className="text-white/25">·</span>
@@ -516,6 +565,22 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                   >
                     Edit Profile
                   </button>
+                  {needsSuperAdminIdentity && (
+                    <>
+                      <span className="text-white/25">·</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIdentityError(null);
+                          setDismissedIdentityPrompt(false);
+                        }}
+                        className="text-[11px] bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-400/45 px-2 py-0.5 rounded-lg font-extrabold cursor-pointer whitespace-nowrap shrink-0 transition"
+                        title="Confirm your personal name so actions don't appear as generic System Super Admin"
+                      >
+                        Set Admin Name
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -695,6 +760,93 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
           title="Live Inventory Barcode Lookup (USB & Mobile)"
           subtitle="Scan any item via USB Barcode Gun or Mobile Phone Camera to inspect stock balances"
         />
+      )}
+
+      {/* Personal Super Admin Identity Prompt for already-signed-in generic sessions */}
+      {needsSuperAdminIdentity && !dismissedIdentityPrompt && (
+        <div className="fixed inset-0 z-[110] bg-slate-900/55 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3.5 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 leading-tight">
+                    Confirm Personal Super Admin Identity
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Individual accountability for audit logs &amp; approvals
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDismissedIdentityPrompt(true)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Dismiss for now"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSuperAdminIdentity} className="space-y-4">
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                Currently your actions are recorded under the generic label{' '}
+                <strong>"System Super Admin"</strong>. Enter your personal name so all logs, approvals, and vouchers clearly record you individually.
+              </div>
+
+              {identityError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                  {identityError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Acting Super Admin Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={identityInput}
+                  onChange={(e) => setIdentityInput(e.target.value)}
+                  placeholder="e.g. Sasith Dissanayake / Kamal Perera"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-0.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Header &amp; Audit Attribution Preview
+                </div>
+                <div className="font-extrabold text-slate-900">
+                  {stripSuperAdminSuffix(identityInput) && !isGenericSuperAdminName(identityInput)
+                    ? `${stripSuperAdminSuffix(identityInput)} (as Super Admin)`
+                    : 'Your Name (as Super Admin)'}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setDismissedIdentityPrompt(true)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Remind Later
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-800 hover:bg-blue-900 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Confirm My Name</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </>
   );

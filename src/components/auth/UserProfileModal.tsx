@@ -14,7 +14,15 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { isUserAllSites, getUserAssignedSiteIds, getUserSupervisedSites, Site } from '../../types';
+import {
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  getUserSupervisedSites,
+  isSuperAdmin,
+  isGenericSuperAdminName,
+  stripSuperAdminSuffix,
+  Site,
+} from '../../types';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -22,20 +30,45 @@ interface UserProfileModalProps {
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
-  const { currentUser, activeSites, updateUser, setCurrentUser } = useStock();
+  const {
+    currentUser,
+    authUser,
+    activeSites,
+    updateUser,
+    setCurrentUser,
+    superAdminOperatorName,
+    setSuperAdminOperatorName,
+  } = useStock();
 
-  const [fullName, setFullName] = useState(currentUser.fullName);
+  const isTargetSuperAdmin = Boolean(
+    isSuperAdmin(currentUser.role) || currentUser.username === 'admin'
+  );
+
+  const resolveInitialName = () => {
+    if (isTargetSuperAdmin) {
+      if (currentUser.id === authUser.id && stripSuperAdminSuffix(superAdminOperatorName)) {
+        return stripSuperAdminSuffix(superAdminOperatorName);
+      }
+      if (!isGenericSuperAdminName(currentUser.fullName)) {
+        return stripSuperAdminSuffix(currentUser.fullName);
+      }
+      return '';
+    }
+    return currentUser.fullName;
+  };
+
+  const [fullName, setFullName] = useState(resolveInitialName);
   const [username, setUsername] = useState(currentUser.username);
   const [userEmail, setUserEmail] = useState(
     currentUser.email || (currentUser.username.includes('@') ? currentUser.username : '')
   );
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   React.useEffect(() => {
     if (isOpen) {
-      setFullName(currentUser.fullName);
+      setFullName(resolveInitialName());
       setUsername(currentUser.username);
       setUserEmail(
         currentUser.email || (currentUser.username.includes('@') ? currentUser.username : '')
@@ -43,43 +76,56 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       setPassword('');
       setStatusMsg(null);
     }
-  }, [isOpen, currentUser]);
+  }, [isOpen, currentUser, superAdminOperatorName]);
 
   if (!isOpen) return null;
 
+  const cleanPersonalName = stripSuperAdminSuffix(fullName);
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !username.trim()) {
-      setStatusMsg('Full Name and Username/Email cannot be empty.');
+    if (!cleanPersonalName || !username.trim()) {
+      setStatusMsg({ type: 'error', text: 'Full Name and Username/Email cannot be empty.' });
+      return;
+    }
+
+    if (isTargetSuperAdmin && isGenericSuperAdminName(cleanPersonalName)) {
+      setStatusMsg({
+        type: 'error',
+        text: 'Enter your personal Full Name (e.g. Sasith Dissanayake). Generic names like "System Super Admin" are blocked for individual accountability.',
+      });
       return;
     }
 
     const normalizedEmail = userEmail.trim().toLowerCase();
     if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setStatusMsg('Please enter a valid Recovery / Work Email address or leave it blank.');
+      setStatusMsg({ type: 'error', text: 'Please enter a valid Recovery / Work Email address or leave it blank.' });
       return;
     }
 
     const cleanNewPass = password.trim();
     if (cleanNewPass && cleanNewPass.length < 6) {
-      setStatusMsg('New password must be at least 6 characters long.');
+      setStatusMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
       return;
     }
 
     const updated = {
-      fullName: fullName.trim(),
+      fullName: cleanPersonalName,
       username: username.trim(),
       email: normalizedEmail || undefined,
       ...(cleanNewPass ? { password: cleanNewPass } : {}),
     };
 
     updateUser(currentUser.id, updated);
+    if (isTargetSuperAdmin && currentUser.id === authUser.id) {
+      setSuperAdminOperatorName(cleanPersonalName, false);
+    }
     setCurrentUser({
       ...currentUser,
       ...updated,
     });
 
-    setStatusMsg('Profile & Account credentials updated successfully!');
+    setStatusMsg({ type: 'success', text: 'Profile & Account credentials updated successfully!' });
     setTimeout(() => {
       setStatusMsg(null);
       onClose();
@@ -87,20 +133,27 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="relative p-5 border-b border-slate-800/80 bg-gradient-to-r from-emerald-950/40 to-slate-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
-              {currentUser.fullName.slice(0, 2).toUpperCase()}
+              {(cleanPersonalName || currentUser.fullName)
+                .split(' ')
+                .map((n) => n[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase() || 'U'}
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">
                 Edit My Account Settings
               </h2>
               <p className="text-xs text-slate-400">
-                Update login credentials &amp; profile information
+                {isTargetSuperAdmin
+                  ? `${cleanPersonalName || 'Your Name'} (as Super Admin)`
+                  : 'Update login credentials & profile information'}
               </p>
             </div>
           </div>
@@ -116,9 +169,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
         {/* Content */}
         <div className="p-6">
           {statusMsg && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-950/80 border border-emerald-700/80 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{statusMsg}</span>
+            <div
+              className={`mb-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                statusMsg.type === 'error'
+                  ? 'bg-rose-950/80 border-rose-700/80 text-rose-200'
+                  : 'bg-emerald-950/80 border-emerald-700/80 text-emerald-300'
+              }`}
+            >
+              {statusMsg.type === 'error' ? (
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              )}
+              <span>{statusMsg.text}</span>
+            </div>
+          )}
+
+          {isTargetSuperAdmin && (
+            <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-400/30 text-amber-200 text-[11px] leading-relaxed">
+              <div className="font-bold text-amber-300 flex items-center gap-1.5 mb-0.5">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>Individual Super Admin Accountability</span>
+              </div>
+              <span>
+                All logs, approvals &amp; stock vouchers will be attributed to:{' '}
+                <strong className="text-white">
+                  {cleanPersonalName && !isGenericSuperAdminName(cleanPersonalName)
+                    ? `${cleanPersonalName} (as Super Admin)`
+                    : 'Your Name (as Super Admin)'}
+                </strong>
+              </span>
             </div>
           )}
 
@@ -126,7 +206,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             {/* Full Name */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                Full Name *
+                {isTargetSuperAdmin ? 'Acting Admin Full Name (Personal Name) *' : 'Full Name *'}
               </label>
               <div className="relative">
                 <UserIcon className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />

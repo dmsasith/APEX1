@@ -15,7 +15,12 @@ import {
   Globe,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { TenantRegistrationForm, computePlatformPricingMetrics } from '../../types';
+import {
+  TenantRegistrationForm,
+  computePlatformPricingMetrics,
+  isGenericSuperAdminName,
+  stripSuperAdminSuffix,
+} from '../../types';
 import { TermsConditionsModal } from './TermsConditionsModal';
 import { LegalDocId } from './legalPoliciesData';
 import {
@@ -93,6 +98,13 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
 
     if (!formData.companyName.trim()) {
       setErrorMsg('Please enter your company or business name.');
+      return;
+    }
+    const cleanAdminName = stripSuperAdminSuffix(formData.adminFullName);
+    if (!cleanAdminName || cleanAdminName.length < 2 || isGenericSuperAdminName(cleanAdminName)) {
+      setErrorMsg(
+        'Super Admin Full Name is mandatory (e.g. Kamal Perera). Generic names like "Admin" or "Super Admin" are not allowed.'
+      );
       return;
     }
     if (!formData.adminEmail.trim()) {
@@ -230,14 +242,14 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Your Full Name *
+                    Super Admin Full Name <span className="text-emerald-400">(Mandatory) *</span>
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Kasun Fernando"
+                      placeholder="e.g. Kamal Perera"
                       value={formData.adminFullName}
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, adminFullName: e.target.value }))
@@ -245,6 +257,9 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                       className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Your First Name is verified on Super Admin login &amp; actions log as <strong className="text-slate-200">{stripSuperAdminSuffix(formData.adminFullName) || 'Your Name'} (as Super Admin)</strong>.
+                  </p>
                 </div>
 
                 <div>

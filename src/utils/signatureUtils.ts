@@ -13,7 +13,10 @@ export function matchDigitalSignature(
     if (exact) return exact;
   }
 
-  const clean = (signerName || '').trim().toLowerCase();
+  const clean = (signerName || '')
+    .replace(/\s*\(?\s*as\s+super\s+admin\s*\)?/gi, '')
+    .trim()
+    .toLowerCase();
   if (clean) {
     const byFull = signatures.find((s) => s.name.toLowerCase().includes(clean));
     if (byFull) return byFull;

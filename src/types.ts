@@ -32,6 +32,69 @@ export function normalizeRole(role?: string): 'Super Admin Central' | 'All Site 
   return 'Branch System User';
 }
 
+export function stripSuperAdminSuffix(name?: string): string {
+  return (name || '')
+    .replace(/\s*\(?\s*as\s+super\s+admin\s*\)?/gi, '')
+    .trim();
+}
+
+export function isGenericSuperAdminName(name?: string): boolean {
+  const clean = stripSuperAdminSuffix(name).toLowerCase();
+  if (!clean) return true;
+  const genericExact = new Set([
+    'admin',
+    'administrator',
+    'system administrator',
+    'super admin',
+    'system super admin',
+    'super admin central',
+    'master admin',
+    'master super admin',
+  ]);
+  if (genericExact.has(clean)) return true;
+  if (clean.endsWith(' super admin')) return true;
+  return false;
+}
+
+export function extractFirstName(fullName?: string): string {
+  const clean = stripSuperAdminSuffix(fullName).replace(/[^a-zA-Z0-9\s.'-]/g, ' ').trim();
+  if (!clean) return '';
+  const parts = clean.split(/\s+/).filter(Boolean);
+  return (parts[0] || '').trim();
+}
+
+export function doesAdminFirstNameMatch(inputName: string, registeredFullName: string): boolean {
+  const cleanInput = stripSuperAdminSuffix(inputName).trim();
+  const cleanRegistered = stripSuperAdminSuffix(registeredFullName).trim();
+  if (!cleanInput || !cleanRegistered || isGenericSuperAdminName(cleanInput)) return false;
+
+  const regFirst = extractFirstName(cleanRegistered).toLowerCase();
+  if (!regFirst) return false;
+
+  const inputLower = cleanInput.toLowerCase();
+  if (inputLower === regFirst) return true;
+  if (inputLower === cleanRegistered.toLowerCase()) return true;
+  return false;
+}
+
+export function formatActorDisplayName(
+  user?: Pick<User, 'fullName' | 'role' | 'username'> | null,
+  superAdminOperatorName?: string | null
+): string {
+  if (!user) return 'System Administrator';
+  const isSup = isSuperAdmin(user.role) || user.username === 'admin';
+  if (!isSup) {
+    return (user.fullName || user.username || 'User').trim();
+  }
+  const candidateOp = stripSuperAdminSuffix(superAdminOperatorName || '');
+  const userPersonal = !isGenericSuperAdminName(user.fullName) ? stripSuperAdminSuffix(user.fullName) : '';
+  const personName = candidateOp || userPersonal;
+  if (personName) {
+    return `${personName} (as Super Admin)`;
+  }
+  return 'System Super Admin';
+}
+
 export interface SystemConfig {
   companyName: string;
   systemName: string;
@@ -1319,6 +1382,7 @@ export interface Tenant {
   subscription: TenantSubscription;
   createdAt: string;
   ownerUserId: string;
+  adminFullName?: string;
   isActive: boolean;
   emailVerified?: boolean;
   emailVerificationCode?: string;
