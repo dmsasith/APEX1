@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Boxes,
   ShieldCheck,
@@ -29,6 +29,7 @@ import {
   Warehouse,
   BookOpen,
   Play,
+  ArrowUp,
   Infinity as InfinityIcon,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
@@ -48,6 +49,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowBackToTop(true);
+      } else {
+        setShowBackToTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const [activeLandingTab, setActiveLandingTab] = useState<
     'overview' | 'guide' | 'privacy' | 'refund' | 'terms'
   >(() => {
@@ -2445,6 +2464,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
           </div>
         </div>
       </footer>
+
+      {/* Floating Back to Top Button */}
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 px-3.5 py-3 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-950 rounded-2xl shadow-[0_10px_25px_rgba(251,191,36,0.4)] border border-amber-200/80 flex items-center gap-2 font-black text-xs hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+          title="Back to Top"
+        >
+          <ArrowUp className="w-4 h-4 stroke-[2.5] group-hover:-translate-y-0.5 transition-transform" />
+          <span className="hidden sm:inline tracking-wide">Back to Top</span>
+        </button>
+      )}
 
       {/* Tenant Registration Modal */}
       <TenantSignupModal
