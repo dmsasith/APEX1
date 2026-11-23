@@ -432,18 +432,6 @@ export const SaasMasterAdminView: React.FC = () => {
     );
   };
 
-  const handleResetDefaultPricing = () => {
-    setEditMonthlyPrice(String(DEFAULT_PLATFORM_PRICING.monthlyPrice));
-    setEditAnnualPrice(String(DEFAULT_PLATFORM_PRICING.annualPrice));
-    setEditTrialDays(String(DEFAULT_PLATFORM_PRICING.trialDays));
-    setEditIncludedSiteBranches(String(DEFAULT_PLATFORM_PRICING.includedSiteBranches ?? 20));
-    setEditExtraSiteMonthlyPrice(String(DEFAULT_PLATFORM_PRICING.extraSiteMonthlyPrice ?? 10));
-    updatePlatformPricing(DEFAULT_PLATFORM_PRICING, syncExistingTenantsOnSave);
-    showNotification(
-      'Restored default subscription pricing ($19.90/mo · $189.00/yr · 7-Day Trial · 20 Base Sites + $10/mo extra)!'
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Title Header */}
@@ -544,18 +532,6 @@ export const SaasMasterAdminView: React.FC = () => {
                   Any price or trial duration change saved here automatically updates the <strong>Landing Page Pricing Cards</strong>, <strong>Global 34-Feature Comparison Matrix</strong>, <strong>Signup Modal</strong>, <strong>Tenant Billing &amp; QR Modal</strong>, and <strong>Official Invoices</strong>.
                 </p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={handleResetDefaultPricing}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
-                title="Reset to default $19.90/mo and $189.00/yr"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                <span>Reset Defaults ($19.90 / $189)</span>
-              </button>
             </div>
           </div>
 
