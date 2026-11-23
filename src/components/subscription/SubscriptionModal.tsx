@@ -22,7 +22,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { computePlatformPricingMetrics, getSubscriptionStatusSummary } from '../../types';
+import {
+  computePlatformPricingMetrics,
+  getSubscriptionStatusSummary,
+  getTenantBranchQuotaSummary,
+} from '../../types';
 import { TermsConditionsModal } from '../landing/TermsConditionsModal';
 import { LegalDocId } from '../landing/legalPoliciesData';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
@@ -40,11 +44,17 @@ import {
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialExtraSiteSlots?: number;
 }
 
-export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
-  const { currentTenant, currentUser, updateTenantSubscription, config, platformPricing } = useStock();
+export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
+  isOpen,
+  onClose,
+  initialExtraSiteSlots,
+}) => {
+  const { currentTenant, currentUser, activeSites, updateTenantSubscription, config, platformPricing } = useStock();
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+  const branchQuota = getTenantBranchQuotaSummary(currentTenant, activeSites, platformPricing);
 
   // Retrieve global master owner bank config (synced across all tenants)
   const masterBankConfig = (() => {
@@ -121,8 +131,27 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     };
   }, []);
 
-  const monthlyLkr = Math.round(pricingMetrics.monthlyPrice * usdRate);
-  const annualLkr = Math.round(pricingMetrics.annualPrice * usdRate);
+  const minRequiredExtraSlots = Math.max(
+    0,
+    branchQuota.activeBranchCount - branchQuota.includedBranches
+  );
+  const [extraSiteSlots, setExtraSiteSlots] = useState<number>(() =>
+    Math.max(minRequiredExtraSlots, branchQuota.extraSiteSlots, initialExtraSiteSlots || 0)
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setExtraSiteSlots(
+      Math.max(minRequiredExtraSlots, branchQuota.extraSiteSlots, initialExtraSiteSlots || 0)
+    );
+  }, [isOpen, minRequiredExtraSlots, branchQuota.extraSiteSlots, initialExtraSiteSlots]);
+
+  const extraMonthlyUsd = Number((extraSiteSlots * pricingMetrics.extraSiteMonthlyPrice).toFixed(2));
+  const extraAnnualUsd = Number((extraSiteSlots * pricingMetrics.extraSiteAnnualPrice).toFixed(2));
+  const totalMonthlyUsd = Number((pricingMetrics.monthlyPrice + extraMonthlyUsd).toFixed(2));
+  const totalAnnualUsd = Number((pricingMetrics.annualPrice + extraAnnualUsd).toFixed(2));
+  const monthlyLkr = Math.round(totalMonthlyUsd * usdRate);
+  const annualLkr = Math.round(totalAnnualUsd * usdRate);
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>(
     currentTenant?.subscription?.billingCycle || 'annual'
@@ -145,6 +174,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   const daysRemaining = subSummary.daysLeft;
 
   const isAnnual = billingCycle === 'annual';
+  const activeUsdTotal = isAnnual ? totalAnnualUsd : totalMonthlyUsd;
+  const activeLkrTotal = isAnnual ? annualLkr : monthlyLkr;
 
   const handleCopyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -160,9 +191,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       pendingBankPayment: {
         submittedAt: new Date().toISOString(),
         referenceNo: txnRef.trim(),
-        amount: isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice,
+        amount: activeUsdTotal,
         billingCycle: billingCycle,
-        notes: bankNotes.trim(),
+        extraSiteSlotsRequested: extraSiteSlots,
+        notes:
+          bankNotes.trim() ||
+          (extraSiteSlots > 0
+            ? `Includes +${extraSiteSlots} Extra Site Branch(es)`
+            : undefined),
         slipName: slipFileName || 'Bank_Transfer_Slip.pdf',
         status: 'pending',
       },
@@ -192,6 +228,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       const res = await startPaymentsLkAutoSubscription({
         billingCycle,
         tenantId: currentTenant.id,
+        extraSiteSlots,
         customerEmail: currentTenant.contactEmail,
         customerName: currentTenant.companyName,
         currentUser,
@@ -484,7 +521,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)
+                Monthly (${totalMonthlyUsd.toFixed(2)}/mo)
               </button>
               <button
                 type="button"
@@ -495,12 +532,63 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>Annual (${pricingMetrics.annualPriceClean}/yr)</span>
+                <span>Annual (${totalAnnualUsd.toFixed(2)}/yr)</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded font-black ${billingCycle === 'annual' ? 'bg-amber-400 text-slate-950' : 'bg-emerald-100 text-emerald-800'}`}>
                   Save {pricingMetrics.annualSavingsPercent}%
                 </span>
               </button>
             </div>
+
+            {/* Site Branches Capacity & Extra Site Add-On (+$10/mo per extra site) */}
+            {!branchQuota.isMasterTenant && (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <Building className="w-4 h-4 text-amber-600" />
+                      <span>Site Branch Capacity &amp; Extra Site Slots</span>
+                    </div>
+                    <div className="text-[11px] text-slate-600 mt-0.5 tabular-nums">
+                      Base plan includes <strong>1 Central HQ + {branchQuota.includedBranches} Site Branches</strong>, Unlimited Users &amp; Unlimited Teams. Active Branches:{' '}
+                      <strong className="text-slate-900">{branchQuota.activeBranchCount} / {branchQuota.includedBranches + extraSiteSlots}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+                    <span className="text-[11px] font-bold text-slate-600 mr-1">Extra Sites:</span>
+                    <button
+                      type="button"
+                      disabled={extraSiteSlots <= minRequiredExtraSlots}
+                      onClick={() => setExtraSiteSlots((s) => Math.max(minRequiredExtraSlots, s - 1))}
+                      className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-black text-slate-800 flex items-center justify-center cursor-pointer"
+                    >
+                      −
+                    </button>
+                    <span className="w-7 text-center text-xs font-black font-mono text-slate-900 tabular-nums">
+                      +{extraSiteSlots}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExtraSiteSlots((s) => Math.min(500, s + 1))}
+                      className="w-6 h-6 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 font-black flex items-center justify-center cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-[11px]">
+                  <span className="text-slate-600">
+                    Add-On Rate: <strong className="text-slate-900 font-mono">${pricingMetrics.extraSiteMonthlyPriceFormatted}/mo</strong> per additional site branch
+                  </span>
+                  <span className="font-bold text-emerald-700 font-mono tabular-nums">
+                    {extraSiteSlots > 0
+                      ? `Base $${(isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice).toFixed(2)} + Extra ${extraSiteSlots} Site(s) $${(isAnnual ? extraAnnualUsd : extraMonthlyUsd).toFixed(2)} = $${activeUsdTotal.toFixed(2)}/${isAnnual ? 'yr' : 'mo'}`
+                      : `Total Allowed Branches: ${branchQuota.includedBranches} Sites ($0 add-on)`}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* PAYMENTS.LK AUTO-RENEWING CARD SUBSCRIPTION */}
             <div className="bg-gradient-to-br from-emerald-50/90 via-white to-sky-50/80 text-slate-900 border border-emerald-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
@@ -532,11 +620,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
                 <div className="text-right">
                   <div className="text-base font-black text-emerald-700 font-mono tabular-nums">
-                    Rs. {(isAnnual ? annualLkr : monthlyLkr).toLocaleString()}
+                    Rs. {activeLkrTotal.toLocaleString()}
                   </div>
                   <div className="text-[10px] text-slate-500 tabular-nums">
-                    ${isAnnual ? pricingMetrics.annualPriceFormatted : pricingMetrics.monthlyPriceFormatted} USD /{' '}
-                    {isAnnual ? 'year' : 'month'}
+                    ${activeUsdTotal.toFixed(2)} USD / {isAnnual ? 'year' : 'month'}
                   </div>
                 </div>
               </div>
@@ -696,7 +783,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     LANKAPAY / Universal Bank QR
                   </div>
                   <div className="text-[11px] text-slate-700 font-bold mt-1">
-                    Amount: <span className="text-emerald-700 font-mono">{isAnnual ? `$${pricingMetrics.annualPriceFormatted} (Rs. ${annualLkr.toLocaleString()})` : `$${pricingMetrics.monthlyPriceFormatted} (Rs. ${monthlyLkr.toLocaleString()})`}</span>
+                    Amount: <span className="text-emerald-700 font-mono">${activeUsdTotal.toFixed(2)} (Rs. {activeLkrTotal.toLocaleString()})</span>
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1">
                     <span>Rate: $1 USD = Rs. {usdRate.toFixed(2)}</span>
@@ -817,7 +904,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
                 <div className="flex items-center justify-between pt-1">
                   <div className="text-[11px] text-slate-500">
-                    Amount: <strong className="text-slate-900 font-mono">{isAnnual ? `$${pricingMetrics.annualPriceFormatted} (Rs. ${annualLkr.toLocaleString()})` : `$${pricingMetrics.monthlyPriceFormatted} (Rs. ${monthlyLkr.toLocaleString()})`}</strong> · Auto-notifies Master Admin
+                    Amount: <strong className="text-slate-900 font-mono">${activeUsdTotal.toFixed(2)} (Rs. {activeLkrTotal.toLocaleString()})</strong> · Auto-notifies Master Admin
                   </div>
 
                   <button
@@ -905,11 +992,22 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           items={[
             {
               itemCode: 'SAAS-PRO-SUB',
-              itemName: `Apex Stock & Site Management System - Pro Plan (${sub.billingCycle === 'annual' ? `Annual Subscription $${pricingMetrics.annualPriceFormatted}/yr` : `Monthly Subscription $${pricingMetrics.monthlyPriceFormatted}/mo`})`,
+              itemName: `ApexStox Base Enterprise Plan - ${sub.billingCycle === 'annual' ? `Annual Subscription ($${pricingMetrics.annualPriceFormatted}/yr · Includes ${branchQuota.includedBranches} Site Branches)` : `Monthly Subscription ($${pricingMetrics.monthlyPriceFormatted}/mo · Includes ${branchQuota.includedBranches} Site Branches)`}`,
               category: 'Software License & Cloud Infrastructure',
               quantity: 1,
               unit: 'License',
             },
+            ...(extraSiteSlots > 0
+              ? [
+                  {
+                    itemCode: 'SAAS-EXTRA-SITE',
+                    itemName: `Additional Regional Site Branch Add-On ($${pricingMetrics.extraSiteMonthlyPriceFormatted}/mo per extra branch)`,
+                    category: 'Multi-Site Capacity Expansion',
+                    quantity: extraSiteSlots,
+                    unit: isAnnual ? 'Site/Yr' : 'Site/Mo',
+                  },
+                ]
+              : []),
           ]}
         />
       )}

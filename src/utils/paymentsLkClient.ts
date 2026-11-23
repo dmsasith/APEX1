@@ -22,6 +22,7 @@ export interface CreateSubscriptionResponse {
   usdToLkrRate: number;
   isLiveFxRate: boolean;
   billingCycle: 'monthly' | 'annual';
+  extraSiteSlots: number;
   subscriptionPatch: Partial<TenantSubscription>;
 }
 
@@ -107,6 +108,7 @@ export async function fetchPaymentsLkGatewayStatus(): Promise<PaymentsLkGatewayS
 export async function startPaymentsLkAutoSubscription(params: {
   billingCycle: 'monthly' | 'annual';
   tenantId: string;
+  extraSiteSlots?: number;
   customerEmail?: string;
   customerName?: string;
   currentUser?: Pick<User, 'id' | 'username'> | null;
@@ -128,6 +130,7 @@ export async function startPaymentsLkAutoSubscription(params: {
     body: JSON.stringify({
       billingCycle: params.billingCycle,
       tenantId: params.tenantId,
+      extraSiteSlots: params.extraSiteSlots,
       customerEmail: params.customerEmail,
       customerName: params.customerName,
     }),

@@ -35,6 +35,9 @@ export const LegalPoliciesView: React.FC<LegalPoliciesViewProps> = ({
     annualPriceClean: pricingMetrics.annualPriceClean,
     annualPriceFormatted: pricingMetrics.annualPriceFormatted,
     annualSavingsPercent: pricingMetrics.annualSavingsPercent,
+    includedSiteBranches: pricingMetrics.includedSiteBranches,
+    extraSiteMonthlyPriceFormatted: pricingMetrics.extraSiteMonthlyPriceFormatted,
+    extraSiteAnnualPriceFormatted: pricingMetrics.extraSiteAnnualPriceFormatted,
   });
 
   const currentDoc = docs[activePolicy];

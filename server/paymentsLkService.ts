@@ -107,16 +107,33 @@ export async function getLiveUsdToLkrRate(): Promise<{ rate: number; isLive: boo
   return { rate: 300.0, isLive: false };
 }
 
-export async function getAuthoritativeUsdPricing(): Promise<{ monthlyPrice: number; annualPrice: number }> {
-  const remote = await fetchJsonWithTimeout<{ monthlyPrice?: number; annualPrice?: number }>(
-    PLATFORM_PRICING_URL,
-    3500
-  );
+export async function getAuthoritativeUsdPricing(): Promise<{
+  monthlyPrice: number;
+  annualPrice: number;
+  includedSiteBranches: number;
+  extraSiteMonthlyPrice: number;
+}> {
+  const remote = await fetchJsonWithTimeout<{
+    monthlyPrice?: number;
+    annualPrice?: number;
+    includedSiteBranches?: number;
+    extraSiteMonthlyPrice?: number;
+  }>(PLATFORM_PRICING_URL, 3500);
   const monthly = Number(remote?.monthlyPrice);
   const annual = Number(remote?.annualPrice);
+  const includedBranches = Number(remote?.includedSiteBranches);
+  const extraSiteMonthly = Number(remote?.extraSiteMonthlyPrice);
   return {
     monthlyPrice: Number.isFinite(monthly) && monthly >= 1 ? monthly : 19.9,
     annualPrice: Number.isFinite(annual) && annual >= 10 ? annual : 189.0,
+    includedSiteBranches:
+      Number.isFinite(includedBranches) && includedBranches >= 1
+        ? Math.min(500, Math.round(includedBranches))
+        : 20,
+    extraSiteMonthlyPrice:
+      Number.isFinite(extraSiteMonthly) && extraSiteMonthly >= 0
+        ? Number(extraSiteMonthly.toFixed(2))
+        : 10.0,
   };
 }
 
@@ -169,12 +186,20 @@ async function findTenantEntry(opts: {
 function parseReference(reference: string | null | undefined): {
   tenantId?: string;
   billingCycle?: 'monthly' | 'annual';
+  extraSiteSlots?: number;
 } {
   if (!reference || typeof reference !== 'string') return {};
   const parts = reference.split(':');
   if (parts.length >= 2 && parts[0] === 'apex') {
     const cycle = parts[2] === 'monthly' || parts[2] === 'annual' ? parts[2] : undefined;
-    return { tenantId: parts[1], billingCycle: cycle };
+    let extraSiteSlots: number | undefined;
+    if (parts[3] && parts[3].startsWith('xs-')) {
+      const parsed = Number(parts[3].slice(3));
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        extraSiteSlots = Math.min(500, Math.round(parsed));
+      }
+    }
+    return { tenantId: parts[1], billingCycle: cycle, extraSiteSlots };
   }
   return {};
 }
@@ -295,7 +320,7 @@ async function findOrCreateRecurringPrice(
 function mapGatewaySubscriptionToPatch(
   sub: GatewaySubscription,
   fallbackBillingCycle?: 'monthly' | 'annual',
-  fxContext?: { usdToLkrRate?: number; lkrAmountCents?: number }
+  fxContext?: { usdToLkrRate?: number; lkrAmountCents?: number; extraSiteSlots?: number }
 ): Partial<TenantSubscription> {
   const interval = sub.price?.interval || sub.items?.[0]?.price?.interval;
   const billingCycle: 'monthly' | 'annual' =
@@ -346,6 +371,9 @@ function mapGatewaySubscriptionToPatch(
     patch.paymentMethodStatus = 'active';
     patch.lastBillingDate = sub.currentPeriodStart || new Date().toISOString();
     patch.nextBillingDate = sub.currentPeriodEnd;
+    if (typeof fxContext?.extraSiteSlots === 'number' && fxContext.extraSiteSlots >= 0) {
+      patch.extraSiteSlots = fxContext.extraSiteSlots;
+    }
   } else if (localStatus === 'past_due') {
     patch.status = 'past_due';
   } else if (localStatus === 'canceled') {
@@ -367,12 +395,14 @@ export interface CreateSubscriptionResult {
   usdToLkrRate: number;
   isLiveFxRate: boolean;
   billingCycle: 'monthly' | 'annual';
+  extraSiteSlots: number;
   subscriptionPatch: Partial<TenantSubscription>;
 }
 
 export async function createRecurringSubscriptionForTenant(params: {
   tenantId: string;
   billingCycle: 'monthly' | 'annual';
+  extraSiteSlots?: number;
   baseReturnUrl: string;
   fallbackCustomerEmail?: string;
   fallbackCustomerName?: string;
@@ -398,7 +428,16 @@ export async function createRecurringSubscriptionForTenant(params: {
     getLiveUsdToLkrRate(),
   ]);
 
-  const usdAmount = params.billingCycle === 'annual' ? pricing.annualPrice : pricing.monthlyPrice;
+  const rawExtraSlots =
+    typeof params.extraSiteSlots === 'number' && !Number.isNaN(params.extraSiteSlots)
+      ? params.extraSiteSlots
+      : Number(tenant?.subscription?.extraSiteSlots || 0);
+  const extraSiteSlots = Math.min(500, Math.max(0, Math.round(rawExtraSlots)));
+
+  const baseUsdAmount = params.billingCycle === 'annual' ? pricing.annualPrice : pricing.monthlyPrice;
+  const extraUsdAmount =
+    extraSiteSlots * pricing.extraSiteMonthlyPrice * (params.billingCycle === 'annual' ? 12 : 1);
+  const usdAmount = Number((baseUsdAmount + extraUsdAmount).toFixed(2));
   const lkrAmount = Math.max(10, Math.round(usdAmount * fx.rate));
   const lkrAmountCents = Math.min(100_000_000, Math.max(1000, lkrAmount * 100));
 
@@ -421,18 +460,19 @@ export async function createRecurringSubscriptionForTenant(params: {
     {
       customerId: customer.id,
       priceId: price.id,
-      reference: `apex:${params.tenantId}:${params.billingCycle}`,
+      reference: `apex:${params.tenantId}:${params.billingCycle}:xs-${extraSiteSlots}`,
       successUrl,
       cancelUrl,
     },
     {
-      idempotencyKey: `apex-sub-${params.tenantId}-${params.billingCycle}-${lkrAmountCents}-${bucket}`,
+      idempotencyKey: `apex-sub-${params.tenantId}-${params.billingCycle}-xs${extraSiteSlots}-${lkrAmountCents}-${bucket}`,
     }
   );
 
   const subscriptionPatch = mapGatewaySubscriptionToPatch(subscription, params.billingCycle, {
     usdToLkrRate: fx.rate,
     lkrAmountCents,
+    extraSiteSlots,
   });
 
   // Save pending/created gateway linkage in Firebase RTDB so return callback always finds it
@@ -454,6 +494,7 @@ export async function createRecurringSubscriptionForTenant(params: {
     usdToLkrRate: fx.rate,
     isLiveFxRate: fx.isLive,
     billingCycle: params.billingCycle,
+    extraSiteSlots,
     subscriptionPatch,
   };
 }
@@ -520,7 +561,9 @@ export async function verifyAndSyncTenantSubscription(params: {
     }
   }
 
-  const patch = mapGatewaySubscriptionToPatch(effectiveSub, refParsed.billingCycle);
+  const patch = mapGatewaySubscriptionToPatch(effectiveSub, refParsed.billingCycle, {
+    extraSiteSlots: refParsed.extraSiteSlots,
+  });
   const isNowActive = effectiveSub.status === 'active';
   const updatedSub = await patchTenantSubscriptionInRtdb(params.tenantId, patch, isNowActive);
 
@@ -660,7 +703,9 @@ export async function processPaymentsLkWebhook(
         customerId: sub.customerId,
       });
       if (entry) {
-        const patch = mapGatewaySubscriptionToPatch(sub, refParsed.billingCycle);
+        const patch = mapGatewaySubscriptionToPatch(sub, refParsed.billingCycle, {
+          extraSiteSlots: refParsed.extraSiteSlots,
+        });
         patch.lastWebhookEventId = event.id;
         await patchTenantSubscriptionInRtdb(
           entry.tenant.id,
@@ -684,6 +729,7 @@ export async function processPaymentsLkWebhook(
         if (entry) {
           const patch = mapGatewaySubscriptionToPatch(sub, refParsed.billingCycle, {
             lkrAmountCents: inv.amountPaidCents || inv.totalCents,
+            extraSiteSlots: refParsed.extraSiteSlots,
           });
           patch.lastBillingDate = inv.paidAt || sub.currentPeriodStart || new Date().toISOString();
           patch.lastInvoiceId = inv.id;
@@ -727,6 +773,7 @@ export async function processPaymentsLkWebhook(
             if (entry) {
               const patch = mapGatewaySubscriptionToPatch(sub, refParsed.billingCycle, {
                 lkrAmountCents: payment.amountCents,
+                extraSiteSlots: refParsed.extraSiteSlots,
               });
               patch.lastBillingDate = payment.succeededAt || new Date().toISOString();
               patch.lastInvoiceId = inv.id;

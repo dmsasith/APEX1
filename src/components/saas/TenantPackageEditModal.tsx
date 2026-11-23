@@ -71,6 +71,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
 
   // Custom trial days if selected free trial
   const [customTrialDays, setCustomTrialDays] = useState<number>(7);
+  const [extraSiteSlots, setExtraSiteSlots] = useState<number>(Math.max(0, sub?.extraSiteSlots || 0));
   const [adminNotes, setAdminNotes] = useState<string>('');
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
 
@@ -82,6 +83,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
         tenant.subscription.billingCycle ||
           (tenant.subscription.plan === 'pro_annual' ? 'annual' : 'monthly')
       );
+      setExtraSiteSlots(Math.max(0, tenant.subscription.extraSiteSlots || 0));
       setIsUnlocked(false);
       setAdminNotes('');
       setActivationMode('immediate');
@@ -110,6 +112,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
         monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
         annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
         billingCycle: isAnnual ? 'annual' : 'monthly',
+        extraSiteSlots,
         paymentMethodStatus: 'active',
         lastBillingDate: new Date().toISOString(),
         nextBillingDate: nextBilling,
@@ -136,6 +139,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
         trialEndsAt: newExpiry,
         monthlyPrice: pricingMetrics.monthlyPrice,
         billingCycle: 'monthly',
+        extraSiteSlots,
         queuedSubscription: undefined,
       },
       false
@@ -161,6 +165,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
             plan: isAnnual ? 'pro_annual' : 'pro_monthly',
             billingCycle: isAnnual ? 'annual' : 'monthly',
             scheduledStartDate,
+            extraSiteSlots,
             notes: adminNotes.trim() || `Queued by Master Admin for activation on ${formatDate(scheduledStartDate)}`,
             queuedAt: new Date().toISOString(),
           },
@@ -182,6 +187,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
             trialEndsAt: newExpiry,
             monthlyPrice: pricingMetrics.monthlyPrice,
             billingCycle: 'monthly',
+            extraSiteSlots,
             queuedSubscription: undefined,
           },
           false
@@ -199,6 +205,7 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
             monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
             annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
             billingCycle: isAnnual ? 'annual' : 'monthly',
+            extraSiteSlots,
             paymentMethodStatus: 'active',
             lastBillingDate: new Date().toISOString(),
             nextBillingDate: nextBilling,
@@ -268,6 +275,9 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                     : sub.plan === 'pro_monthly'
                     ? `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`
                     : `${pricingMetrics.trialDays}-Day Free Trial`}
+                </div>
+                <div className="text-[10px] text-emerald-700 font-bold mt-0.5">
+                  Sites: {pricingMetrics.includedSiteBranches} Included + {sub.extraSiteSlots || 0} Extra
                 </div>
               </div>
 
@@ -525,6 +535,41 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Extra Site Branch Slots Allocation */}
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="font-extrabold text-slate-900 text-xs">
+                    Extra Site Branch Slots (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo each)
+                  </div>
+                  <div className="text-[11px] text-slate-600 mt-0.5">
+                    Included: {pricingMetrics.includedSiteBranches} Branches (+1 HQ) → Total Allowed:{' '}
+                    <strong className="text-emerald-800">
+                      {pricingMetrics.includedSiteBranches + extraSiteSlots} Site Branches
+                    </strong>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExtraSiteSlots((prev) => Math.max(0, prev - 1))}
+                    disabled={extraSiteSlots === 0}
+                    className="w-8 h-8 rounded-lg bg-white border border-slate-300 font-black text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                  >
+                    −
+                  </button>
+                  <span className="w-8 text-center font-mono font-black text-sm text-slate-900">
+                    {extraSiteSlots}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setExtraSiteSlots((prev) => Math.min(200, prev + 1))}
+                    className="w-8 h-8 rounded-lg bg-slate-900 text-white font-black text-sm hover:bg-slate-800 cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
 
               {/* Admin Notes */}
               <div>

@@ -13,7 +13,11 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
-import { computePlatformPricingMetrics, getSubscriptionStatusSummary } from '../../types';
+import {
+  computePlatformPricingMetrics,
+  getSubscriptionStatusSummary,
+  getTenantBranchQuotaSummary,
+} from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 import {
   fetchPaymentsLkGatewayStatus,
@@ -23,8 +27,9 @@ import {
 } from '../../utils/paymentsLkClient';
 
 export const TrialExpiredOverlay: React.FC = () => {
-  const { currentTenant, currentUser, updateTenantSubscription, platformPricing, config, logout } = useStock();
+  const { currentTenant, currentUser, activeSites, updateTenantSubscription, platformPricing, config, logout } = useStock();
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+  const branchQuota = getTenantBranchQuotaSummary(currentTenant, activeSites, platformPricing);
 
   const masterBankConfig = (() => {
     try {
@@ -85,8 +90,20 @@ export const TrialExpiredOverlay: React.FC = () => {
   }
 
   const isAnnual = selectedPlan === 'annual';
-  const selectedUsdAmount = isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice;
-  const selectedUsdFormatted = isAnnual ? pricingMetrics.annualPriceFormatted : pricingMetrics.monthlyPriceFormatted;
+  const activeExtraSiteSlots = Math.max(
+    branchQuota.extraSiteSlots,
+    Math.max(0, branchQuota.activeBranchCount - branchQuota.includedBranches)
+  );
+  const extraAddonUsd = Number(
+    (
+      activeExtraSiteSlots *
+      pricingMetrics.extraSiteMonthlyPrice *
+      (isAnnual ? 12 : 1)
+    ).toFixed(2)
+  );
+  const baseUsdAmount = isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice;
+  const selectedUsdAmount = Number((baseUsdAmount + extraAddonUsd).toFixed(2));
+  const selectedUsdFormatted = selectedUsdAmount.toFixed(2);
   const selectedLkrAmount = Math.round(selectedUsdAmount * usdRate);
   const existingPending = sub.pendingBankPayment?.status === 'pending' ? sub.pendingBankPayment : null;
 
@@ -108,7 +125,12 @@ export const TrialExpiredOverlay: React.FC = () => {
         referenceNo: cleanedRef,
         amount: selectedUsdAmount,
         billingCycle: selectedPlan,
-        notes: bankNotes.trim() || 'Submitted from Workspace Lock Screen',
+        extraSiteSlotsRequested: activeExtraSiteSlots,
+        notes:
+          bankNotes.trim() ||
+          (activeExtraSiteSlots > 0
+            ? `Includes +${activeExtraSiteSlots} Extra Site Branch(es) from Lock Screen`
+            : 'Submitted from Workspace Lock Screen'),
         slipName: 'Bank_Transfer_Reference',
         status: 'pending',
       },
@@ -134,6 +156,7 @@ export const TrialExpiredOverlay: React.FC = () => {
       const res = await startPaymentsLkAutoSubscription({
         billingCycle: selectedPlan,
         tenantId: currentTenant.id,
+        extraSiteSlots: activeExtraSiteSlots,
         customerEmail: currentTenant.contactEmail,
         customerName: currentTenant.companyName,
         currentUser,
@@ -246,9 +269,11 @@ export const TrialExpiredOverlay: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-xl font-black text-slate-900 mt-2 tabular-nums">
-                  ${pricingMetrics.monthlyPriceFormatted}
+                  ${(pricingMetrics.monthlyPrice + activeExtraSiteSlots * pricingMetrics.extraSiteMonthlyPrice).toFixed(2)}
                 </div>
-                <div className="text-[11px] text-slate-600 font-medium">/ month · Billed monthly</div>
+                <div className="text-[11px] text-slate-600 font-medium">
+                  / month{activeExtraSiteSlots > 0 ? ` (incl. +${activeExtraSiteSlots} extra site${activeExtraSiteSlots === 1 ? '' : 's'})` : ' · Billed monthly'}
+                </div>
               </div>
             </button>
 
@@ -272,10 +297,10 @@ export const TrialExpiredOverlay: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-xl font-black text-amber-700 mt-2 tabular-nums">
-                  ${pricingMetrics.annualPriceFormatted}
+                  ${(pricingMetrics.annualPrice + activeExtraSiteSlots * pricingMetrics.extraSiteAnnualPrice).toFixed(2)}
                 </div>
                 <div className="text-[11px] text-amber-800 font-semibold tabular-nums">
-                  / year (~${pricingMetrics.annualMonthlyEquivalentFormatted}/mo · Save ${pricingMetrics.annualSavingsFormatted}/yr)
+                  / year{activeExtraSiteSlots > 0 ? ` (incl. +${activeExtraSiteSlots} extra site${activeExtraSiteSlots === 1 ? '' : 's'})` : ` (~$${pricingMetrics.annualMonthlyEquivalentFormatted}/mo · Save $${pricingMetrics.annualSavingsFormatted}/yr)`}
                 </div>
               </div>
             </button>

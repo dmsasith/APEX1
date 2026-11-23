@@ -35,6 +35,9 @@ export const TermsConditionsModal: React.FC<TermsConditionsModalProps> = ({
     annualPriceClean: pricingMetrics.annualPriceClean,
     annualPriceFormatted: pricingMetrics.annualPriceFormatted,
     annualSavingsPercent: pricingMetrics.annualSavingsPercent,
+    includedSiteBranches: pricingMetrics.includedSiteBranches,
+    extraSiteMonthlyPriceFormatted: pricingMetrics.extraSiteMonthlyPriceFormatted,
+    extraSiteAnnualPriceFormatted: pricingMetrics.extraSiteAnnualPriceFormatted,
   });
 
   const currentDoc = docs[activeDoc];

@@ -50,7 +50,7 @@ export const TelecomBrochureModal: React.FC<TelecomBrochureModalProps> = ({ isOp
 
 මෙම පද්ධතියේ විශේෂත්වයන් කිහිපයක්:
 ✅ භාවිතයේ අතිශය පහසුව — සංකීර්ණ පුහුණුවකින් තොරව විනාඩි 10න් ක්‍රියාත්මක කළ හැක (සිංහල සහ ඉංග්‍රීසි AI Support Assistant සහිතයි).
-✅ Unlimited Users, Unlimited Site Branches, Unlimited Teams & Projects — User කෙනෙකුට හෝ Branch එකකට අමතර ගාස්තු කිසිවක් නැත!
+✅ Unlimited Users & Unlimited Field Teams + Central HQ Warehouse & ප්‍රාදේශීය Site Branches ${pricing.includedSiteBranches}ක් මූලික පැකේජයටම නොමිලේ! (අමතර Site Branch එකකට මසකට $${pricing.extraSiteMonthlyPriceClean}ක් පමණි).
 ✅ Telecom FTTH & Client FOC Full Reconciliation — Client ලබා දෙන FOC (Drop Cable, ONT, Splitters, Poles) Main Store -> Branch -> Team -> Connection Usage & Wastage -> Returnable Balance දක්වා තනි Click එකෙන් A4/PDF Reports.
 ✅ Team Transfers වලදී Stock පටලැවෙන්නේ නැත — පැරණි Site එකේ Stock ("Stock to Return") සහ අලුත් Site එකේ Stock වෙන් වෙන්ව පාලනය වේ.
 ✅ ඉතාම සාධාරණ මිල — මසකට $${pricing.monthlyPriceFormatted} (හෝ වාර්ෂිකව $${pricing.annualPriceClean}/yr — මසකට ~$${pricing.annualMonthlyEquivalentFormatted} ක් පමණයි!). අනෙකුත් විදේශීය Systems වලට වඩා 90%කට වඩා මුදල් ඉතිරියක්.
@@ -330,7 +330,7 @@ Apex Stock Platform (${OFFICIAL_SYSTEM_URL})`;
                   <div className="grid grid-cols-4 gap-2.5">
                     {[
                       { title: 'Unlimited Users', sub: 'කාර්ය මණ්ඩල සාමාජිකයින් සීමා රහිතයි — අමතර ගාස්තු නැත' },
-                      { title: 'Unlimited Branches', sub: 'Main Store & ඕනෑම Site Yard ප්‍රමාණයක් එකතු කළ හැක' },
+                      { title: `${pricing.includedSiteBranches} Site Branches + HQ`, sub: `Main Store + Site ${pricing.includedSiteBranches}ක් ඇතුළත් (අමතර +$${pricing.extraSiteMonthlyPriceClean}/mo)` },
                       { title: 'Unlimited Teams', sub: 'Field Work Teams සහ Crew Members සීමා රහිතව ලියාපදිංචි කරන්න' },
                       { title: 'Unlimited Projects', sub: 'Main Projects, Sub-Projects & New Connections සීමා නැත' },
                     ].map((card) => (
@@ -428,7 +428,7 @@ Apex Stock Platform (${OFFICIAL_SYSTEM_URL})`;
                           <td className="p-2.5 font-black text-emerald-800">
                             ${pricing.monthlyPriceFormatted}/mo හෝ ${pricing.annualPriceClean}/yr (~රු. {annualLkr.toLocaleString()}/වසරට)
                           </td>
-                          <td className="p-2.5 text-emerald-900">✓ සීමා රහිතයි (Unlimited)</td>
+                          <td className="p-2.5 text-emerald-900">✓ Users/Teams සීමා නැත · {pricing.includedSiteBranches} Sites (+${pricing.extraSiteMonthlyPriceClean}/mo extra)</td>
                           <td className="p-2.5 text-emerald-900">✓ 100% Telecom &amp; FOC සඳහාම</td>
                         </tr>
                         <tr className="border-b border-slate-200 bg-white text-slate-700">

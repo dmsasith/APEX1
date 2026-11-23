@@ -99,6 +99,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
   } = useStock();
 
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [suggestedExtraSiteSlots, setSuggestedExtraSiteSlots] = useState<number | undefined>(undefined);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
   const [dismissedIdentityPrompt, setDismissedIdentityPrompt] = useState(false);
@@ -164,6 +165,18 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
       document.documentElement.setAttribute('data-theme', currentThemeId);
     }
   }, [currentTheme, currentThemeId]);
+
+  useEffect(() => {
+    const handleOpenSub = (e: Event) => {
+      const detail = (e as CustomEvent<{ suggestedExtraSiteSlots?: number }>)?.detail;
+      setSuggestedExtraSiteSlots(
+        typeof detail?.suggestedExtraSiteSlots === 'number' ? detail.suggestedExtraSiteSlots : undefined
+      );
+      setShowSubscriptionModal(true);
+    };
+    window.addEventListener('open-subscription-modal', handleOpenSub);
+    return () => window.removeEventListener('open-subscription-modal', handleOpenSub);
+  }, []);
 
   useEffect(() => {
     if (!needsSuperAdminIdentity) {
@@ -749,7 +762,16 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
       )}
       {showConfigModal && <SystemConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} />}
       {showBackupModal && <SystemBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />}
-      {showSubscriptionModal && <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />}
+      {showSubscriptionModal && (
+        <SubscriptionModal
+          isOpen={showSubscriptionModal}
+          initialExtraSiteSlots={suggestedExtraSiteSlots}
+          onClose={() => {
+            setShowSubscriptionModal(false);
+            setSuggestedExtraSiteSlots(undefined);
+          }}
+        />
+      )}
       {showProfileModal && <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />}
       {showEmailVerifyModal && <EmailVerificationModal isOpen={showEmailVerifyModal} onClose={() => setShowEmailVerifyModal(false)} />}
       {showBarcodeLookupModal && (

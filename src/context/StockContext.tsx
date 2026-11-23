@@ -56,6 +56,7 @@ import {
   TeamSiteStockBreakdown,
   ReturnCondition,
   getSubscriptionStatusSummary,
+  getTenantBranchQuotaSummary,
   formatActorDisplayName,
   isGenericSuperAdminName,
   stripSuperAdminSuffix,
@@ -1443,6 +1444,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           monthlyPrice: metrics.monthlyPrice,
           annualPrice: metrics.annualPrice,
           trialDays: metrics.trialDays,
+          includedSiteBranches: metrics.includedSiteBranches,
+          extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
         };
       }
     } catch {
@@ -1470,6 +1473,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             monthlyPrice: metrics.monthlyPrice,
             annualPrice: metrics.annualPrice,
             trialDays: metrics.trialDays,
+            includedSiteBranches: metrics.includedSiteBranches,
+            extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
           };
           setPlatformPricing(normalized);
           try {
@@ -2130,6 +2135,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
               annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
               billingCycle: isAnnual ? ('annual' as const) : ('monthly' as const),
+              extraSiteSlots: q.extraSiteSlots ?? sub.extraSiteSlots ?? 0,
               paymentMethodStatus: 'active' as const,
               lastBillingDate: now.toISOString(),
               nextBillingDate: nextBilling,
@@ -3619,6 +3625,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         monthlyPrice: metrics.monthlyPrice,
         annualPrice: metrics.annualPrice,
         trialDays: metrics.trialDays,
+        includedSiteBranches: metrics.includedSiteBranches,
+        extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
         trialPlanName: updates.trialPlanName || `${metrics.trialDays}-Day Free Trial`,
       };
 
@@ -5067,6 +5075,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const nowIso = new Date().toISOString();
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+
+    if (!isMaster && !siteData.isMainWarehouse) {
+      const targetTenant = tenantsRef.current.find((t) => t.id === activeTenantId) || currentTenant;
+      const quota = getTenantBranchQuotaSummary(targetTenant, sites, platformPricing);
+      if (quota.activeBranchCount >= quota.maxAllowedBranches) {
+        throw new Error(
+          `BRANCH_QUOTA_REACHED: Your workspace has reached its limit of ${quota.maxAllowedBranches} Site Branches (${quota.includedBranches} included${quota.extraSiteSlots > 0 ? ` + ${quota.extraSiteSlots} extra` : ''}). Add extra site slots at $${quota.extraSiteMonthlyPrice.toFixed(2)}/month per additional site.`
+        );
+      }
+    }
 
     const normSupName = (siteData.supervisorName || '').trim().toLowerCase();
     const matchedSup = users.find(
@@ -7203,13 +7221,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const restoreSite = (id: string) => {
-    unmarkTenantRecordDeleted(currentTenantIdRef.current, id);
+    const activeTenantId = currentTenantIdRef.current || currentTenantId;
+    const site = sites.find((s) => s.id === id);
+    const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+    if (!isMaster && site && !site.isMainWarehouse) {
+      const targetTenant = tenantsRef.current.find((t) => t.id === activeTenantId) || currentTenant;
+      const quota = getTenantBranchQuotaSummary(targetTenant, sites, platformPricing);
+      if (quota.activeBranchCount >= quota.maxAllowedBranches) {
+        throw new Error(
+          `BRANCH_QUOTA_REACHED: Cannot restore "${site.name}" because you are at your limit of ${quota.maxAllowedBranches} Site Branches. Add extra site slots (+$${quota.extraSiteMonthlyPrice.toFixed(2)}/mo each) or archive another site first.`
+        );
+      }
+    }
+    unmarkTenantRecordDeleted(activeTenantId, id);
     setSites((prev) => {
       const updated = prev.map((s) => (s.id === id ? { ...s, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : s));
-      saveTenantData(currentTenantIdRef.current, 'sites', updated);
+      saveTenantData(activeTenantId, 'sites', updated);
       return updated;
     });
-    const site = sites.find((s) => s.id === id);
     addAuditLog(
       'MASTER_SITE_RESTORED',
       site?.name || id,

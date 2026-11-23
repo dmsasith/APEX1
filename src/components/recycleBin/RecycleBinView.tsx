@@ -83,12 +83,21 @@ export const RecycleBinView: React.FC = () => {
   };
 
   const handleSingleRestore = (item: RecycleBinItem) => {
-    if (item.type === 'item') restoreItem(item.id);
-    else if (item.type === 'site') restoreSite(item.id);
-    else if (item.type === 'user') restoreUser(item.id);
-    else if (item.type === 'team') restoreTeam(item.id);
-    showToast(`Restored "${item.title}" back to active master records.`);
-    setSelectedIds((prev) => prev.filter((id) => id !== item.id));
+    try {
+      if (item.type === 'item') restoreItem(item.id);
+      else if (item.type === 'site') restoreSite(item.id);
+      else if (item.type === 'user') restoreUser(item.id);
+      else if (item.type === 'team') restoreTeam(item.id);
+      showToast(`Restored "${item.title}" back to active master records.`);
+      setSelectedIds((prev) => prev.filter((id) => id !== item.id));
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (msg.startsWith('BRANCH_QUOTA_REACHED:')) {
+        showToast(msg.replace('BRANCH_QUOTA_REACHED:', '').trim());
+      } else {
+        showToast(msg || 'Could not restore record.');
+      }
+    }
   };
 
   const handleSinglePermanentDelete = (item: RecycleBinItem) => {
@@ -113,9 +122,18 @@ export const RecycleBinView: React.FC = () => {
       .filter((i) => selectedIds.includes(i.id))
       .map((i) => ({ id: i.id, type: i.type }));
 
-    bulkRestore(selectedRecords);
-    showToast(`Restored ${selectedRecords.length} record(s) back to active master records.`);
-    setSelectedIds([]);
+    try {
+      bulkRestore(selectedRecords);
+      showToast(`Restored ${selectedRecords.length} record(s) back to active master records.`);
+      setSelectedIds([]);
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (msg.startsWith('BRANCH_QUOTA_REACHED:')) {
+        showToast(msg.replace('BRANCH_QUOTA_REACHED:', '').trim());
+      } else {
+        showToast(msg || 'Could not restore all selected records.');
+      }
+    }
   };
 
   const handleBulkPermanentDelete = () => {

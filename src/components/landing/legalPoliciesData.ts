@@ -33,11 +33,20 @@ export interface LegalPricingSnapshot {
   annualPriceClean: string;
   annualPriceFormatted: string;
   annualSavingsPercent: number;
+  includedSiteBranches?: number;
+  extraSiteMonthlyPriceFormatted?: string;
+  extraSiteAnnualPriceFormatted?: string;
 }
 
 export function getLegalDocuments(
-  pricing: LegalPricingSnapshot
+  rawPricing: LegalPricingSnapshot
 ): Record<LegalDocId, LegalDocumentContent> {
+  const pricing = {
+    ...rawPricing,
+    includedSiteBranches: rawPricing.includedSiteBranches ?? 20,
+    extraSiteMonthlyPriceFormatted: rawPricing.extraSiteMonthlyPriceFormatted ?? '10.00',
+    extraSiteAnnualPriceFormatted: rawPricing.extraSiteAnnualPriceFormatted ?? '120.00',
+  };
   const effectiveDate = 'November 20, 2026';
   const lastUpdated = 'November 20, 2026';
 
@@ -206,7 +215,7 @@ export function getLegalDocuments(
           title: `${pricing.trialDays}-Day Unrestricted Free Trial`,
           paragraphs: [
             `Apex Stock provides a complimentary ${pricing.trialDays}-day free trial for every newly registered company workspace (${OFFICIAL_SYSTEM_DOMAIN}). No credit card, bank transfer, or advance payment is required to start the trial.`,
-            'During the trial, all core enterprise modules—including unlimited users, unlimited site branches, Client FOC 5-stage reconciliation, Telecom/Water/Electrical/Solar project tracking, Purchase Orders, and ISO PDF printing—are unlocked for full evaluation before any financial commitment.',
+            `During the trial, all core enterprise modules—including unlimited users, unlimited field teams, 1 Central HQ Warehouse + up to ${pricing.includedSiteBranches} regional site branches, Client FOC 5-stage reconciliation, Telecom/Water/Electrical/Solar project tracking, Purchase Orders, and ISO PDF printing—are unlocked for full evaluation before any financial commitment.`,
           ],
         },
         {
@@ -214,7 +223,7 @@ export function getLegalDocuments(
           number: '02',
           title: 'Subscription Plans & Accepted Payment Methods',
           paragraphs: [
-            `Following the trial period, customers may upgrade to either the Pro Monthly Plan ($${pricing.monthlyPriceFormatted}/month) or the Pro Annual VIP Plan ($${pricing.annualPriceClean}/year, saving ${pricing.annualSavingsPercent}%). Subscription settlements are processed via Bank QR transfer, direct bank wire transfer with slip verification, or authorized online checkout gateways.`,
+            `Following the trial period, customers may upgrade to either the Pro Monthly Plan ($${pricing.monthlyPriceFormatted}/month) or the Pro Annual VIP Plan ($${pricing.annualPriceClean}/year, saving ${pricing.annualSavingsPercent}%), covering 1 Central HQ + ${pricing.includedSiteBranches} regional site branches. Additional regional site branches can be added anytime for $${pricing.extraSiteMonthlyPriceFormatted}/month ($${pricing.extraSiteAnnualPriceFormatted}/year) per extra site branch. Subscription settlements are processed via Bank QR transfer, direct bank wire transfer with slip verification, or authorized online checkout gateways.`,
             'All operational data, catalogs, and transactions entered during your free trial automatically carry forward upon plan activation.',
           ],
         },
@@ -333,8 +342,8 @@ export function getLegalDocuments(
           ],
           bullets: [
             {
-              label: 'Unlimited Scale Policy',
-              text: 'Active paid and trial workspaces include unlimited company user accounts, regional site branches, field crews, SKUs, and monthly operational transactions under reasonable standard business use.',
+              label: 'Workspace Capacity & Site Branch Quotas',
+              text: `Active paid and trial workspaces include unlimited company user accounts, unlimited field crews, SKUs, and monthly transactions, plus 1 Central HQ Warehouse and ${pricing.includedSiteBranches} regional site branches. Additional regional site branches may be provisioned anytime at $${pricing.extraSiteMonthlyPriceFormatted}/month per extra site branch.`,
             },
             {
               label: 'Fee Adjustments',

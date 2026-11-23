@@ -195,11 +195,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const faqs = [
     {
       q: `How does the ${pricingMetrics.trialDays}-Day Free Trial work?`,
-      a: `You can register your company workspace in under 60 seconds with zero commitment. No credit card is required to sign up. You get 100% full access to all enterprise modules—including unlimited site branches, field teams, client-supplied stock tracking, supplier purchase orders, and PDF voucher printing for a full ${pricingMetrics.trialDays} days.`,
+      a: `You can register your company workspace in under 60 seconds with zero commitment. No credit card is required to sign up. You get 100% full access to all enterprise modules—including 1 Central HQ Warehouse + ${pricingMetrics.includedSiteBranches} Site Branches, Unlimited Users, Unlimited Field Teams, client-supplied stock tracking, supplier purchase orders, and PDF voucher printing for a full ${pricingMetrics.trialDays} days.`,
     },
     {
       q: `What happens after the ${pricingMetrics.trialDays}-day free trial?`,
-      a: `After ${pricingMetrics.trialDays} days, you can choose between our Pro Monthly plan ($${pricingMetrics.monthlyPriceFormatted}/mo) or our cost-saving Pro Annual VIP plan ($${pricingMetrics.annualPriceClean}/yr — Save ${pricingMetrics.annualSavingsPercent}%). All data, inventory records, and transaction history entered during your trial remain 100% safe and intact. You can activate your plan via Bank QR or wire transfer slip upload.`,
+      a: `After ${pricingMetrics.trialDays} days, you can choose between our Pro Monthly plan ($${pricingMetrics.monthlyPriceFormatted}/mo) or our cost-saving Pro Annual VIP plan ($${pricingMetrics.annualPriceClean}/yr — Save ${pricingMetrics.annualSavingsPercent}%). Every plan includes Unlimited Users, Unlimited Field Teams, 1 Central HQ + ${pricingMetrics.includedSiteBranches} Site Branches, and you can add extra Site Branches anytime for +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo per site.`,
     },
     {
       q: 'How does Client-Supplied Free Stock (FOC) & 5-Stage Reconciliation work?',
@@ -251,10 +251,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'pricing',
       categoryLabel: 'Pricing & Scale',
-      feature: 'Annual Total Cost (Unlimited Users & Unlimited Site Branches)',
-      detail: 'Flat yearly rate for your entire company with Unlimited Users, Unlimited Regional Site Branches & Unlimited Field Teams — vs. competitor tiered user/branch caps & add-on seat fees.',
+      feature: `Annual Total Cost (Unlimited Users, Unlimited Teams & ${pricingMetrics.includedSiteBranches} Site Branches)`,
+      detail: `Flat yearly rate for your entire company with Unlimited Users, Unlimited Field Teams & 1 Central HQ + ${pricingMetrics.includedSiteBranches} Regional Site Branches (expandable at +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo per extra site) — vs. competitor tiered user/branch caps & add-on seat fees.`,
       isSpecialHighlight: true,
-      apex: `✓ $${pricingMetrics.annualPriceClean} / year Flat (Unlimited Users & Unlimited Branches · Save 90%+)`,
+      apex: `✓ $${pricingMetrics.annualPriceClean} / year Flat (Unlimited Users & Teams · ${pricingMetrics.includedSiteBranches} Sites Included · Save 90%+)`,
       sortly: '✕ $1,788 – $3,588+ / year (Capped at 5–8 users; +$240/yr per extra user & no branch RBAC)',
       zoho: '✕ $1,548 – $2,988+ / year (Capped at 2–5 users & limited warehouses; extra seats & locations billed extra)',
       inflowCin7: '✕ $2,148 – $4,788+ / year (Capped at 2–5 users; +$468/yr per extra user & paid per-location add-ons)',
@@ -274,12 +274,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'pricing',
       categoryLabel: 'Pricing & Scale',
-      feature: 'Unlimited Regional Site Branches & Yards',
-      detail: 'Add unlimited regional site stores, project yards, and central warehouses as your projects expand.',
-      apex: '✓ Unlimited Site Yards ($0 extra)',
+      feature: `Regional Site Branches & Yards (${pricingMetrics.includedSiteBranches} Included + Expandable)`,
+      detail: `Includes 1 Central HQ Warehouse + ${pricingMetrics.includedSiteBranches} Regional Site Branches with full RBAC & real-time sync. Need more? Unlock extra site branches anytime for just +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo each.`,
+      apex: `✓ ${pricingMetrics.includedSiteBranches} Sites + HQ Included (+$${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site)`,
       sortly: '✕ Folder-based only (No branch RBAC)',
       zoho: '✕ Limited warehouses per tier (Extra locations paid)',
-      inflowCin7: '✕ Paid per-location add-on fee',
+      inflowCin7: '✕ Paid per-location add-on fee ($99+/mo)',
       legacyErp: '✕ Paid multi-location licensing',
     },
     {
@@ -979,7 +979,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <div className="h-[1.5px] w-full bg-gradient-to-r from-transparent via-amber-300/90 to-transparent" />
                   <div className="px-4 py-2 border-b border-white/10 bg-white/[0.03] flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-bold text-amber-200 tracking-wide">
                     <Crown className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span>Zero Per-Seat or Per-Branch Fees — Everything Included Unlimited in Every Workspace</span>
+                    <span>Zero Per-Seat Fees — Unlimited Users &amp; Teams + {pricingMetrics.includedSiteBranches} Site Branches &amp; HQ Included</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/12 text-left">
                     {/* Pillar 1: Unlimited Users */}
@@ -1000,20 +1000,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
                     </div>
 
-                    {/* Pillar 2: Unlimited Sites */}
+                    {/* Pillar 2: 20 Site Branches + HQ */}
                     <div className="px-4 sm:px-5 py-3.5 sm:py-4 flex items-center gap-3.5 hover:bg-white/[0.03] transition-colors">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-300/20 to-blue-500/10 border border-sky-300/40 flex items-center justify-center text-sky-300 shrink-0 shadow-inner">
                         <Building2 className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <InfinityIcon className="w-4 h-4 text-sky-300 stroke-[2.5] shrink-0" />
-                          <span className="text-sm sm:text-[15px] font-extrabold text-white tracking-tight whitespace-nowrap">
-                            Unlimited Sites
+                          <span className="px-1.5 py-0.5 rounded-md bg-sky-400/20 border border-sky-300/40 text-[11px] font-black font-mono text-sky-200 leading-none shrink-0">
+                            {pricingMetrics.includedSiteBranches}
+                          </span>
+                          <span className="text-sm sm:text-[15px] font-extrabold text-sky-100 tracking-tight whitespace-nowrap">
+                            Site Branches + HQ
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-snug">
-                          Central HQ + all regional branches &amp; yards
+                          Included free (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo per extra site)
                         </p>
                       </div>
                     </div>
@@ -1714,11 +1716,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
-                      <span>Unlimited Site Branches & Field Teams</span>
+                      <span>1 Central HQ + {pricingMetrics.includedSiteBranches} Site Branches · Unlimited Teams &amp; Users</span>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
-                      <span>Client-Supplied Free Stock & Client Register</span>
+                      <span>Client-Supplied Free Stock &amp; Client Register</span>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
@@ -1761,7 +1763,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       <span className="text-xs font-bold text-slate-500">/ month</span>
                     </div>
                     <div className="text-[11px] text-slate-500 font-semibold mt-2">
-                      Bank QR / Wire transfer supported worldwide
+                      Includes {pricingMetrics.includedSiteBranches} Sites + HQ · Extra site +${pricingMetrics.extraSiteMonthlyPriceClean}/mo
                     </div>
                   </div>
 
@@ -1772,7 +1774,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
-                      <span>Unlimited site requisitions & dispatches</span>
+                      <span>{pricingMetrics.includedSiteBranches} Regional Sites (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site)</span>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
@@ -1921,8 +1923,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
                     </div>
                     <div className="mt-3 pt-2.5 border-t border-[#071026]/20 text-[11px] font-bold text-[#071026] space-y-1">
-                      <div>✓ Unlimited Users &amp; Branches</div>
-                      <div>✓ All {comparisonRows.length} Field &amp; ERP Modules</div>
+                      <div>✓ Unlimited Users &amp; Teams</div>
+                      <div>✓ {pricingMetrics.includedSiteBranches} Sites + HQ (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra)</div>
                       <div>✓ $0 Setup · {pricingMetrics.trialDays}-Day Free Trial</div>
                     </div>
                   </div>
@@ -2208,7 +2210,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       Get Every Single Feature Above for $0 Today ({pricingMetrics.trialDays}-Day Unrestricted Free Trial)
                     </div>
                     <div className="text-xs font-bold text-[#071026]/90 mt-0.5">
-                      Then just <span className="underline font-black">${pricingMetrics.monthlyPriceFormatted}/month</span> or <span className="underline font-black">${pricingMetrics.annualPriceClean}/year</span> for your entire company — Unlimited Users, Unlimited Sites &amp; Zero Per-Seat Fees.
+                      Then just <span className="underline font-black">${pricingMetrics.monthlyPriceFormatted}/month</span> or <span className="underline font-black">${pricingMetrics.annualPriceClean}/year</span> — Unlimited Users &amp; Teams, {pricingMetrics.includedSiteBranches} Site Branches + HQ included (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site).
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">

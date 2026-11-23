@@ -8,119 +8,374 @@
       "$tenantId": {
         ".read": true,
         ".write": true,
-        ".validate": "!newData.exists() || newData.hasChildren()"
+        ".validate": "!newData.exists() || ($tenantId.matches(/^tenant-[a-zA-Z0-9_-]+$/) && newData.hasChildren())",
+        "items": {
+          ".indexOn": ["id", "itemCode", "barcode"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id', 'itemCode', 'itemName']) && newData.child('id').isString() && newData.child('itemCode').isString() && newData.child('itemCode').val().length <= 80 && newData.child('itemName').isString() && newData.child('itemName').val().length <= 240)"
+          }
+        },
+        "stockRequests": {
+          ".indexOn": ["id", "siteId", "status"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "mainStockEntries": {
+          ".indexOn": ["id", "itemId", "entryType"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "sites": {
+          ".indexOn": ["id", "name"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id', 'name']) && newData.child('id').isString() && newData.child('name').isString() && newData.child('name').val().length <= 160)"
+          }
+        },
+        "teams": {
+          ".indexOn": ["id", "assignedSiteId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id', 'teamName']) && newData.child('id').isString() && newData.child('teamName').isString() && newData.child('teamName').val().length <= 160)"
+          }
+        },
+        "users": {
+          ".indexOn": ["id", "username", "role"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id', 'username', 'role']) && newData.child('id').isString() && newData.child('username').isString() && newData.child('username').val().length <= 160 && newData.child('role').isString())"
+          }
+        },
+        "teamIssues": {
+          ".indexOn": ["id", "teamId", "siteId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "teamReturns": {
+          ".indexOn": ["id", "teamId", "siteId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "projects": {
+          ".indexOn": ["id", "siteId", "status"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "projectTypes": {
+          ".indexOn": ["id"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "projectUsages": {
+          ".indexOn": ["id", "projectId", "siteId", "teamId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "crossProjectRequests": {
+          ".indexOn": ["id", "status"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "clientFreeIssues": {
+          ".indexOn": ["id", "clientId", "projectId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "branchReturns": {
+          ".indexOn": ["id", "siteId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "damagedRestorations": {
+          ".indexOn": ["id", "itemId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "backups": {
+          ".indexOn": ["id", "backupNumber"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "auditLogs": {
+          ".indexOn": ["id", "timestamp", "action"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id', 'action']) && newData.child('id').isString() && newData.child('action').isString() && (!newData.child('details').exists() || (newData.child('details').isString() && newData.child('details').val().length <= 4000)))"
+          }
+        },
+        "config": {
+          ".validate": "!newData.exists() || (newData.hasChildren(['companyName']) && newData.child('companyName').isString() && newData.child('companyName').val().length <= 200)"
+        },
+        "letterheadTemplates": {
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "digitalSignatures": {
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "suppliers": {
+          ".indexOn": ["id"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "clients": {
+          ".indexOn": ["id"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "purchaseOrders": {
+          ".indexOn": ["id", "supplierId", "status"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "supplierReturns": {
+          ".indexOn": ["id", "supplierId"],
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+          }
+        },
+        "deletedRecordIds": {
+          "$idx": {
+            ".validate": "!newData.exists() || newData.isString()"
+          }
+        },
+        "flushMeta": {
+          ".validate": "!newData.exists() || (newData.hasChildren(['flushId', 'flushedAtMs']) && newData.child('flushId').isString() && newData.child('flushedAtMs').isNumber())"
+        },
+        "tenants": {
+          ".validate": "$tenantId === 'tenant-apex-main' && (!newData.exists() || newData.hasChildren())",
+          "$idx": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['id', 'companyName', 'slug']) && newData.child('id').isString() && newData.child('companyName').isString())"
+          }
+        },
+        "platformPricing": {
+          ".validate": "$tenantId === 'tenant-apex-main' && newData.exists() && newData.child('monthlyPrice').isNumber() && newData.child('monthlyPrice').val() > 0 && newData.child('annualPrice').isNumber() && newData.child('annualPrice').val() > 0 && newData.child('trialDays').isNumber() && newData.child('trialDays').val() >= 1 && newData.child('trialDays').val() <= 365 && (!newData.child('includedSiteBranches').exists() || (newData.child('includedSiteBranches').isNumber() && newData.child('includedSiteBranches').val() >= 1 && newData.child('includedSiteBranches').val() <= 500)) && (!newData.child('extraSiteMonthlyPrice').exists() || (newData.child('extraSiteMonthlyPrice').isNumber() && newData.child('extraSiteMonthlyPrice').val() >= 0 && newData.child('extraSiteMonthlyPrice').val() <= 1000))"
+        },
+        "paymentWebhookEvents": {
+          ".validate": "$tenantId === 'tenant-apex-main' && (!newData.exists() || newData.hasChildren())",
+          "$eventId": {
+            ".validate": "!newData.exists() || (newData.child('processedAt').isString() && newData.child('eventType').isString())"
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "saasTenants": {
       ".read": true,
       ".write": true,
+      ".indexOn": ["id", "slug", "contactEmail"],
+      ".validate": "newData.exists() && newData.hasChildren()",
       "$idx": {
-        ".validate": "!newData.exists() || newData.hasChildren(['id', 'companyName'])"
+        ".validate": "!newData.exists() || (newData.hasChildren(['id', 'companyName', 'slug']) && newData.child('id').isString() && newData.child('companyName').isString() && newData.child('companyName').val().length <= 200 && newData.child('slug').isString() && newData.child('slug').val().length <= 120)",
+        "subscription": {
+          ".validate": "!newData.exists() || (newData.child('plan').isString() && (newData.child('plan').val() === 'free_trial' || newData.child('plan').val() === 'pro_monthly' || newData.child('plan').val() === 'pro_annual') && newData.child('status').isString() && newData.child('monthlyPrice').isNumber() && newData.child('monthlyPrice').val() >= 0 && (!newData.child('annualPrice').exists() || (newData.child('annualPrice').isNumber() && newData.child('annualPrice').val() >= 0)) && (!newData.child('extraSiteSlots').exists() || (newData.child('extraSiteSlots').isNumber() && newData.child('extraSiteSlots').val() >= 0 && newData.child('extraSiteSlots').val() <= 500)))"
+        }
       }
     },
     "saasDeletedTenants": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$tenantId": {
+        ".validate": "!newData.exists() || ($tenantId.matches(/^tenant-[a-zA-Z0-9_-]+$/) && newData.isNumber() && newData.val() > 0)"
+      }
     },
     "flushMeta": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".validate": "!newData.exists() || (newData.hasChildren(['flushId', 'flushedAtMs']) && newData.child('flushId').isString() && newData.child('flushedAtMs').isNumber())"
     },
     "items": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "itemCode", "barcode"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id', 'itemCode', 'itemName']) && newData.child('id').isString())"
+      }
     },
     "stockRequests": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "siteId", "status"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "mainStockEntries": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "itemId"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "sites": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "name"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id', 'name']) && newData.child('id').isString())"
+      }
     },
     "teams": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "assignedSiteId"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id', 'teamName']) && newData.child('id').isString())"
+      }
     },
     "users": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "username", "role"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id', 'username', 'role']) && newData.child('id').isString())"
+      }
     },
     "teamIssues": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "teamId", "siteId"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "teamReturns": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "teamId", "siteId"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "projects": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "siteId"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "projectTypes": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "projectUsages": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "projectId", "siteId"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "crossProjectRequests": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "clientFreeIssues": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "branchReturns": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "damagedRestorations": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "backups": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "auditLogs": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["id", "timestamp"],
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id', 'action']) && newData.child('id').isString())"
+      }
     },
     "config": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".validate": "!newData.exists() || (newData.hasChildren(['companyName']) && newData.child('companyName').isString())"
     },
     "letterheadTemplates": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "digitalSignatures": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "suppliers": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "clients": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "purchaseOrders": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     },
     "supplierReturns": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$idx": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['id']) && newData.child('id').isString())"
+      }
     }
   }
 }

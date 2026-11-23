@@ -1148,6 +1148,8 @@ export interface PlatformPricingConfig {
   monthlyPrice: number; // e.g. 19.90
   annualPrice: number; // e.g. 189.00
   trialDays: number; // e.g. 7
+  includedSiteBranches?: number; // e.g. 20 regional site branches included (+ Central HQ Warehouse)
+  extraSiteMonthlyPrice?: number; // e.g. 10.00 USD/month per additional site branch
   currency: string; // 'USD'
   currencySymbol: string; // '$'
   monthlyPlanName?: string; // 'Pro Monthly'
@@ -1160,6 +1162,8 @@ export const DEFAULT_PLATFORM_PRICING: PlatformPricingConfig = {
   monthlyPrice: 19.90,
   annualPrice: 189.00,
   trialDays: 7,
+  includedSiteBranches: 20,
+  extraSiteMonthlyPrice: 10.00,
   currency: 'USD',
   currencySymbol: '$',
   monthlyPlanName: 'Pro Monthly',
@@ -1180,6 +1184,19 @@ export function computePlatformPricingMetrics(raw?: Partial<PlatformPricingConfi
     typeof raw?.trialDays === 'number' && !Number.isNaN(raw.trialDays) && raw.trialDays >= 1
       ? Math.round(raw.trialDays)
       : DEFAULT_PLATFORM_PRICING.trialDays;
+  const includedSiteBranches =
+    typeof raw?.includedSiteBranches === 'number' &&
+    !Number.isNaN(raw.includedSiteBranches) &&
+    raw.includedSiteBranches >= 1
+      ? Math.min(500, Math.max(1, Math.round(raw.includedSiteBranches)))
+      : DEFAULT_PLATFORM_PRICING.includedSiteBranches || 20;
+  const extraSiteMonthlyPrice =
+    typeof raw?.extraSiteMonthlyPrice === 'number' &&
+    !Number.isNaN(raw.extraSiteMonthlyPrice) &&
+    raw.extraSiteMonthlyPrice >= 0
+      ? Number(Number(raw.extraSiteMonthlyPrice).toFixed(2))
+      : DEFAULT_PLATFORM_PRICING.extraSiteMonthlyPrice ?? 10.00;
+  const extraSiteAnnualPrice = Number((extraSiteMonthlyPrice * 12).toFixed(2));
   const currency = raw?.currency || DEFAULT_PLATFORM_PRICING.currency;
   const currencySymbol = raw?.currencySymbol || DEFAULT_PLATFORM_PRICING.currencySymbol;
   const monthlyPlanName = raw?.monthlyPlanName || DEFAULT_PLATFORM_PRICING.monthlyPlanName || 'Pro Monthly';
@@ -1205,6 +1222,9 @@ export function computePlatformPricingMetrics(raw?: Partial<PlatformPricingConfi
     monthlyPrice,
     annualPrice,
     trialDays,
+    includedSiteBranches,
+    extraSiteMonthlyPrice,
+    extraSiteAnnualPrice,
     currency,
     currencySymbol,
     monthlyPlanName,
@@ -1219,6 +1239,10 @@ export function computePlatformPricingMetrics(raw?: Partial<PlatformPricingConfi
     annualPriceClean: formatPrice(annualPrice, false),
     annualMonthlyEquivalentFormatted: formatPrice(annualMonthlyEquivalent, true),
     annualSavingsFormatted: formatPrice(annualSavingsAmount, true),
+    extraSiteMonthlyPriceFormatted: formatPrice(extraSiteMonthlyPrice, true),
+    extraSiteMonthlyPriceClean: formatPrice(extraSiteMonthlyPrice, false),
+    extraSiteAnnualPriceFormatted: formatPrice(extraSiteAnnualPrice, true),
+    extraSiteAnnualPriceClean: formatPrice(extraSiteAnnualPrice, false),
   };
 }
 
@@ -1226,6 +1250,7 @@ export interface QueuedSubscription {
   plan: TenantPlan;
   billingCycle: 'monthly' | 'annual';
   scheduledStartDate: string;
+  extraSiteSlots?: number;
   notes?: string;
   queuedAt: string;
 }
@@ -1238,6 +1263,7 @@ export interface TenantSubscription {
   monthlyPrice: number; // e.g. 19.90
   annualPrice?: number; // e.g. 189.00
   billingCycle?: 'monthly' | 'annual';
+  extraSiteSlots?: number; // Additional paid/granted regional site branch slots beyond includedSiteBranches
   currency: string; // 'USD'
   paymentMethodStatus?: 'pending_setup' | 'active';
   lastBillingDate?: string;
@@ -1247,6 +1273,7 @@ export interface TenantSubscription {
     referenceNo: string;
     amount: number;
     billingCycle: 'monthly' | 'annual';
+    extraSiteSlotsRequested?: number;
     notes?: string;
     slipName?: string;
     slipFileName?: string;
@@ -1268,6 +1295,55 @@ export interface TenantSubscription {
   lastUsdToLkrRate?: number;
   lastInvoiceId?: string;
   lastWebhookEventId?: string;
+}
+
+export interface TenantBranchQuotaSummary {
+  isMasterTenant: boolean;
+  includedBranches: number;
+  extraSiteSlots: number;
+  maxAllowedBranches: number;
+  activeBranchCount: number;
+  remainingBranchSlots: number;
+  isAtLimit: boolean;
+  extraSiteMonthlyPrice: number;
+  extraSitesMonthlyAddonUsd: number;
+  extraSitesAnnualAddonUsd: number;
+}
+
+export function getTenantBranchQuotaSummary(
+  tenant: Pick<Tenant, 'id' | 'subscription'> | null | undefined,
+  sites: Pick<Site, 'isDeleted' | 'isMainWarehouse'>[] | null | undefined,
+  pricing?: Partial<PlatformPricingConfig> | null
+): TenantBranchQuotaSummary {
+  const metrics = computePlatformPricingMetrics(pricing);
+  const isMasterTenant = tenant?.id === 'tenant-apex-main';
+  const includedBranches = metrics.includedSiteBranches;
+  const extraSiteSlots = Math.max(
+    0,
+    Math.round(Number(tenant?.subscription?.extraSiteSlots || 0))
+  );
+  const activeBranchCount = Array.isArray(sites)
+    ? sites.filter((s) => s && !s.isDeleted && !s.isMainWarehouse).length
+    : 0;
+  const maxAllowedBranches = isMasterTenant
+    ? Number.POSITIVE_INFINITY
+    : includedBranches + extraSiteSlots;
+  const remainingBranchSlots = isMasterTenant
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, maxAllowedBranches - activeBranchCount);
+
+  return {
+    isMasterTenant,
+    includedBranches,
+    extraSiteSlots,
+    maxAllowedBranches,
+    activeBranchCount,
+    remainingBranchSlots,
+    isAtLimit: !isMasterTenant && activeBranchCount >= maxAllowedBranches,
+    extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
+    extraSitesMonthlyAddonUsd: Number((extraSiteSlots * metrics.extraSiteMonthlyPrice).toFixed(2)),
+    extraSitesAnnualAddonUsd: Number((extraSiteSlots * metrics.extraSiteAnnualPrice).toFixed(2)),
+  };
 }
 
 export interface SubscriptionStatusSummary {

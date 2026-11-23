@@ -636,6 +636,10 @@ export function createApiApp(): express.Express {
       }
 
       const billingCycle = req.body?.billingCycle === 'monthly' ? 'monthly' : 'annual';
+      const extraSiteSlots =
+        typeof req.body?.extraSiteSlots === 'number' && !Number.isNaN(req.body.extraSiteSlots)
+          ? Math.min(500, Math.max(0, Math.round(req.body.extraSiteSlots)))
+          : undefined;
       const requestedTenantId =
         typeof req.body?.tenantId === 'string' ? req.body.tenantId.trim() : '';
       const targetTenantId =
@@ -644,6 +648,7 @@ export function createApiApp(): express.Express {
       const result = await createRecurringSubscriptionForTenant({
         tenantId: targetTenantId,
         billingCycle,
+        extraSiteSlots,
         baseReturnUrl: resolveTrustedAppOrigin(req),
         fallbackCustomerEmail:
           typeof req.body?.customerEmail === 'string' ? req.body.customerEmail : undefined,

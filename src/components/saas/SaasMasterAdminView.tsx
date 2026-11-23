@@ -80,18 +80,37 @@ export const SaasMasterAdminView: React.FC = () => {
   const [editTrialDays, setEditTrialDays] = useState<string>(
     String(pricingMetrics.trialDays)
   );
+  const [editIncludedSiteBranches, setEditIncludedSiteBranches] = useState<string>(
+    String(pricingMetrics.includedSiteBranches)
+  );
+  const [editExtraSiteMonthlyPrice, setEditExtraSiteMonthlyPrice] = useState<string>(
+    String(pricingMetrics.extraSiteMonthlyPrice)
+  );
   const [syncExistingTenantsOnSave, setSyncExistingTenantsOnSave] = useState<boolean>(true);
 
   React.useEffect(() => {
     setEditMonthlyPrice(String(pricingMetrics.monthlyPrice));
     setEditAnnualPrice(String(pricingMetrics.annualPrice));
     setEditTrialDays(String(pricingMetrics.trialDays));
-  }, [pricingMetrics.monthlyPrice, pricingMetrics.annualPrice, pricingMetrics.trialDays]);
+    setEditIncludedSiteBranches(String(pricingMetrics.includedSiteBranches));
+    setEditExtraSiteMonthlyPrice(String(pricingMetrics.extraSiteMonthlyPrice));
+  }, [
+    pricingMetrics.monthlyPrice,
+    pricingMetrics.annualPrice,
+    pricingMetrics.trialDays,
+    pricingMetrics.includedSiteBranches,
+    pricingMetrics.extraSiteMonthlyPrice,
+  ]);
 
   const draftPricingMetrics = computePlatformPricingMetrics({
     monthlyPrice: parseFloat(editMonthlyPrice) || pricingMetrics.monthlyPrice,
     annualPrice: parseFloat(editAnnualPrice) || pricingMetrics.annualPrice,
     trialDays: parseInt(editTrialDays, 10) || pricingMetrics.trialDays,
+    includedSiteBranches: parseInt(editIncludedSiteBranches, 10) || pricingMetrics.includedSiteBranches,
+    extraSiteMonthlyPrice:
+      editExtraSiteMonthlyPrice !== '' && !Number.isNaN(parseFloat(editExtraSiteMonthlyPrice))
+        ? parseFloat(editExtraSiteMonthlyPrice)
+        : pricingMetrics.extraSiteMonthlyPrice,
   });
 
   const masterBankConfig = (() => {
@@ -165,11 +184,13 @@ export const SaasMasterAdminView: React.FC = () => {
   const expiredTenants = tenants.filter((t) => getSubscriptionStatusSummary(t.subscription).isExpired);
 
   const mrr = activePaidTenants.reduce((sum, t) => {
+    const extraAddonMonthly =
+      Math.max(0, t.subscription.extraSiteSlots || 0) * pricingMetrics.extraSiteMonthlyPrice;
     if (t.subscription.plan === 'pro_annual') {
       const annualVal = t.subscription.annualPrice || pricingMetrics.annualPrice;
-      return sum + annualVal / 12;
+      return sum + annualVal / 12 + extraAddonMonthly;
     }
-    return sum + (t.subscription.monthlyPrice || pricingMetrics.monthlyPrice);
+    return sum + (t.subscription.monthlyPrice || pricingMetrics.monthlyPrice) + extraAddonMonthly;
   }, 0);
 
   const arr = mrr * 12;
@@ -268,6 +289,10 @@ export const SaasMasterAdminView: React.FC = () => {
     const nextBilling = new Date(
       Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
     ).toISOString();
+    const resolvedExtraSiteSlots =
+      typeof pending.extraSiteSlotsRequested === 'number'
+        ? Math.max(0, Math.round(pending.extraSiteSlotsRequested))
+        : Math.max(0, tenant.subscription.extraSiteSlots || 0);
 
     updateTenantSubscription(tenant.id, {
       plan,
@@ -275,6 +300,7 @@ export const SaasMasterAdminView: React.FC = () => {
       monthlyPrice: isAnnual ? pricingMetrics.annualMonthlyEquivalent : pricingMetrics.monthlyPrice,
       annualPrice: isAnnual ? pricingMetrics.annualPrice : undefined,
       billingCycle: isAnnual ? 'annual' : 'monthly',
+      extraSiteSlots: resolvedExtraSiteSlots,
       paymentMethodStatus: 'active',
       lastBillingDate: new Date().toISOString(),
       nextBillingDate: nextBilling,
@@ -291,7 +317,7 @@ export const SaasMasterAdminView: React.FC = () => {
         isAnnual
           ? `Pro Annual ($${pricingMetrics.annualPriceFormatted}/yr)`
           : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`
-      } subscription activated.`
+      }${resolvedExtraSiteSlots > 0 ? ` + ${resolvedExtraSiteSlots} Extra Site(s)` : ''} subscription activated.`
     );
   };
 
@@ -366,6 +392,8 @@ export const SaasMasterAdminView: React.FC = () => {
     const parsedMonthly = parseFloat(editMonthlyPrice);
     const parsedAnnual = parseFloat(editAnnualPrice);
     const parsedTrialDays = parseInt(editTrialDays, 10);
+    const parsedIncludedBranches = parseInt(editIncludedSiteBranches, 10);
+    const parsedExtraSitePrice = parseFloat(editExtraSiteMonthlyPrice);
 
     if (Number.isNaN(parsedMonthly) || parsedMonthly <= 0) {
       showNotification('Please enter a valid Pro Monthly price greater than $0.');
@@ -379,18 +407,28 @@ export const SaasMasterAdminView: React.FC = () => {
       showNotification('Please enter a valid Free Trial duration (at least 1 day).');
       return;
     }
+    if (Number.isNaN(parsedIncludedBranches) || parsedIncludedBranches < 1) {
+      showNotification('Included Site Branches must be at least 1.');
+      return;
+    }
+    if (Number.isNaN(parsedExtraSitePrice) || parsedExtraSitePrice < 0) {
+      showNotification('Extra Site Branch monthly price cannot be negative.');
+      return;
+    }
 
     updatePlatformPricing(
       {
         monthlyPrice: Number(parsedMonthly.toFixed(2)),
         annualPrice: Number(parsedAnnual.toFixed(2)),
         trialDays: Math.round(parsedTrialDays),
+        includedSiteBranches: Math.round(parsedIncludedBranches),
+        extraSiteMonthlyPrice: Number(parsedExtraSitePrice.toFixed(2)),
       },
       syncExistingTenantsOnSave
     );
 
     showNotification(
-      `Subscription Plan Prices updated globally ($${parsedMonthly.toFixed(2)}/mo · $${parsedAnnual.toFixed(2)}/yr · ${Math.round(parsedTrialDays)}-Day Trial) and synced across Landing Page, Comparison Table & All Workspaces!`
+      `Subscription Plan Prices & Branch Quotas updated globally ($${parsedMonthly.toFixed(2)}/mo · $${parsedAnnual.toFixed(2)}/yr · ${Math.round(parsedIncludedBranches)} Base Sites + $${parsedExtraSitePrice.toFixed(2)}/mo extra)!`
     );
   };
 
@@ -398,9 +436,11 @@ export const SaasMasterAdminView: React.FC = () => {
     setEditMonthlyPrice(String(DEFAULT_PLATFORM_PRICING.monthlyPrice));
     setEditAnnualPrice(String(DEFAULT_PLATFORM_PRICING.annualPrice));
     setEditTrialDays(String(DEFAULT_PLATFORM_PRICING.trialDays));
+    setEditIncludedSiteBranches(String(DEFAULT_PLATFORM_PRICING.includedSiteBranches ?? 20));
+    setEditExtraSiteMonthlyPrice(String(DEFAULT_PLATFORM_PRICING.extraSiteMonthlyPrice ?? 10));
     updatePlatformPricing(DEFAULT_PLATFORM_PRICING, syncExistingTenantsOnSave);
     showNotification(
-      'Restored default subscription pricing ($19.90/mo · $189.00/yr · 7-Day Free Trial) across all views!'
+      'Restored default subscription pricing ($19.90/mo · $189.00/yr · 7-Day Trial · 20 Base Sites + $10/mo extra)!'
     );
   };
 
@@ -632,6 +672,68 @@ export const SaasMasterAdminView: React.FC = () => {
                   <div>
                     • Card 3: <strong>${draftPricingMetrics.annualPriceFormatted}/yr (Save {draftPricingMetrics.annualSavingsPercent}%)</strong>
                   </div>
+                  <div>
+                    • Branch Limit: <strong>{draftPricingMetrics.includedSiteBranches} Sites (+${draftPricingMetrics.extraSiteMonthlyPriceClean}/mo extra)</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Branch Quota & Extra Site Add-On Pricing */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-teal-400 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>Included Base Site Branches (Per Tenant)</span>
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400">+1 Central HQ Free</span>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="500"
+                    required
+                    value={editIncludedSiteBranches}
+                    onChange={(e) => setEditIncludedSiteBranches(e.target.value)}
+                    className="w-full pl-3.5 pr-24 py-2.5 bg-slate-900 border border-slate-700 focus:border-teal-400 rounded-xl text-base font-black font-mono text-white focus:outline-none"
+                  />
+                  <span className="absolute right-3.5 text-xs font-bold text-slate-400">Site Branches</span>
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  Users &amp; Field Teams stay <strong>100% Unlimited</strong>; regional site branches beyond{' '}
+                  <strong className="text-white">{draftPricingMetrics.includedSiteBranches}</strong> require paid extra-site slots.
+                </div>
+              </div>
+
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Extra Site Branch Add-On Price (USD)</span>
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400">Per Additional Branch / Mo</span>
+                </div>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3.5 text-sm font-black text-emerald-400 font-mono">$</span>
+                  <input
+                    type="number"
+                    step="0.50"
+                    min="0"
+                    required
+                    value={editExtraSiteMonthlyPrice}
+                    onChange={(e) => setEditExtraSiteMonthlyPrice(e.target.value)}
+                    className="w-full pl-8 pr-28 py-2.5 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-xl text-base font-black font-mono text-emerald-300 focus:outline-none"
+                  />
+                  <span className="absolute right-3.5 text-xs font-bold text-slate-400">/ site / month</span>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>Annual Billing Equivalent (12 months):</span>
+                  <strong className="text-emerald-300 font-mono">
+                    +${draftPricingMetrics.extraSiteAnnualPriceFormatted}/yr per extra site
+                  </strong>
                 </div>
               </div>
             </div>
@@ -761,6 +863,13 @@ export const SaasMasterAdminView: React.FC = () => {
                     <div className="flex justify-between">
                       <span className="text-slate-500">Receipt Image / File:</span>
                       <strong className="text-indigo-700 font-semibold">{p.slipFileName || p.slipName || 'Deposit_Receipt.png'}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Branch Slots Requested:</span>
+                      <strong className="text-emerald-700 font-semibold">
+                        {pricingMetrics.includedSiteBranches} Included
+                        {p.extraSiteSlotsRequested ? ` + ${p.extraSiteSlotsRequested} Extra Site(s)` : ''}
+                      </strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Submitted At:</span>
@@ -1068,17 +1177,26 @@ export const SaasMasterAdminView: React.FC = () => {
                         ) : tenant.subscription.plan === 'pro_annual' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
                             <Crown className="w-3 h-3 text-amber-600" />
-                            <span>Pro Annual (${pricingMetrics.annualPriceClean}/yr · {subSummary.shortDaysLabel})</span>
+                            <span>
+                              Pro Annual (${pricingMetrics.annualPriceClean}/yr
+                              {tenant.subscription.extraSiteSlots ? ` · +${tenant.subscription.extraSiteSlots} Sites` : ''} · {subSummary.shortDaysLabel})
+                            </span>
                           </span>
                         ) : tenant.subscription.status === 'active' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
                             <Zap className="w-3 h-3 text-emerald-600" />
-                            <span>Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo · {subSummary.shortDaysLabel})</span>
+                            <span>
+                              Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo
+                              {tenant.subscription.extraSiteSlots ? ` · +${tenant.subscription.extraSiteSlots} Sites` : ''} · {subSummary.shortDaysLabel})
+                            </span>
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1">
                             <Clock className="w-3 h-3 text-amber-600" />
-                            <span>{pricingMetrics.trialDays}-Day Trial ({subSummary.longDaysLabel})</span>
+                            <span>
+                              {pricingMetrics.trialDays}-Day Trial
+                              {tenant.subscription.extraSiteSlots ? ` · +${tenant.subscription.extraSiteSlots} Sites` : ''} ({subSummary.longDaysLabel})
+                            </span>
                           </span>
                         )}
                       </td>

@@ -53,6 +53,8 @@ import {
   isUserAssignedToSite,
   isGenericSuperAdminName,
   stripSuperAdminSuffix,
+  computePlatformPricingMetrics,
+  getTenantBranchQuotaSummary,
 } from '../../types';
 import { formatDate, formatNumber } from '../../utils/exportUtils';
 import {
@@ -132,8 +134,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     clientFreeIssues,
     setCurrentUser,
     currentTenant,
+    platformPricing,
     getWorkspaceLoginUrl,
   } = useStock();
+
+  const pricingMetrics = computePlatformPricingMetrics(platformPricing);
+  const branchQuota = getTenantBranchQuotaSummary(currentTenant, activeSites, platformPricing);
 
   const isCentralAdmin = isSuperAdmin(currentUser.role) || currentUser.username === 'admin';
 
@@ -324,31 +330,53 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [isCustomEditSupervisor, setIsCustomEditSupervisor] = useState(false);
   const [siteLocation, setSiteLocation] = useState('');
   const [sitePhone, setSitePhone] = useState('');
+  const [siteQuotaError, setSiteQuotaError] = useState<string | null>(null);
+
+  const handleOpenExtraSiteUpgradeModal = () => {
+    const targetExtraSlots = Math.max(1, branchQuota.extraSiteSlots + 1);
+    window.dispatchEvent(
+      new CustomEvent('open-subscription-modal', {
+        detail: { initialExtraSiteSlots: targetExtraSlots },
+      })
+    );
+  };
 
   const handleCreateSite = (e: React.FormEvent) => {
     e.preventDefault();
     if (!siteName.trim()) return;
+    setSiteQuotaError(null);
 
-    addSite(
-      {
-        name: siteName.trim(),
-        supervisorName: siteSupervisor.trim() || 'Assigned Supervisor',
-        supervisorUserId: isCustomAddSupervisor ? '' : siteSupervisorUserId,
-        location: siteLocation.trim() || 'On-site details pending',
-        contactNumber: sitePhone.trim() || '+1 (555) 000-0000',
-        isMainWarehouse: false,
-      },
-      newSiteAssignedUserIds
-    );
+    try {
+      addSite(
+        {
+          name: siteName.trim(),
+          supervisorName: siteSupervisor.trim() || 'Assigned Supervisor',
+          supervisorUserId: isCustomAddSupervisor ? '' : siteSupervisorUserId,
+          location: siteLocation.trim() || 'On-site details pending',
+          contactNumber: sitePhone.trim() || '+1 (555) 000-0000',
+          isMainWarehouse: false,
+        },
+        newSiteAssignedUserIds
+      );
 
-    showToast(`Site Branch "${siteName}" added & synced with assigned user account(s)!`);
-    setSiteName('');
-    setSiteSupervisor('');
-    setSiteSupervisorUserId('');
-    setNewSiteAssignedUserIds([]);
-    setIsCustomAddSupervisor(false);
-    setSiteLocation('');
-    setSitePhone('');
+      showToast(`Site Branch "${siteName}" added & synced with assigned user account(s)!`);
+      setSiteName('');
+      setSiteSupervisor('');
+      setSiteSupervisorUserId('');
+      setNewSiteAssignedUserIds([]);
+      setIsCustomAddSupervisor(false);
+      setSiteLocation('');
+      setSitePhone('');
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (msg.startsWith('BRANCH_QUOTA_REACHED:')) {
+        const cleanMsg = msg.replace('BRANCH_QUOTA_REACHED:', '').trim();
+        setSiteQuotaError(cleanMsg);
+        showToast(cleanMsg);
+      } else {
+        showToast(msg || 'Could not register site branch.');
+      }
+    }
   };
 
   // --- USER FORM STATE (Supports All Sites, Single Site, or Multiple Sites) ---
@@ -1890,6 +1918,86 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   Location Setup
                 </span>
               </div>
+
+              {/* Site Branch Quota Meter & Add-On Prompt */}
+              {!branchQuota.isMasterTenant && (
+                <div
+                  className={`mb-5 rounded-2xl border p-3.5 text-xs space-y-2 ${
+                    branchQuota.isAtLimit
+                      ? 'bg-amber-50/90 dark:bg-amber-950/35 border-amber-300 dark:border-amber-700/70'
+                      : 'bg-slate-50/90 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/80'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Building className={`w-3.5 h-3.5 ${branchQuota.isAtLimit ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                      <span>
+                        Site Branch Quota: {branchQuota.activeBranchCount} / {branchQuota.maxAllowedBranches} Active
+                      </span>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        branchQuota.isAtLimit
+                          ? 'bg-amber-200/80 text-amber-950 dark:bg-amber-500/20 dark:text-amber-300'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
+                      }`}
+                    >
+                      {branchQuota.isAtLimit
+                        ? 'Limit Reached'
+                        : `${branchQuota.remainingBranchSlots} Slot${branchQuota.remainingBranchSlots === 1 ? '' : 's'} Free`}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        branchQuota.isAtLimit ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.round(
+                            (branchQuota.activeBranchCount / Math.max(1, branchQuota.maxAllowedBranches)) * 100
+                          )
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                    <span>
+                      Base plan: <strong>{branchQuota.includedBranches} Branches</strong> + 1 Central HQ
+                      {branchQuota.extraSiteSlots > 0 ? ` (+${branchQuota.extraSiteSlots} Extra)` : ''}. Teams &amp; Users Unlimited.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleOpenExtraSiteUpgradeModal}
+                      className="font-extrabold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer whitespace-nowrap"
+                    >
+                      + Add Extra Site (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {(siteQuotaError || (!branchQuota.isMasterTenant && branchQuota.isAtLimit)) && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/70 text-xs text-rose-900 dark:text-rose-200 space-y-2">
+                  <div className="flex items-start gap-2 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    <span>
+                      {siteQuotaError ||
+                        `You have reached your ${branchQuota.maxAllowedBranches}-branch limit (${branchQuota.includedBranches} included${
+                          branchQuota.extraSiteSlots > 0 ? ` + ${branchQuota.extraSiteSlots} extra` : ''
+                        }).`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenExtraSiteUpgradeModal}
+                    className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold transition cursor-pointer shadow-xs"
+                  >
+                    Unlock Extra Site Branch Slot (+${pricingMetrics.extraSiteMonthlyPriceFormatted}/mo)
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleCreateSite} className="space-y-4">
                 <div>
