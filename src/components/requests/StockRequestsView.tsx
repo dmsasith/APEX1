@@ -1983,19 +1983,19 @@ export const StockRequestsView: React.FC = () => {
 
                 {/* Table of items with comfortable height to let dropdown unfold fully */}
                 <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white min-h-[500px] pb-64 shadow-2xs">
-                  <table className="w-full text-xs text-left min-w-[900px]">
+                  <table className="w-full text-xs text-left min-w-[700px]">
                     <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-xs font-bold uppercase tracking-wider">
                       <tr>
-                        <th className="py-3 px-4 min-w-[420px] sm:min-w-[520px] md:min-w-[580px]">
+                        <th className="py-3 px-3 sm:px-4">
                           Item Description & Classification
                         </th>
-                        <th className="py-3 px-3 text-center w-20">Unit</th>
-                        <th className="py-3 px-3 text-right w-32">Site Avl.</th>
-                        <th className="py-3 px-4 text-right w-32">
-                          {formRequestCategory === 'foc' ? 'FOC Main Avail.' : 'Main Avail.'}
+                        <th className="py-3 px-2 text-center w-16 whitespace-nowrap">Unit</th>
+                        <th className="py-3 px-2 text-right w-24 whitespace-nowrap">Site Avl.</th>
+                        <th className="py-3 px-2 text-right w-24 whitespace-nowrap">
+                          {formRequestCategory === 'foc' ? 'FOC Main' : 'Main Avail.'}
                         </th>
-                        <th className="py-3 px-4 text-right w-36 font-bold text-slate-900">Required Qty *</th>
-                        <th className="py-3 px-3 text-center w-14">Del</th>
+                        <th className="py-3 px-2 text-right w-28 font-bold text-slate-900 whitespace-nowrap">Required Qty *</th>
+                        <th className="py-3 px-2 text-center w-12 whitespace-nowrap">Del</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2050,7 +2050,7 @@ export const StockRequestsView: React.FC = () => {
                               className="hover:bg-slate-50/70 transition-colors relative"
                               style={{ zIndex: 40 - originalIndex }}
                             >
-                              <td className="py-3 px-4 min-w-[420px] sm:min-w-[520px] md:min-w-[580px]">
+                              <td className="py-3 px-3 sm:px-4 min-w-[290px]">
                                 <div className="space-y-1.5">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {isMach ? (
@@ -2110,10 +2110,10 @@ export const StockRequestsView: React.FC = () => {
                                   )}
                                 </div>
                               </td>
-                              <td className="py-3 px-3 text-center text-slate-800 font-bold whitespace-nowrap text-xs sm:text-sm">
+                              <td className="py-3 px-2 text-center text-slate-800 font-bold whitespace-nowrap text-xs sm:text-sm">
                                 {item?.unit || 'Nos'}
                               </td>
-                              <td className="py-3 px-3 text-right font-mono whitespace-nowrap text-xs sm:text-sm">
+                              <td className="py-3 px-2 text-right font-mono whitespace-nowrap text-xs sm:text-sm">
                                 <span
                                   className={`px-2 py-0.5 rounded-md font-bold inline-block ${
                                     isSiteLow
@@ -2129,7 +2129,7 @@ export const StockRequestsView: React.FC = () => {
                                   </div>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-right font-mono text-slate-700 font-bold whitespace-nowrap text-xs sm:text-sm">
+                              <td className="py-3 px-2 text-right font-mono text-slate-700 font-bold whitespace-nowrap text-xs sm:text-sm">
                                 <span
                                   className={
                                     availBalance <= 0
@@ -2151,23 +2151,23 @@ export const StockRequestsView: React.FC = () => {
                                   </div>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-right whitespace-nowrap">
+                              <td className="py-3 px-2 text-right whitespace-nowrap">
                                 <input
                                   type="number"
                                   min="1"
                                   step="any"
                                   value={row.requestedQty}
                                   onChange={(e) => handleRowChange(originalIndex, 'requestedQty', e.target.value)}
-                                  className="w-28 px-3 py-2 border border-slate-300 focus:border-slate-900 rounded-xl text-xs sm:text-sm font-mono font-bold text-right focus:ring-2 focus:ring-slate-900 bg-white shadow-2xs"
+                                  className="w-24 px-2.5 py-2 border border-slate-300 focus:border-slate-900 rounded-xl text-xs sm:text-sm font-mono font-bold text-right focus:ring-2 focus:ring-slate-900 bg-white shadow-2xs"
                                   required
                                 />
                               </td>
-                              <td className="py-3 px-3 text-center">
+                              <td className="py-3 px-2 text-center w-12">
                                 {rows.length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveRow(originalIndex)}
-                                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
                                     title="Remove item line"
                                   >
                                     <Trash2 className="w-4 h-4" />
