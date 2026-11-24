@@ -2011,20 +2011,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
               {/* ==================== GLOBAL COMPETITOR & ALL-FEATURES COMPARISON MATRIX ==================== */}
               <div
                 id="global-comparison"
-                className="mt-14 sm:mt-20 rounded-2xl sm:rounded-[30px] bg-gradient-to-br from-[#060c1d] via-[#0b1736] to-[#071026] text-white border border-white/18 shadow-[0_32px_80px_-20px_rgba(3,7,18,0.8)] p-4 sm:p-8 lg:p-10 relative overflow-hidden"
+                className="mt-14 sm:mt-20 rounded-2xl sm:rounded-[30px] bg-gradient-to-br from-[#060c1d] via-[#0b1736] to-[#071026] text-white border border-white/18 shadow-[0_32px_80px_-20px_rgba(3,7,18,0.8)] p-5 sm:p-8 lg:p-10 relative overflow-hidden"
               >
                 <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
 
                 {/* Executive Header */}
                 <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
-                  <div className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300 tracking-wide mb-2.5">
+                  <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-extrabold text-amber-300 tracking-wide mb-3">
                     <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
                     <span>Global Market &amp; Feature-by-Feature Comparison ({comparisonRows.length} Built-In Capabilities)</span>
                   </div>
-                  <h3 className="text-2xl sm:text-4xl lg:text-[40px] font-black text-white tracking-tight leading-tight text-balance">
+                  <h3 className="text-2xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-tight text-balance">
                     Why Pay <span className="text-rose-400 line-through decoration-2">$150 to $400+/Month</span> for Generic Retail Inventory Apps That Still Lack Field Site Control?
                   </h3>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-3 leading-relaxed max-w-3xl mx-auto font-medium">
+                  <p className="text-sm sm:text-base text-slate-200 mt-3.5 leading-relaxed max-w-3xl mx-auto font-medium">
                     Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH / water / electrical / solar projects, client free-issue stock (FOC), or site-separated field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today.{' '}
                     <strong className="text-amber-300">
                       Apex Stock gives you 100% of these specialized field &amp; warehouse features for one flat ${pricingMetrics.monthlyPriceFormatted}/mo (${pricingMetrics.annualPriceClean}/year).
@@ -2033,22 +2033,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Visual Annual Cost Comparison Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-3.5 mb-8 sm:mb-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 mb-8 sm:mb-10">
                   {/* Apex Stock Winner Card */}
-                  <div className="lg:col-span-1 rounded-2xl bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 text-[#071026] p-4 shadow-xl border border-white/60 flex flex-col justify-between">
+                  <div className="lg:col-span-1 rounded-2xl bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 text-[#071026] p-4 sm:p-5 shadow-xl border border-white/60 flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-[#071026]/80">
+                      <div className="text-xs font-black uppercase tracking-wider text-[#071026]/85">
                         ★ Best Value Worldwide
                       </div>
-                      <div className="text-base font-black text-[#071026] mt-0.5">Apex Stock VIP</div>
+                      <div className="text-base sm:text-lg font-black text-[#071026] mt-1">Apex Stock VIP</div>
                       <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#071026] mt-2">
-                        ${pricingMetrics.annualPriceClean}<span className="text-xs font-extrabold">/yr</span>
+                        ${pricingMetrics.annualPriceClean}<span className="text-sm font-extrabold">/yr</span>
                       </div>
-                      <div className="text-[11px] font-extrabold text-[#071026]/90 font-mono tabular-nums">
+                      <div className="text-xs sm:text-[13px] font-extrabold text-[#071026]/90 font-mono tabular-nums mt-0.5">
                         (~${pricingMetrics.annualMonthlyEquivalentFormatted}/mo or ${pricingMetrics.monthlyPriceFormatted} monthly)
                       </div>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-[#071026]/20 text-[11px] font-bold text-[#071026] space-y-1">
+                    <div className="mt-3.5 pt-3 border-t border-[#071026]/20 text-xs sm:text-[13px] font-bold text-[#071026] space-y-1.5 leading-snug">
                       <div>✓ Unlimited Users &amp; Teams</div>
                       <div>✓ {pricingMetrics.includedSiteBranches} Sites + HQ (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra)</div>
                       <div>✓ $0 Setup · {pricingMetrics.trialDays}-Day Free Trial</div>
@@ -2056,16 +2056,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </div>
 
                   {/* Sortly */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400">Visual Asset Tracker</div>
-                      <div className="text-sm font-extrabold text-white mt-0.5">Sortly (Ultra / Ent.)</div>
+                      <div className="text-xs font-bold text-slate-300">Visual Asset Tracker</div>
+                      <div className="text-base font-extrabold text-white mt-0.5">Sortly (Ultra / Ent.)</div>
                       <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         ~$1,788+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">($149 – $299+ / month)</div>
+                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">($149 – $299+ / month)</div>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Capped at 5–8 users (+$20/mo/seat)</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Crew In-Hand or Client FOC</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Industry Templates or Wastage</span></div>
@@ -2073,16 +2073,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </div>
 
                   {/* Zoho Inventory */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400">Retail / E-Commerce App</div>
-                      <div className="text-sm font-extrabold text-white mt-0.5">Zoho Inventory</div>
+                      <div className="text-xs font-bold text-slate-300">Retail / E-Commerce App</div>
+                      <div className="text-base font-extrabold text-white mt-0.5">Zoho Inventory</div>
                       <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         ~$1,548+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">($129 – $249+ / month)</div>
+                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">($129 – $249+ / month)</div>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Capped at 2–5 users &amp; warehouses</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Built for online shops, not sites</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Main/Sub FOC or Team custody</span></div>
@@ -2090,16 +2090,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </div>
 
                   {/* inFlow / Cin7 Core */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400">Wholesale Warehouse</div>
-                      <div className="text-sm font-extrabold text-white mt-0.5">inFlow / Cin7 Core</div>
+                      <div className="text-xs font-bold text-slate-300">Wholesale Warehouse</div>
+                      <div className="text-base font-extrabold text-white mt-0.5">inFlow / Cin7 Core</div>
                       <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         ~$2,388+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">($199 – $399+ / month)</div>
+                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">($199 – $399+ / month)</div>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>2–5 user cap (+$39/mo/user &amp; branch)</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Field Crew issue/return loop</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Custom PDF stationery upload</span></div>
@@ -2107,16 +2107,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </div>
 
                   {/* Legacy Construction ERP */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] font-bold text-slate-400">Heavy Legacy ERP</div>
-                      <div className="text-sm font-extrabold text-white mt-0.5">Procore / SAP / NetSuite</div>
+                      <div className="text-xs font-bold text-slate-300">Heavy Legacy ERP</div>
+                      <div className="text-base font-extrabold text-white mt-0.5">Procore / SAP / NetSuite</div>
                       <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         $10,000+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-[11px] text-slate-300 font-mono tabular-nums">(+ $5,000+ Consultant Setup)</div>
+                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">(+ $5,000+ Consultant Setup)</div>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>$75–$150+/mo per user &amp; branch license</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Paid consultants for every change</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Locked into multi-year contracts</span></div>
@@ -2125,17 +2125,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Interactive Category Filter Buttons for the Feature Matrix */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/15">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 mb-5 pb-4 border-b border-white/15">
                   <div className="text-left">
-                    <h4 className="text-sm sm:text-base font-black text-white">
+                    <h4 className="text-base sm:text-lg font-black text-white">
                       Complete {comparisonRows.length}-Point Feature &amp; Micro-Capability Comparison
                     </h4>
-                    <p className="text-[11px] text-slate-300">
+                    <p className="text-xs sm:text-sm text-slate-200 mt-0.5">
                       Filter by operational area or inspect all {comparisonRows.length} large and small specialized features side-by-side:
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
                     {[
                       { id: 'all', label: `All Features (${comparisonRows.length})` },
                       { id: 'pricing', label: 'Pricing & Scale' },
@@ -2152,10 +2152,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                             tab.id as 'all' | 'pricing' | 'warehouse' | 'field' | 'projects' | 'security'
                           )
                         }
-                        className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                        className={`px-3.5 py-2 rounded-xl text-xs sm:text-[13px] font-extrabold transition cursor-pointer whitespace-nowrap shrink-0 ${
                           comparisonCategory === tab.id
                             ? 'bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] shadow-sm'
-                            : 'bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/12'
+                            : 'bg-white/[0.06] hover:bg-white/[0.12] text-slate-100 border border-white/12'
                         }`}
                       >
                         {tab.label}
@@ -2166,30 +2166,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                 {/* Responsive Comparison Table */}
                 <div className="overflow-x-auto rounded-2xl border border-white/15 bg-[#040917]/90 shadow-inner">
-                  <table className="w-full text-left border-collapse min-w-[880px]">
+                  <table className="w-full text-left border-collapse min-w-[920px]">
                     <thead>
-                      <tr className="bg-white/[0.06] border-b border-white/15 text-[11px] font-black text-slate-200">
-                        <th className="py-3.5 px-4 w-[34%]">
+                      <tr className="bg-white/[0.06] border-b border-white/15 text-xs sm:text-[13px] font-black text-slate-100">
+                        <th className="py-4 px-4 w-[34%]">
                           System Capability / Specialized Feature ({filteredComparisonRows.length})
                         </th>
-                        <th className="py-3.5 px-4 w-[18%] bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] font-black">
+                        <th className="py-4 px-4 w-[18%] bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] font-black">
                           <div className="flex items-center gap-1.5">
-                            <Crown className="w-3.5 h-3.5 fill-[#071026]" />
+                            <Crown className="w-4 h-4 fill-[#071026] shrink-0" />
                             <span>Apex Stock (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                           </div>
                         </th>
-                        <th className="py-3.5 px-3.5 w-[16%] text-slate-200">
+                        <th className="py-4 px-4 w-[16%] text-slate-100">
                           Sortly ($149+/mo)
                         </th>
-                        <th className="py-3.5 px-3.5 w-[16%] text-slate-200">
+                        <th className="py-4 px-4 w-[16%] text-slate-100">
                           Zoho Inventory ($99+/mo)
                         </th>
-                        <th className="py-3.5 px-3.5 w-[16%] text-slate-200">
+                        <th className="py-4 px-4 w-[16%] text-slate-100">
                           inFlow / Cin7 ($199+/mo)
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/10 text-xs">
+                    <tbody className="divide-y divide-white/10 text-xs sm:text-[13px]">
                       {filteredComparisonRows.map((row, idx) => {
                         const renderCompetitorCell = (val: string) => {
                           const trimmed = val.trim();
@@ -2203,7 +2203,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                                 >
                                   ✗
                                 </span>
-                                <span className="text-slate-200 font-semibold leading-snug">{textPart}</span>
+                                <span className="text-slate-100 font-semibold leading-relaxed">{textPart}</span>
                               </div>
                             );
                           }
@@ -2217,7 +2217,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                                 >
                                   ◐
                                 </span>
-                                <span className="text-slate-300 font-medium leading-snug">{textPart}</span>
+                                <span className="text-slate-200 font-medium leading-relaxed">{textPart}</span>
                               </div>
                             );
                           }
@@ -2231,11 +2231,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                                 >
                                   ✓
                                 </span>
-                                <span className="text-slate-200 font-medium leading-snug">{textPart}</span>
+                                <span className="text-slate-100 font-medium leading-relaxed">{textPart}</span>
                               </div>
                             );
                           }
-                          return <span className="text-slate-200 font-semibold leading-snug">{val}</span>;
+                          return <span className="text-slate-100 font-semibold leading-relaxed">{val}</span>;
                         };
 
                         return (
@@ -2249,8 +2249,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                                 : 'bg-white/[0.02] hover:bg-white/[0.06]'
                             }`}
                           >
-                            <td className="py-3 px-4 align-top">
-                              <div className="flex items-center gap-2 text-[10px] font-bold text-sky-300 mb-0.5">
+                            <td className="py-3.5 px-4 align-top">
+                              <div className="flex items-center gap-2 text-xs font-bold text-sky-300 mb-1">
                                 <span>{row.categoryLabel}</span>
                                 {row.isSpecialHighlight && (
                                   <>
@@ -2259,31 +2259,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                                   </>
                                 )}
                               </div>
-                              <div className="font-extrabold text-white text-xs leading-snug">
+                              <div className="font-extrabold text-white text-sm sm:text-[15px] leading-snug">
                                 {row.feature}
                               </div>
-                              <div className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                              <div className="text-xs sm:text-[13px] text-slate-200/90 mt-1.5 leading-relaxed">
                                 {row.detail}
                               </div>
                             </td>
 
                             {/* Apex Stock Highlighted Column */}
-                            <td className="py-3 px-4 align-middle bg-amber-400/12 border-x border-amber-400/30 font-extrabold text-amber-200 text-xs">
+                            <td className="py-3.5 px-4 align-middle bg-amber-400/12 border-x border-amber-400/30 font-extrabold text-amber-200 text-xs sm:text-sm leading-relaxed">
                               {row.apex}
                             </td>
 
                             {/* Sortly */}
-                            <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                            <td className="py-3.5 px-4 align-middle text-slate-200 font-medium text-xs sm:text-[13px]">
                               {renderCompetitorCell(row.sortly)}
                             </td>
 
                             {/* Zoho */}
-                            <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                            <td className="py-3.5 px-4 align-middle text-slate-200 font-medium text-xs sm:text-[13px]">
                               {renderCompetitorCell(row.zoho)}
                             </td>
 
                             {/* inFlow / Cin7 */}
-                            <td className="py-3 px-3.5 align-middle text-slate-300 font-medium text-[11px]">
+                            <td className="py-3.5 px-4 align-middle text-slate-200 font-medium text-xs sm:text-[13px]">
                               {renderCompetitorCell(row.inflowCin7)}
                             </td>
                           </tr>
@@ -2296,32 +2296,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 {/* 12 Small-Yet-Special Micro-Features Spotlight Grid */}
                 <div className="mt-8 sm:mt-10 pt-7 border-t border-white/15">
                   <div className="text-center max-w-3xl mx-auto mb-6">
-                    <div className="text-xs font-extrabold text-amber-300 mb-1">
+                    <div className="text-xs sm:text-sm font-extrabold text-amber-300 mb-1.5">
                       Thoughtful Field-Engineered Details You Won&apos;t Find Anywhere Else
                     </div>
-                    <h4 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+                    <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">
                       12 Small-Yet-Special Features Built for Real Daily Site Challenges
                     </h4>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-200 mt-1.5">
                       Every micro-feature in Apex Stock was designed around real warehouse storekeepers, site supervisors, and field crew leaders:
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
                     {microFeaturesSpotlight.map((mf, i) => (
                       <div
                         key={mf.title}
-                        className="rounded-xl bg-white/[0.05] border border-white/14 p-3.5 text-left hover:border-amber-400/50 hover:bg-white/[0.08] transition"
+                        className="rounded-xl bg-white/[0.05] border border-white/14 p-4 text-left hover:border-amber-400/50 hover:bg-white/[0.08] transition"
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[11px] font-mono font-black text-amber-400 tabular-nums">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-xs font-mono font-black text-amber-400 tabular-nums">
                             {String(i + 1).padStart(2, '0')}.
                           </span>
-                          <h5 className="text-xs font-extrabold text-white leading-snug">
+                          <h5 className="text-sm font-extrabold text-white leading-snug">
                             {mf.title}
                           </h5>
                         </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-[13px] text-slate-200/90 leading-relaxed">
                           {mf.desc}
                         </p>
                       </div>
@@ -2330,12 +2330,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
 
                 {/* Bottom Decision Banner inside Comparison */}
-                <div className="mt-8 rounded-2xl bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 text-[#071026] p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+                <div className="mt-8 rounded-2xl bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 text-[#071026] p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
                   <div className="text-center md:text-left">
-                    <div className="text-sm sm:text-lg font-black text-[#071026]">
+                    <div className="text-base sm:text-xl font-black text-[#071026]">
                       Get Every Single Feature Above for $0 Today ({pricingMetrics.trialDays}-Day Unrestricted Free Trial)
                     </div>
-                    <div className="text-xs font-bold text-[#071026]/90 mt-0.5">
+                    <div className="text-xs sm:text-sm font-bold text-[#071026]/90 mt-1">
                       Then just <span className="underline font-black">${pricingMetrics.monthlyPriceFormatted}/month</span> or <span className="underline font-black">${pricingMetrics.annualPriceClean}/year</span> — Unlimited Users &amp; Teams, {pricingMetrics.includedSiteBranches} Site Branches + HQ included (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site).
                     </div>
                   </div>
@@ -2343,7 +2343,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <button
                       type="button"
                       onClick={() => setIsSignupOpen(true)}
-                      className="px-5 py-3 rounded-xl bg-[#071026] hover:bg-[#0d1b3e] text-amber-300 font-black text-xs flex items-center gap-2 shadow-md transition cursor-pointer whitespace-nowrap"
+                      className="px-5 py-3 rounded-xl bg-[#071026] hover:bg-[#0d1b3e] text-amber-300 font-black text-xs sm:text-sm flex items-center gap-2 shadow-md transition cursor-pointer whitespace-nowrap"
                     >
                       <span>Start Your {pricingMetrics.trialDays}-Day Free Trial Now</span>
                       <ArrowRight className="w-4 h-4" />
@@ -2351,9 +2351,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     <button
                       type="button"
                       onClick={handleOpenGuideTab}
-                      className="px-4 py-3 rounded-xl bg-white/95 hover:bg-white text-[#071026] font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+                      className="px-4 py-3 rounded-xl bg-white/95 hover:bg-white text-[#071026] font-extrabold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
                     >
-                      <BookOpen className="w-3.5 h-3.5" />
+                      <BookOpen className="w-4 h-4" />
                       <span>View Full User Guide</span>
                     </button>
                   </div>
