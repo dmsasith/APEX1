@@ -34,6 +34,10 @@ import {
   ArrowRightLeft,
   Clock,
   History,
+  GitBranch,
+  CornerDownRight,
+  ArrowDown,
+  ArrowRight,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -2496,8 +2500,150 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               )}
             </div>
 
-            <div className={`grid grid-cols-1 ${activeSites.length > 1 ? '2xl:grid-cols-2' : ''} gap-4`}>
-              {hierarchicalSites.map((s, idx) => {
+            {/* Interactive Visual Branch Hierarchy Flow Chart */}
+            {activeSites.length > 0 && (() => {
+              const hqSiteNode = activeSites.find((s) => s.isMainWarehouse);
+              const regionalNodes = hierarchicalSites.filter((s) => !s.isMainWarehouse && !isSubSite(s));
+              const totalSubCount = hierarchicalSites.filter((s) => isSubSite(s)).length;
+
+              const scrollToSiteCard = (siteId: string) => {
+                const el = document.getElementById(`site-card-${siteId}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              };
+
+              return (
+                <div className="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-200/70 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <GitBranch className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-extrabold text-slate-900 dark:text-white tracking-tight">
+                          Company Branch & Sub-Site Flow Map
+                        </h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Click any branch node to jump straight to its details · Central HQ → Regional Branches → Linked Sub-Sites
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-[11px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400">
+                      {regionalNodes.length} Regional · {totalSubCount} Sub-Site{totalSubCount === 1 ? '' : 's'}
+                    </div>
+                  </div>
+
+                  {/* Flow Diagram Nodes */}
+                  <div className="flex flex-col gap-3">
+                    {hqSiteNode && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => scrollToSiteCard(hqSiteNode.id)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300/80 dark:border-emerald-700/70 hover:border-emerald-500 text-left transition-colors cursor-pointer"
+                        >
+                          <Warehouse className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                          <div>
+                            <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 leading-none">
+                              Central HQ
+                            </div>
+                            <div className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">
+                              {hqSiteNode.name}
+                            </div>
+                          </div>
+                        </button>
+                        {regionalNodes.length > 0 && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                            <ArrowRight className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>Distributes to {regionalNodes.length} Regional Hub{regionalNodes.length === 1 ? '' : 's'}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {regionalNodes.length > 0 && (
+                      <div className="relative pl-4 sm:pl-6 space-y-2.5">
+                        <div
+                          className="absolute left-1.5 sm:left-2.5 top-0 bottom-3 w-px bg-emerald-300/80 dark:bg-emerald-700/70"
+                          aria-hidden="true"
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                          {regionalNodes.map((reg) => {
+                            const subs = getChildSubSites(reg.id, activeSites);
+                            const regCrews = activeTeams.filter((t) => t.assignedSiteId === reg.id).length;
+                            return (
+                              <div
+                                key={reg.id}
+                                className="relative rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800/40 p-2.5 space-y-2"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => scrollToSiteCard(reg.id)}
+                                    className="flex items-center gap-2 min-w-0 text-left hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                                  >
+                                    <Building className="w-3.5 h-3.5 text-slate-700 dark:text-emerald-400 shrink-0" />
+                                    <span className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
+                                      {reg.name}
+                                    </span>
+                                  </button>
+                                  <span className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                                    {regCrews} crew{regCrews === 1 ? '' : 's'}
+                                  </span>
+                                </div>
+
+                                {subs.length > 0 ? (
+                                  <div className="pl-3 space-y-1.5 relative">
+                                    <div
+                                      className="absolute left-1 top-0 bottom-2 w-px bg-sky-300 dark:bg-sky-700"
+                                      aria-hidden="true"
+                                    />
+                                    {subs.map((sub) => {
+                                      const subCrews = activeTeams.filter((t) => t.assignedSiteId === sub.id).length;
+                                      return (
+                                        <div key={sub.id} className="relative flex items-center gap-1.5 pl-2">
+                                          <CornerDownRight className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
+                                          <button
+                                            type="button"
+                                            onClick={() => scrollToSiteCard(sub.id)}
+                                            className="flex-1 flex items-center justify-between gap-2 px-2 py-1 rounded-lg bg-sky-50/90 dark:bg-sky-950/50 border border-sky-200/90 dark:border-sky-800/70 hover:border-sky-500 text-left transition-colors cursor-pointer"
+                                          >
+                                            <span className="text-[11px] font-bold text-sky-950 dark:text-sky-200 truncate">
+                                              {sub.name}
+                                            </span>
+                                            <span className="text-[10px] font-mono tabular-nums font-semibold text-sky-700 dark:text-sky-400 shrink-0">
+                                              Sub · {subCrews}c
+                                            </span>
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500 pl-1">
+                                    Direct Regional Branch · No Sub-Sites
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const topLevelSites = hierarchicalSites.filter((s) => !isSubSite(s));
+              const orphanSubSites = hierarchicalSites.filter(
+                (s) => isSubSite(s) && !activeSites.some((p) => p.id === s.parentSiteId)
+              );
+
+              const renderSiteCard = (s: Site, compactSub = false) => {
+                const idx = hierarchicalSites.findIndex((item) => item.id === s.id);
                 const assignedTeams = activeTeams.filter((t) => t.assignedSiteId === s.id);
                 const assignedUsers = activeUsers.filter((u) => isUserAssignedToSite(u, s, activeSites));
                 const isSub = isSubSite(s);
@@ -2516,22 +2662,27 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 return (
                   <div
                     key={s.id}
-                    className={`relative overflow-hidden rounded-3xl p-5 sm:p-6 transition-all duration-200 flex flex-col justify-between group ${
+                    id={`site-card-${s.id}`}
+                    className={`relative overflow-hidden transition-all duration-200 flex flex-col justify-between group ${
+                      compactSub ? 'rounded-2xl p-3.5 sm:p-4' : 'rounded-3xl p-5 sm:p-6'
+                    } ${
                       s.isMainWarehouse
                         ? 'bg-gradient-to-br from-emerald-50/95 via-white/95 to-teal-50/80 dark:from-emerald-950/40 dark:via-slate-900/95 dark:to-slate-900 border border-emerald-400/60 dark:border-emerald-500/40 shadow-[0_14px_34px_-12px_rgba(16,185,129,0.22)] hover:shadow-[0_20px_42px_-12px_rgba(16,185,129,0.3)]'
                         : isChecked
                         ? 'bg-emerald-50/40 dark:bg-slate-900 border-2 border-emerald-500 shadow-md'
                         : isSub
-                        ? 'bg-gradient-to-br from-sky-50/75 via-white/95 to-slate-50/85 dark:from-sky-950/25 dark:via-slate-900/95 dark:to-slate-900 border border-sky-300/70 dark:border-sky-700/50 border-l-4 border-l-sky-500 shadow-[0_10px_28px_-12px_rgba(14,165,233,0.16)]'
+                        ? 'bg-gradient-to-br from-sky-50/80 via-white/95 to-slate-50/90 dark:from-sky-950/30 dark:via-slate-900/95 dark:to-slate-900 border border-sky-300/80 dark:border-sky-700/60 shadow-[0_8px_22px_-12px_rgba(14,165,233,0.2)] hover:border-sky-400'
                         : 'bg-gradient-to-br from-white/95 via-white/90 to-slate-50/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-800/80 backdrop-blur-xl border border-white/95 dark:border-slate-800 ring-1 ring-slate-900/[0.06] dark:ring-white/[0.06] shadow-[0_10px_28px_-12px_rgba(15,23,42,0.1)] hover:shadow-[0_18px_38px_-12px_rgba(16,185,129,0.16)] hover:border-emerald-400/50'
                     }`}
                   >
                     {/* Top Row: Icon Badge + Title & Actions */}
                     <div>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                        <div className={`flex items-start ${compactSub ? 'gap-2.5' : 'gap-3.5'} min-w-0 flex-1`}>
                           <div
-                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
+                            className={`${
+                              compactSub ? 'w-9 h-9 rounded-xl' : 'w-11 h-11 rounded-2xl'
+                            } flex items-center justify-center shrink-0 shadow-md ${
                               s.isMainWarehouse
                                 ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/25'
                                 : isSub
@@ -2540,9 +2691,9 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                             }`}
                           >
                             {s.isMainWarehouse ? (
-                              <Warehouse className="w-5 h-5" />
+                              <Warehouse className={compactSub ? 'w-4 h-4' : 'w-5 h-5'} />
                             ) : (
-                              <Building className="w-5 h-5" />
+                              <Building className={compactSub ? 'w-4 h-4' : 'w-5 h-5'} />
                             )}
                           </div>
 
@@ -2560,7 +2711,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 {s.isMainWarehouse
                                   ? 'Central HQ Warehouse'
                                   : isSub
-                                  ? 'Sub-Site Branch'
+                                  ? 'Linked Sub-Site'
                                   : 'Regional Site Branch'}
                               </span>
                               <span aria-hidden="true">·</span>
@@ -2568,28 +2719,36 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 {s.isMainWarehouse ? 'HQ-0001' : isSub ? `SUB-${String(idx).padStart(4, '0')}` : `BR-${String(idx).padStart(4, '0')}`}
                               </span>
                             </div>
-                            <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg tracking-tight leading-snug break-words mt-0.5">
-                              {isSub ? `↳ ${s.name}` : s.name}
+                            <h3
+                              className={`font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug break-words mt-0.5 flex items-center gap-1.5 ${
+                                compactSub ? 'text-sm sm:text-base' : 'text-base sm:text-lg'
+                              }`}
+                            >
+                              {isSub && <CornerDownRight className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />}
+                              <span>{s.name}</span>
                             </h3>
                             {isSub && (
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100/90 dark:bg-sky-900/50 border border-sky-200 dark:border-sky-700/60 text-[10px] font-bold text-sky-900 dark:text-sky-200">
-                                  <span>Under: {parentSiteObj?.name || s.parentSiteName || 'Regional Branch'}</span>
-                                </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
+                                <span className="text-sky-800 dark:text-sky-300">
+                                  Parent Hub: {parentSiteObj?.name || s.parentSiteName || 'Regional Branch'}
+                                </span>
                                 {isSubSiteStockLocked && (
-                                  <div
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700/70 text-[10px] font-bold text-amber-900 dark:text-amber-300"
-                                    title={`Parent Branch & Delete Locked: ${siteStockLock?.summaryText}`}
-                                  >
-                                    <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                                    <span>Locked · Stock / FOC Issued</span>
-                                  </div>
+                                  <>
+                                    <span aria-hidden="true" className="text-slate-400">·</span>
+                                    <span
+                                      className="inline-flex items-center gap-1 text-amber-800 dark:text-amber-300"
+                                      title={`Parent Branch & Delete Locked: ${siteStockLock?.summaryText}`}
+                                    >
+                                      <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                      <span>Locked (Stock / FOC Issued)</span>
+                                    </span>
+                                  </>
                                 )}
                               </div>
                             )}
                             {!isSub && childSubs.length > 0 && (
-                              <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/80 dark:bg-emerald-950/50 border border-emerald-300/60 dark:border-emerald-800/60 text-[10px] font-bold text-emerald-900 dark:text-emerald-300">
-                                <span>{childSubs.length} Sub-Site{childSubs.length === 1 ? '' : 's'}: {childSubs.map((c) => c.name).join(', ')}</span>
+                              <div className="mt-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                                Regional Hub · {childSubs.length} Linked Sub-Site{childSubs.length === 1 ? '' : 's'} ({childSubs.map((c) => c.name).join(', ')})
                               </div>
                             )}
                           </div>
@@ -2653,54 +2812,60 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                       </div>
 
                       {/* Structured Details Surface */}
-                      <div className="mt-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-2.5">
-                        {/* Supervisor Row */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
-                              {supervisorInitials || 'SV'}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-none">
-                                Supervisor / In-Charge
+                      <div
+                        className={`rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 ${
+                          compactSub ? 'mt-3 p-3 space-y-2' : 'mt-4 p-3.5 space-y-2.5'
+                        }`}
+                      >
+                        <div className={compactSub ? 'grid grid-cols-1 sm:grid-cols-2 gap-2.5' : 'space-y-2.5'}>
+                          {/* Supervisor Row */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2 min-w-0 flex-1">
+                              <div className="w-6 h-6 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-extrabold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                                {supervisorInitials || 'SV'}
                               </div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-white leading-snug break-words mt-0.5">
-                                {s.supervisorName || 'Unassigned'}
-                              </div>
-                            </div>
-                          </div>
-                          <Shield className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0 mt-1" />
-                        </div>
-
-                        {/* Full-Width Location / Address & Direct Line Rows */}
-                        <div className="space-y-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
-                          <div className="flex items-start gap-2 min-w-0">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
-                                Geographic Location / Address
-                              </div>
-                              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-relaxed break-words mt-0.5">
-                                {s.location || 'Not specified'}
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-none">
+                                  Supervisor / In-Charge
+                                </div>
+                                <div className="text-xs font-bold text-slate-900 dark:text-white leading-snug break-words mt-0.5">
+                                  {s.supervisorName || 'Unassigned'}
+                                </div>
                               </div>
                             </div>
+                            {!compactSub && <Shield className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0 mt-1" />}
                           </div>
 
-                          <div className="flex items-start gap-2 min-w-0 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
-                            <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
-                                Direct Line
+                          {/* Location & Direct Line */}
+                          <div className={compactSub ? 'space-y-1.5 text-xs' : 'space-y-2.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs'}>
+                            <div className="flex items-start gap-2 min-w-0">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
+                                  Location / Address
+                                </div>
+                                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words mt-0.5">
+                                  {s.location || 'Not specified'}
+                                </div>
                               </div>
-                              <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words mt-0.5">
-                                {s.contactNumber || 'Not specified'}
+                            </div>
+
+                            <div className={`flex items-start gap-2 min-w-0 ${compactSub ? '' : 'pt-2 border-t border-slate-200/50 dark:border-slate-700/50'}`}>
+                              <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
+                                  Direct Line
+                                </div>
+                                <div className="text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words mt-0.5">
+                                  {s.contactNumber || 'Not specified'}
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
 
                         {/* Assigned System Users Row */}
-                        <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                        <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
                           <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none mb-1">
                             Assigned System Users ({assignedUsers.length})
                           </div>
@@ -2720,8 +2885,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           )}
                         </div>
 
-                        {/* Assigned Field Teams on this Site (with Temporary / Permanent Indicator) */}
-                        <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                        {/* Assigned Field Teams on this Site */}
+                        <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
                           <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none mb-1.5">
                             Assigned Field Teams ({assignedTeams.length})
                           </div>
@@ -2730,7 +2895,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               No field team currently assigned
                             </div>
                           ) : (
-                            <div className="space-y-1.5">
+                            <div className={compactSub ? 'flex flex-wrap gap-1.5' : 'space-y-1.5'}>
                               {assignedTeams.map((tm) => {
                                 const isTemp = tm.assignmentStatus === 'Temporary';
                                 return (
@@ -2748,12 +2913,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                       {tm.teamName}
                                     </span>
                                     {isTemp ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-400/50">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 dark:text-amber-300">
                                         <Clock className="w-2.5 h-2.5" />
                                         {getTemporaryAssignmentBadgeLabel(s.name)}
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                                         <CheckCircle2 className="w-2.5 h-2.5" />
                                         Permanent
                                       </span>
@@ -2768,7 +2933,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     </div>
 
                     {/* Footer Bar */}
-                    <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                    <div className={`${compactSub ? 'mt-3 pt-2.5' : 'mt-4 pt-3'} border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 text-xs`}>
                       <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
                         <span>
                           Crews: <strong className="font-mono tabular-nums text-slate-900 dark:text-white font-extrabold">{assignedTeams.length}</strong>
@@ -2787,15 +2952,77 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                         )}
                       </div>
 
-                      <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className={`text-[11px] font-bold flex items-center gap-1 ${isSub ? 'text-sky-700 dark:text-sky-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                        <CheckCircle2 className={`w-3.5 h-3.5 ${isSub ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
                         <span>{s.isMainWarehouse ? 'Primary Hub' : isSub ? 'Sub-Site' : 'Operational'}</span>
                       </span>
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              };
+
+              return (
+                <div className={`grid grid-cols-1 ${activeSites.length > 1 ? '2xl:grid-cols-2' : ''} gap-4 items-start`}>
+                  {topLevelSites.map((s) => {
+                    const childSubs = isRegionalSiteBranch(s) ? getChildSubSites(s.id, activeSites) : [];
+                    if (childSubs.length === 0) {
+                      return renderSiteCard(s, false);
+                    }
+
+                    return (
+                      <div
+                        key={`cluster-${s.id}`}
+                        className={`${activeSites.length > 1 ? '2xl:col-span-2' : ''} space-y-0`}
+                      >
+                        {renderSiteCard(s, false)}
+
+                        {/* Directional Arrow Tree Connector from Regional Hub to Child Sub-Sites */}
+                        <div className="relative pl-6 sm:pl-10 pt-3">
+                          {/* Vertical trunk descending directly from parent regional card */}
+                          <div
+                            className="absolute left-3 sm:left-5 top-0 bottom-5 w-0.5 bg-gradient-to-b from-emerald-500/70 via-sky-400 to-sky-400/70 dark:from-emerald-400/60 dark:to-sky-600/70 rounded-full"
+                            aria-hidden="true"
+                          />
+
+                          {/* Flow Header Strip */}
+                          <div className="flex items-center gap-2 mb-2.5 relative">
+                            <span
+                              className="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 w-3 sm:w-5 h-0.5 bg-sky-400 dark:bg-sky-500"
+                              aria-hidden="true"
+                            />
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/95 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800/80 text-[11px] font-bold text-sky-900 dark:text-sky-200 shadow-2xs">
+                              <ArrowDown className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
+                              <span>
+                                Linked Sub-Site{childSubs.length === 1 ? '' : 's'} Under <strong>{s.name}</strong> ({childSubs.length})
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Compact Linked Sub-Site Cards */}
+                          <div className={`grid grid-cols-1 ${childSubs.length > 1 ? 'xl:grid-cols-2' : ''} gap-3`}>
+                            {childSubs.map((sub) => (
+                              <div key={sub.id} className="relative">
+                                {/* Horizontal arrow tick pointing into each sub-site card */}
+                                <div
+                                  className="hidden sm:flex items-center absolute -left-5 top-6 w-5 text-sky-500 dark:text-sky-400"
+                                  aria-hidden="true"
+                                >
+                                  <span className="flex-1 h-0.5 bg-sky-400 dark:bg-sky-600" />
+                                  <ChevronRight className="w-3.5 h-3.5 -ml-1.5 shrink-0" />
+                                </div>
+                                {renderSiteCard(sub, true)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {orphanSubSites.map((orphan) => renderSiteCard(orphan, true))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

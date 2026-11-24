@@ -26,6 +26,11 @@ import {
   Home,
   Download,
   PenTool,
+  GitBranch,
+  CornerDownRight,
+  ArrowDown,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
@@ -85,6 +90,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
     tab: 'details' | 'transfer';
   } | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showHierarchyFlow, setShowHierarchyFlow] = useState<boolean>(true);
 
   const canManageTeamAssignment =
     isSuperAdmin(currentUser.role) ||
@@ -474,6 +480,308 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
         </div>
       </div>
 
+      {/* Interactive Organization & Field Teams Flow Diagram (Screen View) */}
+      {orderedActiveSites.length > 0 && (() => {
+        const hqNode = orderedActiveSites.find((s) => s.isMainWarehouse);
+        const regionalBranches = orderedActiveSites.filter((s) => !s.isMainWarehouse && !isSubSite(s));
+        const totalSubBranches = orderedActiveSites.filter((s) => isSubSite(s)).length;
+
+        const getSiteTeamsList = (siteId: string) => activeTeams.filter((t) => t.assignedSiteId === siteId);
+        const getSiteSupName = (site: Site) => {
+          const users = activeUsers.filter((u) => isUserAssignedToSite(u, site, activeSites));
+          const rawSup = (site.supervisorName || '').trim();
+          const matched = activeUsers.find(
+            (u) =>
+              (site.supervisorUserId && u.id === site.supervisorUserId) ||
+              (rawSup &&
+                rawSup.toLowerCase() !== 'arthur vance' &&
+                rawSup.toLowerCase() !== 'unassigned' &&
+                u.fullName.trim().toLowerCase() === rawSup.toLowerCase())
+          );
+          return (
+            matched?.fullName ||
+            users[0]?.fullName ||
+            (rawSup && rawSup.toLowerCase() !== 'arthur vance' && rawSup.toLowerCase() !== 'unassigned'
+              ? rawSup
+              : 'Unassigned')
+          );
+        };
+
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden no-print">
+            <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <GitBranch className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight">
+                    Branch, Sub-Site &amp; Field Teams Hierarchy Flow
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Central HQ → Regional Site Branches → Linked Sub-Sites → Field Teams · Click any branch to focus or any team for site history
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono tabular-nums font-bold text-slate-500 hidden sm:inline">
+                  {regionalBranches.length} Regional · {totalSubBranches} Sub-Site{totalSubBranches === 1 ? '' : 's'} · {activeTeams.length} Teams
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowHierarchyFlow((prev) => !prev)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-700 cursor-pointer transition-colors"
+                >
+                  {showHierarchyFlow ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                      <span>Hide Flow</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      <span>Show Flow</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {showHierarchyFlow && (
+              <div className="p-4 space-y-4">
+                {/* Tier 1: Central HQ */}
+                {hqNode && (() => {
+                  const hqTeams = getSiteTeamsList(hqNode.id);
+                  const isSelected = selectedSiteId === hqNode.id;
+                  return (
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                      <div
+                        className={`rounded-xl border p-3 transition-all lg:min-w-[280px] ${
+                          isSelected
+                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20'
+                            : 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-400'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSiteId(isSelected ? 'all' : hqNode.id)}
+                            className="text-left cursor-pointer min-w-0"
+                          >
+                            <div className="text-[10px] font-bold text-emerald-700">
+                              Tier 1 · Central HQ Yard
+                            </div>
+                            <div className="text-xs font-extrabold text-slate-900 truncate">
+                              {hqNode.name}
+                            </div>
+                            <div className="text-[11px] text-slate-600 truncate">
+                              In-Charge: {getSiteSupName(hqNode)}
+                            </div>
+                          </button>
+                          <span className="text-[10px] font-mono tabular-nums font-bold text-emerald-800 shrink-0">
+                            {hqTeams.length} team{hqTeams.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        {hqTeams.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-emerald-200/70 flex flex-wrap gap-1.5">
+                            {hqTeams.map((tm) => (
+                              <button
+                                key={tm.id}
+                                type="button"
+                                onClick={() => setTeamModalState({ teamId: tm.id, tab: 'details' })}
+                                className="px-2 py-0.5 rounded-md bg-white border border-emerald-200 hover:border-emerald-500 text-[10px] font-bold text-slate-800 cursor-pointer transition-colors"
+                              >
+                                {extractBaseTeamName(tm.teamName, tm.baseTeamName)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {regionalBranches.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 shrink-0">
+                          <ArrowRight className="w-4 h-4 text-emerald-600 hidden lg:block" />
+                          <ArrowDown className="w-4 h-4 text-emerald-600 lg:hidden" />
+                          <span>Supplies Stock &amp; Oversees {regionalBranches.length} Regional Branch{regionalBranches.length === 1 ? '' : 'es'}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Tier 2 & 3: Regional Site Branches -> Linked Sub-Sites -> Assigned Teams */}
+                {regionalBranches.length > 0 && (
+                  <div className="relative pl-4 sm:pl-6">
+                    <div
+                      className="absolute left-1.5 sm:left-2.5 top-0 bottom-4 w-px bg-emerald-300"
+                      aria-hidden="true"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                      {regionalBranches.map((reg) => {
+                        const regTeams = getSiteTeamsList(reg.id);
+                        const subs = getChildSubSites(reg.id, activeSites);
+                        const isRegSelected = selectedSiteId === reg.id;
+
+                        return (
+                          <div
+                            key={reg.id}
+                            className={`rounded-xl border p-3.5 space-y-3 transition-all ${
+                              isRegSelected
+                                ? 'bg-blue-50/40 border-blue-500 ring-2 ring-blue-500/20'
+                                : 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            {/* Regional Node Header */}
+                            <div className="flex items-start justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSiteId(isRegSelected ? 'all' : reg.id)}
+                                className="text-left min-w-0 cursor-pointer group"
+                              >
+                                <div className="text-[10px] font-bold text-blue-700">
+                                  Tier 2 · Regional Branch
+                                </div>
+                                <div className="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
+                                  {reg.name}
+                                </div>
+                                <div className="text-[11px] text-slate-500 truncate">
+                                  Sup: {getSiteSupName(reg)}
+                                </div>
+                              </button>
+                              <div className="text-right text-[10px] font-mono tabular-nums font-bold text-slate-600 shrink-0">
+                                <div>{regTeams.length} team{regTeams.length === 1 ? '' : 's'}</div>
+                                {subs.length > 0 && (
+                                  <div className="text-sky-700">{subs.length} sub{subs.length === 1 ? '' : 's'}</div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Direct Field Teams at Regional Branch */}
+                            <div className="pt-2 border-t border-slate-200/80">
+                              <div className="text-[10px] font-bold text-slate-500 mb-1.5">
+                                Regional Field Teams ({regTeams.length})
+                              </div>
+                              {regTeams.length === 0 ? (
+                                <div className="text-[11px] text-slate-400 italic">No direct teams</div>
+                              ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {regTeams.map((tm) => {
+                                    const secObj = projectTypes.find((pt) => pt.id === tm.projectTypeId);
+                                    return (
+                                      <button
+                                        key={tm.id}
+                                        type="button"
+                                        onClick={() => setTeamModalState({ teamId: tm.id, tab: 'details' })}
+                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors ${
+                                          tm.assignmentStatus === 'Temporary'
+                                            ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
+                                            : 'bg-white border-slate-200 text-slate-800 hover:border-emerald-400'
+                                        }`}
+                                      >
+                                        <span>{extractBaseTeamName(tm.teamName, tm.baseTeamName)}</span>
+                                        {secObj?.code && (
+                                          <span className="text-[9px] font-mono text-teal-700">
+                                            · {secObj.code}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Tier 3: Child Sub-Site Nodes Linked via Arrow */}
+                            {subs.length > 0 && (
+                              <div className="relative pl-4 pt-1 space-y-2">
+                                <div
+                                  className="absolute left-1.5 top-0 bottom-3 w-px bg-sky-300"
+                                  aria-hidden="true"
+                                />
+                                {subs.map((sub) => {
+                                  const subTeams = getSiteTeamsList(sub.id);
+                                  const isSubSelected = selectedSiteId === sub.id;
+                                  return (
+                                    <div key={sub.id} className="relative">
+                                      <CornerDownRight
+                                        className="w-3.5 h-3.5 text-sky-600 absolute -left-4 top-2.5"
+                                        aria-hidden="true"
+                                      />
+                                      <div
+                                        className={`rounded-lg border p-2.5 space-y-1.5 transition-all ${
+                                          isSubSelected
+                                            ? 'bg-sky-100/80 border-sky-500 ring-2 ring-sky-500/20'
+                                            : 'bg-sky-50/75 border-sky-200/90 hover:border-sky-400'
+                                        }`}
+                                      >
+                                        <div className="flex items-start justify-between gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedSiteId(isSubSelected ? 'all' : sub.id)}
+                                            className="text-left min-w-0 cursor-pointer"
+                                          >
+                                            <div className="text-[9px] font-bold text-sky-700">
+                                              Tier 3 · Sub-Site under {reg.name}
+                                            </div>
+                                            <div className="text-xs font-extrabold text-slate-900 truncate">
+                                              {sub.name}
+                                            </div>
+                                            <div className="text-[10px] text-slate-600 truncate">
+                                              Sup: {getSiteSupName(sub)}
+                                            </div>
+                                          </button>
+                                          <span className="text-[10px] font-mono tabular-nums font-bold text-sky-800 shrink-0">
+                                            {subTeams.length} team{subTeams.length === 1 ? '' : 's'}
+                                          </span>
+                                        </div>
+
+                                        {subTeams.length > 0 ? (
+                                          <div className="flex flex-wrap gap-1 pt-1 border-t border-sky-200/70">
+                                            {subTeams.map((tm) => {
+                                              const secObj = projectTypes.find((pt) => pt.id === tm.projectTypeId);
+                                              return (
+                                                <button
+                                                  key={tm.id}
+                                                  type="button"
+                                                  onClick={() => setTeamModalState({ teamId: tm.id, tab: 'details' })}
+                                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-bold cursor-pointer transition-colors ${
+                                                    tm.assignmentStatus === 'Temporary'
+                                                      ? 'bg-amber-50 border-amber-300 text-amber-900'
+                                                      : 'bg-white border-sky-200 text-slate-800 hover:border-sky-500'
+                                                  }`}
+                                                >
+                                                  <span>{extractBaseTeamName(tm.teamName, tm.baseTeamName)}</span>
+                                                  {secObj?.code && (
+                                                    <span className="text-[9px] font-mono text-teal-700">
+                                                      · {secObj.code}
+                                                    </span>
+                                                  )}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        ) : (
+                                          <div className="text-[10px] text-slate-400 italic">No teams assigned yet</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Printable Report Header (Shown only during Print) */}
       <div className="hidden print:block mb-6 border-b-2 border-slate-800 pb-4">
         <div className="flex items-center justify-between">
@@ -482,7 +790,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               {config.companyName || 'Company Workspace'}
             </h1>
             <div className="text-xs text-slate-600 font-semibold mt-0.5">
-              Official Branch Organization Hierarchy & Field Personnel Directory
+              Official Branch Organization Hierarchy &amp; Field Personnel Directory
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
               {config.address && <span>{config.address} · </span>}
@@ -499,7 +807,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
         </div>
       </div>
 
-      {/* Main Content: Branches List */}
+      {/* Main Content: Branches List (Hierarchically Grouped with Arrow Tree Connectors) */}
       {branchData.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
           <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -520,15 +828,48 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
             </button>
           )}
         </div>
-      ) : (
-        <div className="space-y-6">
-          {branchData.map(({ site, siteUsers, displaySupervisorName, teams, allSiteTeamsCount, totalPersonnel }) => (
+      ) : (() => {
+        const visibleIds = new Set(branchData.map((d) => d.site.id));
+        const topEntries = branchData.filter(
+          ({ site }) => !isSubSite(site) || !site.parentSiteId || !visibleIds.has(site.parentSiteId)
+        );
+        const hqEntryName = activeSites.find((s) => s.isMainWarehouse)?.name || 'Central HQ';
+
+        const renderBranchCard = (
+          entry: (typeof branchData)[number],
+          isNestedSub = false
+        ) => {
+          const { site, siteUsers, displaySupervisorName, teams, allSiteTeamsCount, totalPersonnel } = entry;
+          const parentSiteObj = isSubSite(site) ? getParentSite(site, activeSites) : undefined;
+          const subSitesForReg = !isSubSite(site) ? getChildSubSites(site.id, activeSites) : [];
+          return (
             <div
               key={site.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden break-inside-avoid"
+              className={`rounded-2xl border shadow-sm overflow-hidden break-inside-avoid ${
+                isNestedSub
+                  ? 'bg-white border-sky-300/90'
+                  : 'bg-white border-slate-200'
+              }`}
             >
+              {/* Standalone Sub-Site Breadcrumb Chain (shown when parent card isn't above it) */}
+              {isSubSite(site) && !isNestedSub && (
+                <div className="px-5 py-2 bg-sky-50/80 border-b border-sky-200/80 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-sky-900">
+                  <span className="text-slate-500">{hqEntryName}</span>
+                  <ArrowRight className="w-3 h-3 text-slate-400" />
+                  <span className="text-blue-800">{parentSiteObj?.name || site.parentSiteName || 'Regional Branch'}</span>
+                  <ArrowRight className="w-3 h-3 text-sky-600" />
+                  <span className="text-sky-800">{site.name} (Sub-Site)</span>
+                </div>
+              )}
+
               {/* Branch Header Banner */}
-              <div className="p-5 border-b border-slate-200 bg-gradient-to-r from-slate-50 via-white to-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div
+                className={`${isNestedSub ? 'p-4' : 'p-5'} border-b flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                  isNestedSub
+                    ? 'border-sky-200/80 bg-gradient-to-r from-sky-50/70 via-white to-slate-50/70'
+                    : 'border-slate-200 bg-gradient-to-r from-slate-50 via-white to-slate-50'
+                }`}
+              >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
@@ -548,9 +889,9 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300">
                           Regional Site Branch
                         </span>
-                        {getChildSubSites(site.id, activeSites).length > 0 && (
+                        {subSitesForReg.length > 0 && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
-                            {getChildSubSites(site.id, activeSites).length} Sub-Site(s)
+                            {subSitesForReg.length} Sub-Site{subSitesForReg.length === 1 ? '' : 's'}
                           </span>
                         )}
                       </>
@@ -622,11 +963,33 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               {/* Teams & Complete Member Rosters */}
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Users2 className="w-4 h-4 text-slate-700" />
-                    <h3 className="font-bold text-slate-900 text-sm">
-                      Assigned Field Teams ({teams.length})
-                    </h3>
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <div className="flex items-center gap-2">
+                      <Users2 className="w-4 h-4 text-slate-700" />
+                      <h3 className="font-bold text-slate-900 text-sm">
+                        Assigned Field Teams ({teams.length})
+                      </h3>
+                    </div>
+                    {teams.length > 0 && (() => {
+                      const secCounts = teams.reduce<Record<string, number>>((acc, t) => {
+                        const secName = projectTypes.find((pt) => pt.id === t.projectTypeId)?.name || t.projectTypeName || 'General';
+                        acc[secName] = (acc[secName] || 0) + 1;
+                        return acc;
+                      }, {});
+                      const entries = Object.entries(secCounts);
+                      return entries.length > 0 ? (
+                        <div className="text-[11px] font-medium text-slate-500 flex flex-wrap items-center gap-1.5">
+                          {entries.map(([secName, cnt], sIdx) => (
+                            <React.Fragment key={secName}>
+                              {sIdx > 0 && <span aria-hidden="true">·</span>}
+                              <span>
+                                {secName}: <strong className="font-mono tabular-nums text-slate-700">{cnt}</strong>
+                              </span>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   {onNavigate && (
                     <button
@@ -966,9 +1329,65 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        };
+
+        return (
+          <div className="space-y-6">
+            {topEntries.map((entry) => {
+              const childSubEntries = !isSubSite(entry.site)
+                ? branchData.filter((d) => isSubSite(d.site) && d.site.parentSiteId === entry.site.id)
+                : [];
+
+              if (childSubEntries.length === 0) {
+                return renderBranchCard(entry, false);
+              }
+
+              return (
+                <div key={`group-${entry.site.id}`} className="space-y-0">
+                  {renderBranchCard(entry, false)}
+
+                  {/* Linked Sub-Site Branches Connected via Visual Arrow Tree */}
+                  <div className="relative pl-6 sm:pl-10 pt-3.5 space-y-4">
+                    <div
+                      className="absolute left-3 sm:left-5 top-0 bottom-6 w-0.5 bg-gradient-to-b from-emerald-500/70 via-sky-400 to-sky-300 rounded-full"
+                      aria-hidden="true"
+                    />
+
+                    {/* Tree Flow Label */}
+                    <div className="relative flex items-center gap-2">
+                      <span
+                        className="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 w-3 sm:w-5 h-0.5 bg-sky-400"
+                        aria-hidden="true"
+                      />
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-sky-50 border border-sky-200 text-[11px] font-bold text-sky-900 shadow-2xs">
+                        <ArrowDown className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                        <span>
+                          Linked Sub-Site Branch{childSubEntries.length === 1 ? '' : 'es'} Under{' '}
+                          <strong>{entry.site.name}</strong> ({childSubEntries.length})
+                        </span>
+                      </div>
+                    </div>
+
+                    {childSubEntries.map((subEntry) => (
+                      <div key={subEntry.site.id} className="relative">
+                        <div
+                          className="hidden sm:flex items-center absolute -left-5 top-7 w-5 text-sky-500"
+                          aria-hidden="true"
+                        >
+                          <span className="flex-1 h-0.5 bg-sky-400" />
+                          <ChevronRight className="w-3.5 h-3.5 -ml-1.5 shrink-0" />
+                        </div>
+                        {renderBranchCard(subEntry, true)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Official Sign-Off Section (Printed on Report Bottom) */}
       <div className="hidden print:block mt-12 pt-8 border-t-2 border-slate-300 break-inside-avoid">
