@@ -607,6 +607,14 @@ interface StockContextType {
     totalUnitsReceived: number;
     summaryText: string;
   };
+  getSiteDamagedStock: (siteId: string, itemId: string) => {
+    teamDamagedReturned: number;
+    subSiteDamagedReturned: number;
+    totalDamagedInbound: number;
+    damagedReturnedUpstream: number;
+    availableDamagedBalance: number;
+    hasActivity: boolean;
+  };
   getTeamInHandStock: (teamId: string) => TeamInHandSummary;
   allTeamsInHandStock: TeamInHandSummary[];
 
@@ -9178,14 +9186,72 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addAuditLog('RECORD_DELETED', 'CLEAR-USAGES', 'Project Office', `Cleared all ${count} project material usage records.`);
   };
 
+  // Site-level Quarantined Damaged Stock Calculation (Team Damaged Returns + Child Sub-Site Damaged Returns - Upstream Damaged Returns)
+  const getSiteDamagedStock = useCallback(
+    (siteId: string, itemId: string) => {
+      const teamDamagedReturned = teamReturns
+        .filter(
+          (ret) =>
+            ret.siteId === siteId &&
+            ret.itemId === itemId &&
+            ret.condition === 'Damaged / Scrap'
+        )
+        .reduce((sum, ret) => sum + Number(ret.quantity || 0), 0);
+
+      const subSiteDamagedReturned = branchReturns
+        .filter(
+          (br) =>
+            !br.isDeleted &&
+            br.toSiteId === siteId &&
+            br.itemId === itemId &&
+            br.condition === 'Damaged / Scrap'
+        )
+        .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
+
+      const totalDamagedInbound = teamDamagedReturned + subSiteDamagedReturned;
+
+      const damagedReturnedUpstream = branchReturns
+        .filter(
+          (br) =>
+            !br.isDeleted &&
+            (br.fromSiteId === siteId || br.siteId === siteId) &&
+            br.itemId === itemId &&
+            br.condition === 'Damaged / Scrap'
+        )
+        .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
+
+      const availableDamagedBalance = Math.max(0, totalDamagedInbound - damagedReturnedUpstream);
+      const hasActivity = totalDamagedInbound > 0 || damagedReturnedUpstream > 0;
+
+      return {
+        teamDamagedReturned,
+        subSiteDamagedReturned,
+        totalDamagedInbound,
+        damagedReturnedUpstream,
+        availableDamagedBalance,
+        hasActivity,
+      };
+    },
+    [teamReturns, branchReturns]
+  );
+
   // Operational Workflows: Branch Stock Return (Site Branch -> Main Yard OR Sub-Site -> Parent Site Branch)
   const returnStockFromBranchToMain = (
     data: Omit<BranchReturn, 'id' | 'branchReturnNumber' | 'returnDate' | 'returnedBy'>
   ): BranchReturn => {
     const sourceSiteId = data.siteId || data.fromSiteId || '';
     const siteStock = getSiteItemStock(sourceSiteId, data.itemId);
-    if (siteStock.availableBalance < data.quantity) {
-      throw new Error(`Insufficient branch stock. Available at site: ${siteStock.availableBalance}`);
+    const siteDamaged = getSiteDamagedStock(sourceSiteId, data.itemId);
+    const maxAllowed =
+      data.condition === 'Damaged / Scrap'
+        ? siteStock.availableBalance + siteDamaged.availableDamagedBalance
+        : siteStock.availableBalance;
+    if (maxAllowed < data.quantity) {
+      throw new Error(
+        data.condition === 'Damaged / Scrap'
+          ? `Insufficient damaged or usable stock at site. Available Damaged: ${siteDamaged.availableDamagedBalance}, Usable: ${siteStock.availableBalance}`
+          : `Insufficient branch stock. Available at site: ${siteStock.availableBalance}`
+      );
     }
 
     const nextNum = branchReturns.length + 1;
@@ -9264,18 +9330,35 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       parentSite?.name ||
       (fromSite && isSubSite(fromSite) ? fromSite.parentSiteName || 'Parent Site Branch' : mainSite?.name || 'Central Main Yard');
 
-    // Aggregate quantities per itemId across rows
-    const totalsByItem = new Map<string, number>();
+    // Aggregate quantities per itemId across rows (track Good vs Damaged separately so damaged quarantine returns work even when good yard stock is 0)
+    const totalsByItem = new Map<string, { good: number; damaged: number }>();
     for (const row of validRows) {
-      totalsByItem.set(row.itemId, (totalsByItem.get(row.itemId) || 0) + Number(row.quantity));
+      const prev = totalsByItem.get(row.itemId) || { good: 0, damaged: 0 };
+      const qty = Number(row.quantity);
+      if (row.condition === 'Damaged / Scrap') {
+        prev.damaged += qty;
+      } else {
+        prev.good += qty;
+      }
+      totalsByItem.set(row.itemId, prev);
     }
 
-    for (const [itmId, totalQty] of totalsByItem.entries()) {
+    for (const [itmId, counts] of totalsByItem.entries()) {
       const siteStock = getSiteItemStock(sourceSiteId, itmId);
-      if (siteStock.availableBalance < totalQty) {
-        const itmObj = items.find((i) => i.id === itmId);
+      const siteDamaged = getSiteDamagedStock(sourceSiteId, itmId);
+      const itmObj = items.find((i) => i.id === itmId);
+
+      if (counts.good > siteStock.availableBalance) {
         throw new Error(
-          `Insufficient branch stock for "${itmObj?.itemName || itmId}". Requested: ${totalQty} ${itmObj?.unit || 'units'}, Available at ${siteName}: ${siteStock.availableBalance} ${itmObj?.unit || 'units'}.`
+          `Insufficient usable branch stock for "${itmObj?.itemName || itmId}". Requested Good: ${counts.good} ${itmObj?.unit || 'units'}, Available Good Stock at ${siteName}: ${siteStock.availableBalance} ${itmObj?.unit || 'units'}.`
+        );
+      }
+
+      const maxCombined = siteStock.availableBalance + siteDamaged.availableDamagedBalance;
+      const totalRequested = counts.good + counts.damaged;
+      if (totalRequested > maxCombined) {
+        throw new Error(
+          `Insufficient stock for "${itmObj?.itemName || itmId}". Requested: ${totalRequested} ${itmObj?.unit || 'units'}, Available Damaged (${siteDamaged.availableDamagedBalance}) + Usable (${siteStock.availableBalance}) at ${siteName}: ${maxCombined} ${itmObj?.unit || 'units'}.`
         );
       }
     }
@@ -10169,9 +10252,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return sum + qty;
       }, 0);
 
-    const returnedToMain = branchReturns
-      .filter((br) => (br.fromSiteId === siteId || br.siteId === siteId) && br.itemId === itemId && !br.isDeleted)
+    const siteDamagedTotals = getSiteDamagedStock(siteId, itemId);
+    const goodReturnedToMain = branchReturns
+      .filter(
+        (br) =>
+          (br.fromSiteId === siteId || br.siteId === siteId) &&
+          br.itemId === itemId &&
+          !br.isDeleted &&
+          br.condition !== 'Damaged / Scrap'
+      )
       .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
+    // Damaged items returned upstream draw from Site Damaged Quarantine first; only any excess deducts from usable yard stock
+    const excessDamagedFromGoodYard = Math.max(
+      0,
+      siteDamagedTotals.damagedReturnedUpstream - siteDamagedTotals.totalDamagedInbound
+    );
+    const returnedToMain = goodReturnedToMain + excessDamagedFromGoodYard;
 
     const returnedToSuppliersFromSite = supplierReturns
       .filter(
@@ -10630,6 +10726,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getMainWarehouseStock,
         getSiteItemStock,
         getSiteStockLockStatus,
+        getSiteDamagedStock,
         getTeamInHandStock,
         allTeamsInHandStock,
         totalLowStockAlertsCount,

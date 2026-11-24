@@ -34,6 +34,7 @@ import { StockBalanceCell } from '../common/LowStockIndicator';
 import {
   StockTransferRequest,
   ProjectMaterialUsage,
+  BranchReturn,
   isCentralOrAllSiteAdmin,
   isUserAllSites,
   userHasSiteAccess,
@@ -55,14 +56,17 @@ export const SiteInventoriesView: React.FC = () => {
     activeItems,
     projects,
     getSiteItemStock,
+    getSiteDamagedStock,
     currentUser,
     stockRequests,
     acceptStockRequest,
     issueStockToSubSite,
+    returnMultipleStockFromBranchToMain,
     projectUsages,
     teams,
     teamIssues,
     teamReturns,
+    branchReturns,
     clientFreeIssues,
     getClientFreeStockBalance,
   } = useStock();
@@ -84,7 +88,7 @@ export const SiteInventoriesView: React.FC = () => {
       setSelectedSiteId(branchSites[0].id);
     }
   }, [branchSites, selectedSiteId]);
-  const [activeSection, setActiveSection] = useState<'inventory' | 'foc-materials' | 'history'>('inventory');
+  const [activeSection, setActiveSection] = useState<'inventory' | 'foc-materials' | 'damaged-returns' | 'history'>('inventory');
   const [expandedSiteTraceItemId, setExpandedSiteTraceItemId] = useState<string | null>(null);
   const [expandedFocTabTraceItemId, setExpandedFocTabTraceItemId] = useState<string | null>(null);
 
@@ -393,6 +397,219 @@ export const SiteInventoriesView: React.FC = () => {
     }
   };
 
+  // Damaged Return Quarantine State & Upstream Return Modal (Sub-Site -> Parent Regional, or Regional -> Central HQ)
+  const [damagedSearchQuery, setDamagedSearchQuery] = useState('');
+  const [selectedDamagedItemIds, setSelectedDamagedItemIds] = useState<string[]>([]);
+  const [showDamagedReturnModal, setShowDamagedReturnModal] = useState(false);
+  const [damagedReturnRows, setDamagedReturnRows] = useState<
+    Array<{ itemId: string; quantity: number | ''; maxAvailable: number }>
+  >([]);
+  const [damagedReturnReason, setDamagedReturnReason] = useState('');
+  const [damagedReturnError, setDamagedReturnError] = useState('');
+  const [selectedBranchReturnForPrint, setSelectedBranchReturnForPrint] = useState<BranchReturn | null>(null);
+
+  React.useEffect(() => {
+    setSelectedDamagedItemIds([]);
+    setShowDamagedReturnModal(false);
+    setDamagedReturnError('');
+  }, [selectedSiteId]);
+
+  const isSelectedSiteSub = Boolean(selectedSite && isSubSite(selectedSite));
+  const mainWarehouseSiteObj =
+    activeSites.find((s) => s.isMainWarehouse) || sites.find((s) => s.isMainWarehouse);
+  const damagedReturnDestSiteId = isSelectedSiteSub
+    ? selectedSiteParent?.id || selectedSite?.parentSiteId
+    : mainWarehouseSiteObj?.id;
+  const damagedReturnDestName = isSelectedSiteSub
+    ? selectedSiteParent?.name || selectedSite?.parentSiteName || 'Parent Regional Branch'
+    : mainWarehouseSiteObj?.name || 'Main Central Warehouse';
+
+  const siteDamagedCatalog = useMemo(() => {
+    if (!selectedSiteId) return [];
+    return activeItems
+      .map((item) => {
+        const dStats = getSiteDamagedStock(selectedSiteId, item.id);
+        return {
+          item,
+          ...dStats,
+        };
+      })
+      .filter((row) => row.hasActivity);
+  }, [selectedSiteId, activeItems, getSiteDamagedStock]);
+
+  const filteredSiteDamagedCatalog = useMemo(() => {
+    const q = damagedSearchQuery.trim().toLowerCase();
+    if (!q) return siteDamagedCatalog;
+    return siteDamagedCatalog.filter(
+      (row) =>
+        row.item.itemCode.toLowerCase().includes(q) ||
+        row.item.itemName.toLowerCase().includes(q) ||
+        row.item.category.toLowerCase().includes(q)
+    );
+  }, [siteDamagedCatalog, damagedSearchQuery]);
+
+  const siteDamagedUnitsBalanceTotal = useMemo(
+    () => siteDamagedCatalog.reduce((sum, r) => sum + r.availableDamagedBalance, 0),
+    [siteDamagedCatalog]
+  );
+  const siteDamagedInboundTotal = useMemo(
+    () => siteDamagedCatalog.reduce((sum, r) => sum + r.totalDamagedInbound, 0),
+    [siteDamagedCatalog]
+  );
+  const siteDamagedSentUpstreamTotal = useMemo(
+    () => siteDamagedCatalog.reduce((sum, r) => sum + r.damagedReturnedUpstream, 0),
+    [siteDamagedCatalog]
+  );
+
+  const siteDamagedInboundRecords = useMemo(() => {
+    if (!selectedSiteId) return [];
+    const teamDamageList = (teamReturns || [])
+      .filter((ret) => ret.siteId === selectedSiteId && ret.condition === 'Damaged / Scrap')
+      .map((ret) => {
+        const teamObj = teams.find((t) => t.id === ret.teamId);
+        const itmObj = items.find((i) => i.id === ret.itemId);
+        return {
+          id: `tr-${ret.id}`,
+          sourceType: 'team' as const,
+          sourceLabel: `Field Team · ${teamObj?.teamName || 'Team'}`,
+          voucherNumber: ret.returnVoucherNumber,
+          date: ret.returnDate,
+          itemId: ret.itemId,
+          itemCode: itmObj?.itemCode || 'ITEM',
+          itemName: itmObj?.itemName || 'Material Item',
+          unit: itmObj?.unit || 'units',
+          quantity: ret.quantity,
+          reason: ret.reason || 'Damaged / scrap returned by team',
+          actor: ret.returnedBy,
+        };
+      });
+
+    const subSiteDamageList = (branchReturns || [])
+      .filter(
+        (br) =>
+          !br.isDeleted &&
+          br.toSiteId === selectedSiteId &&
+          br.condition === 'Damaged / Scrap'
+      )
+      .map((br) => {
+        const itmObj = items.find((i) => i.id === br.itemId);
+        return {
+          id: `br-in-${br.id}`,
+          sourceType: 'subsite' as const,
+          sourceLabel: `Sub-Site · ${br.fromSiteName || br.siteName}`,
+          voucherNumber: br.branchReturnNumber,
+          date: br.returnDate,
+          itemId: br.itemId,
+          itemCode: itmObj?.itemCode || 'ITEM',
+          itemName: itmObj?.itemName || 'Material Item',
+          unit: itmObj?.unit || 'units',
+          quantity: br.quantity,
+          reason: br.reason || 'Damaged return from Sub-Site',
+          actor: br.returnedBy,
+        };
+      });
+
+    return [...teamDamageList, ...subSiteDamageList].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [selectedSiteId, teamReturns, branchReturns, teams, items]);
+
+  const siteDamagedOutboundRecords = useMemo(() => {
+    if (!selectedSiteId) return [];
+    return (branchReturns || [])
+      .filter(
+        (br) =>
+          !br.isDeleted &&
+          (br.fromSiteId === selectedSiteId || br.siteId === selectedSiteId) &&
+          br.condition === 'Damaged / Scrap'
+      )
+      .sort((a, b) => new Date(b.returnDate).getTime() - new Date(a.returnDate).getTime());
+  }, [selectedSiteId, branchReturns]);
+
+  const handleOpenDamagedReturnModal = (targetItemIds?: string[]) => {
+    const eligibleRows = siteDamagedCatalog.filter((r) => r.availableDamagedBalance > 0);
+    if (eligibleRows.length === 0) return;
+
+    const chosenIds =
+      targetItemIds && targetItemIds.length > 0
+        ? targetItemIds
+        : selectedDamagedItemIds.length > 0
+        ? selectedDamagedItemIds
+        : eligibleRows.map((r) => r.item.id);
+
+    const rows = eligibleRows
+      .filter((r) => chosenIds.includes(r.item.id))
+      .map((r) => ({
+        itemId: r.item.id,
+        quantity: r.availableDamagedBalance,
+        maxAvailable: r.availableDamagedBalance,
+      }));
+
+    if (rows.length === 0) return;
+    setDamagedReturnRows(rows);
+    setDamagedReturnReason(
+      `Damaged / scrap items returned upstream from ${selectedSite?.name || 'Site'} to ${damagedReturnDestName}.`
+    );
+    setDamagedReturnError('');
+    setShowDamagedReturnModal(true);
+  };
+
+  const handleSubmitDamagedUpstreamReturn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSite) return;
+    setDamagedReturnError('');
+
+    const validRows = damagedReturnRows.filter((r) => r.itemId && Number(r.quantity) > 0);
+    if (validRows.length === 0) {
+      setDamagedReturnError('Please enter at least one damaged return quantity greater than 0.');
+      return;
+    }
+
+    for (const r of validRows) {
+      const qty = Number(r.quantity);
+      const itm = items.find((i) => i.id === r.itemId);
+      if (qty > r.maxAvailable) {
+        setDamagedReturnError(
+          `Return quantity (${qty}) for "${itm?.itemName || r.itemId}" exceeds site damaged balance (${r.maxAvailable} ${itm?.unit || 'units'}).`
+        );
+        return;
+      }
+    }
+
+    try {
+      const created = returnMultipleStockFromBranchToMain({
+        siteId: selectedSite.id,
+        siteName: selectedSite.name,
+        fromSiteId: selectedSite.id,
+        fromSiteName: selectedSite.name,
+        toSiteId: damagedReturnDestSiteId,
+        toSiteName: damagedReturnDestName,
+        reason:
+          damagedReturnReason.trim() ||
+          `Damaged / scrap stock returned upstream to ${damagedReturnDestName}.`,
+        items: validRows.map((r) => ({
+          itemId: r.itemId,
+          quantity: Number(r.quantity),
+          condition: 'Damaged / Scrap',
+        })),
+      });
+
+      setShowDamagedReturnModal(false);
+      setSelectedDamagedItemIds([]);
+      if (created.length > 0) {
+        setSelectedBranchReturnForPrint(created[0]);
+        setToastMessage(
+          `Damaged Return Voucher ${created[0].branchReturnNumber} created! Returned ${created.length} damaged item(s) to ${damagedReturnDestName}.`
+        );
+        setTimeout(() => setToastMessage(null), 5000);
+      }
+    } catch (err: any) {
+      setDamagedReturnError(
+        err?.message || `Failed to dispatch damaged return to ${damagedReturnDestName}.`
+      );
+    }
+  };
+
   // Incoming shipments for selected site branch in transit
   const incomingShipments = stockRequests.filter(
     (req) => req.siteId === selectedSiteId && req.status === 'Approved / In-Transit'
@@ -693,12 +910,12 @@ export const SiteInventoriesView: React.FC = () => {
           })}
         </div>
 
-        {/* View Section Tabs (Live Stock vs FOC Reconciliation vs Usage History) */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+        {/* View Section Tabs (Live Stock vs FOC Reconciliation vs Damaged Returns vs Usage History) */}
+        <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveSection('inventory')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeSection === 'inventory'
                 ? 'bg-white text-slate-900 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -711,7 +928,7 @@ export const SiteInventoriesView: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveSection('foc-materials')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeSection === 'foc-materials'
                 ? 'bg-indigo-600 text-white shadow-2xs font-bold'
                 : 'text-indigo-800 hover:bg-indigo-50'
@@ -723,8 +940,21 @@ export const SiteInventoriesView: React.FC = () => {
 
           <button
             type="button"
+            onClick={() => setActiveSection('damaged-returns')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              activeSection === 'damaged-returns'
+                ? 'bg-amber-600 text-white shadow-2xs font-bold'
+                : 'text-amber-800 hover:bg-amber-50'
+            }`}
+          >
+            <AlertTriangle className={`w-4 h-4 ${activeSection === 'damaged-returns' ? 'text-white' : 'text-amber-600'}`} />
+            <span>Damaged Returns ({siteDamagedUnitsBalanceTotal})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveSection('history')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeSection === 'history'
                 ? 'bg-white text-slate-900 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1029,27 +1259,31 @@ export const SiteInventoriesView: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto pb-2">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-[10.5px] xl:text-[11px] uppercase tracking-normal leading-tight">
                   <tr>
-                    <th className="py-3.5 px-3.5">Item &amp; Source Tag</th>
-                    <th className="py-3.5 px-3.5">Material Description</th>
-                    <th className="py-3.5 px-3 text-right bg-indigo-50/60 text-indigo-950">
-                      {siteCentralFocItemsCount > 0 ? '1. FOC Central Receipt' : '1. Central HQ Source'}
+                    <th className="py-3 pl-2.5 pr-1.5">Item &amp; Source</th>
+                    <th className="py-3 px-1.5">Material Description</th>
+                    <th className="py-3 px-1.5 text-right bg-indigo-50/60 text-indigo-950">
+                      {siteCentralFocItemsCount > 0 ? (
+                        <>1. FOC Central<br className="hidden sm:inline" /> Receipt</>
+                      ) : (
+                        <>1. Central HQ<br className="hidden sm:inline" /> Source</>
+                      )}
                     </th>
-                    <th className="py-3.5 px-3.5 text-right">
-                      2. Site Issue (HQ → Site)
+                    <th className="py-3 px-1.5 text-right">
+                      2. Site Issue<br className="hidden sm:inline" /> (HQ → Site)
                     </th>
-                    <th className="py-3.5 px-3.5 text-right">
-                      3. Team Issue (Site → Team)
+                    <th className="py-3 px-1.5 text-right">
+                      3. Team Issue<br className="hidden sm:inline" /> (Site → Team)
                     </th>
-                    <th className="py-3.5 px-3.5 text-right">
-                      4. Usage &amp; Wastage
+                    <th className="py-3 px-1.5 text-right">
+                      4. Usage &amp;<br className="hidden sm:inline" /> Wastage
                     </th>
-                    <th className="py-3.5 px-5 text-right bg-emerald-50/60 text-emerald-950">
-                      5. Balance / Returnable
+                    <th className="py-3 px-2 text-right bg-emerald-50/60 text-emerald-950">
+                      5. Balance /<br className="hidden sm:inline" /> Returnable
                     </th>
-                    <th className="py-3.5 px-4 text-center">5-Stage Report</th>
+                    <th className="py-3 pl-1.5 pr-2.5 text-center">Summary</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1109,49 +1343,54 @@ export const SiteInventoriesView: React.FC = () => {
                                 : 'hover:bg-slate-50'
                             }`}
                           >
-                            <td className="py-3.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            <td className="py-3 pl-2.5 pr-1.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                               <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1">
                                   {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-emerald-700 shrink-0" />
+                                    <ChevronUp className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                                   ) : (
-                                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                   )}
-                                  <span>{item.itemCode}</span>
+                                  <span className="text-xs">{item.itemCode}</span>
                                 </div>
                                 {hasCentralFoc ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-sans font-extrabold bg-indigo-600 text-white shadow-2xs w-fit">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-sans font-extrabold bg-indigo-600 text-white shadow-2xs w-fit">
                                     🎁 Central FOC
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200 w-fit">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200 w-fit">
                                     Normal HQ
                                   </span>
                                 )}
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-3.5 text-slate-900 font-bold max-w-xs">
-                              <div className="text-sm">{item.itemName}</div>
-                              <div className="text-[11px] font-normal text-slate-500 mt-0.5">
-                                {item.category} ({item.unit})
-                              </div>
-                              {rec?.primaryFocProjectName && (
-                                <div className="mt-1 text-[11px] font-semibold text-indigo-800 truncate">
-                                  Project: {rec.primaryFocProjectName}
+                            <td className="py-3 px-1.5 text-slate-900 font-bold">
+                              <div className="max-w-[150px] xl:max-w-[190px]">
+                                <div className="text-xs sm:text-[12.5px] leading-snug break-words">{item.itemName}</div>
+                                <div className="text-[10px] font-normal text-slate-500 mt-0.5 leading-tight">
+                                  {item.category} ({item.unit})
                                 </div>
-                              )}
+                                {rec?.primaryFocProjectName && (
+                                  <div
+                                    className="mt-0.5 text-[10px] font-semibold text-indigo-800 truncate"
+                                    title={`Project: ${rec.primaryFocProjectName}`}
+                                  >
+                                    Project: {rec.primaryFocProjectName}
+                                  </div>
+                                )}
+                              </div>
                             </td>
 
                             {/* STAGE 1: CENTRAL STOCK RECEIPT (FOC ONLY IF ISSUED TO THIS SITE) */}
-                            <td className="py-3.5 px-3 text-right font-mono bg-indigo-50/30 whitespace-nowrap">
+                            <td className="py-3 px-1.5 text-right font-mono bg-indigo-50/30 whitespace-nowrap">
                               {hasCentralFoc ? (
                                 <div>
-                                  <div className="font-black text-indigo-900">
+                                  <div className="font-black text-indigo-900 text-xs xl:text-[13px]">
                                     {formatNumber(rec?.stage1InitialCentralFoc || 0)} {item.unit}
                                   </div>
                                   <div className="text-[10px] font-sans font-semibold text-indigo-700">
-                                    HQ Pool Rem: {formatNumber(rec?.centralFocPoolRemaining || 0)} {item.unit}
+                                    HQ Pool: {formatNumber(rec?.centralFocPoolRemaining || 0)} {item.unit}
                                   </div>
                                 </div>
                               ) : (
@@ -1160,8 +1399,8 @@ export const SiteInventoriesView: React.FC = () => {
                             </td>
 
                             {/* STAGE 2: SITE ISSUE (CENTRAL OR PARENT -> SITE) */}
-                            <td className="py-3.5 px-3.5 text-right font-mono whitespace-nowrap">
-                              <div className="font-black text-slate-900">
+                            <td className="py-3 px-1.5 text-right font-mono whitespace-nowrap">
+                              <div className="font-black text-slate-900 text-xs xl:text-[13px]">
                                 {formatNumber(stock.received)} {item.unit}
                               </div>
                               <div className="mt-0.5 flex flex-col items-end gap-0.5">
@@ -1171,51 +1410,51 @@ export const SiteInventoriesView: React.FC = () => {
                                   </span>
                                 )}
                                 {stock.focReceived > 0 && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300">
-                                    Central FOC: +{formatNumber(stock.focReceived)}
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-sans font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300">
+                                    FOC: +{formatNumber(stock.focReceived)}
                                   </span>
                                 )}
                                 {stock.normalReceived > 0 && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                                    {isSubSite(selectedSite) ? 'Parent Stock' : 'Normal HQ'}: +{formatNumber(stock.normalReceived)}
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-sans font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {isSubSite(selectedSite) ? 'Parent' : 'Normal'}: +{formatNumber(stock.normalReceived)}
                                   </span>
                                 )}
                               </div>
                             </td>
 
                             {/* STAGE 3: TEAM ISSUE (SITE -> FIELD TEAMS) & SUB-SITE TRANSFERS */}
-                            <td className="py-3.5 px-3.5 text-right font-mono whitespace-nowrap">
-                              <div className="font-bold text-blue-800">
+                            <td className="py-3 px-1.5 text-right font-mono whitespace-nowrap">
+                              <div className="font-bold text-blue-800 text-xs xl:text-[13px]">
                                 {formatNumber(stock.issued)} {item.unit}
                               </div>
                               {stock.returned > 0 && (
-                                <div className="text-[11px] font-sans font-semibold text-emerald-700">
+                                <div className="text-[10px] font-sans font-semibold text-emerald-700">
                                   Ret Good: +{formatNumber(stock.returned)} {item.unit}
                                 </div>
                               )}
                               {(rec?.stage3TeamInHand || 0) > 0 && (
                                 <div className="text-[10px] font-sans font-bold text-indigo-700">
-                                  Teams In-Hand: {formatNumber(rec?.stage3TeamInHand || 0)}
+                                  In-Hand: {formatNumber(rec?.stage3TeamInHand || 0)}
                                 </div>
                               )}
                               {stock.issuedToSubSites > 0 && (
                                 <div className="text-[10px] font-sans font-bold text-sky-700">
-                                  Sub-Site Iss: -{formatNumber(stock.issuedToSubSites)} {item.unit}
+                                  Sub Iss: -{formatNumber(stock.issuedToSubSites)} {item.unit}
                                 </div>
                               )}
                               {stock.returnedFromSubSitesGood > 0 && (
                                 <div className="text-[10px] font-sans font-bold text-teal-700">
-                                  Sub-Site Ret: +{formatNumber(stock.returnedFromSubSitesGood)} {item.unit}
+                                  Sub Ret: +{formatNumber(stock.returnedFromSubSitesGood)} {item.unit}
                                 </div>
                               )}
                             </td>
 
                             {/* STAGE 4: USAGE & WASTAGE */}
-                            <td className="py-3.5 px-3.5 text-right font-mono whitespace-nowrap">
-                              <div className="font-bold text-slate-900">
+                            <td className="py-3 px-1.5 text-right font-mono whitespace-nowrap">
+                              <div className="font-bold text-slate-900 text-xs xl:text-[13px]">
                                 {formatNumber(rec?.stage4TotalConsumed || 0)} {item.unit}
                               </div>
-                              <div className="text-[11px] font-sans">
+                              <div className="text-[10px] font-sans">
                                 <span className="text-teal-700 font-semibold">
                                   Used: {formatNumber(rec?.stage4Used || 0)}
                                 </span>
@@ -1228,23 +1467,23 @@ export const SiteInventoriesView: React.FC = () => {
                             </td>
 
                             {/* STAGE 5: BALANCE / RETURNABLE STOCK ON COMPLETION */}
-                            <td className="py-3.5 px-5 text-right whitespace-nowrap bg-emerald-50/20">
-                              <div className="flex flex-col items-end gap-1">
+                            <td className="py-3 px-2 text-right whitespace-nowrap bg-emerald-50/20">
+                              <div className="flex flex-col items-end gap-0.5">
                                 {stock.focReceived > 0 && (
                                   <div className="text-right">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-extrabold bg-indigo-600 text-white shadow-2xs">
-                                      FOC Returnable: {formatNumber(rec?.stage5SiteFocReturnableBalance || 0)} {item.unit}
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-extrabold bg-indigo-600 text-white shadow-2xs">
+                                      FOC Ret: {formatNumber(rec?.stage5SiteFocReturnableBalance || 0)} {item.unit}
                                     </span>
                                     {(rec?.centralFocPoolRemaining || 0) > 0 && (
-                                      <div className="text-[10px] font-semibold text-emerald-800 mt-0.5">
-                                        Total Client Returnable: {formatNumber(rec?.stage5TotalClientReturnableBalance || 0)} {item.unit}
+                                      <div className="text-[9.5px] font-semibold text-emerald-800 mt-0.5">
+                                        Client Ret: {formatNumber(rec?.stage5TotalClientReturnableBalance || 0)} {item.unit}
                                       </div>
                                     )}
                                   </div>
                                 )}
                                 {stock.normalReceived > 0 && stock.focReceived > 0 && (
-                                  <div className="text-[10px] font-mono text-slate-600">
-                                    Normal HQ Bal: <strong>{formatNumber(rec?.stage5SiteNormalBalance || 0)} {item.unit}</strong>
+                                  <div className="text-[9.5px] font-mono text-slate-600">
+                                    Normal Bal: <strong>{formatNumber(rec?.stage5SiteNormalBalance || 0)} {item.unit}</strong>
                                   </div>
                                 )}
                                 <StockBalanceCell
@@ -1258,7 +1497,7 @@ export const SiteInventoriesView: React.FC = () => {
                             </td>
 
                             <td
-                              className="py-3.5 px-3.5 text-center whitespace-nowrap"
+                              className="py-3 pl-1.5 pr-2.5 text-center whitespace-nowrap"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
@@ -1266,7 +1505,7 @@ export const SiteInventoriesView: React.FC = () => {
                                 onClick={() =>
                                   setExpandedSiteTraceItemId((prev) => (prev === item.id ? null : item.id))
                                 }
-                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border shadow-2xs transition-all cursor-pointer active:scale-95 ${
+                                className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold border shadow-2xs transition-all cursor-pointer active:scale-95 ${
                                   isExpanded
                                     ? 'bg-emerald-700 text-white border-emerald-800'
                                     : hasCentralFoc
@@ -1274,8 +1513,8 @@ export const SiteInventoriesView: React.FC = () => {
                                     : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900'
                                 }`}
                               >
-                                <Layers className="w-3.5 h-3.5" />
-                                {isExpanded ? 'Hide Report' : '5-Stage Summary'}
+                                <Layers className="w-3.5 h-3.5 shrink-0" />
+                                <span>{isExpanded ? 'Hide' : '5-Stage Summary'}</span>
                               </button>
                             </td>
                           </tr>
@@ -1351,25 +1590,25 @@ export const SiteInventoriesView: React.FC = () => {
 
               <div className="overflow-x-auto pb-2">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-50 text-slate-700 uppercase border-b border-slate-200 font-bold">
+                  <thead className="bg-slate-50 text-slate-700 uppercase border-b border-slate-200 font-bold text-[11px] tracking-normal leading-tight">
                     <tr>
-                      <th className="py-3 px-3">FOC Item &amp; Project</th>
-                      <th className="py-3 px-3 text-right bg-indigo-50/60 text-indigo-950">
-                        1. FOC Central Receipt
+                      <th className="py-3 pl-3 pr-2">FOC Item &amp; Project</th>
+                      <th className="py-3 px-2 text-right bg-indigo-50/60 text-indigo-950">
+                        1. FOC Central<br className="hidden sm:inline" /> Receipt
                       </th>
-                      <th className="py-3 px-3 text-right">
-                        2. Site Issue (Central FOC)
+                      <th className="py-3 px-2 text-right">
+                        2. Site Issue<br className="hidden sm:inline" /> (Central FOC)
                       </th>
-                      <th className="py-3 px-3 text-right">
-                        3. Team Issue (Site → Team)
+                      <th className="py-3 px-2 text-right">
+                        3. Team Issue<br className="hidden sm:inline" /> (Site → Team)
                       </th>
-                      <th className="py-3 px-3 text-right">
-                        4. Usage &amp; Wastage
+                      <th className="py-3 px-2 text-right">
+                        4. Usage &amp;<br className="hidden sm:inline" /> Wastage
                       </th>
-                      <th className="py-3 px-3 text-right bg-emerald-50/70 text-emerald-950">
-                        5. Balance / Returnable on Completion
+                      <th className="py-3 px-2.5 text-right bg-emerald-50/70 text-emerald-950">
+                        5. Balance /<br className="hidden sm:inline" /> Returnable
                       </th>
-                      <th className="py-3 px-3 text-center">Item Report</th>
+                      <th className="py-3 pl-2 pr-3 text-center">Item Report</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-indigo-100">
@@ -1379,46 +1618,46 @@ export const SiteInventoriesView: React.FC = () => {
                       return (
                         <React.Fragment key={itm.id}>
                           <tr className="bg-indigo-50/25 hover:bg-indigo-50/60 border-l-4 border-l-indigo-600">
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-1.5">
+                            <td className="py-3 pl-3 pr-2 max-w-[190px]">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-mono font-black text-indigo-950">{itm.itemCode}</span>
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-600 text-white uppercase">
                                   Central FOC
                                 </span>
                               </div>
-                              <div className="font-bold text-slate-900 mt-0.5">{itm.itemName}</div>
+                              <div className="font-bold text-slate-900 mt-0.5 break-words">{itm.itemName}</div>
                               {rec.primaryFocProjectName && (
-                                <div className="text-[11px] text-indigo-700 font-semibold">
+                                <div className="text-[10.5px] text-indigo-700 font-semibold truncate" title={rec.primaryFocProjectName}>
                                   Project: {rec.primaryFocProjectName}
                                 </div>
                               )}
                             </td>
-                            <td className="py-3 px-3 text-right font-mono bg-indigo-50/40">
-                              <div className="text-sm font-black text-indigo-900">
+                            <td className="py-3 px-2 text-right font-mono bg-indigo-50/40 whitespace-nowrap">
+                              <div className="text-[13px] font-black text-indigo-900">
                                 {formatNumber(rec.stage1InitialCentralFoc)} {itm.unit}
                               </div>
                               <div className="text-[10px] font-sans text-indigo-700">
-                                Central Pool Rem: <strong>{formatNumber(rec.centralFocPoolRemaining)} {itm.unit}</strong>
+                                Pool Rem: <strong>{formatNumber(rec.centralFocPoolRemaining)} {itm.unit}</strong>
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-right font-mono">
-                              <div className="text-sm font-black text-indigo-700">
+                            <td className="py-3 px-2 text-right font-mono whitespace-nowrap">
+                              <div className="text-[13px] font-black text-indigo-700">
                                 +{formatNumber(rec.stage2SiteFocIssued)} {itm.unit}
                               </div>
                               <div className="text-[10px] font-sans text-slate-500">
                                 Issued to {selectedSite?.name}
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-right font-mono">
-                              <div className="text-sm font-bold text-blue-800">
+                            <td className="py-3 px-2 text-right font-mono whitespace-nowrap">
+                              <div className="text-[13px] font-bold text-blue-800">
                                 {formatNumber(rec.stage3TeamIssued)} {itm.unit}
                               </div>
                               <div className="text-[10px] font-sans text-emerald-700">
-                                Ret Good: +{formatNumber(rec.stage3TeamReturnedGood)} | In-Hand: {formatNumber(rec.stage3TeamInHand)}
+                                Ret: +{formatNumber(rec.stage3TeamReturnedGood)} | Hand: {formatNumber(rec.stage3TeamInHand)}
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-right font-mono">
-                              <div className="text-sm font-black text-slate-900">
+                            <td className="py-3 px-2 text-right font-mono whitespace-nowrap">
+                              <div className="text-[13px] font-black text-slate-900">
                                 {formatNumber(rec.stage4TotalConsumed)} {itm.unit}
                               </div>
                               <div className="text-[10px] font-sans">
@@ -1427,24 +1666,24 @@ export const SiteInventoriesView: React.FC = () => {
                                 <span className="text-rose-600 font-bold">Waste: {formatNumber(rec.stage4Wastage)}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-right font-mono bg-emerald-50/50">
-                              <div className="text-sm font-black text-indigo-900">
-                                Site Returnable: {formatNumber(rec.stage5SiteFocReturnableBalance)} {itm.unit}
+                            <td className="py-3 px-2.5 text-right font-mono bg-emerald-50/50 whitespace-nowrap">
+                              <div className="text-[13px] font-black text-indigo-900">
+                                Site Ret: {formatNumber(rec.stage5SiteFocReturnableBalance)} {itm.unit}
                               </div>
-                              <div className="text-[11px] font-bold text-emerald-800">
-                                Total Client Returnable: {formatNumber(rec.stage5TotalClientReturnableBalance)} {itm.unit}
+                              <div className="text-[10.5px] font-bold text-emerald-800">
+                                Client Ret: {formatNumber(rec.stage5TotalClientReturnableBalance)} {itm.unit}
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-center">
+                            <td className="py-3 pl-2 pr-3 text-center whitespace-nowrap">
                               <button
                                 type="button"
                                 onClick={() =>
                                   setExpandedFocTabTraceItemId((prev) => (prev === itm.id ? null : itm.id))
                                 }
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-700 hover:bg-indigo-600 text-white shadow-2xs cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-700 hover:bg-indigo-600 text-white shadow-2xs cursor-pointer"
                               >
-                                <Printer className="w-3.5 h-3.5" />
-                                <span>{isExpanded ? 'Hide Report' : 'Item Report & Print'}</span>
+                                <Printer className="w-3.5 h-3.5 shrink-0" />
+                                <span>{isExpanded ? 'Hide Report' : 'Report & Print'}</span>
                               </button>
                             </td>
                           </tr>
@@ -1911,6 +2150,344 @@ export const SiteInventoriesView: React.FC = () => {
         </div>
       )}
 
+      {/* TAB: DAMAGED RETURNS AT SITE QUARANTINE & UPSTREAM RETURN TO PARENT / MAIN */}
+      {activeSection === 'damaged-returns' && selectedSite && (
+        <div className="space-y-6">
+          {/* Hierarchy-Aware Banner */}
+          <div className="bg-gradient-to-r from-amber-950 via-amber-900 to-slate-900 text-white rounded-xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/25 border border-amber-400/40 text-amber-200 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500 text-slate-950 uppercase tracking-wider">
+                    Damaged Quarantine
+                  </span>
+                  <span className="text-xs text-amber-200 font-semibold">
+                    Upstream Target: <strong className="text-white">{damagedReturnDestName}</strong>{' '}
+                    ({isSelectedSiteSub ? 'Sub-Site → Parent Regional Branch' : 'Regional Site → Central Main Warehouse'})
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-base text-white mt-0.5">
+                  Damaged / Scrap Returns Held at {selectedSite.name}
+                </h3>
+                <p className="text-xs text-amber-100/90 mt-0.5 leading-relaxed">
+                  Damaged items returned by Field Teams
+                  {!isSelectedSiteSub ? ' and child Sub-Sites' : ''} are quarantined here separately from usable Site Stock.
+                  Select items below to dispatch them upstream to <strong>{damagedReturnDestName}</strong> via an official BRM Return Voucher.
+                </p>
+              </div>
+            </div>
+
+            {siteDamagedUnitsBalanceTotal > 0 && (
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {selectedDamagedItemIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDamagedReturnModal(selectedDamagedItemIds)}
+                    className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md transition cursor-pointer whitespace-nowrap"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>
+                      Return Selected ({selectedDamagedItemIds.length}) to {isSelectedSiteSub ? 'Parent' : 'Main HQ'}
+                    </span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleOpenDamagedReturnModal()}
+                  className="px-4 py-2.5 bg-white hover:bg-amber-50 text-slate-950 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md transition cursor-pointer whitespace-nowrap"
+                >
+                  <Send className="w-4 h-4 text-amber-700" />
+                  <span>
+                    Return All Damaged ({formatNumber(siteDamagedUnitsBalanceTotal)}) → {isSelectedSiteSub ? 'Parent Site' : 'Main Warehouse'}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider">Damaged Balance at Site</span>
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="text-2xl font-black text-amber-700 font-mono">
+                {formatNumber(siteDamagedUnitsBalanceTotal)}
+              </div>
+              <div className="text-[11px] text-amber-800 font-medium mt-1">
+                Units waiting to return to {damagedReturnDestName}
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider">Total Damaged Received</span>
+                <RotateCcw className="w-4 h-4 text-rose-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900 font-mono">
+                {formatNumber(siteDamagedInboundTotal)}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                From Field Teams{!isSelectedSiteSub ? ' & Child Sub-Sites' : ''} ({siteDamagedInboundRecords.length} voucher{siteDamagedInboundRecords.length === 1 ? '' : 's'})
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-emerald-200 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider">Returned Upstream</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-black text-emerald-700 font-mono">
+                {formatNumber(siteDamagedSentUpstreamTotal)}
+              </div>
+              <div className="text-[11px] text-emerald-800 font-medium mt-1">
+                Dispatched to {damagedReturnDestName} ({siteDamagedOutboundRecords.length} BRM)
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Damaged Quarantine Table */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-visible">
+            <div className="p-4 border-b border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-extrabold text-sm text-slate-900">
+                  Damaged Stock Quarantine Ledger — {selectedSite.name}
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Isolated from usable Yard Stock. Check multiple items or click &ldquo;Return Upstream&rdquo; on any item row.
+                </p>
+              </div>
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={damagedSearchQuery}
+                  onChange={(e) => setDamagedSearchQuery(e.target.value)}
+                  placeholder="Search item code, name or category..."
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto pb-2">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-700 font-bold uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-3 w-10 text-center">Sel</th>
+                    <th className="py-3 px-3">Item Code</th>
+                    <th className="py-3 px-4">Material Description</th>
+                    <th className="py-3 px-3 text-right">From Teams</th>
+                    {!isSelectedSiteSub && <th className="py-3 px-3 text-right">From Sub-Sites</th>}
+                    <th className="py-3 px-3 text-right">Sent to {isSelectedSiteSub ? 'Parent' : 'Main HQ'}</th>
+                    <th className="py-3 px-4 text-right bg-amber-50/70 text-amber-950">Damaged Balance at Site</th>
+                    <th className="py-3 px-4 text-center">Upstream Return Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredSiteDamagedCatalog.length === 0 ? (
+                    <tr>
+                      <td colSpan={isSelectedSiteSub ? 7 : 8} className="py-12 px-4 text-center text-slate-400">
+                        <div className="flex flex-col items-center gap-2 max-w-md mx-auto">
+                          <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+                          <div className="font-bold text-slate-800 text-sm">
+                            No damaged returns recorded at {selectedSite.name}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            When Field Teams{!isSelectedSiteSub ? ' or child Sub-Sites' : ''} return items as &ldquo;Damaged / Scrap&rdquo;, they appear here for inspection and upstream return to {damagedReturnDestName}.
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSiteDamagedCatalog.map((row) => {
+                      const canReturn = row.availableDamagedBalance > 0;
+                      const isSel = selectedDamagedItemIds.includes(row.item.id);
+                      return (
+                        <tr
+                          key={row.item.id}
+                          className={canReturn ? 'bg-amber-50/25 hover:bg-amber-50/60 transition-colors' : 'hover:bg-slate-50'}
+                        >
+                          <td className="py-3 px-3 text-center">
+                            {canReturn && (
+                              <input
+                                type="checkbox"
+                                checked={isSel}
+                                onChange={() =>
+                                  setSelectedDamagedItemIds((prev) =>
+                                    prev.includes(row.item.id)
+                                      ? prev.filter((id) => id !== row.item.id)
+                                      : [...prev, row.item.id]
+                                  )
+                                }
+                                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                              />
+                            )}
+                          </td>
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            {row.item.itemCode}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900">{row.item.itemName}</div>
+                            <div className="text-[11px] text-slate-500">
+                              {row.item.category} ({row.item.unit})
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-rose-700 font-semibold whitespace-nowrap">
+                            {formatNumber(row.teamDamagedReturned)} {row.item.unit}
+                          </td>
+                          {!isSelectedSiteSub && (
+                            <td className="py-3 px-3 text-right font-mono text-sky-700 font-semibold whitespace-nowrap">
+                              {formatNumber(row.subSiteDamagedReturned)} {row.item.unit}
+                            </td>
+                          )}
+                          <td className="py-3 px-3 text-right font-mono text-emerald-700 font-semibold whitespace-nowrap">
+                            {formatNumber(row.damagedReturnedUpstream)} {row.item.unit}
+                          </td>
+                          <td className="py-3 px-4 text-right bg-amber-50/30 whitespace-nowrap">
+                            <span
+                              className={`inline-block font-mono font-black px-2.5 py-1 rounded-md text-xs ${
+                                canReturn
+                                  ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}
+                            >
+                              {formatNumber(row.availableDamagedBalance)} {row.item.unit}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            {canReturn ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDamagedReturnModal([row.item.id])}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-2xs transition cursor-pointer"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Return to {isSelectedSiteSub ? 'Parent Site' : 'Main HQ'}</span>
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                All Returned Upstream
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Two-Column Voucher Ledgers: Inbound Damaged vs Outbound Upstream BRM */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Inbound Damaged Receipts */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div className="font-bold text-xs uppercase tracking-wider text-slate-800">
+                  Inbound Damaged Vouchers ({siteDamagedInboundRecords.length})
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium">Teams{!isSelectedSiteSub ? ' & Sub-Sites' : ''} → {selectedSite.name}</span>
+              </div>
+              <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                {siteDamagedInboundRecords.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400">
+                    No inbound damaged return vouchers yet.
+                  </div>
+                ) : (
+                  siteDamagedInboundRecords.map((rec) => (
+                    <div key={rec.id} className="p-3.5 flex items-start justify-between gap-3 text-xs hover:bg-slate-50/70">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            {rec.voucherNumber}
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            rec.sourceType === 'subsite'
+                              ? 'bg-sky-50 text-sky-800 border border-sky-200'
+                              : 'bg-rose-50 text-rose-800 border border-rose-200'
+                          }`}>
+                            {rec.sourceLabel}
+                          </span>
+                        </div>
+                        <div className="font-bold text-slate-800 truncate">
+                          [{rec.itemCode}] {rec.itemName}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {formatDateTime(rec.date)} · Reason: {rec.reason}
+                        </div>
+                      </div>
+                      <div className="font-mono font-black text-rose-700 whitespace-nowrap shrink-0">
+                        +{formatNumber(rec.quantity)} {rec.unit}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Outbound Upstream Damaged BRM Dispatches */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div className="font-bold text-xs uppercase tracking-wider text-slate-800">
+                  Upstream Damaged Dispatches ({siteDamagedOutboundRecords.length})
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium">{selectedSite.name} → {damagedReturnDestName}</span>
+              </div>
+              <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                {siteDamagedOutboundRecords.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400">
+                    No damaged stock dispatched upstream from this site yet.
+                  </div>
+                ) : (
+                  siteDamagedOutboundRecords.map((br) => {
+                    const itmObj = items.find((i) => i.id === br.itemId);
+                    return (
+                      <div key={br.id} className="p-3.5 flex items-start justify-between gap-3 text-xs hover:bg-slate-50/70">
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-slate-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                              {br.branchReturnNumber}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              To: {br.toSiteName || damagedReturnDestName}
+                            </span>
+                          </div>
+                          <div className="font-bold text-slate-800 truncate">
+                            [{itmObj?.itemCode || 'ITEM'}] {itmObj?.itemName || 'Material Item'}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {formatDateTime(br.returnDate)} · By {br.returnedBy}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono font-black text-amber-800 whitespace-nowrap">
+                            -{formatNumber(br.quantity)} {itmObj?.unit || 'units'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBranchReturnForPrint(br)}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer"
+                            title="Print Return Voucher"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Verification / Count Modal for Site Receiving */}
       {acceptingShipment && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
@@ -2237,6 +2814,190 @@ export const SiteInventoriesView: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      {/* Upstream Damaged Return Modal (Sub-Site -> Parent Regional OR Regional -> Central HQ) */}
+      {showDamagedReturnModal && selectedSite && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    Return Damaged / Scrap Stock Upstream
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    From <strong>{selectedSite.name}</strong> → Destination: <strong className="text-amber-800">{damagedReturnDestName}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDamagedReturnModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {damagedReturnError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{damagedReturnError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitDamagedUpstreamReturn} className="space-y-4">
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950">
+                {isSelectedSiteSub ? (
+                  <span>
+                    <strong>Sub-Site Return Rule:</strong> Damaged items from Sub-Site <strong>{selectedSite.name}</strong> route upstream to its Parent Regional Branch (<strong>{damagedReturnDestName}</strong>) and will enter its Damaged Return Quarantine.
+                  </span>
+                ) : (
+                  <span>
+                    <strong>Regional Return Rule:</strong> Damaged items from <strong>{selectedSite.name}</strong> route upstream to <strong>{damagedReturnDestName}</strong> and appear in Central <strong>Damaged / Scrap Yard</strong> (excluded from usable stock until repaired).
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
+                {damagedReturnRows.map((row, idx) => {
+                  const itm = items.find((i) => i.id === row.itemId);
+                  return (
+                    <div
+                      key={row.itemId}
+                      className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-slate-900">
+                            {itm?.itemCode || 'ITEM'}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold">
+                            Damaged / Scrap
+                          </span>
+                        </div>
+                        <div className="font-bold text-xs text-slate-800 truncate mt-0.5">
+                          {itm?.itemName || 'Material Item'}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          <div className="text-[10px] font-bold text-slate-500">
+                            Max Damaged: <span className="font-mono text-amber-800">{formatNumber(row.maxAvailable)} {itm?.unit}</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0.01"
+                            max={row.maxAvailable}
+                            step="any"
+                            value={row.quantity}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              setDamagedReturnRows((prev) =>
+                                prev.map((r, i) =>
+                                  i === idx ? { ...r, quantity: raw === '' ? '' : Number(raw) } : r
+                                )
+                              );
+                            }}
+                            className="w-28 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold text-right bg-white focus:ring-2 focus:ring-amber-600 focus:outline-none"
+                            required
+                          />
+                        </div>
+                        {damagedReturnRows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDamagedReturnRows((prev) => prev.filter((_, i) => i !== idx))
+                            }
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            title="Remove item from voucher"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Damage Inspection / Return Reason *
+                </label>
+                <textarea
+                  value={damagedReturnReason}
+                  onChange={(e) => setDamagedReturnReason(e.target.value)}
+                  rows={2}
+                  required
+                  placeholder="Enter reason or damage inspection remarks..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:ring-2 focus:ring-amber-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowDamagedReturnModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-extrabold shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Confirm &amp; Dispatch Damaged Return to {isSelectedSiteSub ? 'Parent Site' : 'Main HQ'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Printable Upstream Damaged Return Voucher (BRM) */}
+      {selectedBranchReturnForPrint && (
+        <PrintableDocumentModal
+          isOpen={!!selectedBranchReturnForPrint}
+          onClose={() => setSelectedBranchReturnForPrint(null)}
+          title={
+            selectedBranchReturnForPrint.toSiteId &&
+            !sites.find((s) => s.id === selectedBranchReturnForPrint.toSiteId)?.isMainWarehouse
+              ? 'SUB-SITE DAMAGED RETURN TO PARENT BRANCH NOTE'
+              : 'INTER-BRANCH DAMAGED RETURN TO CENTRAL YARD NOTE'
+          }
+          documentNumber={selectedBranchReturnForPrint.branchReturnNumber}
+          documentDate={selectedBranchReturnForPrint.returnDate}
+          recipientLabel="Receiving Yard"
+          recipientName={selectedBranchReturnForPrint.toSiteName || 'Main Central Warehouse'}
+          recipientSubDetails={`Returned from: ${selectedBranchReturnForPrint.siteName || selectedBranchReturnForPrint.fromSiteName} | Processed by: ${selectedBranchReturnForPrint.returnedBy}`}
+          notes={`Reason: ${selectedBranchReturnForPrint.reason}`}
+          items={(selectedBranchReturnForPrint.batchItems &&
+          selectedBranchReturnForPrint.batchItems.length > 0
+            ? selectedBranchReturnForPrint.batchItems
+            : branchReturns
+                .filter(
+                  (r) =>
+                    r.branchReturnNumber === selectedBranchReturnForPrint.branchReturnNumber &&
+                    !r.isDeleted
+                )
+                .map((r) => ({ itemId: r.itemId, quantity: r.quantity, condition: r.condition }))
+          ).map((row) => {
+            const itm = items.find((i) => i.id === row.itemId);
+            return {
+              itemCode: itm?.itemCode || 'CODE',
+              itemName: `${itm?.itemName || 'Material Item'} (${row.condition})`,
+              category: itm?.category || 'General',
+              quantity: row.quantity,
+              unit: itm?.unit || 'units',
+            };
+          })}
+        />
       )}
     </div>
   );
