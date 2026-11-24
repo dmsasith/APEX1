@@ -1236,6 +1236,29 @@ export interface SupplierReturn {
 export type TenantPlan = 'free_trial' | 'pro_monthly' | 'pro_annual';
 export type TenantSubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled';
 
+export interface LandingVideoTab {
+  id: string;
+  tabName: string;
+  youtubeUrl: string;
+  subtitle?: string;
+  createdAt?: string;
+}
+
+export const DEFAULT_LANDING_VIDEOS: LandingVideoTab[] = [
+  {
+    id: 'vid-introduction',
+    tabName: 'Introduction',
+    youtubeUrl: 'https://www.youtube.com/watch?v=XlwzxdTIwjQ',
+    subtitle: 'Complete Walkthrough of Apex Stock & Site Operations',
+  },
+  {
+    id: 'vid-workflow',
+    tabName: 'Work Flow',
+    youtubeUrl: '',
+    subtitle: 'Step-by-Step Stock Issue, Field Usage & Branch Return Flow',
+  },
+];
+
 export interface PlatformPricingConfig {
   monthlyPrice: number; // e.g. 19.90
   annualPrice: number; // e.g. 189.00
@@ -1247,6 +1270,7 @@ export interface PlatformPricingConfig {
   monthlyPlanName?: string; // 'Pro Monthly'
   annualPlanName?: string; // 'Pro Annual'
   trialPlanName?: string; // '7-Day Free Trial'
+  landingVideos?: LandingVideoTab[];
   updatedAt?: string;
 }
 
@@ -1261,6 +1285,7 @@ export const DEFAULT_PLATFORM_PRICING: PlatformPricingConfig = {
   monthlyPlanName: 'Pro Monthly',
   annualPlanName: 'Pro Annual',
   trialPlanName: '7-Day Free Trial',
+  landingVideos: DEFAULT_LANDING_VIDEOS,
 };
 
 export function computePlatformPricingMetrics(raw?: Partial<PlatformPricingConfig> | null) {
@@ -1336,6 +1361,89 @@ export function computePlatformPricingMetrics(raw?: Partial<PlatformPricingConfi
     extraSiteAnnualPriceFormatted: formatPrice(extraSiteAnnualPrice, true),
     extraSiteAnnualPriceClean: formatPrice(extraSiteAnnualPrice, false),
   };
+}
+
+export function extractYouTubeVideoInfo(rawUrl?: string | null): {
+  videoId: string;
+  embedUrl: string;
+  thumbnailUrl: string;
+  fallbackThumbnailUrl: string;
+} | null {
+  const input = (rawUrl || '').trim();
+  if (!input) return null;
+
+  let videoId = '';
+
+  // Direct 11-character YouTube ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
+    videoId = input;
+  } else {
+    try {
+      const urlToParse = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+      const parsed = new URL(urlToParse);
+      const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+      if (host === 'youtu.be') {
+        const seg = parsed.pathname.split('/').filter(Boolean)[0];
+        if (seg && /^[a-zA-Z0-9_-]{11}$/.test(seg)) videoId = seg;
+      } else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+        const vParam = parsed.searchParams.get('v');
+        if (vParam && /^[a-zA-Z0-9_-]{11}$/.test(vParam)) {
+          videoId = vParam;
+        } else {
+          const parts = parsed.pathname.split('/').filter(Boolean);
+          const markerIdx = parts.findIndex((p) => ['embed', 'shorts', 'live', 'v'].includes(p));
+          if (markerIdx !== -1 && parts[markerIdx + 1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[markerIdx + 1])) {
+            videoId = parts[markerIdx + 1];
+          }
+        }
+      }
+    } catch {
+      // Fallback regex extraction for non-standard pasted strings
+    }
+
+    if (!videoId) {
+      const regexMatch = input.match(/(?:youtube\.com\/(?:watch\?.*?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      if (regexMatch?.[1]) {
+        videoId = regexMatch[1];
+      }
+    }
+  }
+
+  if (!videoId) return null;
+
+  return {
+    videoId,
+    embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`,
+    thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+    fallbackThumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+  };
+}
+
+export function normalizeLandingVideos(raw?: unknown): LandingVideoTab[] {
+  let list: LandingVideoTab[] = [];
+
+  if (Array.isArray(raw)) {
+    list = raw.filter(Boolean) as LandingVideoTab[];
+  } else if (raw && typeof raw === 'object') {
+    list = Object.values(raw as Record<string, LandingVideoTab>).filter(Boolean);
+  }
+
+  const cleaned = list
+    .map((item, idx) => ({
+      id: typeof item?.id === 'string' && item.id.trim() ? item.id.trim() : `vid-custom-${idx + 1}`,
+      tabName: typeof item?.tabName === 'string' && item.tabName.trim() ? item.tabName.trim() : `Video ${idx + 1}`,
+      youtubeUrl: typeof item?.youtubeUrl === 'string' ? item.youtubeUrl.trim() : '',
+      subtitle: typeof item?.subtitle === 'string' ? item.subtitle.trim() : '',
+      createdAt: item?.createdAt,
+    }))
+    .filter((item) => Boolean(item.tabName));
+
+  if (cleaned.length === 0) {
+    return DEFAULT_LANDING_VIDEOS.map((v) => ({ ...v }));
+  }
+
+  return cleaned;
 }
 
 export interface QueuedSubscription {

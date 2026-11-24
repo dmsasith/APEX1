@@ -31,13 +31,19 @@ import {
   Play,
   ArrowUp,
   Infinity as InfinityIcon,
+  Video,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 import { SystemUserGuideView } from './SystemUserGuideView';
 import { LegalPoliciesView } from './LegalPoliciesView';
 import { LegalDocId } from './legalPoliciesData';
 import { useStock } from '../../context/StockContext';
-import { computePlatformPricingMetrics } from '../../types';
+import {
+  computePlatformPricingMetrics,
+  LandingVideoTab,
+  normalizeLandingVideos,
+  extractYouTubeVideoInfo,
+} from '../../types';
 
 interface LandingPageProps {
   onOpenLogin: () => void;
@@ -84,6 +90,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [selectedIndustryIdx, setSelectedIndustryIdx] = useState<number>(0);
   const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState<boolean>(false);
+  const landingVideos: LandingVideoTab[] = normalizeLandingVideos(platformPricing.landingVideos);
+  const [selectedVideoTabId, setSelectedVideoTabId] = useState<string>(
+    () => normalizeLandingVideos(platformPricing.landingVideos)[0]?.id || 'vid-introduction'
+  );
+  const activeVideoTab =
+    landingVideos.find((v) => v.id === selectedVideoTabId) || landingVideos[0];
+  const activeYoutubeInfo = extractYouTubeVideoInfo(activeVideoTab?.youtubeUrl);
   const [comparisonCategory, setComparisonCategory] = useState<
     'all' | 'pricing' | 'warehouse' | 'field' | 'projects' | 'security'
   >('all');
@@ -1162,50 +1175,111 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <span>100% Isolated Tenant Cloud</span>
                 </div>
 
-                {/* Official Landscape Introduction Video Showcase */}
+                {/* Official Landscape Video Showcase with Master-Managed Tabs */}
                 <div
                   id="intro-video"
                   className="relative z-10 mt-8 sm:mt-10 rounded-2xl sm:rounded-[26px] bg-white/[0.06] backdrop-blur-xl p-2 sm:p-3 border border-white/20 shadow-[0_24px_60px_-14px_rgba(2,6,18,0.8),inset_0_1px_0_rgba(255,255,255,0.22)] max-w-4xl mx-auto scroll-mt-24"
                 >
+                  {/* Video Selector Tabs Above Video Frame */}
+                  <div className="px-1 pb-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
+                    {landingVideos.map((vTab, vIdx) => {
+                      const isTabActive = activeVideoTab?.id === vTab.id;
+                      const hasValidYt = Boolean(extractYouTubeVideoInfo(vTab.youtubeUrl));
+                      return (
+                        <button
+                          key={vTab.id}
+                          type="button"
+                          onClick={() => {
+                            const switchingTab = activeVideoTab?.id !== vTab.id;
+                            setSelectedVideoTabId(vTab.id);
+                            if (switchingTab) {
+                              setIsIntroVideoPlaying(hasValidYt);
+                            }
+                          }}
+                          className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                            isTabActive
+                              ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 text-[#071026] shadow-[0_6px_18px_-4px_rgba(251,191,36,0.55)]'
+                              : 'bg-white/[0.07] hover:bg-white/[0.14] text-slate-200 border border-white/12'
+                          }`}
+                        >
+                          <Play
+                            className={`w-3 h-3 shrink-0 ${
+                              isTabActive ? 'fill-[#071026] text-[#071026]' : 'text-amber-300'
+                            }`}
+                          />
+                          <span>
+                            {vIdx + 1}. {vTab.tabName}
+                          </span>
+                          {!hasValidYt && (
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                isTabActive
+                                  ? 'bg-[#071026]/15 text-[#071026]'
+                                  : 'bg-white/10 text-slate-300'
+                              }`}
+                            >
+                              Soon
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className="bg-[#060c1d]/95 rounded-xl sm:rounded-[20px] border border-white/12 overflow-hidden">
                     {/* Video Frame Top Header Bar */}
                     <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-white/[0.04] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 text-left">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] shrink-0">
                           <Play className="w-3.5 h-3.5 fill-[#071026]" />
                         </span>
-                        <div>
+                        <div className="min-w-0">
                           <span className="text-xs sm:text-sm font-extrabold text-white tracking-tight">
-                            Official System Introduction Video
+                            {activeVideoTab?.tabName || 'Introduction'}
                           </span>
-                          <span className="hidden sm:inline text-xs text-slate-300 ml-2">
-                            · Complete Walkthrough of Apex Stock &amp; Site Operations
-                          </span>
+                          {activeVideoTab?.subtitle && (
+                            <span className="hidden sm:inline text-xs text-slate-300 ml-2">
+                              · {activeVideoTab.subtitle}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-300">
-                        16:9 HD Landscape
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-300 shrink-0">
+                        {activeYoutubeInfo ? 'YouTube HD · 16:9' : 'Pending Video Link'}
                       </span>
                     </div>
 
                     {/* 16:9 Landscape Video Container */}
                     <div className="relative aspect-video w-full bg-[#040814] overflow-hidden">
-                      {!isIntroVideoPlaying ? (
+                      {!activeYoutubeInfo ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-[#071026] via-[#0b1838] to-[#050a18]">
+                          <div className="w-16 h-16 rounded-2xl bg-white/[0.08] border border-amber-300/30 text-amber-300 flex items-center justify-center mb-3 shadow-lg">
+                            <Video className="w-8 h-8" />
+                          </div>
+                          <h3 className="text-base sm:text-lg font-extrabold text-white">
+                            {activeVideoTab?.tabName} Video Coming Soon
+                          </h3>
+                          <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-md leading-relaxed">
+                            {activeVideoTab?.subtitle ||
+                              'Add or paste a YouTube video link for this tab inside SaaS Master Panel → Landing Page Videos.'}
+                          </p>
+                        </div>
+                      ) : !isIntroVideoPlaying ? (
                         <button
                           type="button"
                           onClick={() => setIsIntroVideoPlaying(true)}
                           className="group relative w-full h-full block cursor-pointer text-left focus:outline-none"
-                          aria-label="Play Apex Stock Introduction Video"
+                          aria-label={`Play ${activeVideoTab?.tabName || 'System'} Video`}
                         >
                           <img
-                            src="https://i.ytimg.com/vi/XlwzxdTIwjQ/maxresdefault.jpg"
+                            src={activeYoutubeInfo.thumbnailUrl}
                             onError={(e) => {
                               const target = e.currentTarget;
                               if (!target.src.includes('hqdefault.jpg')) {
-                                target.src = 'https://i.ytimg.com/vi/XlwzxdTIwjQ/hqdefault.jpg';
+                                target.src = activeYoutubeInfo.fallbackThumbnailUrl;
                               }
                             }}
-                            alt="Apex Stock Official System Introduction Video"
+                            alt={`Apex Stock ${activeVideoTab?.tabName || 'Introduction'} Video`}
                             className="w-full h-full object-cover opacity-85 group-hover:scale-[1.02] group-hover:opacity-95 transition-all duration-300"
                           />
 
@@ -1216,15 +1290,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                               <Play className="w-7 h-7 sm:w-9 sm:h-9 fill-[#071026] text-[#071026] ml-1" />
                             </div>
                             <span className="mt-3 sm:mt-4 px-4 py-1.5 rounded-full bg-[#060c1d]/80 backdrop-blur-xl border border-amber-300/40 text-white text-xs sm:text-sm font-extrabold tracking-wide shadow-lg">
-                              Click to Play Introduction Video
+                              Click to Play {activeVideoTab?.tabName || 'Introduction'} Video
                             </span>
                           </div>
                         </button>
                       ) : (
                         <iframe
+                          key={`${activeVideoTab.id}-${activeYoutubeInfo.videoId}`}
                           className="w-full h-full border-0"
-                          src="https://www.youtube.com/embed/XlwzxdTIwjQ?autoplay=1&rel=0&modestbranding=1&playsinline=1"
-                          title="Apex Stock Official Introduction Video"
+                          src={activeYoutubeInfo.embedUrl}
+                          title={`Apex Stock ${activeVideoTab?.tabName || 'Introduction'} Video`}
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                           referrerPolicy="strict-origin-when-cross-origin"
                           allowFullScreen

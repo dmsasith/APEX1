@@ -39,6 +39,7 @@ import {
   PlatformPricingConfig,
   DEFAULT_PLATFORM_PRICING,
   computePlatformPricingMetrics,
+  normalizeLandingVideos,
   ProjectType,
   ProjectTypeTemplateItem,
   CrossProjectOverrideRequest,
@@ -1470,7 +1471,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     tenantsRef.current = tenants;
   }, [tenants]);
 
-  // Global Platform Subscription Pricing State (synced across Landing Page, Owner Panel & Tenant Modals)
+  // Global Platform Subscription Pricing & Landing Videos State (synced across Landing Page, Owner Panel & Tenant Modals)
   const [platformPricing, setPlatformPricing] = useState<PlatformPricingConfig>(() => {
     try {
       const raw = localStorage.getItem('apex_platform_pricing_config_v1');
@@ -1485,6 +1486,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           trialDays: metrics.trialDays,
           includedSiteBranches: metrics.includedSiteBranches,
           extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
+          landingVideos: normalizeLandingVideos(parsed.landingVideos),
         };
       }
     } catch {
@@ -1494,35 +1496,43 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   useEffect(() => {
-    const PRICING_CACHE_KEY = 'apex_platform_pricing_fetched_at_v1';
-    try {
-      const lastFetched = Number(sessionStorage.getItem(PRICING_CACHE_KEY) || '0');
-      if (Date.now() - lastFetched < 10 * 60 * 1000) {
-        return;
+    const applyRemotePricing = (remotePricing: PlatformPricingConfig) => {
+      if (remotePricing && typeof remotePricing.monthlyPrice === 'number') {
+        const metrics = computePlatformPricingMetrics(remotePricing);
+        const normalized: PlatformPricingConfig = {
+          ...DEFAULT_PLATFORM_PRICING,
+          ...remotePricing,
+          monthlyPrice: metrics.monthlyPrice,
+          annualPrice: metrics.annualPrice,
+          trialDays: metrics.trialDays,
+          includedSiteBranches: metrics.includedSiteBranches,
+          extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
+          landingVideos: normalizeLandingVideos(remotePricing.landingVideos),
+        };
+        setPlatformPricing(normalized);
+        try {
+          localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(normalized));
+          sessionStorage.setItem('apex_platform_pricing_fetched_at_v1', String(Date.now()));
+        } catch {}
       }
-    } catch {}
+    };
 
     fetchPlatformPricingFromFirebase()
       .then((remotePricing) => {
-        if (remotePricing && typeof remotePricing.monthlyPrice === 'number') {
-          const metrics = computePlatformPricingMetrics(remotePricing);
-          const normalized: PlatformPricingConfig = {
-            ...DEFAULT_PLATFORM_PRICING,
-            ...remotePricing,
-            monthlyPrice: metrics.monthlyPrice,
-            annualPrice: metrics.annualPrice,
-            trialDays: metrics.trialDays,
-            includedSiteBranches: metrics.includedSiteBranches,
-            extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
-          };
-          setPlatformPricing(normalized);
-          try {
-            localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(normalized));
-            sessionStorage.setItem(PRICING_CACHE_KEY, String(Date.now()));
-          } catch {}
+        if (remotePricing) {
+          applyRemotePricing(remotePricing);
         }
       })
       .catch(() => {});
+
+    const unsubscribe = subscribeToFirebasePlatformPricing(
+      (remotePricing) => applyRemotePricing(remotePricing),
+      () => {}
+    );
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const [currentTenantId, setCurrentTenantId] = useState<string>(() => {
@@ -3667,10 +3677,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         includedSiteBranches: metrics.includedSiteBranches,
         extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
         trialPlanName: updates.trialPlanName || `${metrics.trialDays}-Day Free Trial`,
+        landingVideos: normalizeLandingVideos(mergedRaw.landingVideos),
       };
 
       try {
         localStorage.setItem('apex_platform_pricing_config_v1', JSON.stringify(nextPricing));
+        sessionStorage.setItem('apex_platform_pricing_fetched_at_v1', String(Date.now()));
       } catch (err) {
         console.warn('Failed to save platform pricing to localStorage:', err);
       }

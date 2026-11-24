@@ -30,6 +30,10 @@ import {
   Link2,
   Sliders,
   RotateCcw,
+  Video,
+  Play,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -38,6 +42,9 @@ import {
   DEFAULT_PLATFORM_PRICING,
   computePlatformPricingMetrics,
   getSubscriptionStatusSummary,
+  LandingVideoTab,
+  normalizeLandingVideos,
+  extractYouTubeVideoInfo,
 } from '../../types';
 import { formatDateTime } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -68,6 +75,16 @@ export const SaasMasterAdminView: React.FC = () => {
   const [editingWorkspaceTenant, setEditingWorkspaceTenant] = useState<Tenant | null>(null);
   const [showBankSetupModal, setShowBankSetupModal] = useState(false);
   const [showPricingPanel, setShowPricingPanel] = useState(true);
+  const [showVideosPanel, setShowVideosPanel] = useState(true);
+
+  const landingVideos = normalizeLandingVideos(platformPricing.landingVideos);
+  const [newVideoTabName, setNewVideoTabName] = useState('');
+  const [newVideoYoutubeUrl, setNewVideoYoutubeUrl] = useState('');
+  const [newVideoSubtitle, setNewVideoSubtitle] = useState('');
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [editVideoTabName, setEditVideoTabName] = useState('');
+  const [editVideoYoutubeUrl, setEditVideoYoutubeUrl] = useState('');
+  const [editVideoSubtitle, setEditVideoSubtitle] = useState('');
 
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
@@ -432,6 +449,91 @@ export const SaasMasterAdminView: React.FC = () => {
     );
   };
 
+  const handleAddLandingVideo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = newVideoTabName.trim();
+    const cleanUrl = newVideoYoutubeUrl.trim();
+    const cleanSubtitle = newVideoSubtitle.trim();
+
+    if (!cleanName) {
+      showNotification('Please enter a Tab Name (e.g. Work Flow, Site Dispatch Guide).');
+      return;
+    }
+    if (!extractYouTubeVideoInfo(cleanUrl)) {
+      showNotification('Please enter a valid YouTube video URL (youtube.com/watch?v=... or youtu.be/...).');
+      return;
+    }
+
+    const newEntry: LandingVideoTab = {
+      id: `vid-${Date.now().toString(36)}`,
+      tabName: cleanName,
+      youtubeUrl: cleanUrl,
+      subtitle: cleanSubtitle,
+      createdAt: new Date().toISOString(),
+    };
+
+    const nextVideos = [...landingVideos, newEntry];
+    updatePlatformPricing({ landingVideos: nextVideos }, false);
+    setNewVideoTabName('');
+    setNewVideoYoutubeUrl('');
+    setNewVideoSubtitle('');
+    showNotification(`Added new Landing Page video tab "${cleanName}" and synced live!`);
+  };
+
+  const handleStartEditVideo = (video: LandingVideoTab) => {
+    setEditingVideoId(video.id);
+    setEditVideoTabName(video.tabName);
+    setEditVideoYoutubeUrl(video.youtubeUrl);
+    setEditVideoSubtitle(video.subtitle || '');
+  };
+
+  const handleSaveEditVideo = (videoId: string) => {
+    const cleanName = editVideoTabName.trim();
+    const cleanUrl = editVideoYoutubeUrl.trim();
+    const cleanSubtitle = editVideoSubtitle.trim();
+
+    if (!cleanName) {
+      showNotification('Tab Name cannot be empty.');
+      return;
+    }
+    if (cleanUrl && !extractYouTubeVideoInfo(cleanUrl)) {
+      showNotification('Entered URL is not a valid YouTube link. Leave blank or paste a valid YouTube link.');
+      return;
+    }
+
+    const nextVideos = landingVideos.map((v) =>
+      v.id === videoId
+        ? { ...v, tabName: cleanName, youtubeUrl: cleanUrl, subtitle: cleanSubtitle }
+        : v
+    );
+    updatePlatformPricing({ landingVideos: nextVideos }, false);
+    setEditingVideoId(null);
+    showNotification(`Updated Landing Page video tab "${cleanName}"!`);
+  };
+
+  const handleMoveVideoTab = (index: number, direction: -1 | 1) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= landingVideos.length) return;
+    const nextVideos = [...landingVideos];
+    const [moved] = nextVideos.splice(index, 1);
+    nextVideos.splice(targetIdx, 0, moved);
+    updatePlatformPricing({ landingVideos: nextVideos }, false);
+    showNotification(`Moved "${moved.tabName}" tab ${direction === -1 ? 'up' : 'down'}.`);
+  };
+
+  const handleDeleteLandingVideo = (video: LandingVideoTab) => {
+    if (landingVideos.length <= 1) {
+      showNotification('At least one video tab must remain on the Landing Page.');
+      return;
+    }
+    const nextVideos = landingVideos.filter((v) => v.id !== video.id);
+    updatePlatformPricing({ landingVideos: nextVideos }, false);
+    if (editingVideoId === video.id) {
+      setEditingVideoId(null);
+    }
+    showNotification(`Removed "${video.tabName}" tab from Landing Page.`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Title Header */}
@@ -465,6 +567,20 @@ export const SaasMasterAdminView: React.FC = () => {
             >
               <Sliders className="w-3.5 h-3.5" />
               <span>Subscription Plans &amp; Pricing (${pricingMetrics.monthlyPriceFormatted} / ${pricingMetrics.annualPriceClean})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowVideosPanel((prev) => !prev)}
+              className={`px-3.5 py-2.5 font-bold rounded-xl text-xs transition border flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer ${
+                showVideosPanel
+                  ? 'bg-sky-500 text-slate-950 border-sky-400'
+                  : 'bg-slate-800 hover:bg-slate-700 text-sky-300 border-sky-500/30'
+              }`}
+              title="Manage YouTube Video Tabs Shown on the Landing Page"
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>Landing Page Videos ({landingVideos.length})</span>
             </button>
 
             <button
@@ -736,6 +852,279 @@ export const SaasMasterAdminView: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ==================== LANDING PAGE YOUTUBE VIDEO TABS MANAGER ==================== */}
+      {showVideosPanel && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border-2 border-sky-500/50 rounded-2xl p-5 sm:p-6 text-white shadow-xl space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 shrink-0">
+                <Video className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-black text-white">
+                    Landing Page Video Tabs &amp; YouTube Links
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    Synced to Landing Page
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Manage the video tabs displayed above the Landing Page video showcase (e.g., <strong>Introduction</strong>, <strong>Work Flow</strong>) or click <strong>Add New Video</strong> to create new YouTube tabs instantly.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Add New Video Form */}
+            <form
+              onSubmit={handleAddLandingVideo}
+              className="lg:col-span-5 bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-3.5"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h3 className="text-xs font-extrabold text-sky-400 flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  <span>Add New Video Tab</span>
+                </h3>
+                <span className="text-[10px] font-mono text-slate-400">YouTube Link</span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Tab Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newVideoTabName}
+                  onChange={(e) => setNewVideoTabName(e.target.value)}
+                  placeholder="e.g. Site Stock Return Guide"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-lg text-xs font-semibold text-white placeholder:text-slate-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  YouTube Video Link *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newVideoYoutubeUrl}
+                  onChange={(e) => setNewVideoYoutubeUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-lg text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none"
+                />
+                {newVideoYoutubeUrl.trim() && (() => {
+                  const preview = extractYouTubeVideoInfo(newVideoYoutubeUrl);
+                  return preview ? (
+                    <div className="mt-2 p-2 rounded-lg bg-slate-900 border border-emerald-500/40 flex items-center gap-2.5">
+                      <img
+                        src={preview.fallbackThumbnailUrl}
+                        alt="YouTube preview"
+                        className="w-16 h-10 rounded object-cover shrink-0 border border-slate-700"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold text-emerald-400">Valid YouTube Video Ready</div>
+                        <div className="text-[10px] font-mono text-slate-400 truncate">ID: {preview.videoId}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 text-[11px] font-semibold text-amber-400">
+                      Paste a full YouTube URL (youtube.com/watch?v=..., youtu.be/..., or Shorts link)
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Short Subtitle (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newVideoSubtitle}
+                  onChange={(e) => setNewVideoSubtitle(e.target.value)}
+                  placeholder="Brief description shown next to title on Landing Page"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Video</span>
+              </button>
+            </form>
+
+            {/* Existing Video Tabs List */}
+            <div className="lg:col-span-7 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-slate-300 pb-1">
+                <span className="font-bold">Active Landing Page Video Tabs ({landingVideos.length})</span>
+                <span className="text-[11px] text-slate-400">Tab #1 opens by default on Landing Page</span>
+              </div>
+
+              {landingVideos.map((v, vIdx) => {
+                const ytInfo = extractYouTubeVideoInfo(v.youtubeUrl);
+                const isEditing = editingVideoId === v.id;
+
+                return (
+                  <div
+                    key={v.id}
+                    className={`rounded-xl border p-3.5 transition-all ${
+                      isEditing
+                        ? 'bg-slate-900 border-sky-400'
+                        : 'bg-slate-950/90 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    {isEditing ? (
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 mb-1">Tab Name *</label>
+                            <input
+                              type="text"
+                              value={editVideoTabName}
+                              onChange={(e) => setEditVideoTabName(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 focus:border-sky-400 rounded-lg text-xs font-bold text-white focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 mb-1">Subtitle</label>
+                            <input
+                              type="text"
+                              value={editVideoSubtitle}
+                              onChange={(e) => setEditVideoSubtitle(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 focus:border-sky-400 rounded-lg text-xs text-white focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 mb-1">YouTube Video Link</label>
+                          <input
+                            type="text"
+                            value={editVideoYoutubeUrl}
+                            onChange={(e) => setEditVideoYoutubeUrl(e.target.value)}
+                            placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                            className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 focus:border-sky-400 rounded-lg text-xs font-mono text-white focus:outline-none"
+                          />
+                        </div>
+                        <div className="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingVideoId(null)}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditVideo(v.id)}
+                            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center gap-1 cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Save Tab</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {ytInfo ? (
+                            <div className="relative w-20 h-12 rounded-lg overflow-hidden border border-slate-700 shrink-0 bg-slate-900">
+                              <img
+                                src={ytInfo.fallbackThumbnailUrl}
+                                alt={v.tabName}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <Play className="w-4 h-4 fill-white text-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-20 h-12 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/10 flex flex-col items-center justify-center text-amber-300 shrink-0">
+                              <Video className="w-4 h-4" />
+                              <span className="text-[9px] font-bold mt-0.5">No Link</span>
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] font-mono font-bold text-sky-400">
+                                Tab #{vIdx + 1}
+                              </span>
+                              <span className="text-xs font-extrabold text-white truncate">
+                                {v.tabName}
+                              </span>
+                              {!ytInfo && (
+                                <span className="text-[10px] font-bold text-amber-300">
+                                  · Click Edit to paste YouTube link
+                                </span>
+                              )}
+                            </div>
+                            {v.subtitle && (
+                              <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {v.subtitle}
+                              </div>
+                            )}
+                            <div className="text-[10px] font-mono text-slate-500 truncate mt-0.5">
+                              {v.youtubeUrl || 'No YouTube URL assigned yet'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            disabled={vIdx === 0}
+                            onClick={() => handleMoveVideoTab(vIdx, -1)}
+                            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                            title="Move tab left / up"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={vIdx === landingVideos.length - 1}
+                            onClick={() => handleMoveVideoTab(vIdx, 1)}
+                            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                            title="Move tab right / down"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditVideo(v)}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-sky-300 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                            title="Edit Tab Name or YouTube Link"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                          {landingVideos.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLandingVideo(v)}
+                              className="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-800 hover:border-rose-700 text-slate-400 hover:text-rose-400 cursor-pointer"
+                              title="Remove Tab"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
