@@ -124,6 +124,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     clearAllUsers,
     clearAllTeams,
     getMainWarehouseStock,
+    getSiteStockLockStatus,
     getTeamInHandStock,
     getTeamSiteInHandStock,
     transferTeamToSite,
@@ -712,7 +713,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       setEditingSiteUserIds([]);
     } catch (err: any) {
       const msg = String(err?.message || '');
-      showToast(msg.replace('INVALID_PARENT_SITE:', '').trim() || 'Could not update site branch.');
+      showToast(
+        msg
+          .replace('INVALID_PARENT_SITE:', '')
+          .replace('SUBSITE_STOCK_LOCKED:', '')
+          .replace('SITE_STOCK_LOCKED:', '')
+          .trim() || 'Could not update site branch.'
+      );
     }
   };
 
@@ -827,15 +834,36 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleBulkDeleteSites = () => {
+    const lockedSelected = selectedSiteIds
+      .map((id) => activeSites.find((s) => s.id === id))
+      .filter((s): s is Site => Boolean(s && isSubSite(s) && getSiteStockLockStatus(s.id).isLocked));
+
+    if (lockedSelected.length > 0) {
+      showToast(
+        `Cannot delete Sub-Site(s) ${lockedSelected.map((s) => `"${s.name}"`).join(', ')} because stock or Client FOC items have already been issued to them.`
+      );
+      return;
+    }
+
     setConfirmState({
       isOpen: true,
       title: `Move ${selectedSiteIds.length} Site(s) to Recycle Bin?`,
       message: `Are you sure you want to move ${selectedSiteIds.length} selected site branches to the Recycle Bin?`,
       confirmLabel: `Move (${selectedSiteIds.length}) to Recycle Bin`,
       onConfirm: () => {
-        bulkSoftDeleteSites(selectedSiteIds);
-        showToast(`Moved ${selectedSiteIds.length} sites to Recycle Bin.`);
-        setSelectedSiteIds([]);
+        try {
+          bulkSoftDeleteSites(selectedSiteIds);
+          showToast(`Moved ${selectedSiteIds.length} sites to Recycle Bin.`);
+          setSelectedSiteIds([]);
+        } catch (err: any) {
+          const msg = String(err?.message || '');
+          showToast(
+            msg
+              .replace('SUBSITE_STOCK_LOCKED:', '')
+              .replace('SUBSITES_EXIST:', '')
+              .trim() || 'Could not delete selected sites.'
+          );
+        }
       },
     });
   };
@@ -906,6 +934,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleDeleteSite = (s: Site) => {
+    if (isSubSite(s)) {
+      const lockStatus = getSiteStockLockStatus(s.id);
+      if (lockStatus.isLocked) {
+        showToast(
+          `Locked: Sub-Site "${s.name}" cannot be deleted because stock or Client FOC items have already been issued (${lockStatus.summaryText}).`
+        );
+        return;
+      }
+    }
     const childSubs = getChildSubSites(s.id, activeSites);
     if (childSubs.length > 0) {
       showToast(
@@ -924,7 +961,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           showToast(`Site "${s.name}" moved to Recycle Bin.`);
         } catch (err: any) {
           const msg = String(err?.message || '');
-          showToast(msg.replace('SUBSITES_EXIST:', '').trim() || 'Could not remove site.');
+          showToast(
+            msg
+              .replace('SUBSITES_EXIST:', '')
+              .replace('SUBSITE_STOCK_LOCKED:', '')
+              .trim() || 'Could not remove site.'
+          );
         }
       },
     });
@@ -989,15 +1031,44 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleClearAllSites = () => {
+    const lockedSubSites = activeSites.filter(
+      (s) => !s.isMainWarehouse && isSubSite(s) && getSiteStockLockStatus(s.id).isLocked
+    );
+    const lockedParentIds = new Set(
+      lockedSubSites.map((s) => s.parentSiteId).filter((id): id is string => Boolean(id))
+    );
+    const deletableSites = activeSites.filter(
+      (s) =>
+        !s.isMainWarehouse &&
+        !(isSubSite(s) && getSiteStockLockStatus(s.id).isLocked) &&
+        !lockedParentIds.has(s.id)
+    );
+
+    if (deletableSites.length === 0) {
+      showToast(
+        'No removable site branches found. Sub-Sites with issued stock or FOC (and their Parent Regional Branches) are locked from deletion.'
+      );
+      return;
+    }
+
+    const lockNotice =
+      lockedSubSites.length > 0
+        ? ` Note: ${lockedSubSites.length} stock/FOC-locked Sub-Site(s) and their Parent Regional Branch(es) will remain safely preserved.`
+        : '';
+
     setConfirmState({
       isOpen: true,
-      title: 'Clear All Site Branches?',
-      message: 'Are you sure you want to move all site branches (except Central Main Warehouse) to the Recycle Bin?',
-      confirmLabel: 'Clear All Sites',
+      title: 'Clear Unlocked Site Branches?',
+      message: `Are you sure you want to move ${deletableSites.length} unlocked site branch(es) (excluding Central Main Warehouse) to the Recycle Bin?${lockNotice}`,
+      confirmLabel: 'Clear Unlocked Sites',
       onConfirm: () => {
         clearAllSites();
         setSelectedSiteIds([]);
-        showToast('All site branches moved to Recycle Bin.');
+        showToast(
+          lockedSubSites.length > 0
+            ? `Moved ${deletableSites.length} unlocked site branch(es) to Recycle Bin (stock-locked Sub-Sites kept intact).`
+            : 'All site branches moved to Recycle Bin.'
+        );
       },
     });
   };
@@ -2382,6 +2453,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 const isSub = isSubSite(s);
                 const parentSiteObj = isSub ? getParentSite(s, activeSites) : undefined;
                 const childSubs = isRegionalSiteBranch(s) ? getChildSubSites(s.id, activeSites) : [];
+                const siteStockLock = !s.isMainWarehouse ? getSiteStockLockStatus(s.id) : null;
+                const isSubSiteStockLocked = Boolean(isSub && siteStockLock?.isLocked);
                 const isChecked = selectedSiteIds.includes(s.id);
                 const supervisorInitials = (s.supervisorName || 'S')
                   .split(' ')
@@ -2449,8 +2522,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               {isSub ? `↳ ${s.name}` : s.name}
                             </h3>
                             {isSub && (
-                              <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100/90 dark:bg-sky-900/50 border border-sky-200 dark:border-sky-700/60 text-[10px] font-bold text-sky-900 dark:text-sky-200">
-                                <span>Under: {parentSiteObj?.name || s.parentSiteName || 'Regional Branch'}</span>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100/90 dark:bg-sky-900/50 border border-sky-200 dark:border-sky-700/60 text-[10px] font-bold text-sky-900 dark:text-sky-200">
+                                  <span>Under: {parentSiteObj?.name || s.parentSiteName || 'Regional Branch'}</span>
+                                </div>
+                                {isSubSiteStockLocked && (
+                                  <div
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700/70 text-[10px] font-bold text-amber-900 dark:text-amber-300"
+                                    title={`Parent Branch & Delete Locked: ${siteStockLock?.summaryText}`}
+                                  >
+                                    <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span>Locked · Stock / FOC Issued</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                             {!isSub && childSubs.length > 0 && (
@@ -2463,7 +2547,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                         {/* Unified Glass Action Bar */}
                         <div className="flex items-center gap-1 bg-slate-100/85 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-1.5 py-1 shrink-0">
-                          {!s.isMainWarehouse && isCentralAdmin && (
+                          {!s.isMainWarehouse && isCentralAdmin && !isSubSiteStockLocked && (
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -2495,10 +2579,22 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               {!s.isMainWarehouse && (
                                 <button
                                   onClick={() => handleDeleteSite(s)}
-                                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                                  title="Move to Recycle Bin"
+                                  className={`p-1.5 rounded-lg transition-colors ${
+                                    isSubSiteStockLocked
+                                      ? 'text-amber-600/80 dark:text-amber-400/80 bg-amber-50/80 dark:bg-amber-950/30 cursor-not-allowed'
+                                      : 'text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer'
+                                  }`}
+                                  title={
+                                    isSubSiteStockLocked
+                                      ? `Delete Locked (${siteStockLock?.summaryText})`
+                                      : 'Move to Recycle Bin'
+                                  }
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  {isSubSiteStockLocked ? (
+                                    <Lock className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  )}
                                 </button>
                               )}
                             </>
@@ -4600,37 +4696,77 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               {!editingSite.isMainWarehouse && (() => {
                 const existingChildren = getChildSubSites(editingSite.id, activeSites);
                 const availableParents = regionalBranches.filter((r) => r.id !== editingSite.id);
+                const siteLockStatus = getSiteStockLockStatus(editingSite.id);
+                const isHierarchyLocked = siteLockStatus.isLocked;
+                const currentOriginalSite = activeSites.find((s) => s.id === editingSite.id);
+                const isOriginalSubSite = Boolean(currentOriginalSite && isSubSite(currentOriginalSite));
                 return (
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      Branch Hierarchy Level / Parent Regional Branch
-                    </label>
+                  <div className={`p-3 rounded-xl border space-y-2 ${
+                    isHierarchyLocked
+                      ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-300/80 dark:border-amber-800/70'
+                      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
+                  }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                        Branch Hierarchy Level / Parent Regional Branch
+                      </label>
+                      {isHierarchyLocked && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 text-[10px] font-extrabold text-amber-900 dark:text-amber-300 shrink-0">
+                          <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          <span>Locked — Stock / FOC Issued</span>
+                        </span>
+                      )}
+                    </div>
                     {existingChildren.length > 0 ? (
                       <div className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold">
                         Regional Site Branch (Parent of {existingChildren.length} active Sub-Site{existingChildren.length === 1 ? '' : 's'}:{' '}
                         {existingChildren.map((c) => c.name).join(', ')})
                       </div>
                     ) : (
-                      <select
-                        value={editingSite.parentSiteId || ''}
-                        onChange={(e) => {
-                          const nextParentId = e.target.value;
-                          const nextParent = availableParents.find((p) => p.id === nextParentId);
-                          setEditingSite({
-                            ...editingSite,
-                            parentSiteId: nextParentId || undefined,
-                            parentSiteName: nextParent?.name,
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-900 dark:text-white font-semibold focus:outline-none"
-                      >
-                        <option value="">Regional Site Branch (Supplied by Central HQ)</option>
-                        {availableParents.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            ↳ Sub-Site Branch under: {p.name}
-                          </option>
-                        ))}
-                      </select>
+                      <>
+                        <select
+                          value={editingSite.parentSiteId || ''}
+                          disabled={isHierarchyLocked}
+                          onChange={(e) => {
+                            if (isHierarchyLocked) return;
+                            const nextParentId = e.target.value;
+                            const nextParent = availableParents.find((p) => p.id === nextParentId);
+                            setEditingSite({
+                              ...editingSite,
+                              parentSiteId: nextParentId || undefined,
+                              parentSiteName: nextParent?.name,
+                            });
+                          }}
+                          className={`w-full px-3 py-2 border rounded-xl text-xs font-semibold focus:outline-none ${
+                            isHierarchyLocked
+                              ? 'border-amber-300/80 dark:border-amber-800/70 bg-slate-100 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 cursor-not-allowed'
+                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-white'
+                          }`}
+                        >
+                          <option value="">Regional Site Branch (Supplied by Central HQ)</option>
+                          {availableParents.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              ↳ Sub-Site Branch under: {p.name}
+                            </option>
+                          ))}
+                        </select>
+                        {isHierarchyLocked && (
+                          <div className="flex items-start gap-2 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed pt-0.5">
+                            <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                            <span>
+                              {isOriginalSubSite ? (
+                                <>
+                                  <strong>Parent Regional Branch &amp; deletion are locked</strong> because stock or Client FOC items have already been issued to this Sub-Site ({siteLockStatus.summaryText}). You can still update Site Name, Supervisor, Location, Direct Line, or Staff.
+                                </>
+                              ) : (
+                                <>
+                                  <strong>Hierarchy tier is locked</strong> because this Regional Site already has stock or Client FOC activity ({siteLockStatus.summaryText}). It cannot be converted into a Sub-Site.
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );

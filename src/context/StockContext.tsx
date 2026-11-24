@@ -597,6 +597,16 @@ interface StockContextType {
     isLowStock: boolean;
     hasActivity: boolean;
   };
+  getSiteStockLockStatus: (siteId: string) => {
+    isLocked: boolean;
+    transfersCount: number;
+    focEntriesCount: number;
+    teamIssuesCount: number;
+    usagesCount: number;
+    returnsCount: number;
+    totalUnitsReceived: number;
+    summaryText: string;
+  };
   getTeamInHandStock: (teamId: string) => TeamInHandSummary;
   allTeamsInHandStock: TeamInHandSummary[];
 
@@ -5712,6 +5722,100 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
+  const getSiteStockLockStatus = useCallback(
+    (siteId: string) => {
+      const targetSite = sites.find((s) => s.id === siteId);
+      const targetNameLower = (targetSite?.name || '').trim().toLowerCase();
+
+      const transferHits = stockRequests.filter(
+        (req) =>
+          (req.siteId === siteId || req.sourceSiteId === siteId) &&
+          (req.status === 'Approved / In-Transit' || req.status === 'Accepted') &&
+          req.items.some((r) => Number(r.receivedQty ?? r.approvedQty ?? r.requestedQty ?? 0) > 0)
+      );
+
+      const totalUnitsTransferred = transferHits.reduce((sum, req) => {
+        if (req.siteId !== siteId) return sum;
+        return (
+          sum +
+          req.items.reduce(
+            (s, r) => s + Number(r.receivedQty ?? r.approvedQty ?? r.requestedQty ?? 0),
+            0
+          )
+        );
+      }, 0);
+
+      const focHits = clientFreeIssues.filter((v) => {
+        if (v.isDeleted) return false;
+        const hasPositiveItems = (v.items || []).some((it) => Number(it.quantity || 0) > 0);
+        if (!hasPositiveItems) return false;
+        if (v.assignedSiteId === siteId) return true;
+        if (targetNameLower && v.storageLocation?.trim().toLowerCase() === targetNameLower) return true;
+        if (!v.assignedSiteId) {
+          const linkedProj = projects.find(
+            (p) => !p.isDeleted && (p.id === v.projectId || p.id === v.parentProjectId)
+          );
+          if (linkedProj?.siteId === siteId) return true;
+        }
+        return false;
+      });
+
+      const totalFocUnits = focHits.reduce(
+        (sum, v) => sum + (v.items || []).reduce((s, it) => s + Number(it.quantity || 0), 0),
+        0
+      );
+
+      const teamIssueHits = teamIssues.filter(
+        (iss) => iss.siteId === siteId && (iss.items || []).some((r) => Number(r.quantity || 0) > 0)
+      );
+      const usageHits = projectUsages.filter((pu) => !pu.isDeleted && pu.siteId === siteId);
+      const teamReturnHits = teamReturns.filter((ret) => ret.siteId === siteId);
+      const branchReturnHits = branchReturns.filter(
+        (br) => !br.isDeleted && (br.fromSiteId === siteId || br.siteId === siteId || br.toSiteId === siteId)
+      );
+      const supplierReturnHits = supplierReturns.filter((sr) => !sr.isDeleted && sr.siteId === siteId);
+
+      const returnsCount = teamReturnHits.length + branchReturnHits.length + supplierReturnHits.length;
+      const isLocked =
+        transferHits.length > 0 ||
+        focHits.length > 0 ||
+        teamIssueHits.length > 0 ||
+        usageHits.length > 0 ||
+        returnsCount > 0;
+
+      const summaryParts: string[] = [];
+      if (transferHits.length > 0) {
+        summaryParts.push(
+          `${transferHits.length} Stock Dispatch${transferHits.length === 1 ? '' : 'es'}`
+        );
+      }
+      if (focHits.length > 0) {
+        summaryParts.push(`${focHits.length} Client FOC Record${focHits.length === 1 ? '' : 's'}`);
+      }
+      if (teamIssueHits.length > 0) {
+        summaryParts.push(`${teamIssueHits.length} Team Issue${teamIssueHits.length === 1 ? '' : 's'}`);
+      }
+      if (usageHits.length > 0) {
+        summaryParts.push(`${usageHits.length} Usage Log${usageHits.length === 1 ? '' : 's'}`);
+      }
+      if (returnsCount > 0) {
+        summaryParts.push(`${returnsCount} Return${returnsCount === 1 ? '' : 's'}`);
+      }
+
+      return {
+        isLocked,
+        transfersCount: transferHits.length,
+        focEntriesCount: focHits.length,
+        teamIssuesCount: teamIssueHits.length,
+        usagesCount: usageHits.length,
+        returnsCount,
+        totalUnitsReceived: totalUnitsTransferred + totalFocUnits,
+        summaryText: summaryParts.join(' · ') || 'Stock / FOC activity recorded',
+      };
+    },
+    [sites, stockRequests, clientFreeIssues, projects, teamIssues, projectUsages, teamReturns, branchReturns, supplierReturns]
+  );
+
   const updateSite = (id: string, updates: Partial<Site>, assignedUserIds?: string[]) => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const nowIso = new Date().toISOString();
@@ -5770,6 +5874,25 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } else {
       nextParentSiteId = undefined;
       nextParentSiteName = undefined;
+    }
+
+    // Enforce immutable Parent Regional Branch / Hierarchy once stock or Client FOC has been issued
+    if (oldSite && !oldSite.isMainWarehouse) {
+      const prevParentIdNormalized = (oldSite.parentSiteId || '').trim();
+      const nextParentIdNormalized = (nextParentSiteId || '').trim();
+      if (prevParentIdNormalized !== nextParentIdNormalized) {
+        const lockStatus = getSiteStockLockStatus(id);
+        if (lockStatus.isLocked) {
+          if (isSubSite(oldSite)) {
+            throw new Error(
+              `SUBSITE_STOCK_LOCKED: Cannot move Sub-Site "${oldSite.name}" to another Regional Branch or change its hierarchy tier because stock or Client FOC items have already been issued (${lockStatus.summaryText}).`
+            );
+          }
+          throw new Error(
+            `SITE_STOCK_LOCKED: Cannot convert Regional Site "${oldSite.name}" into a Sub-Site because stock or Client FOC items have already been issued (${lockStatus.summaryText}).`
+          );
+        }
+      }
     }
 
     const finalSiteUpdates: Partial<Site> = {
@@ -7022,12 +7145,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
 
+    const targetSite = sites.find((s) => s.id === id);
     const activeChildSubSites = sites.filter((s) => !s.isDeleted && s.parentSiteId === id);
     if (activeChildSubSites.length > 0) {
-      const targetSite = sites.find((s) => s.id === id);
       throw new Error(
         `SUBSITES_EXIST: Cannot archive "${targetSite?.name || 'Site Branch'}" while ${activeChildSubSites.length} active Sub-Site Branch(es) depend on it. Archive or reassign those Sub-Sites first.`
       );
+    }
+
+    if (targetSite && isSubSite(targetSite)) {
+      const lockStatus = getSiteStockLockStatus(id);
+      if (lockStatus.isLocked) {
+        throw new Error(
+          `SUBSITE_STOCK_LOCKED: Cannot delete Sub-Site "${targetSite.name}" because stock or Client FOC items have already been issued to it (${lockStatus.summaryText}). Deleting it would break FOC and material traceability.`
+        );
+      }
     }
 
     setSites((prev) => {
@@ -7185,6 +7317,27 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     ids.forEach((id) => softDeleteItem(id));
   };
   const bulkSoftDeleteSites = (ids: string[]) => {
+    const idSet = new Set(ids);
+    for (const id of ids) {
+      const site = sites.find((s) => s.id === id);
+      if (!site || site.isMainWarehouse) continue;
+      if (isSubSite(site)) {
+        const lockStatus = getSiteStockLockStatus(id);
+        if (lockStatus.isLocked) {
+          throw new Error(
+            `SUBSITE_STOCK_LOCKED: Cannot delete Sub-Site "${site.name}" because stock or Client FOC items have already been issued to it (${lockStatus.summaryText}).`
+          );
+        }
+      }
+      const unremovedChildren = sites.filter(
+        (s) => !s.isDeleted && s.parentSiteId === id && !idSet.has(s.id)
+      );
+      if (unremovedChildren.length > 0) {
+        throw new Error(
+          `SUBSITES_EXIST: Cannot delete "${site.name}" while active Sub-Sites (${unremovedChildren.map((c) => c.name).join(', ')}) depend on it.`
+        );
+      }
+    }
     ids.forEach((id) => softDeleteSite(id));
   };
   const bulkSoftDeleteUsers = (ids: string[]) => {
@@ -7442,6 +7595,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const permanentlyDeleteSite = (id: string) => {
     const site = sites.find((s) => s.id === id);
     if (site?.isMainWarehouse) return;
+    if (site && isSubSite(site)) {
+      const lockStatus = getSiteStockLockStatus(id);
+      if (lockStatus.isLocked) {
+        throw new Error(
+          `SUBSITE_STOCK_LOCKED: Cannot permanently delete Sub-Site "${site.name}" because stock or Client FOC items are linked to it (${lockStatus.summaryText}).`
+        );
+      }
+    }
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
     const nowIso = new Date().toISOString();
@@ -7718,12 +7879,27 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const clearAllSites = () => {
     const timestamp = new Date().toISOString();
     const deletedBy = actorDisplayName;
+    const lockedSubSiteParentIds = new Set(
+      sites
+        .filter((s) => !s.isDeleted && isSubSite(s) && getSiteStockLockStatus(s.id).isLocked && s.parentSiteId)
+        .map((s) => s.parentSiteId as string)
+    );
     setSites((prev) => {
-      const updated = prev.map((s) => (s.isMainWarehouse ? s : { ...s, isDeleted: true, deletedAt: timestamp, deletedBy }));
+      const updated = prev.map((s) => {
+        if (s.isMainWarehouse || s.isDeleted) return s;
+        if (isSubSite(s) && getSiteStockLockStatus(s.id).isLocked) return s;
+        if (lockedSubSiteParentIds.has(s.id)) return s;
+        return { ...s, isDeleted: true, deletedAt: timestamp, deletedBy };
+      });
       saveTenantData(currentTenantIdRef.current, 'sites', updated);
       return updated;
     });
-    addAuditLog('MASTER_SITE_SOFT_DELETED', 'CLEAR-SITES', 'All Sites', 'Moved all site branches (except Central Main) to Recycle Bin.');
+    addAuditLog(
+      'MASTER_SITE_SOFT_DELETED',
+      'CLEAR-SITES',
+      'All Sites',
+      'Moved unlocked site branches (excluding Central Main & stock-locked Sub-Sites) to Recycle Bin.'
+    );
   };
 
   const clearAllTeams = () => {
@@ -10453,6 +10629,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         flushSystemWithBackup,
         getMainWarehouseStock,
         getSiteItemStock,
+        getSiteStockLockStatus,
         getTeamInHandStock,
         allTeamsInHandStock,
         totalLowStockAlertsCount,
