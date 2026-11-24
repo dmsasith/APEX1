@@ -101,6 +101,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     activeTeams,
     activeProjects,
     projects,
+    projectTypes,
+    activeProjectTypes,
     addSite,
     addUser,
     addItem,
@@ -487,6 +489,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [teamLeaderName, setTeamLeaderName] = useState('');
   const [teamLeaderIdNumber, setTeamLeaderIdNumber] = useState('');
   const [assignedSiteId, setAssignedSiteId] = useState(activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id);
+  const [teamProjectTypeId, setTeamProjectTypeId] = useState<string>('');
   const [contactPhone, setContactPhone] = useState('');
   const [crewSize, setCrewSize] = useState<number>(1);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -567,6 +570,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     const trimmedLeader = teamLeaderName.trim();
     if (!trimmedName || !trimmedLeader) return;
 
+    if (!teamProjectTypeId) {
+      showToast(
+        'Project Section is mandatory! Please select the Project Section (e.g., New Connection, Cable, Civil) for this team.'
+      );
+      return;
+    }
+
+    const selectedSection = activeProjectTypes.find((pt) => pt.id === teamProjectTypeId);
     const normalizedName = trimmedName.toLowerCase();
 
     // 1. Block duplicate active team names
@@ -606,16 +617,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             teamLeaderName: trimmedLeader,
             teamLeaderIdNumber: teamLeaderIdNumber.trim() || undefined,
             assignedSiteId: assignedSiteId || activeSites[0]?.id,
+            projectTypeId: teamProjectTypeId,
+            projectTypeName: selectedSection?.name,
             contactPhone: contactPhone.trim() || deletedMatchingTeam.contactPhone || '+1 (555) 789-0000',
             crewSize: totalCrew,
             members: teamMembers,
           });
           showToast(
-            `Restored & updated existing team "${trimmedName}" with all historical usage data preserved!`
+            `Restored & updated existing team "${trimmedName}" (${selectedSection?.name || 'Section Assigned'}) with all historical usage data preserved!`
           );
           setTeamName('');
           setTeamLeaderName('');
           setTeamLeaderIdNumber('');
+          setTeamProjectTypeId('');
           setContactPhone('');
           setCrewSize(1);
           setTeamMembers([]);
@@ -629,15 +643,18 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       teamLeaderName: trimmedLeader,
       teamLeaderIdNumber: teamLeaderIdNumber.trim() || undefined,
       assignedSiteId: assignedSiteId || activeSites[0]?.id,
+      projectTypeId: teamProjectTypeId,
+      projectTypeName: selectedSection?.name,
       contactPhone: contactPhone.trim() || '+1 (555) 789-0000',
       crewSize: totalCrew,
       members: teamMembers,
     });
 
-    showToast(`Field Team "${trimmedName}" registered (Crew Size: ${totalCrew} — 1 Leader + ${teamMembers.length} Member${teamMembers.length === 1 ? '' : 's'})!`);
+    showToast(`Field Team "${trimmedName}" registered under "${selectedSection?.name || 'Selected Section'}" (Crew Size: ${totalCrew})!`);
     setTeamName('');
     setTeamLeaderName('');
     setTeamLeaderIdNumber('');
+    setTeamProjectTypeId('');
     setContactPhone('');
     setCrewSize(1);
     setTeamMembers([]);
@@ -686,6 +703,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     setTeamLeaderName('');
     setTeamLeaderIdNumber('');
     setAssignedSiteId(activeSites.find((s) => !s.isMainWarehouse)?.id || activeSites[0]?.id);
+    setTeamProjectTypeId('');
     setContactPhone('');
     setCrewSize(1);
     setTeamMembers([]);
@@ -778,7 +796,25 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     e.preventDefault();
     if (!editingTeam) return;
 
+    if (!editingTeam.projectTypeId) {
+      showToast('Project Section is mandatory! Please select a Project Section for this team.');
+      return;
+    }
+
     const originalTeam = teams.find((t) => t.id === editingTeam.id);
+    const currentTeamInHandUnits = getTeamInHandStock(editingTeam.id)?.totalUnitsHeld || 0;
+    const isSectionStockLocked =
+      Boolean(originalTeam?.projectTypeId) &&
+      editingTeam.projectTypeId !== originalTeam?.projectTypeId &&
+      currentTeamInHandUnits > 0;
+
+    if (isSectionStockLocked) {
+      showToast(
+        `Cannot change Project Section while "${originalTeam?.teamName}" still holds ${formatNumber(currentTeamInHandUnits)} unit(s) In-Hand. Balance stock to 0 via Usage/Returns first, or register a separate team for the other section.`
+      );
+      return;
+    }
+
     const isNameLocked = hasTeamReceivedAnyStock(editingTeam.id);
     const effectiveTeamName =
       isNameLocked && originalTeam ? originalTeam.teamName : editingTeam.teamName.trim();
@@ -801,19 +837,33 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
     const isSiteChanged = originalTeam && originalTeam.assignedSiteId !== editingTeam.assignedSiteId;
     const targetSiteObj = activeSites.find((s) => s.id === editingTeam.assignedSiteId);
+    const selectedSection =
+      activeProjectTypes.find((pt) => pt.id === editingTeam.projectTypeId) ||
+      projectTypes.find((pt) => pt.id === editingTeam.projectTypeId);
 
     const autoCrewSize = (editingTeam.members?.length || 0) + 1;
-    updateTeam(editingTeam.id, {
-      ...editingTeam,
-      teamName: effectiveTeamName,
-      crewSize: autoCrewSize,
-    });
+    try {
+      updateTeam(editingTeam.id, {
+        ...editingTeam,
+        teamName: effectiveTeamName,
+        projectTypeId: editingTeam.projectTypeId,
+        projectTypeName: selectedSection?.name || editingTeam.projectTypeName,
+        crewSize: autoCrewSize,
+      });
+    } catch (err: any) {
+      showToast(
+        String(err?.message || 'Could not update team.')
+          .replace('TEAM_SECTION_STOCK_LOCKED:', '')
+          .trim()
+      );
+      return;
+    }
     if (isSiteChanged && targetSiteObj) {
       showToast(
         `Team transferred: "Temporary Assigned to - ${targetSiteObj.name}". Confirm as Permanent once ready.`
       );
     } else {
-      showToast(`Field Team "${effectiveTeamName}" updated (Crew Size: ${autoCrewSize}).`);
+      showToast(`Field Team "${effectiveTeamName}" updated (${selectedSection?.name || 'Section Saved'} • Crew: ${autoCrewSize}).`);
     }
     setEditingTeam(null);
   };
@@ -3317,6 +3367,55 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </select>
               </div>
 
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Assigned Project Section / Department *
+                  </label>
+                  <span className="text-[10px] font-extrabold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 px-2 py-0.5 rounded-full">
+                    Mandatory
+                  </span>
+                </div>
+                <select
+                  value={teamProjectTypeId}
+                  onChange={(e) => setTeamProjectTypeId(e.target.value)}
+                  required
+                  className={`w-full px-4 py-2.5 border rounded-2xl text-xs focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 focus:outline-none transition-all font-semibold ${
+                    !teamProjectTypeId
+                      ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 text-slate-700 dark:text-slate-200'
+                      : 'border-emerald-300 bg-emerald-50/40 dark:bg-slate-800/60 text-slate-900 dark:text-white'
+                  }`}
+                >
+                  <option value="">-- Select Project Section (e.g. New Connection, Cable, Civil) * --</option>
+                  {activeProjectTypes.map((pt) => (
+                    <option key={pt.id} value={pt.id}>
+                      {pt.code ? `[${pt.code}] ` : ''}{pt.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                  During Material Usage entry, only teams registered under the selected Project Section will appear in that section&apos;s team dropdown.
+                </p>
+              </div>
+
+              {/* Multi-Section Crew Naming & Section Transfer Guidance Note */}
+              <div className="rounded-2xl border border-sky-200 dark:border-sky-800/70 bg-sky-50/90 dark:bg-sky-950/35 p-3.5 text-[11px] text-sky-950 dark:text-sky-100 space-y-1.5 shadow-2xs">
+                <div className="font-extrabold flex items-center gap-1.5 text-sky-900 dark:text-sky-200">
+                  <AlertTriangle className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                  <span>Important Rule: Multi-Section Teams &amp; Section Switching</span>
+                </div>
+                <ul className="list-disc pl-4 space-y-1 text-sky-900/90 dark:text-sky-200/90 leading-relaxed">
+                  <li>
+                    If the same crew works across different sections, register each with a separate team name and select its section (e.g.,{' '}
+                    <strong className="font-mono text-sky-950 dark:text-white">Alex NC Team 1</strong> under New Connection,{' '}
+                    <strong className="font-mono text-sky-950 dark:text-white">Alex Civil Team 1</strong> under Civil).
+                  </li>
+                  <li>
+                    An active team&apos;s Project Section can only be changed after all <strong>In-Hand stock</strong> issued under its current section is fully balanced to <strong>0</strong> (via Material Usage or Team Returns).
+                  </li>
+                </ul>
+              </div>
+
               {/* Dynamic Team Members with Individual Names and ID Numbers */}
               <div className="border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/80 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
@@ -3646,11 +3745,36 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           </div>
                         </div>
 
-                        {/* Header Row 2: Full-width Team Title & Stock Lock Badge */}
+                        {/* Header Row 2: Full-width Team Title, Project Section Badge & Stock Lock Badge */}
                         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-                          <h3 className="font-bold text-slate-900 dark:text-white text-sm tracking-tight leading-snug">
-                            {isAtInitialBase ? cleanBaseName : t.teamName}
-                          </h3>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h3 className="font-bold text-slate-900 dark:text-white text-sm tracking-tight leading-snug">
+                              {isAtInitialBase ? cleanBaseName : t.teamName}
+                            </h3>
+                            {(() => {
+                              const secObj = projectTypes.find((pt) => pt.id === t.projectTypeId);
+                              const secName = secObj?.name || t.projectTypeName;
+                              if (secName) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-[10px] font-extrabold text-teal-800 dark:text-teal-300">
+                                    <Layers className="w-2.5 h-2.5 shrink-0" />
+                                    <span>{secObj?.code ? `[${secObj.code}] ` : ''}{secName}</span>
+                                  </span>
+                                );
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingTeam({ ...t })}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 border border-amber-300 text-[10px] font-extrabold text-amber-900 cursor-pointer"
+                                  title="Click to assign a Project Section to this legacy team"
+                                >
+                                  <AlertTriangle className="w-2.5 h-2.5 shrink-0 text-amber-700" />
+                                  <span>Assign Project Section</span>
+                                </button>
+                              );
+                            })()}
+                          </div>
                           {hasTeamReceivedAnyStock(t.id) && (
                             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[10px] font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap shrink-0">
                               <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -5430,19 +5554,78 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site / Sub-Site Base</label>
-                <select
-                  value={editingTeam.assignedSiteId}
-                  onChange={(e) => setEditingTeam({ ...editingTeam, assignedSiteId: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
-                >
-                  {hierarchicalSites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {formatSiteHierarchyLabel(s, activeSites)}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Site / Sub-Site Base *</label>
+                  <select
+                    value={editingTeam.assignedSiteId}
+                    onChange={(e) => setEditingTeam({ ...editingTeam, assignedSiteId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-medium"
+                  >
+                    {hierarchicalSites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {formatSiteHierarchyLabel(s, activeSites)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  {(() => {
+                    const origTeam = teams.find((t) => t.id === editingTeam.id);
+                    const inHandUnits = getTeamInHandStock(editingTeam.id)?.totalUnitsHeld || 0;
+                    const isSectionLockedByStock = Boolean(origTeam?.projectTypeId) && inHandUnits > 0;
+                    return (
+                      <>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            Project Section / Department *
+                          </label>
+                          {isSectionLockedByStock && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-[9.5px] font-extrabold text-amber-900 dark:text-amber-300">
+                              <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                              <span>Locked ({formatNumber(inHandUnits)} In-Hand)</span>
+                            </span>
+                          )}
+                        </div>
+                        <select
+                          value={editingTeam.projectTypeId || ''}
+                          onChange={(e) => {
+                            if (isSectionLockedByStock) return;
+                            const nextId = e.target.value;
+                            const ptObj = activeProjectTypes.find((pt) => pt.id === nextId);
+                            setEditingTeam({
+                              ...editingTeam,
+                              projectTypeId: nextId,
+                              projectTypeName: ptObj?.name || '',
+                            });
+                          }}
+                          disabled={isSectionLockedByStock}
+                          required
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all font-semibold ${
+                            isSectionLockedByStock
+                              ? 'border-amber-300 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed'
+                              : !editingTeam.projectTypeId
+                              ? 'border-amber-400 bg-amber-50/70 dark:bg-amber-950/30 text-slate-900 dark:text-white'
+                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white'
+                          }`}
+                        >
+                          <option value="">-- Select Project Section * --</option>
+                          {activeProjectTypes.map((pt) => (
+                            <option key={pt.id} value={pt.id}>
+                              {pt.code ? `[${pt.code}] ` : ''}{pt.name}
+                            </option>
+                          ))}
+                        </select>
+                        {isSectionLockedByStock && (
+                          <p className="mt-1.5 text-[10.5px] font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-2.5 py-1.5 leading-snug">
+                            <strong>Section Locked:</strong> Clear all <strong>{formatNumber(inHandUnits)} unit(s)</strong> of In-Hand stock (via Usage or Team Returns) to unlock section switching, or register a separate team for the other section.
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
 
               {/* Edit Team Members */}

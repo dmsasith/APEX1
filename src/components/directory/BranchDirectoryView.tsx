@@ -65,6 +65,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
     activeSites,
     activeTeams,
     activeUsers,
+    projectTypes,
     currentTenant,
     getTeamSiteInHandStock,
     returnTeamToInitialSite,
@@ -684,6 +685,15 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                                 <span className="font-bold text-slate-900 text-sm">
                                   {isAtInitialBase ? cleanBaseName : team.teamName}
                                 </span>
+                                {(() => {
+                                  const secObj = projectTypes.find((pt) => pt.id === team.projectTypeId);
+                                  const secName = secObj?.name || team.projectTypeName;
+                                  return secName ? (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-teal-50 text-teal-800 border border-teal-200">
+                                      {secObj?.code ? `[${secObj.code}] ` : ''}{secName}
+                                    </span>
+                                  ) : null;
+                                })()}
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 font-mono">
                                   {actualCrewCount} Personnel Total
                                 </span>

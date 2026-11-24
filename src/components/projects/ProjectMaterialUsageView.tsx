@@ -42,6 +42,7 @@ import {
   ProjectMaterialUsage,
   ProjectUsageItemRow,
   ProjectType,
+  Team,
   Item,
   isSuperAdmin,
   isCentralOrAllSiteAdmin,
@@ -170,35 +171,6 @@ export const ProjectMaterialUsageView: React.FC = () => {
     '';
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
 
-  // Keep selectedSiteId synced when active user switches
-  useEffect(() => {
-    if (allowedSites.length > 0 && !allowedSites.some((s) => s.id === selectedSiteId)) {
-      const nextSite = allowedSites.find((s) => !s.isMainWarehouse) || allowedSites[0];
-      if (nextSite) {
-        setSelectedSiteId(nextSite.id);
-        const siteTeams = activeTeams.filter((t) => t.assignedSiteId === nextSite.id);
-        const firstTeam = siteTeams[0]?.id || '';
-        setSelectedTeamId(firstTeam);
-        const tObj = teams.find((t) => t.id === firstTeam);
-        if (tObj) setSupervisorName(tObj.teamLeaderName);
-      }
-    }
-  }, [currentUser?.id, allowedSites, selectedSiteId, activeTeams, teams]);
-
-  // Teams assigned to selected site (strictly teams assigned to this site can use this site's stock)
-  const availableTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
-  const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
-
-  useEffect(() => {
-    if (availableTeams.length > 0 && !availableTeams.some((t) => t.id === selectedTeamId)) {
-      const nextTeam = availableTeams[0];
-      setSelectedTeamId(nextTeam.id);
-      setSupervisorName(nextTeam.teamLeaderName);
-    } else if (availableTeams.length === 0 && selectedTeamId !== '') {
-      setSelectedTeamId('');
-    }
-  }, [selectedSiteId, availableTeams, selectedTeamId]);
-
   // Section / Project Type Selection (Step 1)
   const [selectedSectionId, setSelectedSectionId] = useState<string>(activeProjectTypes[0]?.id || '');
   const targetSection = activeProjectTypes.find((pt) => pt.id === selectedSectionId);
@@ -212,6 +184,54 @@ export const ProjectMaterialUsageView: React.FC = () => {
     [targetSection]
   );
   const [entryCustomFieldValues, setEntryCustomFieldValues] = useState<Record<string, string>>({});
+
+  // Strict helper to check if a team belongs to the selected Project Section / Type
+  const doesTeamMatchSection = React.useCallback(
+    (t: Team, secId: string) => {
+      if (!secId) return true;
+      if (t.projectTypeId) {
+        return t.projectTypeId === secId;
+      }
+      const secObj = activeProjectTypes.find((pt) => pt.id === secId);
+      if (t.projectTypeName && secObj) {
+        return t.projectTypeName.trim().toLowerCase() === secObj.name.trim().toLowerCase();
+      }
+      return false;
+    },
+    [activeProjectTypes]
+  );
+
+  // Teams assigned to selected site AND registered under the selected Project Section
+  const siteAssignedTeams = activeTeams.filter((t) => t.assignedSiteId === selectedSiteId);
+  const availableTeams = siteAssignedTeams.filter((t) => doesTeamMatchSection(t, selectedSectionId));
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(availableTeams[0]?.id || '');
+
+  // Keep selectedSiteId synced when active user switches
+  useEffect(() => {
+    if (allowedSites.length > 0 && !allowedSites.some((s) => s.id === selectedSiteId)) {
+      const nextSite = allowedSites.find((s) => !s.isMainWarehouse) || allowedSites[0];
+      if (nextSite) {
+        setSelectedSiteId(nextSite.id);
+        const siteTeams = activeTeams.filter(
+          (t) => t.assignedSiteId === nextSite.id && doesTeamMatchSection(t, selectedSectionId)
+        );
+        const firstTeam = siteTeams[0]?.id || '';
+        setSelectedTeamId(firstTeam);
+        const tObj = teams.find((t) => t.id === firstTeam);
+        setSupervisorName(tObj?.teamLeaderName || '');
+      }
+    }
+  }, [currentUser?.id, allowedSites, selectedSiteId, selectedSectionId, activeTeams, teams, doesTeamMatchSection]);
+
+  useEffect(() => {
+    if (availableTeams.length > 0 && !availableTeams.some((t) => t.id === selectedTeamId)) {
+      const nextTeam = availableTeams[0];
+      setSelectedTeamId(nextTeam.id);
+      setSupervisorName(nextTeam.teamLeaderName);
+    } else if (availableTeams.length === 0 && selectedTeamId !== '') {
+      setSelectedTeamId('');
+    }
+  }, [selectedSiteId, selectedSectionId, availableTeams, selectedTeamId]);
 
   // Telecom New Connection / Utility Connection Daily Progress Session Lock & 6-Field States
   const [isNcTeamAreaLocked, setIsNcTeamAreaLocked] = useState<boolean>(false);
@@ -623,11 +643,23 @@ export const ProjectMaterialUsageView: React.FC = () => {
   // Reconciliation selected project
   const [reconcileProjectId, setReconcileProjectId] = useState<string>(activeProjects[0]?.id || '');
 
-  // Auto-load section template items & strictly reset project filters when selectedSectionId changes
+  // Auto-load section template items & strictly reset project + team filters when selectedSectionId changes
   const handleSelectSection = (secId: string) => {
     setSelectedSectionId(secId);
     setExistingMainParentFilter('all');
     const sec = activeProjectTypes.find((pt) => pt.id === secId);
+
+    // Strictly filter site teams to those registered under the newly selected Project Section
+    const matchingSectionTeams = activeTeams.filter(
+      (t) => t.assignedSiteId === selectedSiteId && doesTeamMatchSection(t, secId)
+    );
+    if (!matchingSectionTeams.some((t) => t.id === selectedTeamId)) {
+      setIsNcTeamAreaLocked(false);
+      const nextTeam = matchingSectionTeams[0];
+      setSelectedTeamId(nextTeam?.id || '');
+      setSupervisorName(nextTeam?.teamLeaderName || '');
+    }
+
     if (sec && (sec.templateItems || []).length > 0) {
       const templateRows: ItemEntryRow[] = sec.templateItems.map((t) => ({
         itemId: t.itemId,
@@ -635,12 +667,12 @@ export const ProjectMaterialUsageView: React.FC = () => {
         wastageQuantity: '',
       }));
       setItemRows(templateRows);
-      setSuccessToast(`Loaded BOM template for "${sec.name}" (${templateRows.length} items). Please verify quantities.`);
+      setSuccessToast(`Loaded BOM template for "${sec.name}" (${templateRows.length} items) & filtered teams registered under "${sec.name}".`);
     } else {
       // STRICT ISOLATION: Reset items so previous section's template is never retained
       setItemRows([{ itemId: activeItems[0]?.id || '', quantity: '', wastageQuantity: '' }]);
       if (sec) {
-        setSuccessToast(`Section "${sec.name}" selected. Showing projects registered under "${sec.name}".`);
+        setSuccessToast(`Section "${sec.name}" selected. Showing projects & teams registered under "${sec.name}".`);
       }
     }
 
@@ -831,11 +863,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
     if (sObj && !isNcTeamAreaLocked) {
       setNcSessionArea(sObj.location || sObj.name || '');
     }
-    const siteTeams = activeTeams.filter((t) => t.assignedSiteId === newSiteId);
+    const siteTeams = activeTeams.filter(
+      (t) => t.assignedSiteId === newSiteId && doesTeamMatchSection(t, selectedSectionId)
+    );
     const firstTeam = siteTeams[0]?.id || '';
     setSelectedTeamId(firstTeam);
     const tObj = teams.find((t) => t.id === firstTeam);
-    if (tObj) setSupervisorName(tObj.teamLeaderName);
+    setSupervisorName(tObj?.teamLeaderName || '');
   };
 
   // Handle team change
@@ -983,7 +1017,18 @@ export const ProjectMaterialUsageView: React.FC = () => {
     }
 
     if (!selectedTeamId) {
-      setErrorMsg('Please select the field team.');
+      setErrorMsg(
+        availableTeams.length === 0
+          ? `No field teams are registered under section "${targetSection?.name || 'Selected Section'}" for ${selectedSiteName}. Please assign a Project Section to your teams under Master Registrations → Teams.`
+          : 'Please select the field team.'
+      );
+      return;
+    }
+    const chosenTeamObj = teams.find((t) => t.id === selectedTeamId) || activeTeams.find((t) => t.id === selectedTeamId);
+    if (chosenTeamObj && selectedSectionId && !doesTeamMatchSection(chosenTeamObj, selectedSectionId)) {
+      setErrorMsg(
+        `Team "${chosenTeamObj.teamName}" is registered under "${chosenTeamObj.projectTypeName || 'another section'}" and cannot be used for "${targetSection?.name || 'this section'}". Please select a team registered under "${targetSection?.name || 'this section'}".`
+      );
       return;
     }
     if (!supervisorName.trim()) {
@@ -2124,10 +2169,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         />
                       </div>
 
-                      {/* Executing Field Team */}
+                      {/* Executing Field Team (Filtered Strictly by Selected Project Section) */}
                       <div>
                         <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Executing Field Team * (Stock Deducted)
+                          Executing Field Team * ({targetSection?.code || targetSection?.name || 'Section'})
                         </label>
                         <select
                           value={selectedTeamId}
@@ -2137,7 +2182,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           required
                         >
                           {availableTeams.length === 0 ? (
-                            <option value="">No Teams Assigned to this Site</option>
+                            <option value="">
+                              No Teams Registered Under {targetSection?.name || 'This Section'}
+                            </option>
                           ) : (
                             availableTeams.map((t) => {
                               const selSiteName =
@@ -2157,6 +2204,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             })
                           )}
                         </select>
+                        {availableTeams.length === 0 && (
+                          <p className="mt-1 text-[10px] font-semibold text-amber-200 leading-snug">
+                            No teams on this site are assigned to <strong>{targetSection?.name || 'this section'}</strong>
+                            {siteAssignedTeams.length > 0
+                              ? ` (${siteAssignedTeams.length} site team(s) belong to other sections or need section assignment in Master Registrations).`
+                              : '.'}
+                          </p>
+                        )}
                       </div>
 
                       {/* Supervisor / Team Leader */}
@@ -3113,10 +3168,10 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         </select>
                       </div>
 
-                      {/* Executing Field Team */}
+                      {/* Executing Field Team (Filtered Strictly by Selected Project Section) */}
                       <div>
                         <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Executing Field Team * (Stock Deducted)
+                          Executing Field Team * ({targetSection?.code || targetSection?.name || 'Section'})
                         </label>
                         <select
                           value={selectedTeamId}
@@ -3125,7 +3180,9 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           required
                         >
                           {availableTeams.length === 0 ? (
-                            <option value="">No Teams Assigned to this Site</option>
+                            <option value="">
+                              No Teams Registered Under {targetSection?.name || 'This Section'}
+                            </option>
                           ) : (
                             availableTeams.map((t) => {
                               const selSiteName =
@@ -3145,6 +3202,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             })
                           )}
                         </select>
+                        {availableTeams.length === 0 && (
+                          <p className="mt-1 text-[10px] font-semibold text-amber-200 leading-snug">
+                            No teams on this site are assigned to <strong>{targetSection?.name || 'this section'}</strong>
+                            {siteAssignedTeams.length > 0
+                              ? ` (${siteAssignedTeams.length} site team(s) belong to other sections or need section assignment in Master Registrations).`
+                              : '.'}
+                          </p>
+                        )}
                       </div>
 
                       {/* Supervisor / Team Leader */}
@@ -3827,11 +3892,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
                 className="text-xs font-semibold px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
               >
                 <option value="all">All Teams</option>
-                {activeTeams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.teamName}
-                  </option>
-                ))}
+                {activeTeams
+                  .filter((t) => sectionFilter === 'all' || doesTeamMatchSection(t, sectionFilter))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.teamName}{t.projectTypeName ? ` [${t.projectTypeName}]` : ''}
+                    </option>
+                  ))}
               </select>
 
               {/* Search */}
@@ -4530,11 +4597,18 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     onChange={(e) => setEditTeamId(e.target.value)}
                     className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold bg-white"
                   >
-                    {activeTeams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.teamName}
-                      </option>
-                    ))}
+                    {activeTeams
+                      .filter(
+                        (t) =>
+                          !editingVoucher.projectTypeId ||
+                          doesTeamMatchSection(t, editingVoucher.projectTypeId) ||
+                          t.id === editingVoucher.teamId
+                      )
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.teamName}{t.projectTypeName ? ` [${t.projectTypeName}]` : ''}
+                        </option>
+                      ))}
                   </select>
                 </div>
 

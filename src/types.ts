@@ -443,6 +443,8 @@ export interface Team {
   contactPhone: string;
   crewSize: number;
   members?: TeamMember[];
+  projectTypeId?: string;
+  projectTypeName?: string;
   createdAt: string;
   updatedAt?: string;
   isDeleted?: boolean;

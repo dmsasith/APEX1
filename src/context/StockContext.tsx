@@ -5608,8 +5608,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       notes: `Initial team registration at ${initialSiteName}`,
     };
 
+    const assignedSection = teamData.projectTypeId
+      ? projectTypes.find((pt) => pt.id === teamData.projectTypeId)
+      : undefined;
+    const resolvedProjectTypeName = teamData.projectTypeName || assignedSection?.name;
+
     const newTeam: Team = {
       ...teamData,
+      ...(teamData.projectTypeId ? { projectTypeId: teamData.projectTypeId } : {}),
+      ...(resolvedProjectTypeName ? { projectTypeName: resolvedProjectTypeName } : {}),
       baseTeamName: cleanBaseName,
       initialSiteId: teamData.initialSiteId || teamData.assignedSiteId,
       initialSiteName: teamData.initialSiteName || initialSiteName,
@@ -5635,7 +5642,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       'MASTER_TEAM_CREATED',
       newTeam.teamName,
       initialSiteName,
-      `Field team registered: ${newTeam.teamName} (Lead: ${newTeam.teamLeaderName}, Crew: ${newTeam.crewSize})`
+      `Field team registered: ${newTeam.teamName} (Lead: ${newTeam.teamLeaderName}, Crew: ${newTeam.crewSize}${resolvedProjectTypeName ? `, Section: ${resolvedProjectTypeName}` : ''})`
     );
     return newTeam;
   };
@@ -6900,14 +6907,32 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       projectUsages.some((u) => u.teamId === id && !u.isDeleted) ||
       teamReturns.some((ret) => ret.teamId === id);
 
+    const resolvedUpdates: Partial<Team> = { ...updates };
+    if (updates.projectTypeId !== undefined) {
+      if (
+        existingTeam &&
+        existingTeam.projectTypeId &&
+        updates.projectTypeId !== existingTeam.projectTypeId
+      ) {
+        const remainingInHand = computeTeamSiteInHandUnits(id);
+        if (remainingInHand > 0) {
+          throw new Error(
+            `TEAM_SECTION_STOCK_LOCKED: Cannot change Project Section for "${existingTeam.teamName}" while ${remainingInHand} unit(s) remain in-hand under "${existingTeam.projectTypeName || 'current section'}". Clear/balance all in-hand stock to 0 via Material Usage or Team Returns first.`
+          );
+        }
+      }
+      const matchedPt = projectTypes.find((pt) => pt.id === updates.projectTypeId);
+      resolvedUpdates.projectTypeName = updates.projectTypeName || matchedPt?.name || '';
+    }
+
     // If assignedSiteId is changing via updateTeam, route through transferTeamToSite so Temporary/Permanent rules & history are always enforced
     if (
       existingTeam &&
-      updates.assignedSiteId &&
-      updates.assignedSiteId !== existingTeam.assignedSiteId &&
-      !updates.siteAssignmentHistory
+      resolvedUpdates.assignedSiteId &&
+      resolvedUpdates.assignedSiteId !== existingTeam.assignedSiteId &&
+      !resolvedUpdates.siteAssignmentHistory
     ) {
-      const { assignedSiteId: nextSiteId, ...otherUpdates } = updates;
+      const { assignedSiteId: nextSiteId, ...otherUpdates } = resolvedUpdates;
       const activeTenantId = currentTenantIdRef.current || currentTenantId;
       if (Object.keys(otherUpdates).length > 0) {
         setTeams((prev) => {
@@ -6943,22 +6968,22 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (hasReceivedAnyStock) {
           return {
             ...t,
-            ...updates,
+            ...resolvedUpdates,
             teamName: t.teamName,
             baseTeamName: t.baseTeamName || extractBaseTeamName(t.teamName, t.baseTeamName),
             updatedAt: nowIso,
           };
         }
-        const nextBase = updates.teamName
-          ? extractBaseTeamName(updates.teamName, updates.baseTeamName || t.baseTeamName)
+        const nextBase = resolvedUpdates.teamName
+          ? extractBaseTeamName(resolvedUpdates.teamName, resolvedUpdates.baseTeamName || t.baseTeamName)
           : t.baseTeamName;
         const nextTeamName =
-          updates.teamName && t.assignmentStatus === 'Permanent' && t.previousSiteName
-            ? formatPermanentTransferredTeamName(nextBase || updates.teamName, t.previousSiteName)
-            : updates.teamName || t.teamName;
+          resolvedUpdates.teamName && t.assignmentStatus === 'Permanent' && t.previousSiteName
+            ? formatPermanentTransferredTeamName(nextBase || resolvedUpdates.teamName, t.previousSiteName)
+            : resolvedUpdates.teamName || t.teamName;
         return {
           ...t,
-          ...updates,
+          ...resolvedUpdates,
           baseTeamName: nextBase,
           teamName: nextTeamName,
           updatedAt: nowIso,
