@@ -15,13 +15,12 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
    - **3-Tier Sites / Branches Hierarchy (Central Main Warehouse -> Regional Site Branch -> Optional Sub-Site Branch)**:
      1) Every tenant workspace includes **1 Central Main Warehouse + 20 Site Branches** by default (expandable anytime for **+$10/mo per extra site branch**) along with **Unlimited Users** and **Unlimited Field Teams**.
      2) **Regional Site Branches**: Registered directly under Central Main Warehouse. They receive stock from Central HQ, create/manage Field Teams normally, AND can optionally own child **Sub-Site Branches**. (Parent Regional Branches with active Sub-Sites cannot be deleted until Sub-Sites are reassigned or removed.)
-     3) **Optional Sub-Site Branches ("↳ Sub-Site")**: Nested under a Parent Regional Site Branch. Sub-Sites receive stock from their **Parent Regional Site Branch** (either direct Parent-to-Sub-Site issue or Parent-approved requisition), return surplus/good stock upstream to their Parent Regional Branch, and create/manage **Field Teams**, Issue to Teams, Team Returns, and Project Usage identically to regular branches.
-   - **Field Teams, Team Name Lock After Stock Issue & Conflict-Free Site Transfer Workflow ("Temporary Assigned to - [New Site]" vs. Permanent "(Ref: [Previous Site])")**:
-     1) Register field work squads inside either Regional Site Branches or Sub-Site Branches with Team Name, Team Leader Name & NIC/ID, Assigned Site Base, Contact Phone, and individual **Team Members** (Crew Size auto-calculates as 1 Leader + N Members).
-     2) **Team Name Lock After Stock Issue**: Once a team has received any stock item, its **Team Name** is locked against renaming to preserve historical voucher and audit integrity (while Team Leader, Phone, and Members remain editable).
-     3) **Transferring a Team ("Transfer / Site History")**: When transferring a team to a new Site Branch, whether they still have unreturned stock on their current site or zero stock, the assignment starts in a **Temporary** state displayed as **"Temporary Assigned to - [New Site Name]"**.
-     4) **Promotion to Permanent with Prior-Site Reference**: Once previous-site stock is returned/cleared (or when Branch Admin / System Admin clicks **"Confirm / Promote to Permanent"** for a team that had zero stock on the old site), the assignment promotes to **Permanent** and updates the displayed team name with a prior-site reference: **"[Team Name] (Ref: [Previous Site Name])"**.
-     5) **Complete Assigned Sites History**: Inside **Transfer / Site History**, users can view all past and current assigned sites for that team, showing **Temporary** vs. **Permanent**, **Reference Site (Ref:)**, assignment dates, and **Stock Cleared / Stock Pending** status.
+     3) **Optional Sub-Site Branches ("↳ Sub-Site") & Sub-Site Stock/FOC Lock**: Nested under a Parent Regional Site Branch. Sub-Sites receive stock from their **Parent Regional Site Branch**, return surplus/damaged stock upstream to their Parent Regional Branch, and run **Field Teams** identically to regular branches. **CRITICAL PROTECTION RULE**: Once any stock dispatch, Client FOC allocation, team issue, usage, or return exists for a Sub-Site, **deleting that Sub-Site OR changing its Parent Regional Branch / hierarchy tier is strictly LOCKED** so Client FOC and branch custody records never break.
+   - **Field Teams — Mandatory Project Section, Multi-Section Naming, 0-Balance Section Switch Lock & Team Name Lock**:
+     1) **Mandatory Project Section Assignment**: When registering or editing ANY Field Team (inside Regional or Sub-Site branches), selecting an **Assigned Project Section / Department *** (e.g., New Connection, Cable, Civil, Water, Electrical, Solar) is **mandatory**. Legacy unassigned teams show an **"Assign Project Section"** button, and assigned teams display their **"[CODE] Section Name"** badge across Master Registrations and Branch Staff Directory.
+     2) **Deploying Same Crew Across Multiple Sections**: A crew working in different sections MUST be registered separately under each section with section-specific names — e.g., **"Alex NC Team 1"** (New Connection) and **"Alex Civil Team 1"** (Civil).
+     3) **0 In-Hand Stock Lock on Changing Section ("Section Locked")**: An existing team's Project Section **cannot** be changed while the team holds any unconsumed/unreturned In-Hand Stock (> 0 units); once balanced to **0** via Material Usage or Team Returns, section switching unlocks automatically.
+     4) **Team Name Lock & Site Transfer Workflow**: Once a team has received stock, its **Team Name** locks against renaming. Transfers start as **"Temporary Assigned to - [New Site Name]"** and promote to **Permanent "[Team Name] (Ref: [Previous Site Name])"** once old-site stock clears (or via Admin Confirm if zero stock), with full **Assigned Sites History**.
    - **Suppliers & Clients**: Register Suppliers (for Purchase Orders & Debit Notes) and Clients/Principals (for Projects & Client Free Issue Stock).
    - **User Management ("User Management") & Super Admin First-Name Accountability Login**:
      1) **Mandatory Super Admin Name & First-Name Login Verification**: When registering a new company workspace, entering the administrator's real Full Name is mandatory (generic names like "Admin" or "Super Admin" are rejected). At login, Super Admin credentials also verify the acting person's **First Name** against the registered administrator, and every action in Audit Trail & Vouchers is personally attributed as **"[Name] (as Super Admin)"**.
@@ -43,7 +42,9 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
    - **How a Sub-Site Branch gets stock from its Parent Regional Site Branch (2 Ways)**:
      1) **Sub-Site Requisition (Upstream Approval)**: When a **Sub-Site Branch** creates a Stock Requisition, the request automatically routes to its **Parent Regional Site Branch** (showing **Parent Avl:** balance instead of Central HQ). The **Parent Regional Branch Admin** (or Central Admin) approves and dispatches from the Parent Regional Branch's own available yard stock!
      2) **Direct Parent-to-Sub-Site Issue ("Issue Stock to Sub-Site")**: Inside **"Site Branch Stock"**, selecting any Regional Site Branch that has child Sub-Sites unlocks the **"Issue Stock to Sub-Site"** button to directly transfer available yard items to any of its Sub-Sites.
-   - **Site Branch Stock "Central FOC" Badge & 5-Stage Forward Traceability Summary**: Inside **Site Branch Stock**, stock received from Central FOC is clearly highlighted with a distinct **"🎁 Central FOC"** badge/tag and color highlight so branch staff immediately distinguish Central FOC items from normal stock. Clicking any item row (or **"Forward Summary"**) expands its forward reconciliation flow (Transfers Received Normal/Parent vs. Central FOC -> Sub-Site Issues / Site Issues to Teams -> Usage & Wastage -> Site & Team In-Hand Balance) with **"Print A4 Summary"** and **"Download PDF"**.
+   - **Site Branch Stock — "Central FOC" Badge, 5-Stage Forward Summary & Dedicated "Damaged Returns" Quarantine Tab**:
+     1) Inside **Site Branch Stock**, stock received from Central FOC is highlighted with **"🎁 Central FOC"**, the table keeps the **5-Stage Summary** column cleanly visible on the right, and clicking any item opens its 5-Stage Forward Traceability Summary with **Print A4 Summary** and **Download PDF**.
+     2) **Dedicated "Damaged Returns" Tab**: All **Damaged / Scrap** returns sent back by Field Teams (and child Sub-Sites on Regional sites) are quarantined cleanly inside the **Damaged Returns** tab separately from usable yard stock. Users can dispatch printable **BRM** damaged return vouchers directly from that tab (**Return Selected** / **Return All Damaged**): Sub-Sites automatically route damaged items to their **Parent Regional Branch**, while Regional Sites route directly to **Central Main Warehouse (Damaged / Scrap Yard)**.
 
 4. **Issue to Field Teams ("Issue to Teams"), Site-Separated Team In-Hand ("Team In-Hand Stock"), & Branch Directory ("Branch Staff & Teams")**:
    - **Issue to Teams**: Available on both **Regional Site Branches** and **Sub-Site Branches**. Select Branch / Sub-Site Yard and Field Team -> pick items from available yard stock -> click **"Issue Material to Team"** and print the **Gate Pass / Issue Voucher**.
@@ -61,10 +62,10 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
      2) When registering any project, users select a specific **Assigned Site Branch *** (Regional or Sub-Site) OR choose **"🌐 ALL AREAS (All Site Branches)"** for multi-site / island-wide projects so **any Site Branch** can request its Client FOC and log daily usage without branch locks.
 
 6. **Material Usage / Daily Progress Entry ("Material Usage / Daily Progress Entry")**:
-   - **Strict Active-Site-Only vs. "ALL AREAS" Stock Usage Rule**: Teams under both Regional Site Branches and Sub-Site Branches follow strict site isolation—a team can only consume materials issued under the project's own Site/Sub-Site Branch (unless the project or its Parent Main Project is assigned to **"🌐 ALL AREAS"**). Unreturned stock from a previous site (**"Stock to Return - [Previous Site Name]"**) is always excluded on a new site.
+   - **Strict Section-Filtered "Executing Field Team *" & Active-Site Stock Rules**: Choosing any Project Section (e.g., New Connection, Cable, Civil, Water, Electrical, Solar) in **Material Usage / Daily Progress Entry** (or Edit Voucher / History filter) strictly filters **Executing Field Team *** to **ONLY** teams registered under that selected Project Section — preventing cross-section mix-ups. Teams only consume materials issued under the project's own Site/Sub-Site Branch (unless **"🌐 ALL AREAS"**).
    - **Connection & Utility Sections (Telecom, Water, Electric, Solar) — Simple 1, 2, 3 Workflow & Section-Filtered FOC**:
-     1) **Step 1 — Team & Area Selection (Locked Until Refresh)**: Select Site Branch (Regional or Sub-Site), Field Team, and Working Area at the top and click **"Confirm & Lock Team / Area"**.
-     2) **Step 2 — Select Connection or "+ Register New Connection" + Smart Section-Filtered FOC**: When linking a New Connection to a Main Project FOC pool, FOC dropdowns **ONLY appear if Client FOC stock exists AND filter strictly to Main Projects registered under the active section** (Telecom NC only shows Telecom NC FOC Main Projects, Water only shows Water FOC Main Projects, etc., keeping normal Company Stock workflows clean).
+     1) **Step 1 — Team & Area Selection (Locked Until Refresh)**: Select Site Branch, Section-Filtered Field Team, and Working Area at the top and click **"Confirm & Lock Team / Area"**.
+     2) **Step 2 — Select Connection or "+ Register New Connection" + Smart Section-Filtered FOC**: When linking a New Connection to a Main Project FOC pool, FOC dropdowns **ONLY appear if Client FOC stock exists AND filter strictly to Main Projects registered under the active section**.
      3) **Step 3 — Material Usage**: Enter **Qty Used** + **Wastage Qty** (auto-deducts from Parent Main Project FOC pool).
    - **Full Site Reports & Reconciliation**: In **Usage Vouchers History**, select any project and click **"Full Report for This Site (Project)"** for **Part 1 (Team-by-Team Subtotals)** and **Part 2 (Consolidated Grand Total)**.
 
@@ -90,6 +91,8 @@ COMPLETE SYSTEM FEATURES & WORKFLOW GUIDE:
 export function detectSuggestedModule(text: string): string | undefined {
   const lower = text.toLowerCase();
   if (
+    lower.includes('damaged return') ||
+    lower.includes('damaged returns tab') ||
     lower.includes('issue stock to sub-site') ||
     lower.includes('sub-site') ||
     lower.includes('subsite') ||
@@ -97,6 +100,15 @@ export function detectSuggestedModule(text: string): string | undefined {
     lower.includes('parent regional')
   ) {
     return 'site-stock';
+  }
+  if (
+    lower.includes('assign project section') ||
+    lower.includes('section locked') ||
+    lower.includes('alex nc team') ||
+    lower.includes('alex civil team') ||
+    (lower.includes('project section') && lower.includes('team'))
+  ) {
+    return 'teams';
   }
   if (
     lower.includes('off digital') ||

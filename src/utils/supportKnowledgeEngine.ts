@@ -81,6 +81,10 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'sub-site stock',
       'parent avl',
       'upstream return',
+      'sub-site lock',
+      'delete sub-site',
+      'change parent',
+      'damaged returns tab',
     ],
     phrases: [
       'sub site branch',
@@ -93,29 +97,34 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'sub-site ekak hadanne',
       'sub site ekata badu',
       '3-tier warehouse',
+      'delete sub site',
+      'cannot delete sub-site',
+      'damaged returns tab',
     ],
     answerEn: () =>
-      `**How the 3-Tier Tenant Company Hierarchy Works (Central HQ -> Regional Site Branch -> Optional Sub-Site Branch -> Field Teams):**\n\n` +
-      `**1. Register Regional Branches & Optional Nested Sub-Sites:**\n` +
-      `• In **Master Registrations -> Sites / Branches**, select **🏢 Regional Site Branch** (supplied directly by **Central Main Warehouse**) OR **↳ Sub-Site Branch (Under a Regional Site)** and pick its **Parent Regional Site Branch ***.\n` +
-      `• Both Regional Site Branches and Sub-Site Branches can create and manage **Field Teams** normally inside their own branch (plus Regional Branches with active Sub-Sites cannot be deleted until Sub-Sites are removed).\n\n` +
-      `**2. Two Ways to Supply Stock to a Sub-Site Branch:**\n` +
-      `• **Method A — Direct Parent Dispatch ("Issue Stock to Sub-Site"):** Open **Site Branch Stock**, select the **Parent Regional Site Branch**, and click **Issue Stock to Sub-Site** (emerald dispatch card) to transfer stock straight from the Regional Site Store into any child Sub-Site Branch.\n` +
-      `• **Method B — Parent-Routed Stock Requisition (RN):** When a Sub-Site Branch creates a **Stock Requisition**, the system automatically routes it to its **Parent Regional Site Branch** (displaying live **Parent Avl:** balances alongside **Site Avl:**) instead of Central HQ — approved by the **Parent Regional Branch Admin** or **Central Admin**.\n\n` +
-      `**3. Upstream Sub-Site Branch Returns (BRM) & Team Flows:**\n` +
-      `• When a Sub-Site returns surplus/damaged goods in **Branch Returns (BRM)**, stock routes **upstream to its Parent Regional Site Branch** (**Good** restores Parent Site stock; **Damaged** enters Damaged ledger). Regional Site Branches return directly to **Central Main Warehouse**.\n` +
-      `• Inside both Regional and Sub-Site branches, **Issue to Teams (IN)**, **Team Returns (RV)**, **Team Transfers**, **Material Usage (PU)**, and hierarchical sorting in **Branch Directory** & **Central Item Traceability** work seamlessly!`,
+      `**How the 3-Tier Hierarchy, Sub-Site Stock/FOC Lock & Site "Damaged Returns" Tab Work:**\n\n` +
+      `**1. Regional Branches, Nested Sub-Sites & Custody Lock:**\n` +
+      `• In **Master Registrations -> Sites / Branches**, select **🏢 Regional Site Branch** (under Central HQ) OR **↳ Sub-Site Branch** (under a **Parent Regional Site Branch ***).\n` +
+      `• **Sub-Site Stock & FOC Lock:** Once even a single stock dispatch, Client FOC allocation, team issue, usage, or return exists for a Sub-Site, **deleting that Sub-Site OR changing its Parent Regional Branch / Hierarchy Tier is strictly locked** so branch balances and Client FOC custody never get corrupted.\n` +
+      `• Both Regional Site Branches and Sub-Site Branches support **Field Teams** normally inside their own tier.\n\n` +
+      `**2. Supplying Stock to a Sub-Site Branch:**\n` +
+      `• **Direct Parent Dispatch ("Issue Stock to Sub-Site"):** In **Site Branch Stock**, select the Parent Regional Site Branch and click **Issue Stock to Sub-Site** to send usable stock straight down to a child Sub-Site.\n` +
+      `• **Parent-Routed Stock Requisition (RN):** Sub-Site requisitions automatically route to their **Parent Regional Site Branch** (showing live **Parent Avl:**) instead of Central HQ.\n\n` +
+      `**3. Site Branch Stock "Damaged Returns" Tab & Upstream BRM Returns:**\n` +
+      `• Inside **Site Branch Stock**, switch to the dedicated **Damaged Returns** tab to view all **Damaged / Scrap** items returned by Field Teams (and child Sub-Sites on Regional sites) quarantined separately from usable stock.\n` +
+      `• Right inside the **Damaged Returns** tab (or in **Branch Returns**), click **Return Selected** / **Return All Damaged** to dispatch printable **BRM** vouchers upstream: **Sub-Sites** automatically return to their **Parent Regional Branch**, and **Regional Sites** return to **Central Main Warehouse (Damaged / Scrap Yard)**.`,
     answerSi: () =>
-      `**3-Tier ආයතනික ගබඩා ව්‍යුහය (Central HQ -> Regional Site Branch -> Sub-Site Branch -> Field Teams):**\n\n` +
-      `**1. Regional Site Branch සහ ඒ යටතේ Sub-Site Branches ලියාපදිංචිය:**\n` +
-      `• **Master Registrations -> Sites / Branches** තුළ **🏢 Regional Site Branch** (Central Main Store හා සම්බන්ධ) හෝ අවශ්‍ය නම් **↳ Sub-Site Branch (Under a Regional Site)** තෝරා එහි **Parent Regional Site Branch *** ලබාදී සාදාගත හැක.\n` +
-      `• Regional Site Branch එකේ මෙන්ම Sub-Site Branch එක තුළද සාමාන්‍ය පරිදි **Field Teams** නිර්මාණය කර පාලනය කළ හැක.\n\n` +
+      `**3-Tier ශාඛා ව්‍යුහය, Sub-Site ආරක්ෂණ Lock එක සහ Site "Damaged Returns" ටැබ් එක ක්‍රියාත්මක වන ආකාරය:**\n\n` +
+      `**1. Regional & Sub-Site Branches සහ Sub-Site Stock/FOC Lock:**\n` +
+      `• **Master Registrations -> Sites / Branches** හි **🏢 Regional Site Branch** හෝ **↳ Sub-Site Branch (Parent Regional Site එකක් යටතේ)** සාදාගත හැක.\n` +
+      `• **Sub-Site Stock / FOC Lock:** Sub-Site එකක් Register කළ පසු එයට **එක් භාණ්ඩයක් හෝ Client FOC තොගයක් ලබා දී ඇත්නම්**, FOC සහ තොග ගණනය කිරීම් අවුල් වීම වැළැක්වීම සඳහා **එම Sub-Site එක Delete කිරීම හෝ වෙනත් Parent Regional Branch එකකට මාරු කිරීම ස්වයංක්‍රීයව Lock කෙරේ**.\n` +
+      `• Regional සහ Sub-Site දෙකේම සාමාන්‍ය පරිදි **Field Teams** ක්‍රියාත්මක වේ.\n\n` +
       `**2. Sub-Site එකකට බඩු නිකුත් කරන ක්‍රම 2:**\n` +
-      `• **ක්‍රමය A — සෘජු නිකුත් කිරීම ("Issue Stock to Sub-Site"):** **Site Branch Stock** වෙත ගොස් අදාළ **Parent Regional Site Branch** එක තේරූ විට පෙනෙන **"Issue Stock to Sub-Site"** බටන් එකෙන් Regional Site තොගයෙන් කෙලින්ම Sub-Site එකට බඩු නිකුත් කළ හැක.\n` +
-      `• **ක්‍රමය B — Stock Requisition මගින්:** Sub-Site එකක් **Stock Requisition (RN)** එකක් දැමූ විට එය Central HQ වෙත නොයා ස්වයංක්‍රීයව එහි **Parent Regional Site Branch** එක වෙත යොමු වේ (**Parent Avl:** සජීවී තොග සමඟ), එය **Parent Regional Branch Admin** හෝ **Central Admin** හට Approve කළ හැක.\n\n` +
-      `**3. Sub-Site ආපසු භාරදීම් (Branch Returns - BRM) සහ Team ක්‍රියාවලිය:**\n` +
-      `• Sub-Site එකක් **Branch Returns (BRM)** දැමූ විට එම බඩු ආපසු ලැබෙන්නේ එහි **Parent Regional Site Branch** එකටයි (Regional Site මගින් Central HQ වෙත Return කරයි).\n` +
-      `• Regional සහ Sub-Site දෙකේම Teams වලට **Issue to Teams**, **Team Returns (RV)**, **Team Transfers**, **Project Material Usage**, සහ **Branch Directory / Traceability** සාමාන්‍ය පරිදි ක්‍රියාත්මක වේ!`,
+      `• **Site Branch Stock -> "Issue Stock to Sub-Site":** Parent Regional Site තොගයෙන් කෙලින්ම Sub-Site එකට බඩු යැවීම.\n` +
+      `• **Parent-Routed Requisition (RN):** Sub-Site එකක් දමන Stock Requisition ඉබේම එහි **Parent Regional Branch** වෙත යොමු වේ (**Parent Avl:** සමඟ).\n\n` +
+      `**3. Site Branch Stock හි "Damaged Returns" ටැබ් එක සහ Upstream BRM Return:**\n` +
+      `• **Site Branch Stock** ඇතුළත ඇති **Damaged Returns** ටැබ් එක මගින් Field Teams සහ Sub-Sites වෙතින් **Damaged / Scrap** ලෙස Return වූ භාණ්ඩ සාමාන්‍ය තොගයෙන් වෙන්ව බලාගත හැක.\n` +
+      `• එතැනින්ම **Return Selected** / **Return All Damaged** මගින් Sub-Site භාණ්ඩ එහි **Parent Regional Branch** වෙතත්, Regional Site භාණ්ඩ **Central Main Warehouse** වෙතත් **BRM** වවුචර මගින් කෙලින්ම Return කළ හැක.`,
   },
   {
     id: 'super-admin-first-name-accountability',
@@ -296,6 +305,66 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       `**3. අලුත් Site එකේ බඩු පමණක් භාවිතා කිරීම සහ බඩු ලබාගත් Team Name වෙනස් කිරීම Lock කිරීම:**\n` +
       `• **Material Usage / Daily Progress Entry** හිදී එම Team එකට අලුත් Site එකේ වැඩවලට පාවිච්චි කළ හැක්කේ **එම අලුත් Site එකෙන් ගත් බඩු පමණි**.\n` +
       `• **බඩු ලබාගෙන ඇති Team Name Lock වීම:** එක භාණ්ඩයක් හෝ ලබාගෙන ඇති Team එකක නම (**Team Name**) වෙනස් කළ නොහැකි ලෙස Lock කර ඇත (Leader සහ Members වෙනස් කළ හැක).`,
+  },
+  {
+    id: 'team-project-section-isolation',
+    suggestedTab: 'teams',
+    keywords: [
+      'project section',
+      'team section',
+      'assign project section',
+      'alex nc',
+      'alex civil',
+      'civil team',
+      'cable team',
+      'nc team',
+      'section locked',
+      'change section',
+      'switch section',
+      'section maru',
+      'team maru',
+      'badu balance',
+      'in-hand balance',
+      '0 balance',
+    ],
+    phrases: [
+      'team project section',
+      'assign project section',
+      'same team different section',
+      'change team section',
+      'section locked',
+      'alex nc team 1',
+      'alex civil team 1',
+      'ekama team eka',
+      'team eke section',
+      'section maru karanna',
+      'team pennanne naththe',
+      'executing field team',
+    ],
+    answerEn: () =>
+      `**Mandatory Team Project Section Assignment, Separate Multi-Section Naming & 0-Balance Section Change Lock:**\n\n` +
+      `**1. Mandatory Project Section When Registering Teams:**\n` +
+      `• In **Master Registrations -> Field Teams**, choosing an **Assigned Project Section / Department *** (e.g., New Connection, Cable, Civil, Water, Electrical, Solar) is **mandatory** for every new or edited Field Team.\n` +
+      `• Each team displays its **[CODE] Section Name** badge in Master Registrations and **Branch Staff & Teams** (any legacy team without one shows an **Assign Project Section** alert button).\n\n` +
+      `**2. Deploying the Same Crew Across Multiple Sections (Separate Team Names):**\n` +
+      `• If the same crew needs to work across different sections, register a separate team profile under each section with section-specific names — e.g., **\`Alex NC Team 1\`** under *New Connection* and **\`Alex Civil Team 1\`** under *Civil*.\n\n` +
+      `**3. 0 In-Hand Stock Rule to Change a Team's Section ("Section Locked"):**\n` +
+      `• An existing team's **Project Section cannot be changed** while it holds any unconsumed or unreturned In-Hand Stock (**> 0 units**).\n` +
+      `• Balance all In-Hand Stock to **0** first via **Material Usage** or **Team Returns**, and the section selector unlocks automatically!\n\n` +
+      `**4. Strict Section-Filtered Team Dropdown in Material Usage:**\n` +
+      `• Inside **Material Usage / Daily Progress Entry**, selecting any Project Section strictly filters **Executing Field Team *** to show **ONLY** teams registered under that section — completely eliminating accidental NC/Cable/Civil team mix-ups.`,
+    answerSi: () =>
+      `**Team ලියාපදිංචියේදී Project Section අනිවාර්ය කිරීම, වෙනම නම් භාවිතය සහ Section මාරු කිරීමේ 0 Balance නීතිය:**\n\n` +
+      `**1. Team Register කිරීමේදී අනිවාර්ය Project Section එක:**\n` +
+      `• **Master Registrations -> Field Teams** හි සෑම Team එකක්ම Register හෝ Edit කිරීමේදී එම Team එකට අදාළ **Assigned Project Section / Department *** (උදා: New Connection, Cable, Civil) තේරීම **අනිවාර්ය** වේ.\n` +
+      `• Section එකක් නොමැති පැරණි Teams මත **"Assign Project Section"** බටන් එක පෙන්වයි.\n\n` +
+      `**2. එකම කණ්ඩායම වෙනත් Section වල වැඩට යැවීම:**\n` +
+      `• එකම කණ්ඩායම Section කිහිපයක වැඩට යැවීමට අවශ්‍ය නම් අලුත් Team නමකින් අදාළ Section එක යටතේ වෙනම Register කළ යුතුය — උදාහරණයක් ලෙස **\`Alex NC Team 1\`** (*New Connection* යටතේ) සහ **\`Alex Civil Team 1\`** (*Civil* යටතේ).\n\n` +
+      `**3. වැඩ කරන Team එකක Section මාරු කිරීමේ නීතිය (Section Locked):**\n` +
+      `• දැනට වැඩ කරන Team එකක් අතේ බඩු (**In-Hand Stock > 0**) තිබේ නම් එම Team එකේ Project Section එක **වෙනස් කළ නොහැක**.\n` +
+      `• කලින් Section එකේ බඩු **Material Usage** හෝ **Team Returns** මගින් **0 දක්වා Balance කළ පසුව පමණක්** Section මාරු කිරීම Unlock වේ!\n\n` +
+      `**4. Material Usage හි Teams Filter වීම:**\n` +
+      `• **Material Usage / Daily Progress Entry** හි අදාළ Project Section එක Select කළ විට **Executing Field Team *** තුළ පෙන්වන්නේ **එම Section එක යටතේ Register වූ Teams පමණි** (NC, Cable, Civil කණ්ඩායම් කිසිවිටෙක මාරු නොවේ).`,
   },
   {
     id: 'item-lifecycle-traceability-summary',
@@ -568,26 +637,25 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'site ekakata newei',
     ],
     answerEn: () =>
-      `**How to Record Material Usage / Daily Progress Entry (Standard Projects vs. Telecom New Connection):**\n\n` +
-      `1. **Open Material Usage / Daily Progress Entry:** Click **Material Usage / Daily Progress Entry** in the left sidebar and pick a **Project Section** at the top.\n` +
-      `2. **If "Telecom New Connection" (NC) Section is Selected (Simple 1-2-3 Workflow):**\n` +
-      `   • **Step 1 — Team & Area Selection (Top-Most & Locked Until Refresh):** Select Site Branch, Field Team, and Exchange/Working Area and click **Confirm & Lock Team / Area**. Step 1 stays locked until page refresh so you never have to re-select the team for each NC line.\n` +
-      `   • **Step 2 — Select NC Line or "+ Register New Connection":** Search by Customer Name or NC Number, or click **+ Register New Connection** to enter the 6 subscriber fields (*1. Customer FTTH / NC Number, 2. ONT Serial No, 3. Customer Name, 4. Customer Address, 5. Customer Mobile No, 6. Exchange Area*) right there.\n` +
-      `   • **Step 3 — Material Usage:** Enter consumed materials and submit (Step 1 stays locked for the next NC line).\n` +
+      `**How to Record Material Usage / Daily Progress Entry (Strict Section-Filtered Teams & Workflows):**\n\n` +
+      `1. **Select Project Section (Strict Team Filter):** Open **Material Usage / Daily Progress Entry** and select your **Project Section** (e.g., New Connection, Cable, Civil, Water, Electrical, Solar). The **Executing Field Team *** dropdown immediately filters to **ONLY Field Teams registered under that selected section** — preventing cross-section mix-ups.\n` +
+      `2. **If a Utility New Connection Section is Selected (Simple 1-2-3 Workflow):**\n` +
+      `   • **Step 1 — Team & Area Selection (Locked Until Refresh):** Select Site Branch, Section-Filtered Field Team, and Working Area and click **Confirm & Lock Team / Area**.\n` +
+      `   • **Step 2 — Select NC Line or "+ Register New Connection":** Search existing lines or register a new connection right inside Step 2.\n` +
+      `   • **Step 3 — Material Usage:** Enter consumed materials (**Qty Used** + **Wastage Qty**) and submit.\n` +
       `3. **If a Standard Section is Selected (Main / Sub / Individual Projects):**\n` +
-      `   • Step 2 filters to **ONLY projects registered under that section**. If the project belongs to another Site Branch, Step 4 safely **locks**.\n` +
+      `   • Filters strictly to **ONLY projects & teams registered under that section**. Non-matching branch projects safely lock Step 4.\n` +
       `   • Enter **Qty Used (Installed)** and **Wastage Qty** per material (validated live against **Team In-Hand**).\n` +
       `4. **Usage Vouchers History -> "Full Report for This Site (Project)":** Select any project to print/export separate **Team-by-Team Subtotals** + **Full Site Grand Total**.`,
     answerSi: () =>
-      `**Material Usage / Daily Progress Entry හරහා භාවිතය සටහන් කිරීම (සාමාන්‍ය Projects සහ Telecom New Connection):**\n\n` +
-      `1. වම් පස මෙනුවෙන් **"Material Usage / Daily Progress Entry"** වෙත ගොස් ඉහළින් අදාළ **Project Section** එක තෝරන්න.\n` +
-      `2. **"Telecom New Connection" තේරූ විට (සරල 1, 2, 3 පියවර):**\n` +
-      `   • **පියවර 1 — Team & Area Selection (උඩින්ම):** Field Team එක සහ Area එක තෝරා Confirm කළ පසු **Page එක Refresh කරන තුරු එම විස්තර Lock වී පවතී** (දවසේ NC lines ඔක්කොම එක දිගට දාද්දී නැවත Team තෝරන්න අවශ්‍ය නැත).\n` +
-      `   • **පියවර 2 — Select NC Line හෝ "+ Register New Connection":** Customer Name හෝ NC Number එකෙන් Search කර line එක තෝරන්න, නැතිනම් **"+ Register New Connection"** Tab එකෙන් කරුණු 6 (*NC Number, ONT Serial, Name, Address, Mobile, Exchange Area*) එතැනම ඇතුළත් කර register කරන්න.\n` +
-      `   • **පියවර 3 — Material Usage:** වැය වූ Materials ඇතුළත් කර Submit කරන්න (පියවර 1 වෙනස් නොවී එහෙමම පවතී).\n` +
-      `3. **සාමාන්‍ය Section එකක් තේරූ විට (Main / Sub / Individual):**\n` +
-      `   • එම Section එකට අදාළ Projects පමණක් පෙන්වන අතර, ඔබේ Site Branch එකට අයත් නොවන Project එකක් නම් ආරක්ෂිතව Lock වේ.\n` +
-      `   • **Qty Used** සහ **Wastage Qty** ඇතුළත් කර Submit කළ හැක.\n` +
+      `**Material Usage / Daily Progress Entry හරහා භාවිතය සටහන් කිරීම (Section අනුව Filter වන Teams සමඟ):**\n\n` +
+      `1. **Project Section තේරීම (Strict Team Filter):** **"Material Usage / Daily Progress Entry"** වෙත ගොස් ඉහළින් අදාළ **Project Section** එක (උදා: New Connection, Cable, Civil) තෝරන්න. එවිට **Executing Field Team *** තුළ පෙන්වන්නේ **එම Section එක යටතේ Register කළ Teams පමණි** (කිසිදාක Teams මාරු නොවේ)!\n` +
+      `2. **New Connection Section තේරූ විට (සරල 1, 2, 3 පියවර):**\n` +
+      `   • **පියවර 1 — Team & Area Selection:** අදාළ Section එකේ Field Team එක සහ Area එක තෝරා Confirm කළ පසු Page එක Refresh කරන තුරු Lock වේ.\n` +
+      `   • **පියවර 2 — Select NC Line හෝ "+ Register New Connection":** Connection line එක තෝරන්න නැතිනම් එතැනම register කරන්න.\n` +
+      `   • **පියවර 3 — Material Usage:** වැය වූ Materials (**Qty Used** + **Wastage Qty**) ඇතුළත් කර Submit කරන්න.\n` +
+      `3. **සාමාන්‍ය Section එකක් තේරූ විට:**\n` +
+      `   • එම Section එකට අදාළ Projects සහ Teams පමණක් පෙන්වයි (**Qty Used** සහ **Wastage Qty** සටහන් කළ හැක).\n` +
       `4. **Full Report for This Site (Project):** **"Usage Vouchers History"** මගින් Teams වෙන වෙනම භාවිතය සහ සම්පූර්ණ Grand Total ලබාගත හැක.`,
   },
   {
@@ -750,26 +818,24 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'eka sare return',
     ],
     answerEn: () =>
-      `**How to Return Multiple Items at Once in Team Returns (RV) & Upstream Branch Returns (BRM):**\n\n` +
+      `**How to Return Items in Team Returns (RV), Site "Damaged Returns" Tab & Upstream Branch Returns (BRM):**\n\n` +
       `• **Option A — Multi-Item Team Returns to Branch Yard ("Team Returns"):**\n` +
-      `  1. Open **Team Returns** from the sidebar.\n` +
-      `  2. Select the **Receiving Site Branch** (Regional Site or Sub-Site Branch) and the **Field Team** (for transferred teams, selecting the previous site loads their **"Stock to Return - [Previous Site Name]"** items; selecting their current site loads their active site stock).\n` +
-      `  3. Click **+ Add Item** to add as many item rows as needed (or click **+ Add All Held** to load all held items at once, or scan barcodes).\n` +
-      `  4. For each row, enter the **Quantity to Return** (or click **Max**) and select its **Condition** (**Good** restores usable Branch Stock; **Damaged** logs into the Damaged Stock ledger).\n` +
-      `  5. Click **Process Return** — all items are returned together in one submission under a single shared **Return Voucher (RV-2026-XXXX)** which you can print (with optional **Print with Image**).\n\n` +
-      `• **Option B — Multi-Item Upstream Branch Return (Sub-Site -> Parent Site / Regional -> Central HQ) ("Branch Returns"):**\n` +
-      `  1. Open **Branch Returns** from the sidebar and select your **Returning Site Branch**.\n` +
-      `  2. **Smart Hierarchy Destination:** If returning from a **Regional Site Branch**, stock routes back to **Central Main Warehouse**. If returning from a **Sub-Site Branch**, stock automatically routes **upstream to its Parent Regional Site Branch**!\n` +
-      `  3. Click **+ Add Item**, click **+ Add All Available**, or click any item card in the right-hand inventory panel to add multiple items, set **Good/Damaged**, and generate a single multi-item **Branch Return Voucher (BRM-2026-XXXX)**.`,
+      `  1. Open **Team Returns**, select **Receiving Site Branch** & **Field Team**, and add items (**+ Add Item** / **+ Add All Held** / barcode).\n` +
+      `  2. Choose **Good** (restores usable Branch Stock) or **Damaged / Scrap** (enters that Branch's dedicated **Damaged Returns** quarantine) and generate a single **RV** voucher.\n\n` +
+      `• **Option B — Site Branch Stock -> Dedicated "Damaged Returns" Tab (Direct Upstream Return):**\n` +
+      `  1. Open **Site Branch Stock -> Damaged Returns** tab to view all quarantined **Damaged / Scrap** items returned from Field Teams (and child Sub-Sites on Regional branches) separately from usable yard stock.\n` +
+      `  2. Click **Return Selected** or **Return All Damaged** right inside the tab to dispatch printable **BRM** damaged return vouchers upstream: **Sub-Site Branches** automatically return to their **Parent Regional Branch**, and **Regional Site Branches** return directly to **Central Main Warehouse (Damaged / Scrap Yard)**.\n\n` +
+      `• **Option C — Multi-Item Upstream Branch Return ("Branch Returns"):**\n` +
+      `  1. Open **Branch Returns**, select your **Returning Site Branch**, and add surplus Good or Damaged items (**+ Add Item** / **+ Add All Available**) to submit one batch **BRM** voucher upstream to Parent Site or Central HQ.`,
     answerSi: () =>
-      `**Team Returns සහ Branch Returns (Sub-Site -> Parent Site / Regional -> Central HQ) එක සැරේ Return කරන ආකාරය:**\n\n` +
-      `• **1. Team එකක සිට Regional Site හෝ Sub-Site Branch එකට Return කිරීම ("Team Returns"):**\n` +
-      `  - වම් පස මෙනුවෙන් **"Team Returns"** වෙත ගොස් අදාළ **Receiving Site Branch** (Regional හෝ Sub-Site) සහ **Field Team** එක තෝරන්න (Transfer කළ Team එකක් නම් පරණ Site එකට අදාළ **"Stock to Return - [Site Name]"** බඩු ලැයිස්තුව පෙන්වයි).\n` +
-      `  - **"+ Add Item"** හෝ **"+ Add All Held"** මගින් භාණ්ඩ ගණනාවක් එකතු කර **Good / Damaged** තෝරා තනි **Return Voucher (RV)** එකකින් එක සැරේ Return කරන්න.\n\n` +
-      `• **2. Branch Returns (BRM) — ස්වයංක්‍රීය Upstream ගමන් මග:**\n` +
-      `  - **"Branch Returns"** වෙතින් Returning Site Branch එක තෝරන්න.\n` +
-      `  - **Regional Site Branch** එකක් නම් බඩු **Central Main Warehouse** වෙත ආපසු යයි. **Sub-Site Branch** එකක් නම් බඩු ස්වයංක්‍රීයව එහි **Parent Regional Site Branch** වෙත ආපසු යොමු වේ!\n` +
-      `  - **"+ Add Item"** හෝ **"+ Add All Available"** මගින් Items ගණනාවක් එකතු කර තනි **BRM Return Voucher** එකකින් ආපසු යැවිය හැක.`,
+      `**Team Returns (RV), Site "Damaged Returns" ටැබ් සහ Branch Returns (BRM) ක්‍රියාත්මක වන ආකාරය:**\n\n` +
+      `• **1. Team එකක සිට Site Branch වෙත Return කිරීම ("Team Returns"):**\n` +
+      `  - **Team Returns** හි **"+ Add Item"** / **"+ Add All Held"** මගින් භාණ්ඩ කිහිපයක් එකවර Return කර **Good** (සාමාන්‍ය Site තොගයට) හෝ **Damaged / Scrap** (Site එකේ **Damaged Returns** කොටසට) ලෙස **RV** වවුචරයෙන් භාරදෙන්න.\n\n` +
+      `• **2. Site Branch Stock -> "Damaged Returns" ටැබ් එක (සෘජුවම Parent / Main වෙත යැවීම):**\n` +
+      `  - **Site Branch Stock** ඇතුළත **Damaged Returns** ටැබ් එක මගින් Teams හා Sub-Sites වෙතින් ආ **Damaged** බඩු සාමාන්‍ය තොගයෙන් වෙන්ව බලාගත හැක.\n` +
+      `  - එම ටැබ් එක තුළින්ම **Return Selected** / **Return All Damaged** ක්ලික් කර **Sub-Site** බඩු එහි **Parent Regional Branch** වෙතත්, **Regional Site** බඩු **Central Main Warehouse** වෙතත් **BRM** වවුචර මගින් සෘජුවම ආපසු යැවිය හැක!\n\n` +
+      `• **3. සාමාන්‍ය Branch Returns (BRM):**\n` +
+      `  - **Branch Returns** හරහා **"+ Add Item"** / **"+ Add All Available"** මගින් අතිරික්ත හෝ Damaged භාණ්ඩ ගණනාවක් තනි **BRM** වවුචරයකින් Parent Site / Central HQ වෙත ආපසු යැවිය හැක.`,
   },
   {
     id: 'procurement-po',
@@ -881,20 +947,19 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'team ekak hadanne',
     ],
     answerEn: (ctx) =>
-      `**How to Register Items, 3-Tier Branches (Regional & Sub-Sites), Field Teams, Suppliers, Clients & Users:**\n\n` +
+      `**How to Register Items, 3-Tier Branches (with Sub-Site Lock), Mandatory Team Project Sections, Suppliers, Clients & Users:**\n\n` +
       `Open **Master Registrations** from the left sidebar and select the tab you need:\n` +
       `• **Items:** Register Materials or Machinery with Item Code, Unit, Unit Price, Low-Stock Threshold, and optional Project Reservation.\n` +
-      `• **Sites / Branches (3-Tier Hierarchy · 20 Included + HQ):** Register **🏢 Regional Site Branches** (under Central HQ) or nested **↳ Sub-Site Branches** (under a Regional Site). Parent sites with active Sub-Sites cannot be deleted.\n` +
-      `• **Field Teams:** Register unlimited squads inside either a **Regional Site Branch** or a **Sub-Site Branch** with Team Leader Name & NIC, and individual **Team Members**.\n` +
-      `• **Suppliers & Clients:** Maintain master directories for Procurement POs and Client FOC stock.\n` +
-      `• **Users (Unlimited):** Create staff accounts, assign Roles, and link one or more Branches (with First-Name accountability on Super Admin password logins).\n\n` +
+      `• **Sites / Branches (3-Tier Hierarchy · 20 Included + HQ):** Register **🏢 Regional Site Branches** or nested **↳ Sub-Site Branches**. Once stock or Client FOC is issued to a Sub-Site, **deleting it or changing its Parent Regional Branch is locked**.\n` +
+      `• **Field Teams (Mandatory Project Section):** Selecting an **Assigned Project Section *** is required for every team. To send the same crew to multiple sections, register separate section names (e.g., **\`Alex NC Team 1\`**, **\`Alex Civil Team 1\`**). Changing an existing team's section is **locked until In-Hand Stock reaches 0**.\n` +
+      `• **Suppliers, Clients & Users:** Maintain vendor/FOC directories and create staff accounts with Role & Branch locks.\n\n` +
       `📌 *Workspace Summary:* **${ctx.activeItemsCount ?? 0}** Items · **${ctx.activeSitesCount ?? 0}** Branches · **${ctx.activeTeamsCount ?? 0}** Teams.`,
     answerSi: (ctx) =>
-      `**Master Registrations හරහා Items, Regional/Sub-Site Branches, Field Teams සහ Users ලියාපදිංචි කරන ආකාරය:**\n\n` +
+      `**Master Registrations හරහා Items, Sub-Site Lock සහිත Branches, අනිවාර්ය Team Sections සහ Users ලියාපදිංචිය:**\n\n` +
       `වම් පස මෙනුවෙන් **"Master Registrations"** වෙත ගොස් අදාළ ටැබ් එක තෝරන්න:\n` +
       `• **Items:** අලුත් Materials සහ Machinery ලියාපදිංචි කිරීමට.\n` +
-      `• **Sites / Branches (මූලිකව 20ක් ඇතුළත්):** **🏢 Regional Site Branches** (Central HQ යටතේ) මෙන්ම අවශ්‍ය නම් **↳ Sub-Site Branches** (Regional Site එකක් යටතේ) ලියාපදිංචි කිරීමට.\n` +
-      `• **Teams (සීමා රහිතයි):** **Regional Site Branch** හෝ **Sub-Site Branch** දෙක තුළම සාමාන්‍ය පරිදි Field Teams, Team Leader සහ **Team Members** ඇතුළත් කිරීමට.\n` +
+      `• **Sites / Branches (20ක් ඇතුළත් + Sub-Site Lock):** Regional සහ Sub-Site Branches සෑදීමට (බඩු හෝ FOC ලබාදුන් Sub-Site එකක් Delete කිරීම හා Parent මාරු කිරීම Lock වේ).\n` +
+      `• **Teams (අනිවාර්ය Project Section):** Team Register කිරීමේදී **Project Section** තේරීම අනිවාර්ය වේ. එකම කණ්ඩායම වෙනත් Section වලට යැවීමට වෙනම නම් (**\`Alex NC Team 1\`**, **\`Alex Civil Team 1\`**) යොදන්න. Section මාරු කළ හැක්කේ **In-Hand Stock 0ට Balance කළ පසු පමණි**.\n` +
       `• **Users (සීමා රහිතයි):** සිස්ටම් එකට ලොග් වන Users, Role එක සහ Branch එක ලබාදීමට.\n\n` +
       `📌 *දැනට පද්ධතියේ:* Items **${ctx.activeItemsCount ?? 0}**ක් · Branches **${ctx.activeSitesCount ?? 0}**ක් · Teams **${ctx.activeTeamsCount ?? 0}**ක් ඇත.`,
   },
@@ -1246,11 +1311,11 @@ export function resolveSmartSystemSupportAnswer(
       reply:
         `**ApexStox (Apex Stock) Enterprise — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
         `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන සහ නවතම කොටස්:\n` +
-        `1. **3-Tier ගබඩා ව්‍යුහය (Central HQ -> Regional Site Branch -> Sub-Site Branch -> Field Teams):** Regional Site එකක් යටතේ Sub-Site Branches සෑදීම, **Site Branch Stock** හි **"Issue Stock to Sub-Site"** හෝ Parent-routed **Stock Requisitions**, upstream **Branch Returns (BRM)** සහ Tier දෙකේම **Field Teams** පාලනය.\n` +
-        `2. **Super Admin First-Name වගකීම් පද්ධතිය සහ Site 20 ධාරිතාව:** අනිවාර්ය Full Name ලියාපදිංචිය, First-Name ගැළපීම් පරීක්ෂාව (**[Name] (as Super Admin)**), සහ මූලික පැකේජයේ **Unlimited Users & Teams + Site Branches 20 + HQ** (+$10/mo අමතර Site).\n` +
-        `3. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Returnable Balance පිළිවෙළ, වර්ණ ගැන්වූ Main/Sub-Project Cards, **"Central FOC"** Badge, **"Main Project -> Under New Connections"**, සහ **"ALL AREAS"** Projects.\n` +
-        `4. **Field Team Site Transfer & Site-Separated Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Old Site])"** සහ **"Stock to Return - [Site Name]"**.\n` +
-        `5. **Material Usage & Multi-Item Returns (RV / BRM):** 1-2-3 Connection Flow, **Qty Used + Wastage Qty**, **Full Report for This Site**, සහ භාණ්ඩ කිහිපයක් එකවර Return කිරීම.\n` +
+        `1. **3-Tier ගබඩා ව්‍යුහය & Sub-Site Stock/FOC Lock:** Sub-Site Branches සෑදීම, **"Issue Stock to Sub-Site"**, Parent-routed Requisitions, සහ බඩු/FOC ලබාදුන් Sub-Site Delete හා Parent මාරු Lock වීම.\n` +
+        `2. **Site Branch Stock "Damaged Returns" ටැබ් එක:** Teams හා Sub-Sites වෙතින් ආ Damaged/Scrap භාණ්ඩ වෙන්ව බලා සෘජුවම Parent Site / Central Main Warehouse වෙත **BRM** වවුචර මගින් Return කිරීම.\n` +
+        `3. **අනිවාර්ය Team Project Sections & 0 Balance Lock:** Team Register කරද්දී Section තේරීම අනිවාර්ය වීම, වෙනම නම් (**\`Alex NC Team 1\`** / **\`Alex Civil Team 1\`**), In-Hand 0 කළ පසු Section මාරු කිරීම, සහ **Material Usage** හි අදාළ Section එකේ Teams පමණක් පෙන්වීම.\n` +
+        `4. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Returnable Balance පිළිවෙළ, **"Central FOC"** Badge, සහ **"Main Project -> Under New Connections"**.\n` +
+        `5. **Field Team Site Transfer & Site-Separated Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Old Site])"** සහ **"Stock to Return - [Site Name]"**.\n` +
         `6. **Document Templates & "Off Digital Signature":** ISO 9001:2015 Formats, Digital Signatures, පෑනෙන් අත්සන් තැබීමේ **"Off Digital Signature"** ක්‍රමය, සහ **13.5px** පැහැදිලි වගු/වාර්තා අකුරු.\n` +
         `7. **"Glass Tone" Live Themes 9 & Auto-Renew Subscriptions:** **"Sapphire & Gold"** Default ලෙස Header හි **"Glass Tone"** වෙතින් Theme 9ක් අතර මාරු වීම සහ Payments.lk / Stripe (USD → LKR) Subscriptions.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
@@ -1262,12 +1327,12 @@ export function resolveSmartSystemSupportAnswer(
     reply:
       `**ApexStox (Apex Stock) Enterprise — Complete Feature Guide:**\n\n` +
       `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules & latest updates available:\n` +
-      `1. **3-Tier Company Hierarchy (Central HQ -> Regional Site -> Optional Sub-Site -> Field Teams):** Nest **Sub-Site Branches** under Regional Sites, use **Issue Stock to Sub-Site** or parent-routed **Stock Requisitions (Parent Avl:)**, route Sub-Site **Branch Returns (BRM)** upstream to Parent Sites, and run **Field Teams** inside both tiers.\n` +
-      `2. **Super Admin First-Name Accountability & 20-Site Default Allowance:** Mandatory personal Full Name signup, First-Name check on Super Admin password logins stamped as **[Name] (as Super Admin)**, plus **Unlimited Users & Teams + 1 HQ + 20 Site Branches** (+$10/mo extra site).\n` +
-      `3. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central -> Site -> Team -> Usage & Wastage -> Returnable Balance), color-coded Main/Sub-Project cards, **"Central FOC"** badge, **"Main Project -> Under New Connections"**, and **"ALL AREAS"** projects.\n` +
-      `4. **Field Team Site Transfer & Site-Separated In-Hand Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** and **"Stock to Return - [Previous Site Name]"**.\n` +
-      `5. **Material Usage & Multi-Item Batch Returns (RV / BRM):** 1-2-3 Connection workflow, **Qty Used + Wastage Qty**, **Full Report for This Site (Project)**, and single-voucher batch returns.\n` +
-      `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 formats, Signers, Digital Signatures, plus **"Off Digital Signature"** (per-print toolbar, Edit Signers & Tab 3 default) for generous blank pen-signing & stamp boxes.\n` +
+      `1. **3-Tier Hierarchy & Sub-Site Stock/FOC Lock:** Nest **Sub-Site Branches** under Regional Sites, use **Issue Stock to Sub-Site** or parent-routed **Stock Requisitions (Parent Avl:)**, with Sub-Site deletion & parent reassignment locked once stock/FOC is issued.\n` +
+      `2. **Site Branch Stock "Damaged Returns" Quarantine Tab:** Inspect **Damaged / Scrap** returns from Teams & Sub-Sites separately from usable stock and dispatch upstream **BRM** vouchers straight to Parent Site or Central HQ.\n` +
+      `3. **Mandatory Team Project Sections, Separate Naming & 0-Balance Lock:** Teams require a Project Section (**\`Alex NC Team 1\`** vs. **\`Alex Civil Team 1\`**), section switching locks until **0 In-Hand Stock**, and **Material Usage** strictly filters **Executing Field Team *** by the selected section.\n` +
+      `4. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central -> Site -> Team -> Usage & Wastage -> Returnable Balance), color-coded Main/Sub-Project cards, **"Central FOC"** badge, and **"Main Project -> Under New Connections"**.\n` +
+      `5. **Field Team Site Transfer & Site-Separated In-Hand Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** and **"Stock to Return - [Previous Site Name]"**.\n` +
+      `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 formats, Signers, Digital Signatures, plus **"Off Digital Signature"** for generous blank pen-signing & stamp boxes.\n` +
       `7. **9 Live "Glass Tone" Themes ("Sapphire & Gold" Default) & Recurring Billing:** Switch themes live from Header **Glass Tone** and manage Payments.lk / Stripe auto-renewing card subscriptions with live **USD → LKR** rate conversion.\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };

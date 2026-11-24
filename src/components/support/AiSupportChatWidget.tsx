@@ -35,11 +35,19 @@ interface QuickPrompt {
 
 const QUICK_PROMPTS: QuickPrompt[] = [
   {
+    id: 'team-project-section-isolation',
+    labelEn: '👷 Team Project Section & 0-Balance Lock?',
+    labelSi: '👷 Team Section අනිවාර්ය කිරීම සහ 0 Balance Lock?',
+    promptEn: 'How do mandatory Project Section assignment on Field Teams, registering separate multi-section names ("Alex NC Team 1" / "Alex Civil Team 1"), the 0 In-Hand Stock lock on changing sections, and strict Usage team filtering work?',
+    promptSi: 'Team register කරද්දී Project Section අනිවාර්ය කිරීම, "Alex NC Team 1" / "Alex Civil Team 1" ලෙස වෙනම නම් දැමීම, In-Hand 0 කළ පසු Section මාරු කිරීම සහ Material Usage හි Teams Filter වීම වැඩ කරන්නේ කොහොමද?',
+    targetTab: 'teams',
+  },
+  {
     id: 'sub-site-hierarchy',
-    labelEn: '🏢 Regional Branch -> Sub-Site & Teams?',
-    labelSi: '🏢 Regional Branch -> Sub-Site සහ Teams?',
-    promptEn: 'How does the 3-tier Company Hierarchy (Central Main Warehouse -> Regional Site Branch -> Sub-Site Branch -> Field Teams) work for issuing stock, requisitions, returns, and teams?',
-    promptSi: 'Central Main Warehouse -> Regional Site Branch -> Sub-Site Branch -> Field Teams කියන 3-tier ක්‍රමය යටතේ Sub-Site එකක් හදලා බඩු Issue කරන්නේ, Return කරන්නේ සහ Teams පාවිච්චි කරන්නේ කොහොමද?',
+    labelEn: '🏢 Sub-Site Lock & "Damaged Returns" Tab?',
+    labelSi: '🏢 Sub-Site Lock සහ "Damaged Returns" ටැබ්?',
+    promptEn: 'How do the 3-tier Sub-Site Stock/FOC deletion & parent-switch lock, direct "Issue Stock to Sub-Site", and the new "Damaged Returns" quarantine tab inside Site Branch Stock work?',
+    promptSi: 'Sub-Site එකකට බඩු/FOC දුන් පසු Delete හා Parent මාරු කිරීම Lock වීම සහ Site Branch Stock ඇතුළත "Damaged Returns" ටැබ් එකෙන් Damaged බඩු ආපසු යවන්නේ කොහොමද?',
     targetTab: 'site-stock',
   },
   {
@@ -140,10 +148,10 @@ const QUICK_PROMPTS: QuickPrompt[] = [
   },
   {
     id: 'project-usage',
-    labelEn: '🏗️ Material Usage / Daily Progress Entry?',
-    labelSi: '🏗️ Material Usage / Daily Progress දාන්නේ කොහොමද?',
-    promptEn: 'How do Section Filtering, Site Branch Lock, Qty Used + Wastage Qty entry, and Material Usage / Daily Progress Entry work?',
-    promptSi: 'Material Usage / Daily Progress Entry හි Section අනුව Projects Filter වීම, Site Lock, Qty Used සහ Wastage Qty ඇතුළත් කරන්නේ කොහොමද?',
+    labelEn: '🏗️ Usage & Section-Filtered Teams?',
+    labelSi: '🏗️ Material Usage & Section Teams Filter?',
+    promptEn: 'How do strict Project Section filtering of Executing Field Teams, Site Branch Lock, Qty Used + Wastage Qty entry, and Material Usage / Daily Progress Entry work?',
+    promptSi: 'Material Usage / Daily Progress Entry හි Section එක තේරූ විට එම Section එකේ Teams පමණක් Filter වී පෙන්වීම, Site Lock සහ Wastage Qty ඇතුළත් කරන්නේ කොහොමද?',
     targetTab: 'project-usage',
   },
   {
@@ -207,8 +215,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through all **ApexStox** features including the **3-Tier Hierarchy (Central HQ → Regional Site Branch → Optional Sub-Site Branch → Field Teams)**, **Super Admin First-Name Verified Login (`as Super Admin` Audit Accountability)**, **20 Site Branches + HQ with Unlimited Users & Teams**, **"Off Digital Signature" Hand-Sign Printing**, **9 Live "Glass Tone" Themes ("Sapphire & Gold" default)**, **Recurring Card Subscriptions (Payments.lk / Stripe with live USD → LKR)**, **5-Stage Client FOC Reconciliation**, and **Team Transfers**.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\n**ApexStox** පද්ධතියේ නවතම විශේෂාංග වන **Central HQ → Regional Site Branch → Sub-Site Branch → Field Teams 3-Tier ව්‍යුහය**, **Super Admin First-Name Login සහ පුද්ගලික වගවීම (`as Super Admin` Audit Logs)**, **Site Branches 20 + HQ (Unlimited Users & Teams)**, **"Off Digital Signature" Hand-Sign Print ක්‍රමය**, **"Glass Tone" Live Themes 9 ("Sapphire & Gold" default)**, **Payments.lk / Stripe Subscriptions (USD → LKR)**, **පියවර 5 FOC Reconciliation**, සහ **Team Transfers** ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through all **ApexStox** features & latest updates:\n• **Mandatory Team Project Sections & 0-Balance Lock** (separate multi-section naming like `Alex NC Team 1` / `Alex Civil Team 1` + strict Section-Filtered **Executing Field Team** in Material Usage)\n• **Site Branch Stock "Damaged Returns" Tab** (quarantined Team/Sub-Site Damaged returns + direct upstream `BRM` return to Parent Site or Central HQ)\n• **3-Tier Hierarchy & Sub-Site Stock/FOC Lock** (protection against deleting or reassigning Sub-Sites after stock/FOC issue)\n• **5-Stage Client FOC Reconciliation ("ALL AREAS" supported)**, **Team Transfers**, **"Off Digital Signature" Hand-Sign Printing**, and **9 Live "Glass Tone" Themes**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\n**ApexStox** පද්ධතියේ නවතම විශේෂාංග සහ පහසුකම් ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න:\n• **අනිවාර්ය Team Project Sections & 0 Balance Lock** (`Alex NC Team 1` / `Alex Civil Team 1` ලෙස වෙනම නම්, In-Hand 0 කළ පසු Section මාරු කිරීම & Material Usage හි එම Section Teams පමණක් පෙන්වීම)\n• **Site Branch Stock "Damaged Returns" ටැබ් එක** (Teams/Sub-Sites වෙතින් ආ Damaged බඩු වෙන්ව බලා සෘජුවම Parent/Main වෙත BRM Return කිරීම)\n• **3-Tier Sub-Site Stock/FOC Lock** (බඩු හෝ FOC ලබාදුන් Sub-Sites Delete හා Parent මාරු Lock වීම)\n• **පියවර 5 FOC Reconciliation**, **Team Transfers**, **"Off Digital Signature" Hand-Sign Print ක්‍රමය** සහ **"Glass Tone" Themes 9**.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 
