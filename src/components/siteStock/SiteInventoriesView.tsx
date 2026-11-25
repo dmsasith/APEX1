@@ -288,16 +288,51 @@ export const SiteInventoriesView: React.FC = () => {
         stage3TeamIssued - stage3TeamReturnedGood - stage4TotalConsumed
       );
 
-      // 5. Balance / Returnable Stock on Project Completion
+      // Child sub-site consumption when viewing a Regional Site Branch
+      let subSiteConsumed = 0;
+      if (selectedSiteSubSites.length > 0) {
+        const subIdSet = new Set(selectedSiteSubSites.map((s) => s.id));
+        (projectUsages || [])
+          .filter((u) => !u.isDeleted && subIdSet.has(u.siteId))
+          .forEach((u) => {
+            const row = (u.items || []).find((i) => i.itemId === item.id);
+            if (row) {
+              subSiteConsumed += Number(row.quantity || 0) + Number(row.wastageQuantity || 0);
+            }
+          });
+      }
+
+      const upstreamReturnedGood = (branchReturns || [])
+        .filter(
+          (br) =>
+            !br.isDeleted &&
+            (br.fromSiteId === selectedSiteId || br.siteId === selectedSiteId) &&
+            br.itemId === item.id &&
+            br.condition === 'Good / Restock'
+        )
+        .reduce((sum, br) => sum + Number(br.quantity || 0), 0);
+
+      // 5. Balance / Returnable Stock on Project Completion (Accounting for 3-Tier Sub-Site Dispatches & BRMs)
+      const clusterConsumed = stage4TotalConsumed + subSiteConsumed;
       const focConsumedAtSite =
-        stage2SiteFocIssued > 0 ? Math.min(stage2SiteFocIssued, stage4TotalConsumed) : 0;
-      const stage5SiteFocReturnableBalance = Math.max(0, stage2SiteFocIssued - focConsumedAtSite);
+        stage2SiteFocIssued > 0 ? Math.min(stage2SiteFocIssued, clusterConsumed) : 0;
+      const stage5SiteFocReturnableBalance = Math.max(
+        0,
+        stage2SiteFocIssued - focConsumedAtSite - upstreamReturnedGood
+      );
       const stage5TotalClientReturnableBalance = Math.max(
         0,
         stage1InitialCentralFoc - focConsumedAtSite
       );
-      const normalConsumedAtSite = Math.max(0, stage4TotalConsumed - focConsumedAtSite);
-      const stage5SiteNormalBalance = Math.max(0, stage2SiteNormalIssued - normalConsumedAtSite);
+      const normalConsumedAtSite = Math.max(0, clusterConsumed - focConsumedAtSite);
+      const stage5SiteNormalBalance = Math.max(
+        0,
+        stage2SiteNormalIssued -
+          normalConsumedAtSite -
+          sStock.issuedToSubSites +
+          sStock.returnedFromSubSitesGood -
+          upstreamReturnedGood
+      );
 
       const hasCentralFoc = stage2SiteFocIssued > 0;
 
@@ -327,12 +362,14 @@ export const SiteInventoriesView: React.FC = () => {
   }, [
     selectedSiteId,
     selectedSite,
+    selectedSiteSubSites,
     projects,
     activeItems,
     getSiteItemStock,
     clientFreeIssues,
     siteFocRequests,
     teamReturns,
+    branchReturns,
     projectUsages,
   ]);
 
@@ -1254,7 +1291,11 @@ export const SiteInventoriesView: React.FC = () => {
                 )}
               </div>
               <span className="font-mono text-[11px] text-slate-500">
-                1. Central Stock → 2. Site Issue → 3. Team Issue → 4. Usage &amp; Wastage → 5. Balance / Returnable
+                {isSubSite(selectedSite)
+                  ? `1. HQ → ${selectedSiteParent?.name || 'Parent'} → 2. Sub-Site Receipt → 3. Team Issue → 4. Usage & Wastage → 5. Parent BRM & Balance`
+                  : selectedSiteSubSites.length > 0
+                  ? '1. HQ Source → 2. Regional Receipt → 3. Sub-Sites & Teams → 4. Usage & Wastage → 5. HQ BRM & Balance'
+                  : '1. Central Stock → 2. Site Issue → 3. Team Issue → 4. Usage & Wastage → 5. Balance / Returnable'}
               </span>
             </div>
 
@@ -1267,15 +1308,25 @@ export const SiteInventoriesView: React.FC = () => {
                     <th className="py-3 px-1.5 text-right bg-indigo-50/60 text-indigo-950">
                       {siteCentralFocItemsCount > 0 ? (
                         <>1. FOC Central<br className="hidden sm:inline" /> Receipt</>
+                      ) : isSubSite(selectedSite) ? (
+                        <>1. Parent Hub<br className="hidden sm:inline" /> Source</>
                       ) : (
                         <>1. Central HQ<br className="hidden sm:inline" /> Source</>
                       )}
                     </th>
                     <th className="py-3 px-1.5 text-right">
-                      2. Site Issue<br className="hidden sm:inline" /> (HQ → Site)
+                      {isSubSite(selectedSite) ? (
+                        <>2. Sub-Site Rec<br className="hidden sm:inline" /> (Parent → Sub)</>
+                      ) : (
+                        <>2. Site Issue<br className="hidden sm:inline" /> (HQ → Site)</>
+                      )}
                     </th>
                     <th className="py-3 px-1.5 text-right">
-                      3. Team Issue<br className="hidden sm:inline" /> (Site → Team)
+                      {selectedSiteSubSites.length > 0 ? (
+                        <>3. Sub-Sites &amp;<br className="hidden sm:inline" /> Team Issue</>
+                      ) : (
+                        <>3. Team Issue<br className="hidden sm:inline" /> (Site → Team)</>
+                      )}
                     </th>
                     <th className="py-3 px-1.5 text-right">
                       4. Usage &amp;<br className="hidden sm:inline" /> Wastage
@@ -1382,7 +1433,7 @@ export const SiteInventoriesView: React.FC = () => {
                               </div>
                             </td>
 
-                            {/* STAGE 1: CENTRAL STOCK RECEIPT (FOC ONLY IF ISSUED TO THIS SITE) */}
+                            {/* STAGE 1: CENTRAL STOCK RECEIPT OR PARENT REGIONAL SOURCE */}
                             <td className="py-3 px-1.5 text-right font-mono bg-indigo-50/30 whitespace-nowrap">
                               {hasCentralFoc ? (
                                 <div>
@@ -1393,6 +1444,10 @@ export const SiteInventoriesView: React.FC = () => {
                                     HQ Pool: {formatNumber(rec?.centralFocPoolRemaining || 0)} {item.unit}
                                   </div>
                                 </div>
+                              ) : isSubSite(selectedSite) ? (
+                                <span className="text-[11px] text-sky-800 font-sans font-semibold">
+                                  {selectedSiteParent?.name || selectedSite?.parentSiteName || 'Parent Branch'}
+                                </span>
                               ) : (
                                 <span className="text-[11px] text-slate-500 font-sans">Central HQ</span>
                               )}
@@ -1514,7 +1569,7 @@ export const SiteInventoriesView: React.FC = () => {
                                 }`}
                               >
                                 <Layers className="w-3.5 h-3.5 shrink-0" />
-                                <span>{isExpanded ? 'Hide' : '5-Stage Summary'}</span>
+                                <span>{isExpanded ? 'Hide' : 'Flow Summary'}</span>
                               </button>
                             </td>
                           </tr>
