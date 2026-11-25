@@ -38,6 +38,7 @@ import {
   CornerDownRight,
   ArrowDown,
   ArrowRight,
+  Calendar,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -82,12 +83,22 @@ import { ItemImageUploader } from '../common/ItemImageUploader';
 import { generateUniqueBarcode, generateNextSequentialItemCode } from '../../utils/barcodeUtils';
 import { TeamTransferAndDetailsModal } from '../common/TeamTransferAndDetailsModal';
 import {
+  canUserTransferTeamAtCurrentSite,
   extractBaseTeamName,
   getTemporaryAssignmentBadgeLabel,
   getTeamCompleteAssignmentHistory,
   getTeamInitialBaseSite,
   isTeamAwayFromInitialBase,
 } from '../../utils/teamAssignmentUtils';
+import { UserSiteHistoryModal, UserSiteHistoryTable } from '../common/UserSiteHistoryModal';
+import {
+  buildUserSiteChangePreview,
+  formatAssignmentDuration,
+  getSiteCompleteSupervisorHistory,
+  getTodayLocalDateInputValue,
+  getUserCompleteSiteAssignmentHistory,
+  resolveEffectiveAssignmentIso,
+} from '../../utils/userAssignmentUtils';
 
 interface MasterRegistrationsViewProps {
   initialTab?: 'items' | 'sites' | 'users' | 'teams' | 'clients';
@@ -195,6 +206,13 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [editingSiteUserIds, setEditingSiteUserIds] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [editSiteEffectiveDate, setEditSiteEffectiveDate] = useState<string>(() => getTodayLocalDateInputValue());
+  const [editUserEffectiveDate, setEditUserEffectiveDate] = useState<string>(() => getTodayLocalDateInputValue());
+  const [historyModalState, setHistoryModalState] = useState<
+    | { mode: 'user'; userId: string }
+    | { mode: 'site'; siteId: string }
+    | null
+  >(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [teamModalState, setTeamModalState] = useState<{
     teamId: string;
@@ -570,6 +588,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   const handleCreateTeam = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isCentralAdmin) {
+      showToast('Teams registration is restricted to Main Admin (Super Admin Central).');
+      return;
+    }
     const trimmedName = teamName.trim();
     const trimmedLeader = teamLeaderName.trim();
     if (!trimmedName || !trimmedLeader) return;
@@ -729,7 +751,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
     e.preventDefault();
     if (!editingSite) return;
     try {
-      updateSite(editingSite.id, editingSite, editingSiteUserIds);
+      const effectiveIso = resolveEffectiveAssignmentIso(editSiteEffectiveDate);
+      updateSite(editingSite.id, editingSite, editingSiteUserIds, effectiveIso);
       showToast(`Site Branch "${editingSite.name}" & assigned staff synchronized.`);
       setEditingSite(null);
       setEditingSiteUserIds([]);
@@ -753,10 +776,15 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       showToast('Please enter a valid Recovery / Work Email address or leave it blank.');
       return;
     }
-    updateUser(editingUser.id, {
-      ...editingUser,
-      email: cleanedEmail || undefined,
-    });
+    const effectiveIso = resolveEffectiveAssignmentIso(editUserEffectiveDate);
+    updateUser(
+      editingUser.id,
+      {
+        ...editingUser,
+        email: cleanedEmail || undefined,
+      },
+      effectiveIso
+    );
     showToast(`User "${editingUser.fullName}" settings & site assignments synchronized.`);
     setEditingUser(null);
   };
@@ -798,6 +826,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
   const handleSaveTeamEdit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isCentralAdmin) {
+      showToast('Teams are View-Only for your role. Only Main Admin can edit team details.');
+      return;
+    }
     if (!editingTeam) return;
 
     if (!editingTeam.projectTypeId) {
@@ -942,6 +974,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleBulkDeleteTeams = () => {
+    if (!isCentralAdmin) {
+      showToast('Only Main Admin can delete field teams.');
+      return;
+    }
     if (selectedTeamIds.length === 0) return;
 
     const teamsWithStock = selectedTeamIds
@@ -1044,6 +1080,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleDeleteTeam = (t: Team) => {
+    if (!isCentralAdmin) {
+      showToast('Only Main Admin can delete field teams.');
+      return;
+    }
     const inHandSummary = getTeamInHandStock(t.id);
     const prevToReturn = inHandSummary.totalUnitsToReturnFromPreviousSites || 0;
     const hasUnreturnedStock = inHandSummary.totalUnitsHeld > 0 || prevToReturn > 0;
@@ -1142,6 +1182,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   };
 
   const handleClearAllTeams = () => {
+    if (!isCentralAdmin) {
+      showToast('Only Main Admin can clear field teams.');
+      return;
+    }
     setConfirmState({
       isOpen: true,
       title: 'Clear All Field Teams?',
@@ -2329,11 +2373,39 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     />
                   )}
 
-                  {!isCustomAddSupervisor && siteSupervisorUserId && (
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1.5 font-medium">
-                      This site will be automatically linked to {siteSupervisor}&apos;s user account settings.
-                    </p>
-                  )}
+                  {!isCustomAddSupervisor && siteSupervisorUserId && (() => {
+                    const matchedSupUser = activeUsers.find((u) => u.id === siteSupervisorUserId);
+                    const supHist = matchedSupUser
+                      ? getUserCompleteSiteAssignmentHistory(matchedSupUser, activeSites)
+                      : [];
+                    return (
+                      <div className="mt-2 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 p-2.5 space-y-1.5 text-[11px]">
+                        <div className="font-medium text-emerald-700 dark:text-emerald-400">
+                          This site will be automatically linked to {siteSupervisor}&apos;s user account.
+                        </div>
+                        {supHist.length > 0 && (
+                          <div className="pt-1.5 border-t border-slate-200/70 dark:border-slate-700/60 space-y-1">
+                            <div className="font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                              <History className="w-3 h-3 text-slate-500" />
+                              <span>{siteSupervisor}&apos;s Site Assignment History ({supHist.length})</span>
+                            </div>
+                            <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                              {supHist.map((rec) => (
+                                <div key={rec.id} className="flex items-center justify-between gap-2 text-[10px]">
+                                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                    {rec.siteName} · {rec.assignmentRole}
+                                  </span>
+                                  <span className="font-mono tabular-nums text-slate-500 dark:text-slate-400 shrink-0">
+                                    {formatDate(rec.startDate)} → {rec.endDate ? formatDate(rec.endDate) : 'Active'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Additional Branch Users Multi-Assign on Site Creation */}
@@ -2772,12 +2844,20 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           {isCentralAdmin && (
                             <>
                               <button
+                                onClick={() => setHistoryModalState({ mode: 'site', siteId: s.id })}
+                                className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                title="View Branch Supervisor & Staff Assignment History"
+                              >
+                                <History className="w-3.5 h-3.5" />
+                              </button>
+                              <button
                                 onClick={() => {
                                   setIsCustomEditSupervisor(false);
                                   const staffIds = activeUsers
                                     .filter((u) => !isUserAllSites(u) && isUserAssignedToSite(u, s, activeSites))
                                     .map((u) => u.id);
                                   setEditingSiteUserIds(staffIds);
+                                  setEditSiteEffectiveDate(getTodayLocalDateInputValue());
                                   setEditingSite({ ...s });
                                 }}
                                 className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
@@ -3413,49 +3493,89 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                           )}
                         </td>
                         <td className="py-3 px-3 align-top">
-                          {isAll ? (
-                            <div className="space-y-0.5">
-                              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                                All Sites / Central HQ
-                              </div>
-                              {supervisedSites.length > 0 && (
-                                <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                                  In-Charge: {supervisedSites.map((st) => st.name).join(' · ')}
-                                </div>
-                              )}
-                            </div>
-                          ) : assignedSiteObjs.length === 0 ? (
-                            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                              Unassigned (Click Edit to assign)
-                            </span>
-                          ) : (
-                            <div className="space-y-1">
-                              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                                {assignedSiteObjs.length === 1
-                                  ? '1 Assigned Site'
-                                  : `${assignedSiteObjs.length} Assigned Sites`}
-                              </div>
-                              <div className="space-y-0.5">
-                                {assignedSiteObjs.map((siteObj) => {
-                                  const isSup = supervisedSites.some((sp) => sp.id === siteObj.id);
-                                  return (
-                                    <div
-                                      key={siteObj.id}
-                                      className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
-                                    >
-                                      <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                      <span>{siteObj.name}</span>
-                                      {isSup && (
-                                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                                          · Supervisor
-                                        </span>
-                                      )}
+                          {(() => {
+                            const userHistory = getUserCompleteSiteAssignmentHistory(u, activeSites);
+                            const prevStints = userHistory.filter((h) => h.status !== 'Active');
+                            return (
+                              <div className="space-y-1.5">
+                                {isAll ? (
+                                  <div className="space-y-0.5">
+                                    <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                                      All Sites / Central HQ
                                     </div>
-                                  );
-                                })}
+                                    {supervisedSites.length > 0 && (
+                                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                        In-Charge: {supervisedSites.map((st) => st.name).join(' · ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : assignedSiteObjs.length === 0 ? (
+                                  <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                                    Unassigned (Click Edit to assign)
+                                  </span>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                      {assignedSiteObjs.length === 1
+                                        ? '1 Assigned Site'
+                                        : `${assignedSiteObjs.length} Assigned Sites`}
+                                    </div>
+                                    <div className="space-y-0.5">
+                                      {assignedSiteObjs.map((siteObj) => {
+                                        const isSup = supervisedSites.some((sp) => sp.id === siteObj.id);
+                                        const activeRec = userHistory.find(
+                                          (r) => r.siteId === siteObj.id && r.status === 'Active'
+                                        );
+                                        return (
+                                          <div
+                                            key={siteObj.id}
+                                            className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
+                                          >
+                                            <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                            <span>{siteObj.name}</span>
+                                            {isSup && (
+                                              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                                · Supervisor
+                                              </span>
+                                            )}
+                                            {activeRec?.startDate && (
+                                              <span className="text-[10px] font-mono tabular-nums text-slate-400">
+                                                (Since {formatDate(activeRec.startDate)})
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {prevStints.length > 0 && (
+                                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5">
+                                    <div className="font-semibold text-slate-600 dark:text-slate-300">
+                                      Previous ({prevStints.length}):{' '}
+                                      {prevStints
+                                        .slice(-2)
+                                        .reverse()
+                                        .map(
+                                          (p) =>
+                                            `${p.siteName} (${formatDate(p.startDate)} – ${formatDate(p.endDate)})`
+                                        )
+                                        .join(' · ')}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setHistoryModalState({ mode: 'user', userId: u.id })}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                                    >
+                                      <History className="w-3 h-3" />
+                                      <span>View Full Site History ({userHistory.length})</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-3 align-top">
                           <span className={`text-[11px] ${roleTextStyles}`}>
@@ -3474,9 +3594,18 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               Switch
                             </button>
                             <button
+                              type="button"
+                              onClick={() => setHistoryModalState({ mode: 'user', userId: u.id })}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              title="View User Site Assignment History (Start & End Dates)"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => {
                                 const userAll = isUserAllSites(u);
                                 const resolvedIds = userAll ? ['all'] : getUserAssignedSiteIds(u, activeSites);
+                                setEditUserEffectiveDate(getTodayLocalDateInputValue());
                                 setEditingUser({
                                   ...u,
                                   siteId: userAll ? 'all' : (resolvedIds[0] || 'unassigned'),
@@ -3513,7 +3642,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
       {/* TAB 4: ADD & MANAGE TEAMS */}
       {activeTab === 'teams' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Team Creation Form */}
+          {/* Team Creation Form (Main Admin Only) OR View-Only + Site Transfer Notice */}
+          {isCentralAdmin ? (
           <div className="lg:col-span-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-white/90 dark:border-slate-800 ring-1 ring-slate-900/[0.06] p-6 shadow-[0_12px_34px_-12px_rgba(15,23,42,0.12)] transition-all">
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/70 dark:border-slate-800">
               <div className="flex items-center gap-3">
@@ -3796,6 +3926,33 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
             </form>
           </div>
+          ) : (
+            <div className="lg:col-span-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col items-center justify-center text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Field Teams Registry (View-Only)
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm leading-relaxed">
+                  Team registration, editing, and deletion are managed exclusively by <strong>Main Admin (Super Admin Central)</strong>.
+                </p>
+              </div>
+              <div className="w-full max-w-sm rounded-2xl bg-sky-50/90 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 p-3.5 text-left text-[11px] text-sky-950 dark:text-sky-200 space-y-1">
+                <div className="font-extrabold flex items-center gap-1.5">
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-sky-700 dark:text-sky-400 shrink-0" />
+                  <span>Own-Site Team Transfer Permission</span>
+                </div>
+                <p className="text-sky-900/90 dark:text-sky-300 leading-relaxed">
+                  You can inspect all teams and use the <strong>Transfer / Return</strong> actions strictly for teams currently assigned to your own site(s). Every transfer records your name in Team History as the responsible site officer.
+                </p>
+              </div>
+              <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
+                Logged in as: <strong className="text-slate-800 dark:text-slate-200">{actorDisplayName}</strong> ({currentUser.role})
+              </div>
+            </div>
+          )}
 
           {/* Teams Cards List with High-Craft Liquid Glass Cards */}
           <div className="lg:col-span-7 space-y-4">
@@ -3809,27 +3966,34 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   · {activeTeams.length} Registered
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                {selectedTeamIds.length > 0 && (
-                  <button
-                    onClick={handleBulkDeleteTeams}
-                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Selected ({selectedTeamIds.length})</span>
-                  </button>
-                )}
-                {activeTeams.length > 0 && (
-                  <button
-                    onClick={handleClearAllTeams}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
-                    title="Move all field teams to Recycle Bin"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Clear All Teams</span>
-                  </button>
-                )}
-              </div>
+              {isCentralAdmin ? (
+                <div className="flex items-center gap-2">
+                  {selectedTeamIds.length > 0 && (
+                    <button
+                      onClick={handleBulkDeleteTeams}
+                      className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Selected ({selectedTeamIds.length})</span>
+                    </button>
+                  )}
+                  {activeTeams.length > 0 && (
+                    <button
+                      onClick={handleClearAllTeams}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 border border-slate-200/90 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+                      title="Move all field teams to Recycle Bin"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Clear All Teams</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-bold">
+                  <Lock className="w-3 h-3 text-slate-500" />
+                  <span>View-Only · Transfer Own Site Only</span>
+                </span>
+              )}
             </div>
 
             {activeTeams.length === 0 ? (
@@ -3869,12 +4033,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     ? getTeamSiteInHandStock(t.id, prevSiteId).totalUnitsHeld
                     : 0;
                   const completeHistory = getTeamCompleteAssignmentHistory(t, activeSites);
-                  const canPromote =
-                    isSuperAdmin(currentUser.role) ||
-                    isCentralOrAllSiteAdmin(currentUser.role) ||
-                    normalizeRole(currentUser.role) === 'Branch Admin' ||
-                    currentUser.username === 'admin' ||
-                    (s ? isUserAssignedToSite(currentUser, s, activeSites) : false);
+                  const canTransferThisTeam = canUserTransferTeamAtCurrentSite(
+                    currentUser,
+                    t,
+                    activeSites
+                  );
 
                   return (
                     <div
@@ -3918,25 +4081,27 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
 
                           {/* Unified Glass Action Bar */}
                           <div className="flex items-center gap-0.5 bg-slate-100/85 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-1.5 py-1 shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() =>
-                                setSelectedTeamIds((prev) =>
-                                  prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
-                                )
-                              }
-                              title="Select team for bulk action"
-                              className="w-3.5 h-3.5 mx-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                            />
+                            {isCentralAdmin && (
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() =>
+                                  setSelectedTeamIds((prev) =>
+                                    prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                                  )
+                                }
+                                title="Select team for bulk action"
+                                className="w-3.5 h-3.5 mx-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                              />
+                            )}
                             <button
                               onClick={() => setTeamModalState({ teamId: t.id, tab: 'details' })}
                               className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                              title="View All Assigned Sites & Team Profile"
+                              title="View All Assigned Sites & Officer Responsibility History"
                             >
                               <History className="w-3.5 h-3.5" />
                             </button>
-                            {isAwayFromHomeBase && canPromote && (
+                            {isAwayFromHomeBase && canTransferThisTeam && (
                               <button
                                 onClick={() => {
                                   const res = returnTeamToInitialSite(t.id);
@@ -3948,27 +4113,33 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 <RotateCcw className="w-3.5 h-3.5" />
                               </button>
                             )}
-                            <button
-                              onClick={() => setTeamModalState({ teamId: t.id, tab: 'transfer' })}
-                              className="p-1.5 rounded-lg text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
-                              title="Transfer Team to Another Site"
-                            >
-                              <ArrowRightLeft className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setEditingTeam({ ...t })}
-                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                              title="Edit Team"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTeam(t)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                              title="Delete Team"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {canTransferThisTeam && (
+                              <button
+                                onClick={() => setTeamModalState({ teamId: t.id, tab: 'transfer' })}
+                                className="p-1.5 rounded-lg text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                                title="Transfer Team to Another Site"
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {isCentralAdmin && (
+                              <>
+                                <button
+                                  onClick={() => setEditingTeam({ ...t })}
+                                  className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                  title="Edit Team"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTeam(t)}
+                                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                  title="Delete Team"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -3986,6 +4157,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-[10px] font-extrabold text-teal-800 dark:text-teal-300">
                                     <Layers className="w-2.5 h-2.5 shrink-0" />
                                     <span>{secObj?.code ? `[${secObj.code}] ` : ''}{secName}</span>
+                                  </span>
+                                );
+                              }
+                              if (!isCentralAdmin) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-800">
+                                    <AlertTriangle className="w-2.5 h-2.5 shrink-0 text-amber-600" />
+                                    <span>Section Unassigned</span>
                                   </span>
                                 );
                               }
@@ -4030,7 +4209,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                 <span className="text-[11px] text-amber-900/90 dark:text-amber-300/90 font-medium">
                                   Back at Initial Base ({initialBase.siteName}). Restore Permanent status as &ldquo;{cleanBaseName}&rdquo; (no Ref suffix).
                                 </span>
-                                {canPromote && (
+                                {canTransferThisTeam && (
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -4054,7 +4233,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                     <strong>Permanent (Ref: {prevSiteName})</strong>.
                                   </div>
                                 </div>
-                                {isAwayFromHomeBase && canPromote && (
+                                {isAwayFromHomeBase && canTransferThisTeam && (
                                   <div className="flex justify-end">
                                     <button
                                       type="button"
@@ -4077,7 +4256,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                     ? `0 pending stock on ${prevSiteName}. Ready to confirm as Permanent or Return to Initial Base.`
                                     : 'Temporary assignment ready for Permanent confirmation.'}
                                 </span>
-                                {canPromote && (
+                                {canTransferThisTeam && (
                                   <div className="flex flex-wrap items-center gap-1.5">
                                     {isAwayFromHomeBase && (
                                       <button
@@ -4116,7 +4295,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                               Permanent Assignment — {s?.name || 'Site'} (Ref: {t.previousSiteName})
                             </span>
-                            {canPromote && (
+                            {canTransferThisTeam && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -4214,6 +4393,25 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                                   );
                                 })}
                               </div>
+                              {(() => {
+                                const latestRec = completeHistory[completeHistory.length - 1];
+                                if (!latestRec) return null;
+                                const isTransfer = completeHistory.length > 1 || Boolean(latestRec.previousSiteId);
+                                if (!isTransfer && !latestRec.assignedBy) return null;
+                                return (
+                                  <div className="text-[10px] text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-1 pt-0.5">
+                                    <UserCheck className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span>
+                                      {isTransfer ? 'Transferred By:' : 'Registered By:'}{' '}
+                                      <strong className="text-slate-800 dark:text-white">
+                                        {latestRec.assignedBy || 'System Super Admin'}
+                                      </strong>
+                                      {latestRec.assignedBySiteName ? ` (${latestRec.assignedBySiteName})` : ''}
+                                      {isTransfer ? ' · Site Officer Responsibility' : ''}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
 
                             <div className="flex items-start gap-2 min-w-0 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
@@ -5014,10 +5212,10 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         </div>
       )}
 
-      {/* EDIT SITE MODAL (Synced with User Assignments) */}
+      {/* EDIT SITE MODAL (Synced with User Assignments & Supervisor History) */}
       {editingSite && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
@@ -5208,6 +5406,57 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                     required
                   />
                 )}
+
+                {/* Selected Registered Supervisor's Site Assignment History */}
+                {!isCustomEditSupervisor && (() => {
+                  const selSupUser = activeUsers.find(
+                    (u) =>
+                      (editingSite.supervisorUserId && u.id === editingSite.supervisorUserId) ||
+                      (!editingSite.supervisorUserId &&
+                        editingSite.supervisorName &&
+                        u.fullName.trim().toLowerCase() === editingSite.supervisorName.trim().toLowerCase())
+                  );
+                  if (!selSupUser) return null;
+                  const supUserHistory = getUserCompleteSiteAssignmentHistory(selSupUser, activeSites);
+                  const origSiteObj = activeSites.find((s) => s.id === editingSite.id);
+                  const origSupName = (origSiteObj?.supervisorName || '').trim().toLowerCase();
+                  const supChanged =
+                    origSiteObj &&
+                    ((editingSite.supervisorUserId || '') !== (origSiteObj.supervisorUserId || '') ||
+                      (editingSite.supervisorName || '').trim().toLowerCase() !== origSupName);
+
+                  return (
+                    <div className="mt-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 overflow-hidden">
+                      <div className="px-3 py-2 border-b border-slate-200/80 dark:border-slate-700/70 flex items-center justify-between gap-2 text-[11px]">
+                        <span className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                          <History className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>{selSupUser.fullName}&apos;s Site Assignment History</span>
+                        </span>
+                        <span className="font-mono tabular-nums text-slate-500">
+                          {supUserHistory.length} record{supUserHistory.length === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      {supChanged && origSiteObj && (
+                        <div className="px-3 py-2 bg-amber-50/80 dark:bg-amber-950/30 border-b border-amber-200/80 dark:border-amber-800/50 text-[11px] text-amber-900 dark:text-amber-200 space-y-1">
+                          <div className="font-bold">Supervisor Handover Preview (on Save):</div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            {origSiteObj.supervisorName && origSiteObj.supervisorName.toLowerCase() !== 'unassigned' && (
+                              <span>
+                                Closing <strong>{origSiteObj.supervisorName}</strong> · End Date:{' '}
+                                <span className="font-mono tabular-nums">{formatDate(resolveEffectiveAssignmentIso(editSiteEffectiveDate))}</span>
+                              </span>
+                            )}
+                            <span>
+                              Starting <strong>{selSupUser.fullName}</strong> · Start Date:{' '}
+                              <span className="font-mono tabular-nums">{formatDate(resolveEffectiveAssignmentIso(editSiteEffectiveDate))}</span>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <UserSiteHistoryTable records={supUserHistory} sites={activeSites} compact />
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -5312,6 +5561,104 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                 </div>
               )}
 
+              {/* Effective Date & Branch Supervisor History */}
+              {(() => {
+                const origSiteObj = activeSites.find((s) => s.id === editingSite.id);
+                const origStaffIds = origSiteObj
+                  ? activeUsers
+                      .filter((u) => !isUserAllSites(u) && isUserAssignedToSite(u, origSiteObj, activeSites))
+                      .map((u) => u.id)
+                      .sort()
+                  : [];
+                const nextStaffIds = [...editingSiteUserIds].sort();
+                const staffChanged = origStaffIds.join(',') !== nextStaffIds.join(',');
+                const supChanged = Boolean(
+                  origSiteObj &&
+                    ((editingSite.supervisorUserId || '') !== (origSiteObj.supervisorUserId || '') ||
+                      (editingSite.supervisorName || '').trim().toLowerCase() !==
+                        (origSiteObj.supervisorName || '').trim().toLowerCase())
+                );
+                const branchSupHistory = origSiteObj ? getSiteCompleteSupervisorHistory(origSiteObj) : [];
+
+                return (
+                  <div className="space-y-3">
+                    {(supChanged || staffChanged) && (
+                      <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/25 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Assignment Effective Date (Start / End Date)</span>
+                          </div>
+                          <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                            Used as the End Date for previous site/supervisor and Start Date for the new assignment.
+                          </div>
+                        </div>
+                        <input
+                          type="date"
+                          value={editSiteEffectiveDate}
+                          onChange={(e) => setEditSiteEffectiveDate(e.target.value)}
+                          className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono tabular-nums font-bold text-slate-900 dark:text-white shrink-0"
+                        />
+                      </div>
+                    )}
+
+                    {branchSupHistory.length > 0 && (
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900">
+                        <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                            <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>This Branch&apos;s Supervisor History ({branchSupHistory.length})</span>
+                          </span>
+                          <span className="text-slate-500">Previous &amp; Current In-Charge</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-[11px] text-left">
+                            <thead className="bg-slate-100/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px] uppercase">
+                              <tr>
+                                <th className="py-1.5 px-3">Supervisor</th>
+                                <th className="py-1.5 px-3">Start Date</th>
+                                <th className="py-1.5 px-3">End Date</th>
+                                <th className="py-1.5 px-3">Duration</th>
+                                <th className="py-1.5 px-3 text-right">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {branchSupHistory.map((sh) => (
+                                <tr key={sh.id} className={sh.status === 'Active' ? 'bg-emerald-50/30 dark:bg-emerald-950/15' : ''}>
+                                  <td className="py-1.5 px-3 font-bold text-slate-800 dark:text-slate-200">
+                                    {sh.supervisorName}
+                                  </td>
+                                  <td className="py-1.5 px-3 font-mono tabular-nums text-slate-600 dark:text-slate-300">
+                                    {formatDate(sh.startDate)}
+                                  </td>
+                                  <td className="py-1.5 px-3 font-mono tabular-nums">
+                                    {sh.endDate ? (
+                                      <span className="text-slate-600 dark:text-slate-300">{formatDate(sh.endDate)}</span>
+                                    ) : (
+                                      <span className="font-bold text-emerald-700 dark:text-emerald-400">Active</span>
+                                    )}
+                                  </td>
+                                  <td className="py-1.5 px-3 font-mono tabular-nums text-slate-500 dark:text-slate-400">
+                                    {formatAssignmentDuration(sh.startDate, sh.endDate)}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-semibold">
+                                    {sh.status === 'Active' ? (
+                                      <span className="text-emerald-700 dark:text-emerald-400">Active</span>
+                                    ) : (
+                                      <span className="text-slate-500">Previous</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -5391,9 +5738,19 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
           });
         };
 
+        const savedUserObj = activeUsers.find((u) => u.id === editingUser.id) || editingUser;
+        const savedUserHistory = getUserCompleteSiteAssignmentHistory(savedUserObj, activeSites);
+        const siteChangePreview = buildUserSiteChangePreview({
+          savedUser: savedUserObj,
+          draftIsAllSites: isEditingUserAllSites,
+          draftSiteIds: currentEditSiteIds,
+          allSites: activeSites,
+        });
+        const previewEffectiveIso = resolveEffectiveAssignmentIso(editUserEffectiveDate);
+
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-center font-bold">
@@ -5667,6 +6024,82 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   )}
                 </div>
 
+                {/* Live Reassignment Preview (Shown when changing assigned site(s)) */}
+                {siteChangePreview.hasSiteScopeChange && (
+                  <div className="rounded-2xl border border-amber-300/90 dark:border-amber-800/70 bg-amber-50/70 dark:bg-amber-950/30 p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
+                          <ArrowRightLeft className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                          <span>Site Reassignment History Update Preview</span>
+                        </div>
+                        <div className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                          Previous site assignments will be archived with an End Date; new site assignments will start on the effective date below.
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <label className="text-[11px] font-bold text-amber-900 dark:text-amber-200">
+                          Effective Date:
+                        </label>
+                        <input
+                          type="date"
+                          value={editUserEffectiveDate}
+                          onChange={(e) => setEditUserEffectiveDate(e.target.value)}
+                          className="px-2.5 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-mono tabular-nums font-bold text-slate-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px]">
+                      {siteChangePreview.endingSites.length > 0 && (
+                        <div className="rounded-xl bg-white/90 dark:bg-slate-900/80 border border-amber-200 dark:border-amber-800/60 p-2.5 space-y-1">
+                          <div className="font-bold text-rose-700 dark:text-rose-400">
+                            Ending Previous Site{siteChangePreview.endingSites.length === 1 ? '' : 's'} ({siteChangePreview.endingSites.length})
+                          </div>
+                          {siteChangePreview.endingSites.map((rec) => (
+                            <div key={rec.id} className="text-slate-800 dark:text-slate-200 flex items-center justify-between gap-2">
+                              <span className="font-semibold truncate">{rec.siteName}</span>
+                              <span className="font-mono tabular-nums text-[10px] text-slate-500 shrink-0">
+                                {formatDate(rec.startDate)} → <strong className="text-rose-700 dark:text-rose-400">{formatDate(previewEffectiveIso)}</strong>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {siteChangePreview.startingSites.length > 0 && (
+                        <div className="rounded-xl bg-white/90 dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-800/60 p-2.5 space-y-1">
+                          <div className="font-bold text-emerald-700 dark:text-emerald-400">
+                            Starting New Site{siteChangePreview.startingSites.length === 1 ? '' : 's'} ({siteChangePreview.startingSites.length})
+                          </div>
+                          {siteChangePreview.startingSites.map((st) => (
+                            <div key={st.siteId} className="text-slate-800 dark:text-slate-200 flex items-center justify-between gap-2">
+                              <span className="font-semibold truncate">{st.siteName}</span>
+                              <span className="font-mono tabular-nums text-[10px] text-emerald-700 dark:text-emerald-400 shrink-0">
+                                Starts {formatDate(previewEffectiveIso)} → Active
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Complete Site Assignment History Table (Previous & Current Sites) */}
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900">
+                  <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800 dark:text-white">
+                      <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Site Assignment History (Previous &amp; Active Sites)</span>
+                    </div>
+                    <span className="text-[11px] font-mono tabular-nums font-bold text-slate-500">
+                      {savedUserHistory.length} record{savedUserHistory.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <UserSiteHistoryTable records={savedUserHistory} sites={activeSites} compact />
+                </div>
+
                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <button
                     type="button"
@@ -5688,8 +6121,8 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
         );
       })()}
 
-      {/* EDIT TEAM MODAL */}
-      {editingTeam && (
+      {/* EDIT TEAM MODAL (Main Admin Only) */}
+      {editingTeam && isCentralAdmin && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
@@ -6194,6 +6627,29 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
             team={liveTeam}
             initialTab={teamModalState.tab}
             onClose={() => setTeamModalState(null)}
+          />
+        );
+      })()}
+
+      {/* User / Supervisor / Branch Site Assignment History Modal */}
+      {historyModalState && (() => {
+        const targetUser =
+          historyModalState.mode === 'user'
+            ? activeUsers.find((u) => u.id === historyModalState.userId) || null
+            : null;
+        const targetSite =
+          historyModalState.mode === 'site'
+            ? activeSites.find((s) => s.id === historyModalState.siteId) || null
+            : null;
+        return (
+          <UserSiteHistoryModal
+            isOpen={Boolean(targetUser || targetSite)}
+            onClose={() => setHistoryModalState(null)}
+            mode={historyModalState.mode}
+            user={targetUser}
+            site={targetSite}
+            sites={activeSites}
+            users={activeUsers}
           />
         );
       })()}

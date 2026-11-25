@@ -31,6 +31,7 @@ import {
   ArrowDown,
   ChevronDown,
   ChevronUp,
+  Lock,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
@@ -42,8 +43,6 @@ import {
   User as AppUser,
   isUserAssignedToSite,
   isSuperAdmin,
-  isCentralOrAllSiteAdmin,
-  normalizeRole,
   isSubSite,
   getParentSite,
   getChildSubSites,
@@ -51,13 +50,17 @@ import {
   formatSiteHierarchyLabel,
 } from '../../types';
 import { TeamTransferAndDetailsModal } from '../common/TeamTransferAndDetailsModal';
+import { UserSiteHistoryModal } from '../common/UserSiteHistoryModal';
 import {
+  canUserTransferTeamAtCurrentSite,
   extractBaseTeamName,
   getTemporaryAssignmentBadgeLabel,
   getTeamCompleteAssignmentHistory,
   getTeamInitialBaseSite,
   isTeamAwayFromInitialBase,
 } from '../../utils/teamAssignmentUtils';
+import { getUserCompleteSiteAssignmentHistory } from '../../utils/userAssignmentUtils';
+import { formatDate } from '../../utils/exportUtils';
 
 interface BranchDirectoryViewProps {
   onNavigate?: (tabId: string) => void;
@@ -91,12 +94,14 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
   } | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showHierarchyFlow, setShowHierarchyFlow] = useState<boolean>(true);
+  const [historyModalState, setHistoryModalState] = useState<
+    | { mode: 'user'; userId: string }
+    | { mode: 'site'; siteId: string }
+    | null
+  >(null);
 
-  const canManageTeamAssignment =
-    isSuperAdmin(currentUser.role) ||
-    isCentralOrAllSiteAdmin(currentUser.role) ||
-    normalizeRole(currentUser.role) === 'Branch Admin' ||
-    currentUser.username === 'admin';
+  const isCentralAdmin =
+    isSuperAdmin(currentUser.role) || currentUser.username === 'admin';
 
   const orderedActiveSites = useMemo(() => sortSitesHierarchically(activeSites), [activeSites]);
 
@@ -914,9 +919,18 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                 <div className="flex items-center gap-4 text-xs shrink-0 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 shadow-2xs">
                   <div>
                     <div className="text-[10px] uppercase font-bold text-slate-500">Branch Supervisor</div>
-                    <div className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
+                    <div className="font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
                       <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                       <span>{displaySupervisorName}</span>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryModalState({ mode: 'site', siteId: site.id })}
+                        className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 hover:bg-emerald-50 text-[10px] font-bold text-slate-600 hover:text-emerald-700 border border-slate-200 no-print cursor-pointer transition-colors"
+                        title="View Branch Supervisor & Staff History"
+                      >
+                        <History className="w-2.5 h-2.5" />
+                        <span>History</span>
+                      </button>
                     </div>
                   </div>
                   <div className="h-7 w-px bg-slate-200" />
@@ -931,9 +945,19 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
 
               {/* Branch Management & Assigned System Staff */}
               <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-100 text-xs">
-                <div className="flex items-center gap-2 mb-2 font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Branch Management & Assigned System Personnel ({siteUsers.length})</span>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Branch Management & Assigned System Personnel ({siteUsers.length})</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryModalState({ mode: 'site', siteId: site.id })}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 no-print cursor-pointer"
+                  >
+                    <History className="w-3 h-3" />
+                    <span>Branch Supervisor History</span>
+                  </button>
                 </div>
                 {siteUsers.length === 0 ? (
                   <div className="text-slate-400 text-[11px] italic py-1">
@@ -942,20 +966,39 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {/* Registered System Users assigned to this branch */}
-                    {siteUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-between"
-                      >
-                        <div className="truncate mr-2">
-                          <div className="font-bold text-slate-900 truncate">{user.fullName}</div>
-                          <div className="text-[10px] text-slate-500 font-medium truncate">@{user.username}</div>
+                    {siteUsers.map((user) => {
+                      const uHistory = getUserCompleteSiteAssignmentHistory(user, activeSites);
+                      const prevCount = uHistory.filter((h) => h.status !== 'Active').length;
+                      const currentActiveRec = uHistory.find(
+                        (h) => h.siteId === site.id && h.status === 'Active'
+                      );
+                      return (
+                        <div
+                          key={user.id}
+                          className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-slate-900 truncate">{user.fullName}</div>
+                            <div className="text-[10px] text-slate-500 font-medium truncate">
+                              @{user.username} · {user.role}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono tabular-nums mt-0.5 truncate">
+                              {currentActiveRec?.startDate ? `Since ${formatDate(currentActiveRec.startDate)}` : ''}
+                              {prevCount > 0 ? ` · ${prevCount} prev site${prevCount === 1 ? '' : 's'}` : ''}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setHistoryModalState({ mode: 'user', userId: user.id })}
+                            className="px-2 py-1 rounded text-[10px] font-bold bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 whitespace-nowrap shrink-0 inline-flex items-center gap-1 no-print cursor-pointer transition-colors"
+                            title="View user site assignment history (Start & End Dates)"
+                          >
+                            <History className="w-3 h-3" />
+                            <span>History ({uHistory.length})</span>
+                          </button>
                         </div>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
-                          {user.role}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -997,7 +1040,7 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                       onClick={() => onNavigate('teams')}
                       className="text-xs text-emerald-700 hover:text-emerald-900 font-bold transition no-print cursor-pointer"
                     >
-                      + Manage Teams in Registrations →
+                      {isCentralAdmin ? '+ Manage Teams in Registrations →' : 'View Teams Registry →'}
                     </button>
                   )}
                 </div>
@@ -1016,9 +1059,11 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                       const isAtInitialBase = team.assignedSiteId === initialBase.siteId;
                       const isAwayFromHomeBase = isTeamAwayFromInitialBase(team, activeSites);
                       const cleanBaseName = extractBaseTeamName(team.teamName, team.baseTeamName);
-                      const canManageThisSiteTeam =
-                        canManageTeamAssignment ||
-                        isUserAssignedToSite(currentUser, site, activeSites);
+                      const canManageThisSiteTeam = canUserTransferTeamAtCurrentSite(
+                        currentUser,
+                        team,
+                        activeSites
+                      );
                       const prevSiteId = team.pendingClearanceSiteId || team.previousSiteId;
                       const prevSiteObj = prevSiteId ? activeSites.find((st) => st.id === prevSiteId) : undefined;
                       const prevSiteName =
@@ -1099,34 +1144,62 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
                                 )}
                               </div>
 
-                              {/* All Assigned Sites History Pills */}
-                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mr-1">
-                                  <History className="w-3 h-3 text-emerald-600" />
-                                  Assigned Sites ({completeHistory.length}):
-                                </span>
-                                {completeHistory.map((h) => {
-                                  const isCurrent = h.status === 'Active';
-                                  return (
-                                    <span
-                                      key={h.id}
-                                      onClick={() => setTeamModalState({ teamId: team.id, tab: 'details' })}
-                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border cursor-pointer ${
-                                        isCurrent
-                                          ? h.assignmentType === 'Temporary'
-                                            ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                            : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                                          : 'bg-white text-slate-600 border-slate-200'
-                                      }`}
-                                    >
-                                      <span>{h.siteName}</span>
-                                      <span className="opacity-75">
-                                        ({h.assignmentType}
-                                        {isCurrent ? ' • Active' : ''})
+                              {/* All Assigned Sites History Pills & Officer Responsibility */}
+                              <div className="space-y-1 pt-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mr-1">
+                                    <History className="w-3 h-3 text-emerald-600" />
+                                    Assigned Sites ({completeHistory.length}):
+                                  </span>
+                                  {completeHistory.map((h) => {
+                                    const isCurrent = h.status === 'Active';
+                                    return (
+                                      <span
+                                        key={h.id}
+                                        onClick={() => setTeamModalState({ teamId: team.id, tab: 'details' })}
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border cursor-pointer ${
+                                          isCurrent
+                                            ? h.assignmentType === 'Temporary'
+                                              ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                              : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                            : 'bg-white text-slate-600 border-slate-200'
+                                        }`}
+                                      >
+                                        <span>{h.siteName}</span>
+                                        <span className="opacity-75">
+                                          ({h.assignmentType}
+                                          {isCurrent ? ' • Active' : ''})
+                                        </span>
                                       </span>
+                                    );
+                                  })}
+                                  {!canManageThisSiteTeam && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                      <Lock className="w-2.5 h-2.5" />
+                                      <span>View-Only</span>
                                     </span>
+                                  )}
+                                </div>
+                                {(() => {
+                                  const latestRec = completeHistory[completeHistory.length - 1];
+                                  if (!latestRec) return null;
+                                  const isTransfer =
+                                    completeHistory.length > 1 || Boolean(latestRec.previousSiteId);
+                                  if (!isTransfer && !latestRec.assignedBy) return null;
+                                  return (
+                                    <div className="text-[10px] text-slate-600 flex flex-wrap items-center gap-1">
+                                      <UserCheck className="w-3 h-3 text-amber-700 shrink-0" />
+                                      <span>
+                                        {isTransfer ? 'Transferred By:' : 'Registered By:'}{' '}
+                                        <strong className="text-slate-800">
+                                          {latestRec.assignedBy || 'System Super Admin'}
+                                        </strong>
+                                        {latestRec.assignedBySiteName ? ` (${latestRec.assignedBySiteName})` : ''}
+                                        {isTransfer ? ' — Site Officer Responsibility' : ''}
+                                      </span>
+                                    </div>
                                   );
-                                })}
+                                })()}
                               </div>
 
                               {/* Pending Stock Alert or Permanent Promotion Action for Temporary Teams */}
@@ -1478,6 +1551,29 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
             team={liveTeam}
             initialTab={teamModalState.tab}
             onClose={() => setTeamModalState(null)}
+          />
+        );
+      })()}
+
+      {/* User / Supervisor / Branch Site Assignment History Modal */}
+      {historyModalState && (() => {
+        const targetUser =
+          historyModalState.mode === 'user'
+            ? activeUsers.find((u) => u.id === historyModalState.userId) || null
+            : null;
+        const targetSite =
+          historyModalState.mode === 'site'
+            ? activeSites.find((s) => s.id === historyModalState.siteId) || null
+            : null;
+        return (
+          <UserSiteHistoryModal
+            isOpen={Boolean(targetUser || targetSite)}
+            onClose={() => setHistoryModalState(null)}
+            mode={historyModalState.mode}
+            user={targetUser}
+            site={targetSite}
+            sites={activeSites}
+            users={activeUsers}
           />
         );
       })()}

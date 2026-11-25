@@ -70,10 +70,15 @@ import {
 import { DEFAULT_SECTION_FORMATS, deriveCompanyMonogram } from '../utils/formatAnalyzerUtils';
 import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
 import {
+  canUserTransferTeamAtCurrentSite,
   extractBaseTeamName,
   formatPermanentTransferredTeamName,
   getTeamInitialBaseSite,
 } from '../utils/teamAssignmentUtils';
+import {
+  computeNextSiteSupervisorHistory,
+  computeNextUserSiteAssignmentHistory,
+} from '../utils/userAssignmentUtils';
 import {
   hashPasswordForStorage,
   verifyStoredPassword,
@@ -336,8 +341,8 @@ interface StockContextType {
   bulkImportProjects: (rows: Array<Omit<Project, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>>) => { added: number; updated: number };
 
   // Master Updates (CRUD - Edit)
-  updateSite: (id: string, updates: Partial<Site>, assignedUserIds?: string[]) => void;
-  updateUser: (id: string, updates: Partial<User>) => void;
+  updateSite: (id: string, updates: Partial<Site>, assignedUserIds?: string[], effectiveDateIso?: string) => void;
+  updateUser: (id: string, updates: Partial<User>, effectiveDateIso?: string) => void;
   updateItem: (id: string, updates: Partial<Item>) => void;
   updateTeam: (id: string, updates: Partial<Team>) => void;
   transferTeamToSite: (
@@ -5159,12 +5164,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           (normSupName && u.fullName.trim().toLowerCase() === normSupName))
     );
 
+    const resolvedSupName = matchedSup ? matchedSup.fullName : siteData.supervisorName;
+    const resolvedSupId = matchedSup ? matchedSup.id : '';
+
     const newSite: Site = {
       ...siteData,
       parentSiteId: resolvedParentSiteId,
       parentSiteName: resolvedParentSiteName,
-      supervisorName: matchedSup ? matchedSup.fullName : siteData.supervisorName,
-      supervisorUserId: matchedSup ? matchedSup.id : '',
+      supervisorName: resolvedSupName,
+      supervisorUserId: resolvedSupId,
+      supervisorHistory: computeNextSiteSupervisorHistory({
+        nextSupervisorName: resolvedSupName,
+        nextSupervisorUserId: resolvedSupId,
+        effectiveIso: nowIso,
+        actorName: actorDisplayName,
+      }),
       id: `site-${Date.now()}`,
       createdAt: nowIso,
       updatedAt: nowIso,
@@ -5198,11 +5212,32 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           }
           const existingIds = getUserAssignedSiteIds(u, nextSitesSnapshot);
           const nextIds = Array.from(new Set([...existingIds, newSite.id]));
+          const nextSupIds = new Set<string>(
+            nextSitesSnapshot
+              .filter(
+                (st) =>
+                  !st.isDeleted &&
+                  (st.supervisorUserId === u.id ||
+                    (!st.supervisorUserId &&
+                      (st.supervisorName || '').trim().toLowerCase() === u.fullName.trim().toLowerCase()))
+              )
+              .map((st) => st.id)
+          );
           anyUserChanged = true;
           const syncedUser: User = {
             ...u,
             siteId: nextIds[0] || newSite.id,
             siteIds: nextIds,
+            siteAssignmentHistory: computeNextUserSiteAssignmentHistory({
+              prevUser: u,
+              nextIsAllSites: false,
+              nextSpecificSiteIds: nextIds,
+              nextSupervisedSiteIds: nextSupIds,
+              nextUserRole: u.role,
+              allSites: nextSitesSnapshot,
+              effectiveIso: nowIso,
+              actorName: actorDisplayName,
+            }),
             updatedAt: nowIso,
           };
           if (currentUser?.id === u.id) {
@@ -5264,11 +5299,35 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ? cleanSpecificIds
       : ['unassigned'];
 
+    const newUserId = `usr-${Date.now()}`;
+    const autoSupervisedSiteIds = new Set<string>();
+    if (cleanSpecificIds.length > 0) {
+      sites.forEach((s) => {
+        if (s.isDeleted || !cleanSpecificIds.includes(s.id)) return;
+        const supLower = (s.supervisorName || '').trim().toLowerCase();
+        const hasNoRegisteredSupervisor =
+          !s.supervisorUserId &&
+          (supLower === '' || supLower === 'unassigned' || supLower === 'assigned supervisor');
+        if (hasNoRegisteredSupervisor) {
+          autoSupervisedSiteIds.add(s.id);
+        }
+      });
+    }
+
     const newUser: User = {
       ...userData,
       siteId: normalizedSiteId,
       siteIds: normalizedSiteIds,
-      id: `usr-${Date.now()}`,
+      siteAssignmentHistory: computeNextUserSiteAssignmentHistory({
+        nextIsAllSites: wantsAllSites,
+        nextSpecificSiteIds: cleanSpecificIds,
+        nextSupervisedSiteIds: autoSupervisedSiteIds,
+        nextUserRole: userData.role,
+        allSites: sites,
+        effectiveIso: nowIso,
+        actorName: actorDisplayName,
+      }),
+      id: newUserId,
       createdAt: nowIso,
       updatedAt: nowIso,
       isDeleted: false,
@@ -5314,6 +5373,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               ...s,
               supervisorName: newUser.fullName,
               supervisorUserId: newUser.id,
+              supervisorHistory: computeNextSiteSupervisorHistory({
+                oldSite: s,
+                nextSupervisorName: newUser.fullName,
+                nextSupervisorUserId: newUser.id,
+                effectiveIso: nowIso,
+                actorName: actorDisplayName,
+              }),
               updatedAt: nowIso,
             };
           }
@@ -5603,10 +5669,14 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const addTeam = (teamData: Omit<Team, 'id' | 'createdAt' | 'isDeleted' | 'deletedAt' | 'deletedBy'>): Team => {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error('ADMIN_ONLY: Only Main Admin (Super Admin Central) can register new field teams.');
+    }
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const nowIso = new Date().toISOString();
     const initialSiteName = sites.find((s) => s.id === teamData.assignedSiteId)?.name || 'Unassigned';
     const cleanBaseName = extractBaseTeamName(teamData.teamName, teamData.baseTeamName);
+    const officerRole = currentUser?.role || 'Super Admin Central';
     const initialHistoryRecord: TeamSiteAssignmentHistoryRecord = {
       id: `tsh-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       siteId: teamData.assignedSiteId,
@@ -5617,6 +5687,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       stockCleared: true,
       assignedAt: nowIso,
       assignedBy: actorDisplayName,
+      assignedByRole: officerRole,
+      assignedByUsername: currentUser?.username,
+      assignedBySiteName: initialSiteName,
+      responsibilityStatement: `Initial team registration authorized by ${actorDisplayName} (${officerRole})`,
       notes: `Initial team registration at ${initialSiteName}`,
     };
 
@@ -5843,9 +5917,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     [sites, stockRequests, clientFreeIssues, projects, teamIssues, projectUsages, teamReturns, branchReturns, supplierReturns]
   );
 
-  const updateSite = (id: string, updates: Partial<Site>, assignedUserIds?: string[]) => {
+  const updateSite = (
+    id: string,
+    updates: Partial<Site>,
+    assignedUserIds?: string[],
+    effectiveDateIso?: string
+  ) => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const nowIso = new Date().toISOString();
+    const effectiveIso = effectiveDateIso || nowIso;
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
 
     const oldSite = sites.find((s) => s.id === id);
@@ -5922,12 +6002,24 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
+    const resolvedSupName = matchedNewSup ? matchedNewSup.fullName : nextSupName;
+    const resolvedSupId = matchedNewSup ? matchedNewSup.id : '';
+
+    const nextSupervisorHistory = computeNextSiteSupervisorHistory({
+      oldSite,
+      nextSupervisorName: resolvedSupName,
+      nextSupervisorUserId: resolvedSupId,
+      effectiveIso,
+      actorName: actorDisplayName,
+    });
+
     const finalSiteUpdates: Partial<Site> = {
       ...updates,
       parentSiteId: nextParentSiteId,
       parentSiteName: nextParentSiteName,
-      supervisorName: matchedNewSup ? matchedNewSup.fullName : nextSupName,
-      supervisorUserId: matchedNewSup ? matchedNewSup.id : '',
+      supervisorName: resolvedSupName,
+      supervisorUserId: resolvedSupId,
+      supervisorHistory: nextSupervisorHistory,
       updatedAt: nowIso,
     };
 
@@ -5954,7 +6046,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return updated;
     });
 
-    // Bi-directional sync: update users' assigned siteIds to match this site's supervisor & staff roster
+    // Bi-directional sync: update users' assigned siteIds & assignment history to match this site's supervisor & staff roster
     setUsers((prevUsers) => {
       let anyUserChanged = false;
       const updatedUsers = prevUsers.map((u) => {
@@ -5963,12 +6055,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const prevAssigned = getUserAssignedSiteIds(u, sites);
         const otherSites = prevAssigned.filter((sid) => sid !== id);
 
+        const wasSupHere = oldSupUser?.id === u.id;
+        const isNowSupHere = matchedNewSup?.id === u.id;
+
         let shouldBeAssignedHere = false;
         if (assignedUserIds !== undefined) {
-          shouldBeAssignedHere = assignedUserIds.includes(u.id) || matchedNewSup?.id === u.id;
-        } else if (matchedNewSup?.id === u.id) {
+          shouldBeAssignedHere = assignedUserIds.includes(u.id) || isNowSupHere;
+        } else if (isNowSupHere) {
           shouldBeAssignedHere = true;
-        } else if (oldSupUser?.id === u.id && matchedNewSup?.id !== u.id) {
+        } else if (wasSupHere && !isNowSupHere) {
           shouldBeAssignedHere = false;
         } else {
           shouldBeAssignedHere = prevAssigned.includes(id);
@@ -5980,15 +6075,39 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         const prevCompare = Array.isArray(u.siteIds) ? u.siteIds.join(',') : u.siteId;
         const nextCompare = nextSiteIdsField.join(',');
-        if (u.siteId === nextSiteId && prevCompare === nextCompare) {
+        const supervisionRoleChanged = wasSupHere !== isNowSupHere;
+
+        if (u.siteId === nextSiteId && prevCompare === nextCompare && !supervisionRoleChanged) {
           return u;
         }
+
+        const nextSupervisedIds = new Set<string>(
+          nextSitesSnapshot
+            .filter(
+              (st) =>
+                !st.isDeleted &&
+                (st.supervisorUserId === u.id ||
+                  (!st.supervisorUserId &&
+                    (st.supervisorName || '').trim().toLowerCase() === u.fullName.trim().toLowerCase()))
+            )
+            .map((st) => st.id)
+        );
 
         anyUserChanged = true;
         const syncedUser: User = {
           ...u,
           siteId: nextSiteId,
           siteIds: nextSiteIdsField,
+          siteAssignmentHistory: computeNextUserSiteAssignmentHistory({
+            prevUser: u,
+            nextIsAllSites: false,
+            nextSpecificSiteIds: nextIds,
+            nextSupervisedSiteIds: nextSupervisedIds,
+            nextUserRole: u.role,
+            allSites: nextSitesSnapshot,
+            effectiveIso,
+            actorName: actorDisplayName,
+          }),
           updatedAt: nowIso,
         };
         if (currentUser?.id === u.id) {
@@ -6010,9 +6129,6 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return prevUsers;
     });
 
-    // Suppress unused warning if snapshot only used for reasoning
-    void nextSitesSnapshot;
-
     addAuditLog(
       'MASTER_SITE_UPDATED',
       updates.name || oldSite?.name || id,
@@ -6021,9 +6137,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
-  const updateUser = (id: string, updates: Partial<User>) => {
+  const updateUser = (id: string, updates: Partial<User>, effectiveDateIso?: string) => {
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const nowIso = new Date().toISOString();
+    const effectiveIso = effectiveDateIso || nowIso;
     const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
 
     const oldUser = users.find((u) => u.id === id);
@@ -6069,18 +6186,143 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       cleanSpecificIds = isAllScope ? [] : getUserAssignedSiteIds(oldUser, sites);
     }
 
+    const tempUpdatedUserForFallback: User | undefined = oldUser
+      ? {
+          ...oldUser,
+          ...updates,
+          fullName: nextFullName || oldUser.fullName,
+          siteId: normalizedSiteId,
+          siteIds: normalizedSiteIds,
+        }
+      : undefined;
+
+    const nextUsersSnapshot = users.map((u) =>
+      u.id === id && tempUpdatedUserForFallback ? tempUpdatedUserForFallback : u
+    );
+
+    // Compute updated Sites snapshot synchronously so supervisor sync & user assignment history stay 100% consistent
+    const oldNameLower = (oldUser?.fullName || '').trim().toLowerCase();
+    const assignedSet = new Set(cleanSpecificIds);
+    let anySiteChangedSync = false;
+
+    const updatedSitesSnapshot = sites.map((s) => {
+      if (s.isDeleted) return s;
+
+      const supLower = (s.supervisorName || '').trim().toLowerCase();
+      const wasSupervisedByThisUser =
+        s.supervisorUserId === id ||
+        (!s.supervisorUserId && Boolean(oldNameLower) && supLower === oldNameLower);
+
+      // 1. If user was unassigned from this site (and is not All-Sites), reassign or clear site supervisor
+      if (wasSupervisedByThisUser && !isAllScope && !assignedSet.has(s.id)) {
+        const fallbackStaff = nextUsersSnapshot.find(
+          (other) =>
+            !other.isDeleted &&
+            other.id !== id &&
+            !isUserAllSites(other) &&
+            getUserAssignedSiteIds(other).includes(s.id)
+        );
+        anySiteChangedSync = true;
+        const fallbackName = fallbackStaff ? fallbackStaff.fullName : 'Unassigned';
+        const fallbackId = fallbackStaff ? fallbackStaff.id : '';
+        return {
+          ...s,
+          supervisorName: fallbackName,
+          supervisorUserId: fallbackId,
+          supervisorHistory: computeNextSiteSupervisorHistory({
+            oldSite: s,
+            nextSupervisorName: fallbackName,
+            nextSupervisorUserId: fallbackId,
+            effectiveIso,
+            actorName: actorDisplayName,
+          }),
+          updatedAt: nowIso,
+        };
+      }
+
+      // 2. If still supervised by this user and user's fullName changed (or supervisorUserId wasn't linked yet), sync it
+      if (wasSupervisedByThisUser && (s.supervisorName !== nextFullName || s.supervisorUserId !== id)) {
+        anySiteChangedSync = true;
+        return {
+          ...s,
+          supervisorName: nextFullName,
+          supervisorUserId: id,
+          supervisorHistory: computeNextSiteSupervisorHistory({
+            oldSite: s,
+            nextSupervisorName: nextFullName,
+            nextSupervisorUserId: id,
+            effectiveIso,
+            actorName: actorDisplayName,
+          }),
+          updatedAt: nowIso,
+        };
+      }
+
+      // 3. If user was newly assigned to a site that currently has no supervisor, auto-assign as supervisor
+      const hasPlaceholderSupervisor =
+        !s.supervisorUserId &&
+        (supLower === '' || supLower === 'unassigned' || supLower === 'assigned supervisor');
+      if (!isAllScope && assignedSet.has(s.id) && hasPlaceholderSupervisor) {
+        anySiteChangedSync = true;
+        return {
+          ...s,
+          supervisorName: nextFullName,
+          supervisorUserId: id,
+          supervisorHistory: computeNextSiteSupervisorHistory({
+            oldSite: s,
+            nextSupervisorName: nextFullName,
+            nextSupervisorUserId: id,
+            effectiveIso,
+            actorName: actorDisplayName,
+          }),
+          updatedAt: nowIso,
+        };
+      }
+
+      return s;
+    });
+
+    const nextSupervisedIds = new Set<string>(
+      updatedSitesSnapshot
+        .filter(
+          (st) =>
+            !st.isDeleted &&
+            (st.supervisorUserId === id ||
+              (!st.supervisorUserId &&
+                Boolean(nextFullName) &&
+                (st.supervisorName || '').trim().toLowerCase() === nextFullName.toLowerCase()))
+        )
+        .map((st) => st.id)
+    );
+
+    const nextSiteAssignmentHistory = computeNextUserSiteAssignmentHistory({
+      prevUser: oldUser,
+      nextIsAllSites: isAllScope,
+      nextSpecificSiteIds: cleanSpecificIds,
+      nextSupervisedSiteIds: nextSupervisedIds,
+      nextUserRole: nextRole,
+      allSites: updatedSitesSnapshot,
+      effectiveIso,
+      actorName: actorDisplayName,
+    });
+
     const finalUserUpdates: Partial<User> = {
       ...updates,
       fullName: nextFullName || updates.fullName,
       siteId: normalizedSiteId,
       siteIds: normalizedSiteIds,
+      siteAssignmentHistory: nextSiteAssignmentHistory,
       updatedAt: nowIso,
     };
 
-    const nextUsersSnapshot = users.map((u) => (u.id === id ? { ...u, ...finalUserUpdates } : u));
-
     setUsers((prev) => {
-      const updated = prev.map((u) => (u.id === id ? { ...u, ...finalUserUpdates } : u));
+      const updated = prev.map((u) => {
+        if (u.id !== id) return u;
+        const nextUser = { ...u, ...finalUserUpdates };
+        if (currentUser?.id === id) setCurrentUser(nextUser);
+        if (authUser?.id === id) setAuthUser(nextUser);
+        return nextUser;
+      });
       saveTenantData(activeTenantId, 'users', updated);
       if (isMaster) {
         writeUsersToFirebase(updated).catch(console.warn);
@@ -6106,75 +6348,13 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     }
 
-    // Bi-directional sync: keep Site supervisorName & supervisorUserId consistent with User changes
-    setSites((prevSites) => {
-      let anySiteChanged = false;
-      const oldNameLower = (oldUser?.fullName || '').trim().toLowerCase();
-      const assignedSet = new Set(cleanSpecificIds);
-
-      const updatedSites = prevSites.map((s) => {
-        if (s.isDeleted) return s;
-
-        const supLower = (s.supervisorName || '').trim().toLowerCase();
-        const wasSupervisedByThisUser =
-          s.supervisorUserId === id ||
-          (!s.supervisorUserId && Boolean(oldNameLower) && supLower === oldNameLower);
-
-        // 1. If user was unassigned from this site (and is not All-Sites), reassign or clear site supervisor
-        if (wasSupervisedByThisUser && !isAllScope && !assignedSet.has(s.id)) {
-          const fallbackStaff = nextUsersSnapshot.find(
-            (other) =>
-              !other.isDeleted &&
-              other.id !== id &&
-              !isUserAllSites(other) &&
-              getUserAssignedSiteIds(other).includes(s.id)
-          );
-          anySiteChanged = true;
-          return {
-            ...s,
-            supervisorName: fallbackStaff ? fallbackStaff.fullName : 'Unassigned',
-            supervisorUserId: fallbackStaff ? fallbackStaff.id : '',
-            updatedAt: nowIso,
-          };
-        }
-
-        // 2. If still supervised by this user and user's fullName changed (or supervisorUserId wasn't linked yet), sync it
-        if (wasSupervisedByThisUser && (s.supervisorName !== nextFullName || s.supervisorUserId !== id)) {
-          anySiteChanged = true;
-          return {
-            ...s,
-            supervisorName: nextFullName,
-            supervisorUserId: id,
-            updatedAt: nowIso,
-          };
-        }
-
-        // 3. If user was newly assigned to a site that currently has no supervisor, auto-assign as supervisor
-        const hasPlaceholderSupervisor =
-          !s.supervisorUserId &&
-          (supLower === '' || supLower === 'unassigned' || supLower === 'assigned supervisor');
-        if (!isAllScope && assignedSet.has(s.id) && hasPlaceholderSupervisor) {
-          anySiteChanged = true;
-          return {
-            ...s,
-            supervisorName: nextFullName,
-            supervisorUserId: id,
-            updatedAt: nowIso,
-          };
-        }
-
-        return s;
-      });
-
-      if (anySiteChanged) {
-        saveTenantData(activeTenantId, 'sites', updatedSites);
-        if (isMaster) {
-          writeSitesToFirebase(updatedSites).catch(console.warn);
-        }
-        return updatedSites;
+    if (anySiteChangedSync) {
+      setSites(updatedSitesSnapshot);
+      saveTenantData(activeTenantId, 'sites', updatedSitesSnapshot);
+      if (isMaster) {
+        writeSitesToFirebase(updatedSitesSnapshot).catch(console.warn);
       }
-      return prevSites;
-    });
+    }
 
     const siteSummary = isAllScope
       ? 'All Sites'
@@ -6360,6 +6540,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
     }
 
+    if (!canUserTransferTeamAtCurrentSite(currentUser, team, sites)) {
+      const currentAssignedSiteName =
+        sites.find((s) => s.id === team.assignedSiteId)?.name || 'its current site';
+      return {
+        success: false,
+        message: `Permission Denied: Only an assigned officer at "${currentAssignedSiteName}" or Main Admin can transfer this team.`,
+        pendingStockUnitsOnPrevSite: 0,
+        assignmentStatus: team.assignmentStatus || 'Permanent',
+      };
+    }
+
     const initialBase = getTeamInitialBaseSite(team, sites);
 
     // If targetSiteId IS the team's Initial Base Site, route through returnTeamToInitialSite so clean home-base restoration & stock rules apply!
@@ -6389,6 +6580,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nextSite = sites.find((s) => s.id === targetSiteId);
     const nextSiteName = nextSite?.name || 'New Site';
     const nowIso = new Date().toISOString();
+    const officerRole = currentUser?.role || 'Site Officer';
+    const isOfficerMainAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
+    const accountabilityStatement = isOfficerMainAdmin
+      ? `Transfer authorized by ${actorDisplayName} (Main Admin) from ${prevSiteName} to ${nextSiteName}.`
+      : `Transferred under the responsibility of ${prevSiteName} site officer ${actorDisplayName} (${officerRole}).`;
 
     // Check unreturned / pending stock on the departing site specifically (never falsely attribute another site's stock to prevSiteId!)
     const pendingOnDepartingSite = computeTeamSiteInHandUnits(teamId, prevSiteId);
@@ -6415,6 +6611,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                   ...h,
                   status: 'Completed / Transferred' as const,
                   endedAt: nowIso,
+                  transferredOutBy: actorDisplayName,
+                  transferredOutByRole: officerRole,
+                  transferredOutAt: nowIso,
                   stockCleared: pendingOnDepartingSite <= 0,
                 }
               : h
@@ -6429,6 +6628,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               pendingStockUnitsAtTransfer: pendingOnDepartingSite,
               stockCleared: pendingOnDepartingSite <= 0,
               assignedAt: team.createdAt,
+              assignedBy: 'Initial Site Registration',
+              assignedBySiteName: prevSiteName,
+              transferredOutBy: actorDisplayName,
+              transferredOutByRole: officerRole,
+              transferredOutAt: nowIso,
               endedAt: nowIso,
               notes: `Prior assignment at ${prevSiteName}`,
             },
@@ -6446,6 +6650,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       stockCleared: pendingUnitsOnPrevSite <= 0,
       assignedAt: nowIso,
       assignedBy: actorDisplayName,
+      assignedByRole: officerRole,
+      assignedByUsername: currentUser?.username,
+      assignedBySiteName: prevSiteName,
+      responsibilityStatement: accountabilityStatement,
       notes:
         notes?.trim() ||
         (pendingUnitsOnPrevSite > 0
@@ -6481,10 +6689,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const msg =
       pendingUnitsOnPrevSite > 0
-        ? `Team "${cleanBase}" transferred as Temporary Assigned to - ${nextSiteName}. (${pendingUnitsOnPrevSite} unit(s) still pending clearance at ${pendingClearanceSiteName}; will auto-promote to Permanent with Ref: ${prevSiteName} once cleared).`
-        : `Team "${cleanBase}" transferred as Temporary Assigned to - ${nextSiteName} (No pending stock at ${prevSiteName}). Branch Admin or System Admin can now confirm Permanent assignment (Ref: ${prevSiteName}).`;
+        ? `Team "${cleanBase}" transferred by ${actorDisplayName} (${prevSiteName}) as Temporary Assigned to - ${nextSiteName}. (${pendingUnitsOnPrevSite} unit(s) still pending clearance at ${pendingClearanceSiteName}).`
+        : `Team "${cleanBase}" transferred by ${actorDisplayName} (${prevSiteName}) as Temporary Assigned to - ${nextSiteName} (0 pending stock at ${prevSiteName}).`;
 
-    addAuditLog('MASTER_TEAM_UPDATED', cleanBase, nextSiteName, msg);
+    addAuditLog('MASTER_TEAM_UPDATED', cleanBase, nextSiteName, `${msg} [${accountabilityStatement}]`);
 
     return {
       success: true,
@@ -6528,6 +6736,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
     }
 
+    if (!canUserTransferTeamAtCurrentSite(currentUser, team, sites)) {
+      const currentAssignedSiteName =
+        sites.find((s) => s.id === team.assignedSiteId)?.name || 'its current site';
+      return {
+        success: false,
+        message: `Permission Denied: Only an assigned officer at "${currentAssignedSiteName}" or Main Admin can return this team to its Initial Base.`,
+        pendingStockUnitsOnVisitingSites: 0,
+        assignmentStatus: team.assignmentStatus || 'Permanent',
+        initialSiteId: team.initialSiteId || team.assignedSiteId,
+        initialSiteName: team.initialSiteName || currentAssignedSiteName,
+      };
+    }
+
     const initialBase = getTeamInitialBaseSite(team, sites);
     const initialSiteId = initialBase.siteId;
     const initialSiteName = initialBase.siteName;
@@ -6538,6 +6759,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const departingSiteId = team.assignedSiteId;
     const departingSite = sites.find((s) => s.id === departingSiteId);
     const departingSiteName = departingSite?.name || 'Temporary Site';
+    const officerRole = currentUser?.role || 'Site Officer';
+    const isOfficerMainAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
+    const returnAccountabilityStatement = isOfficerMainAdmin
+      ? `Return to Initial Base (${initialSiteName}) authorized by ${actorDisplayName} (Main Admin).`
+      : `Return transfer executed under the responsibility of ${departingSiteName} site officer ${actorDisplayName} (${officerRole}).`;
+
     const pendingOnDepartingSite =
       departingSiteId !== initialSiteId ? computeTeamSiteInHandUnits(teamId, departingSiteId) : 0;
 
@@ -6568,6 +6795,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 ...h,
                 status: 'Completed / Transferred' as const,
                 endedAt: nowIso,
+                transferredOutBy: actorDisplayName,
+                transferredOutByRole: officerRole,
+                transferredOutAt: nowIso,
                 stockCleared: pendingOnDepartingSite <= 0,
               };
             }
@@ -6583,6 +6813,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               pendingStockUnitsAtTransfer: 0,
               stockCleared: true,
               assignedAt: team.createdAt,
+              assignedBy: 'Initial Site Registration',
+              assignedBySiteName: initialSiteName,
               endedAt: team.temporaryAssignedAt || nowIso,
               notes: `Initial Base registration at ${initialSiteName}`,
             },
@@ -6605,6 +6837,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               promotedBy: canRestoreImmediatelyAsPermanent
                 ? actorDisplayName
                 : h.promotedBy,
+              promotedByRole: canRestoreImmediatelyAsPermanent ? officerRole : h.promotedByRole,
+              responsibilityStatement: h.responsibilityStatement || returnAccountabilityStatement,
               notes:
                 notes?.trim() ||
                 (canRestoreImmediatelyAsPermanent
@@ -6628,10 +6862,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         stockClearedAt: canRestoreImmediatelyAsPermanent ? nowIso : undefined,
         assignedAt: nowIso,
         assignedBy: actorDisplayName,
+        assignedByRole: officerRole,
+        assignedByUsername: currentUser?.username,
+        assignedBySiteName: departingSiteName,
         promotedToPermanentAt: canRestoreImmediatelyAsPermanent ? nowIso : undefined,
         promotedBy: canRestoreImmediatelyAsPermanent
           ? actorDisplayName
           : undefined,
+        promotedByRole: canRestoreImmediatelyAsPermanent ? officerRole : undefined,
+        responsibilityStatement: returnAccountabilityStatement,
         notes:
           notes?.trim() ||
           (canRestoreImmediatelyAsPermanent
@@ -6672,10 +6911,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
 
     const msg = canRestoreImmediatelyAsPermanent
-      ? `Team "${cleanBase}" returned to Initial Base Site (${initialSiteName}) and restored to PERMANENT status with its original name "${cleanBase}".`
-      : `Team "${cleanBase}" returned to Initial Base Site (${initialSiteName}) as Temporary (${primaryVisitingUncleared?.pendingUnits || totalPendingOnVisitingSites} unit(s) still held under "Stock to Return - ${primaryVisitingUncleared?.siteName || departingSiteName}"). Once cleared, it will automatically restore to Permanent "${cleanBase}" without any Ref suffix.`;
+      ? `Team "${cleanBase}" returned to Initial Base Site (${initialSiteName}) by ${actorDisplayName} and restored to PERMANENT status.`
+      : `Team "${cleanBase}" returned to Initial Base Site (${initialSiteName}) by ${actorDisplayName} as Temporary (${primaryVisitingUncleared?.pendingUnits || totalPendingOnVisitingSites} unit(s) pending clearance at ${primaryVisitingUncleared?.siteName || departingSiteName}).`;
 
-    addAuditLog('MASTER_TEAM_UPDATED', cleanBase, initialSiteName, msg);
+    addAuditLog('MASTER_TEAM_UPDATED', cleanBase, initialSiteName, `${msg} [${returnAccountabilityStatement}]`);
 
     return {
       success: true,
@@ -6697,6 +6936,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const team = teams.find((t) => t.id === teamId);
     if (!team) {
       return { success: false, message: 'Team not found.' };
+    }
+
+    if (!canUserTransferTeamAtCurrentSite(currentUser, team, sites)) {
+      const currentAssignedSiteName =
+        sites.find((s) => s.id === team.assignedSiteId)?.name || 'its current site';
+      return {
+        success: false,
+        message: `Permission Denied: Only an assigned officer at "${currentAssignedSiteName}" or Main Admin can confirm permanent assignment for this team.`,
+      };
     }
 
     const initialBase = getTeamInitialBaseSite(team, sites);
@@ -6737,6 +6985,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const nowIso = new Date().toISOString();
+    const officerRole = currentUser?.role || 'Site Officer';
     const cleanBase = extractBaseTeamName(team.teamName, team.baseTeamName);
     const permanentTeamName = formatPermanentTransferredTeamName(
       cleanBase,
@@ -6757,6 +7006,10 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           stockClearedAt: nowIso,
           promotedToPermanentAt: nowIso,
           promotedBy: actorDisplayName,
+          promotedByRole: officerRole,
+          responsibilityStatement:
+            h.responsibilityStatement ||
+            `Permanent status confirmed by ${actorDisplayName} (${officerRole}) at ${currentSiteName}.`,
           notes: prevSiteName
             ? `Promoted to Permanent at ${currentSiteName} (Ref: ${prevSiteName})`
             : `Confirmed Permanent at ${currentSiteName}`,
@@ -6796,7 +7049,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return updated;
     });
 
-    const msg = `Team assignment promoted to PERMANENT at ${currentSiteName}: "${permanentTeamName}".`;
+    const msg = `Team assignment promoted to PERMANENT at ${currentSiteName} by ${actorDisplayName}: "${permanentTeamName}".`;
     addAuditLog('MASTER_TEAM_UPDATED', permanentTeamName, currentSiteName, msg);
 
     return {
@@ -6906,6 +7159,11 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [teamIssues, teamReturns, projectUsages, teams, sites, computeTeamSiteInHandUnits, getTeamUnclearedVisitingSites, currentTenantId, currentUser]);
 
   const updateTeam = (id: string, updates: Partial<Team>) => {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error(
+        'ADMIN_ONLY: Teams are View-Only for your role. Only Main Admin can edit team profiles; site officers may only transfer teams assigned to their site.'
+      );
+    }
     const existingTeam = teams.find((t) => t.id === id);
     const nowIso = new Date().toISOString();
 
@@ -7227,10 +7485,32 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const prevIds = getUserAssignedSiteIds(u, sites);
         if (remaining.length === prevIds.length && u.siteId !== id) return u;
         changed = true;
+        const remainingSupIds = new Set<string>(
+          sites
+            .filter(
+              (st) =>
+                !st.isDeleted &&
+                st.id !== id &&
+                (st.supervisorUserId === u.id ||
+                  (!st.supervisorUserId &&
+                    (st.supervisorName || '').trim().toLowerCase() === u.fullName.trim().toLowerCase()))
+            )
+            .map((st) => st.id)
+        );
         const nextUser: User = {
           ...u,
           siteId: remaining[0] || 'unassigned',
           siteIds: remaining.length > 0 ? remaining : ['unassigned'],
+          siteAssignmentHistory: computeNextUserSiteAssignmentHistory({
+            prevUser: u,
+            nextIsAllSites: false,
+            nextSpecificSiteIds: remaining,
+            nextSupervisedSiteIds: remainingSupIds,
+            nextUserRole: u.role,
+            allSites: sites,
+            effectiveIso: timestamp,
+            actorName: deletedBy,
+          }),
           updatedAt: timestamp,
         };
         if (currentUser?.id === u.id) setCurrentUser(nextUser);
@@ -7286,7 +7566,19 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             (!s.supervisorUserId && (s.supervisorName || '').trim().toLowerCase() === targetNameLower)
           ) {
             siteChanged = true;
-            return { ...s, supervisorName: 'Unassigned', supervisorUserId: '', updatedAt: timestamp };
+            return {
+              ...s,
+              supervisorName: 'Unassigned',
+              supervisorUserId: '',
+              supervisorHistory: computeNextSiteSupervisorHistory({
+                oldSite: s,
+                nextSupervisorName: 'Unassigned',
+                nextSupervisorUserId: '',
+                effectiveIso: timestamp,
+                actorName: deletedBy,
+              }),
+              updatedAt: timestamp,
+            };
           }
           return s;
         });
@@ -7310,6 +7602,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const softDeleteTeam = (id: string) => {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error('ADMIN_ONLY: Only Main Admin (Super Admin Central) can delete field teams.');
+    }
     const timestamp = new Date().toISOString();
     const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
@@ -7389,6 +7684,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     ids.forEach((id) => softDeleteUser(id));
   };
   const bulkSoftDeleteTeams = (ids: string[]) => {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error('ADMIN_ONLY: Only Main Admin (Super Admin Central) can delete field teams.');
+    }
     if (!ids || ids.length === 0) return;
     const idSet = new Set(ids);
     const timestamp = new Date().toISOString();
@@ -7563,6 +7861,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const restoreTeam = (id: string) => {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error('ADMIN_ONLY: Only Main Admin (Super Admin Central) can restore field teams.');
+    }
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const timestamp = new Date().toISOString();
     unmarkTenantRecordDeleted(activeTenantId, id);
@@ -7605,11 +7906,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const bulkRestore = (records: Array<{ id: string; type: RecycleEntityType }>) => {
+    const isMain = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
     records.forEach((r) => {
       if (r.type === 'item') restoreItem(r.id);
       else if (r.type === 'site') restoreSite(r.id);
       else if (r.type === 'user') restoreUser(r.id);
-      else if (r.type === 'team') restoreTeam(r.id);
+      else if (r.type === 'team' && isMain) restoreTeam(r.id);
       else if (r.type === 'project') restoreProject(r.id);
     });
   };
@@ -7752,6 +8054,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const permanentlyDeleteTeam = (id: string) => {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error('ADMIN_ONLY: Only Main Admin (Super Admin Central) can permanently delete field teams.');
+    }
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
     const team = teams.find((t) => t.id === id);
 
@@ -7796,19 +8101,23 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const bulkPermanentlyDelete = (records: Array<{ id: string; type: RecycleEntityType }>) => {
+    const isMain = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
     records.forEach((r) => {
       if (r.type === 'item') permanentlyDeleteItem(r.id);
       else if (r.type === 'site') permanentlyDeleteSite(r.id);
       else if (r.type === 'user') permanentlyDeleteUser(r.id);
-      else if (r.type === 'team') permanentlyDeleteTeam(r.id);
+      else if (r.type === 'team' && isMain) permanentlyDeleteTeam(r.id);
       else if (r.type === 'project') permanentlyDeleteProject(r.id);
     });
   };
 
   const emptyRecycleBin = () => {
-    const count = recycleBinItems.length;
+    const isMain = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
+    const count = recycleBinItems.filter((r) => isMain || r.type !== 'team').length;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;
-    const purgedIds = recycleBinItems.map((r) => r.id);
+    const purgedIds = recycleBinItems
+      .filter((r) => isMain || r.type !== 'team')
+      .map((r) => r.id);
     if (purgedIds.length > 0) {
       markTenantRecordsDeleted(activeTenantId, purgedIds);
     }
@@ -7836,15 +8145,17 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return updated;
     });
-    setTeams((prev) => {
-      const updated = prev.filter((t) => !t.isDeleted);
-      saveTenantData(activeTenantId, 'teams', updated);
-      const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
-      if (isMaster) {
-        writeTeamsToFirebase(updated).catch(console.warn);
-      }
-      return updated;
-    });
+    if (isMain) {
+      setTeams((prev) => {
+        const updated = prev.filter((t) => !t.isDeleted);
+        saveTenantData(activeTenantId, 'teams', updated);
+        const isMaster = activeTenantId === DEFAULT_TENANT.id || activeTenantId === 'tenant-apex-main';
+        if (isMaster) {
+          writeTeamsToFirebase(updated).catch(console.warn);
+        }
+        return updated;
+      });
+    }
     setProjects((prev) => {
       const updated = prev.filter((p) => !p.isDeleted);
       saveTenantData(activeTenantId, 'projects', updated);
@@ -7948,6 +8259,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const clearAllTeams = () => {
+    if (!isSuperAdmin(currentUser?.role) && currentUser?.username !== 'admin') {
+      throw new Error('ADMIN_ONLY: Only Main Admin (Super Admin Central) can clear field teams.');
+    }
     const timestamp = new Date().toISOString();
     const deletedBy = actorDisplayName;
     const activeTenantId = currentTenantIdRef.current || currentTenantId;

@@ -17,17 +17,17 @@ import {
   ArrowRight,
   RotateCcw,
   Home,
+  Lock,
 } from 'lucide-react';
 import {
   Team,
   isSuperAdmin,
-  isCentralOrAllSiteAdmin,
-  isUserAssignedToSite,
   sortSitesHierarchically,
   formatSiteHierarchyLabel,
 } from '../../types';
 import { useStock } from '../../context/StockContext';
 import {
+  canUserTransferTeamAtCurrentSite,
   extractBaseTeamName,
   formatPermanentTransferredTeamName,
   getTemporaryAssignmentBadgeLabel,
@@ -56,6 +56,7 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
     teams,
     activeSites,
     currentUser,
+    actorDisplayName,
     transferTeamToSite,
     returnTeamToInitialSite,
     promoteTeamAssignmentToPermanent,
@@ -69,7 +70,15 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
     [teams, initialTeamProp]
   );
 
-  const [activeTab, setActiveTab] = useState<'details' | 'transfer'>(initialTab);
+  const isCentralAdmin = isSuperAdmin(currentUser?.role) || currentUser?.username === 'admin';
+  const canManageTeamAssignment = useMemo(
+    () => canUserTransferTeamAtCurrentSite(currentUser, team, activeSites),
+    [currentUser, team, activeSites]
+  );
+
+  const [activeTab, setActiveTab] = useState<'details' | 'transfer'>(
+    initialTab === 'transfer' && canManageTeamAssignment ? 'transfer' : 'details'
+  );
   const [targetSiteId, setTargetSiteId] = useState<string>('');
   const [transferNotes, setTransferNotes] = useState<string>('');
   const [feedbackBanner, setFeedbackBanner] = useState<{
@@ -79,13 +88,13 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
 
   React.useEffect(() => {
     if (isOpen && team) {
-      setActiveTab(initialTab);
+      setActiveTab(initialTab === 'transfer' && canManageTeamAssignment ? 'transfer' : 'details');
       const otherSites = activeSites.filter((s) => s.id !== team.assignedSiteId);
       setTargetSiteId(otherSites[0]?.id || '');
       setTransferNotes('');
       setFeedbackBanner(null);
     }
-  }, [isOpen, initialTab, team?.id]);
+  }, [isOpen, initialTab, team?.id, canManageTeamAssignment]);
 
   if (!isOpen || !team) return null;
 
@@ -136,14 +145,6 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
   const hasRefSuffixAtInitialBase =
     isAtInitialBase &&
     (team.teamName !== cleanBaseName || Boolean(team.previousSiteName) || isTemporary);
-
-  // Check if current user is System Admin, Branch Admin, Temporary/Current Site Manager, or Initial Base Site Manager
-  const canManageTeamAssignment =
-    isSuperAdmin(currentUser.role) ||
-    isCentralOrAllSiteAdmin(currentUser.role) ||
-    currentUser.role === 'Branch Admin' ||
-    (currentSite ? isUserAssignedToSite(currentUser, currentSite, activeSites) : true) ||
-    (initialBaseSiteObj ? isUserAssignedToSite(currentUser, initialBaseSiteObj, activeSites) : false);
 
   const assignmentHistory = getTeamCompleteAssignmentHistory(
     team,
@@ -289,7 +290,7 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
               type="button"
               onClick={() => setActiveTab('details')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTab === 'details'
+                activeTab === 'details' || !canManageTeamAssignment
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
               }`}
@@ -297,18 +298,25 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
               <History className="w-3.5 h-3.5" />
               <span>Assigned Sites History &amp; Profile ({assignmentHistory.length})</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('transfer')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTab === 'transfer'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>Transfer Team to Another Site</span>
-            </button>
+            {canManageTeamAssignment ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('transfer')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  activeTab === 'transfer'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>Transfer Team to Another Site</span>
+              </button>
+            ) : (
+              <span className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-slate-200/80 text-slate-700 border border-slate-300/80 inline-flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-slate-600" />
+                <span>View-Only (Assigned to {currentSiteName})</span>
+              </span>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -393,7 +401,24 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
 
         {/* Body Content */}
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
-          {activeTab === 'details' ? (
+          {!canManageTeamAssignment ? (
+            <div className="px-4 py-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-slate-900">View-Only Team Access:</span> Teams can only be registered, edited, or deleted by <strong>Main Admin</strong>. Site transfers for this team can only be executed by an officer assigned to{' '}
+                <strong>{currentSiteName}</strong> or Main Admin.
+              </div>
+            </div>
+          ) : !isCentralAdmin ? (
+            <div className="px-4 py-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-sky-950">Site Officer Transfer Access ({currentSiteName}):</span> Team profile details are View-Only, and you are authorized to transfer this team from <strong>{currentSiteName}</strong>. Any transfer you execute will record <strong>{actorDisplayName}</strong> as the responsible site officer.
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === 'details' || !canManageTeamAssignment ? (
             <>
               {/* Current Site Assignment Status & Clearance Banner */}
               <div
@@ -544,8 +569,15 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                       All Assigned Sites History (Temporary &amp; Permanent)
                     </h3>
                   </div>
-                  <span className="text-[11px] font-mono font-bold text-slate-500">
+                  <span className="text-[11px] font-mono tabular-nums font-bold text-slate-500">
                     {assignmentHistory.length} Site Record{assignmentHistory.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+
+                <div className="px-4 py-2 bg-amber-50/60 dark:bg-amber-950/20 border-b border-amber-200/70 dark:border-amber-800/40 text-[11px] text-amber-950 dark:text-amber-200 flex items-center gap-2">
+                  <UserCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span>
+                    <strong>Site Officer Responsibility Ledger:</strong> Every transfer and handover displays the authorizing officer. Responsibility for the team transfer rests with the listed site officer.
                   </span>
                 </div>
 
@@ -557,6 +589,7 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                         <th className="py-2.5 px-3">Assigned Site Branch</th>
                         <th className="py-2.5 px-3">Assignment Type</th>
                         <th className="py-2.5 px-3">Base / Prior Ref</th>
+                        <th className="py-2.5 px-3">Transferred / Authorized By (Officer Responsibility)</th>
                         <th className="py-2.5 px-3">Stock Clearance</th>
                         <th className="py-2.5 px-3">Assigned / Promoted Date</th>
                         <th className="py-2.5 px-3 text-right">Status</th>
@@ -567,13 +600,16 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                         const siteInHand = getTeamSiteInHandStock(team.id, rec.siteId).totalUnitsHeld;
                         const isCurrentActive = rec.status === 'Active';
                         const isRecordInitialBase = rec.siteId === initialBase.siteId;
+                        const isTransferEntry = index > 0 || Boolean(rec.previousSiteId);
+                        const officerName = rec.assignedBy || 'System Super Admin';
+                        const officerSite = rec.assignedBySiteName || rec.previousSiteName || rec.siteName;
 
                         return (
                           <tr
                             key={rec.id || index}
                             className={isCurrentActive ? 'bg-emerald-50/30 font-medium' : 'hover:bg-slate-50'}
                           >
-                            <td className="py-2.5 px-3 text-center font-mono text-slate-400">
+                            <td className="py-2.5 px-3 text-center font-mono tabular-nums text-slate-400">
                               {index + 1}
                             </td>
                             <td className="py-2.5 px-3">
@@ -607,7 +643,7 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                               {isRecordInitialBase && rec.assignmentType === 'Permanent' ? (
                                 <span className="inline-flex items-center gap-1 font-bold text-sky-900 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 text-[11px]">
                                   <Home className="w-3 h-3 text-sky-700" />
-                                  <span>{ index === 0 ? 'Initial Base' : `Returned Home (${cleanBaseName})` }</span>
+                                  <span>{index === 0 ? 'Initial Base' : `Returned Home (${cleanBaseName})`}</span>
                                 </span>
                               ) : rec.previousSiteName ? (
                                 <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
@@ -618,9 +654,46 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                               )}
                             </td>
                             <td className="py-2.5 px-3">
+                              <div className="space-y-0.5">
+                                <div className="font-bold text-slate-900 flex flex-wrap items-center gap-1">
+                                  <UserCheck className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                                  <span>{officerName}</span>
+                                </div>
+                                <div className="text-[10px] font-semibold text-slate-600">
+                                  {isTransferEntry ? (
+                                    <span className="text-amber-800">
+                                      Responsible Officer ({officerSite}
+                                      {rec.assignedByRole ? ` · ${rec.assignedByRole}` : ''})
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      Registered By{rec.assignedByRole ? ` (${rec.assignedByRole})` : ''}
+                                    </span>
+                                  )}
+                                </div>
+                                {rec.responsibilityStatement && (
+                                  <div className="text-[10px] text-slate-500 leading-snug">
+                                    {rec.responsibilityStatement}
+                                  </div>
+                                )}
+                                {rec.transferredOutBy && (
+                                  <div className="text-[10px] font-semibold text-sky-800">
+                                    Transferred Out By: {rec.transferredOutBy}
+                                    {rec.transferredOutByRole ? ` (${rec.transferredOutByRole})` : ''}
+                                  </div>
+                                )}
+                                {rec.promotedBy && (
+                                  <div className="text-[10px] font-semibold text-emerald-700">
+                                    Permanent Confirmed By: {rec.promotedBy}
+                                    {rec.promotedByRole ? ` (${rec.promotedByRole})` : ''}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3">
                               {siteInHand > 0 ? (
                                 <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono tabular-nums border ${
                                     isCurrentActive
                                       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                       : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -638,8 +711,13 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                            <td className="py-2.5 px-3 font-mono tabular-nums text-[11px] text-slate-600">
                               <div>{formatDateTime(rec.assignedAt)}</div>
+                              {rec.endedAt && (
+                                <div className="text-[10px] text-slate-500">
+                                  Ended: {formatDateTime(rec.endedAt)}
+                                </div>
+                              )}
                               {rec.promotedToPermanentAt && (
                                 <div className="text-[10px] text-emerald-700 font-bold">
                                   Perm: {formatDateTime(rec.promotedToPermanentAt)}
@@ -1041,6 +1119,18 @@ export const TeamTransferAndDetailsModal: React.FC<TeamTransferAndDetailsModalPr
                     placeholder="e.g. Temporary site work completed; returning team to Initial Base Site..."
                     className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                   />
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5">
+                  <UserCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <div className="font-extrabold">
+                      Authorizing Officer &amp; Accountability: {actorDisplayName} ({currentUser?.role})
+                    </div>
+                    <div className="text-[11px] text-amber-900 leading-relaxed">
+                      Executing this transfer from <strong>{currentSiteName}</strong> records your name and role permanently in the Team Assignment History ledger as the responsible site officer for this handover.
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-200">

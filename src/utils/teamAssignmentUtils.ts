@@ -1,4 +1,46 @@
-import { Team, Site, TeamSiteAssignmentHistoryRecord } from '../types';
+import {
+  Team,
+  Site,
+  User,
+  TeamSiteAssignmentHistoryRecord,
+  isSuperAdmin,
+  isUserAllSites,
+  getUserAssignedSiteIds,
+  userHasSiteAccess,
+} from '../types';
+
+/**
+ * Determines whether a user has permission to transfer/return/confirm-permanent
+ * for a specific team based on its CURRENT assigned site (`team.assignedSiteId`).
+ * - Main Admin (`Super Admin Central` or `admin`): allowed for all teams.
+ * - All other users: Teams registration/edit/delete is View-Only, and transfer
+ *   actions are strictly allowed ONLY when the team is currently stationed at
+ *   that user's own assigned site(s).
+ */
+export function canUserTransferTeamAtCurrentSite(
+  user:
+    | Pick<User, 'id' | 'fullName' | 'siteId' | 'siteIds' | 'role' | 'username' | 'isDeleted'>
+    | null
+    | undefined,
+  team: Pick<Team, 'assignedSiteId'> | null | undefined,
+  sites: Site[]
+): boolean {
+  if (!user || user.isDeleted || !team || !team.assignedSiteId) return false;
+  if (isSuperAdmin(user.role) || user.username === 'admin') return true;
+
+  const assignedSiteIds = getUserAssignedSiteIds(user, sites);
+  const currentTeamSite = sites.find((s) => s.id === team.assignedSiteId);
+
+  if (isUserAllSites(user) || assignedSiteIds.includes('all')) {
+    if (currentTeamSite?.isMainWarehouse) {
+      return assignedSiteIds.includes(team.assignedSiteId);
+    }
+    return Boolean(currentTeamSite);
+  }
+
+  if (assignedSiteIds.length === 0) return false;
+  return userHasSiteAccess(user, team.assignedSiteId, sites);
+}
 
 /**
  * Strips any existing `(Ref: ...)` suffix or `Temporary Assigned to - ...` badge text
@@ -142,6 +184,8 @@ export function getTeamCompleteAssignmentHistory(
         pendingStockUnitsAtTransfer: pendingPrev,
         stockCleared: pendingPrev <= 0,
         assignedAt: team.createdAt,
+        assignedBy: 'System Super Admin',
+        assignedBySiteName: prevName,
         endedAt: team.temporaryAssignedAt || team.permanentConfirmedAt || team.createdAt,
         notes: `Initial Base Site registration (${prevName})`,
       });
@@ -168,6 +212,8 @@ export function getTeamCompleteAssignmentHistory(
           ? getSitePendingUnits(team.id, team.pendingClearanceSiteId) <= 0
           : true,
       assignedAt: team.temporaryAssignedAt || team.createdAt,
+      assignedBy: team.permanentConfirmedBy || (records.length > 0 ? 'Site Officer' : 'System Super Admin'),
+      assignedBySiteName: team.previousSiteName || currentSiteName,
       promotedToPermanentAt: team.permanentConfirmedAt,
       promotedBy: team.permanentConfirmedBy,
       notes:

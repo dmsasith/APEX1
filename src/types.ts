@@ -130,6 +130,18 @@ export interface SystemConfig {
   usbScanMaxLatencyMs?: number;
 }
 
+export interface SiteSupervisorHistoryRecord {
+  id: string;
+  supervisorName: string;
+  supervisorUserId?: string;
+  status: 'Active' | 'Completed / Reassigned';
+  startDate: string;
+  endDate?: string;
+  assignedBy?: string;
+  endedBy?: string;
+  notes?: string;
+}
+
 export interface Site {
   id: string;
   name: string;
@@ -138,6 +150,7 @@ export interface Site {
   parentSiteName?: string; // Cached Parent Regional Site Branch display name
   supervisorName: string;
   supervisorUserId?: string; // Linked registered User ID when assigned to a system user ('' when custom/unassigned)
+  supervisorHistory?: SiteSupervisorHistoryRecord[];
   location: string;
   contactNumber: string;
   createdAt: string;
@@ -147,6 +160,20 @@ export interface Site {
   deletedBy?: string;
 }
 
+export interface UserSiteAssignmentHistoryRecord {
+  id: string;
+  siteId: string; // 'all' for All Sites / Central HQ scope, or specific Site ID
+  siteName: string;
+  assignmentRole: 'Supervisor' | 'Assigned Staff' | 'All Sites';
+  userRoleAtTime?: UserRole;
+  status: 'Active' | 'Completed / Reassigned';
+  startDate: string;
+  endDate?: string;
+  assignedBy?: string;
+  endedBy?: string;
+  notes?: string;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -154,6 +181,7 @@ export interface User {
   fullName: string;
   siteId: string; // 'all', 'unassigned', or primary assigned site id (kept synced with siteIds[0])
   siteIds?: string[]; // ['all'], ['unassigned'], or array of 1+ assigned site IDs
+  siteAssignmentHistory?: UserSiteAssignmentHistoryRecord[];
   role: UserRole;
   password: string;
   createdAt: string;
@@ -416,8 +444,16 @@ export interface TeamSiteAssignmentHistoryRecord {
   stockClearedAt?: string;
   assignedAt: string;
   assignedBy?: string;
+  assignedByRole?: string;
+  assignedByUsername?: string;
+  assignedBySiteName?: string;
+  transferredOutBy?: string;
+  transferredOutByRole?: string;
+  transferredOutAt?: string;
   promotedToPermanentAt?: string;
   promotedBy?: string;
+  promotedByRole?: string;
+  responsibilityStatement?: string;
   endedAt?: string;
   notes?: string;
 }
