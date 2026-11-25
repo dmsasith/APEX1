@@ -87,9 +87,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Open "Master Registrations -> Item Catalog" to add Consumable Materials and Returnable Machinery/Tools or bulk import via Excel/CSV. You can optionally attach an Item Photo when adding or editing any item — the system automatically resizes and compresses the image to under 200KB for fast cloud loading, and every printable voucher/report includes a "Print with Image" checkbox to optionally print item thumbnails. When scanning barcodes via Mobile Camera or USB/Wireless Barcode Gun, the scanner detects once, automatically stops and hides the camera view to prevent continuous duplicate scans, and provides a "Scan Now" button to re-activate the scanner.',
       },
       {
-        stepTitle: '3. 3-Tier Branches (Sub-Site Lock), Teams View-Only Governance & Own-Site Transfer Accountability',
+        stepTitle: '3. Head Office Controls Master & Teams (Staff View-Only), Mandatory Team Sections & Delete/Rename Lock',
         detail:
-          'In "Master Registrations -> Sites / Branches", create Regional Site Branches and optional child Sub-Site Branches (Sub-Sites with issued stock or FOC are strictly LOCKED against deletion or parent reassignment). In "Field Teams", assigning a Project Section is mandatory (separate names like "Alex NC Team 1" / "Alex Civil Team 1"; section switch unlocks only at 0 In-Hand Stock). IMPORTANT GOVERNANCE: Full Teams create/edit/delete access belongs exclusively to Main Admin — all other staff roles see the Teams registry as View-Only, while Site Officers can execute Team Site Transfers ONLY for teams stationed at their own assigned site(s), with Officer Name, Role & Site responsibility permanently logged inside Team History.',
+          'Only Head Office (Main Admin) can register or edit Master Catalog, Sites/Branches (Regional & Sub-Site — Sub-Sites with stock/FOC lock against deletion or moving), and Field Teams. Staff Users CANNOT create, edit, or delete Teams and see the Teams registry as View-Only. When Head Office registers a Field Team, selecting its Project Section (e.g., New Connection, Cable, Civil, Water, Electrical, Solar) is mandatory (same crew working in two sections gets separate team names like "Alex NC Team 1" & "Alex Civil Team 1"). CRITICAL PROTECTION: Once any stock is issued to a Team, that Team CANNOT be deleted or renamed, and its Section only unlocks to change when In-Hand Stock is 0.',
       },
       {
         stepTitle: '4. Staff Logins, User/Supervisor Site Assignment History & Auto Email Verification',
@@ -130,9 +130,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'For defective or excess vendor deliveries, create an official Return to Vendor (RTV) / Debit Note with outward Gate Pass and credit claim tracking. For site-damaged items, inspect and restore repaired units back into Main Stock via the Damaged Stock ledger.',
       },
       {
-        stepTitle: '4. Client Free Stock (FOC) 5-Stage Reconciliation Flow, Color-Coded Project Cards & Full Central Reports',
+        stepTitle: '4. Client Free Stock (FOC) — Auto Branch Detect & Lock, 5-Stage Reconciliation & Full Reports',
         detail:
-          'Open "Client Free Stock", click "+ Log Client Free Stock", and select "Under Main Project" or "Individual Project". Physical FOC deliveries default to Central Warehouse, while selecting a project automatically LOCKS its "Allocated Site Branch" (or choose "ALL AREAS" for island-wide contracts usable by any branch). Both Client Free Stock and Project Reconciliation follow the clear 5-Stage Standard Reconciliation Flow: (1) Initial FOC Receipt at Central -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Balance / Returnable Stock on Project Completion. Color-coded Main Project cards link every Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below with its own flow and end with a consolidated Full Usage & Client Balance Summary. You can also print clean A4/PDF reports per individual issued item or as one Full Consolidated Project Report, and Admins can reassign mis-logged FOC vouchers anytime.',
+          'Open "Client Free Stock", click "+ Log Client Free Stock", and choose a Project. Selecting any Project AUTOMATICALLY DETECTS AND LOCKS its assigned "Allocated Site Branch" (unless registered under "ALL AREAS" for island-wide use by any branch). Both Client Free Stock and Project Reconciliation follow the clear 5-Stage Standard Flow: (1) Initial FOC Receipt at Central -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Balance / Returnable Stock on Project Completion. Color-coded Main Project cards link every Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below and conclude with a Full Usage & Client Completion Returnable Balance Report.',
       },
       {
         stepTitle: '5. Central Stock Item Summary — Adaptive 3-Tier Numbered Flow (With/Without Sub-Site) & Dropdown Images',
@@ -173,9 +173,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Open "Site Branch Stock (Site Inventories)" to view usable branch inventory with aligned 5-Stage Summary buttons, "Central FOC" highlights, and direct "Issue Stock to Sub-Site" dispatch on Parent Regional Branches. Switch to the dedicated "Damaged Returns" tab inside Site Branch Stock to inspect all items returned as "Damaged / Scrap" by Field Teams (and child Sub-Sites) separately from usable yard stock — and dispatch batch damaged returns upstream right from there (Sub-Sites route to Parent Regional Branch; Regional Sites route to Central Main Warehouse via printable BRM vouchers).',
       },
       {
-        stepTitle: '4. Field Crew Issuance (IN) Inside Regional & Sub-Site Branches + Site-Separated Team Stock',
+        stepTitle: '4. Field Crew Issuance (IN), Team Site Transfers, Separated Old-Site Stock & Full Team History',
         detail:
-          'Both Regional Site Branches and Sub-Site Branches issue materials & tools directly to their Field Teams via "Issue to Teams" with signable Issue Notes (IN) / Gate Passes. In "Team In-Hand Stock", transferred team balances stay strictly separated per site ("Stock to Return - [Previous Site Name]" vs. "[Current Site Name] - Active Site Stock") and are never summed across branches.',
+          'Both Regional and Sub-Site branches issue stock to their Field Teams via "Issue to Teams" (IN / Gate Pass). Site Officers can Transfer ONLY teams stationed at their own assigned site(s): if the team holds previous-site stock, it moves as "Temporary Assigned to - [New Site]", and old-site items stay strictly separated under "Stock to Return - [Previous Site Name]" (never mixed with new-site stock). Once old-site stock returns to 0 (or confirmed permanent), it becomes Permanent "[Team Name] (Ref: [Previous Site])". Every transfer permanently logs Previous Sites, Dates, and the acting Officer\'s Name, Role & Site ("Transferred By") in Team History.',
       },
     ],
     keyOutputs: [
@@ -201,14 +201,14 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'In "Project & New Section Registry -> New Section Registry & Material Templates", click "+ Add New Section" (or use the 1-click Quick-Load Template buttons) to load international standard templates for: (1) Telecom New Connection (ITU-T G.984 / FTTH), (2) Water Supply & Utility Project (ISO 4064 / AWWA — Water Account No, Meter Serial, Pipe DN/PN, Pressure Bar, Ferrule Size), (3) Electrical Power Connection (IEC 60364 — Service Order No, Energy Meter kWh, Phase/Voltage, kVA Demand, Earth Resistance Ω), (4) Solar PV & Net-Metering (IEC 62446 — Net-Metering Ref, Inverter Serial, kWp DC/kW AC, PV Panels, BESS kWh, Bi-Directional Meter), or (5) Standard EPC Project. You can customize all 6 Core Field Labels and click "+ Add Field" to add unlimited custom technical fields (or add fields on the fly inside the Register Project modal).',
       },
       {
-        stepTitle: '2. "Main Project -> Under New Connections", Strict Section-Filtered Teams & Section-Filtered FOC',
+        stepTitle: '2. Branch-Assigned Projects, Strict Section-Filtered Teams & Automatic FOC Detect / Reduction on Usage',
         detail:
-          'Across all 4 New Connection sections (Telecom, Water, Electrical, Solar), register a "Standalone New Connection", "Main Project (For New Connections)", or "Under Main Project" assigned to a specific Site Branch or "ALL AREAS (All Site Branches)". Inside "Material Usage / Daily Progress Entry", selecting any Project Section (New Connection, Cable, Civil, etc.) automatically filters the "Executing Field Team *" dropdown to ONLY teams registered under that section — preventing cross-section mix-ups — while FOC selectors only appear when Client FOC exists for that active section.',
+          'Every Project (Standalone, Main Project, or Under Main Project) is assigned to its specific Site Branch (or "ALL AREAS"). In "Material Usage / Daily Progress Entry", choosing a Project Section strictly filters "Executing Field Team *" to ONLY teams registered under that section. When logging daily usage under a Main Project, the system AUTOMATICALLY DETECTS active Client FOC stock matching that branch & section and AUTOMATICALLY REDUCES (deducts) Used + Wastage quantities from the Main Project FOC pool in real time.',
       },
       {
         stepTitle: '3. Log Installed Qty + "Wastage Qty", Active-Site Stock Guard & Sub-Project / Main Project Reconciliation Flow',
         detail:
-          'Enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Teams only consume active-site stock (unless the project or Main Project is "ALL AREAS", which allows all branches). In Reconciliation, color-coded Main Project cards show each linked Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below in its own flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Balance), ending with a Full Usage & Client Completion Returnable Balance Report; selecting a single Sub-Project shows that Sub-Project\'s dedicated flow.',
+          'Enter both Installed Quantity (Qty Used) and "Wastage Qty" per item. Teams only consume materials issued at the project\'s assigned Site Branch (unless "ALL AREAS"). In Reconciliation, color-coded Main Project cards show each linked Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below in its own flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Balance), ending with a Full Usage & Client Completion Returnable Balance Report.',
       },
       {
         stepTitle: '4. Usage Vouchers History — "Full Report for This Site" & Upstream Multi-Item Returns (RV / BRM)',
@@ -324,9 +324,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Master Registrations -> Item Catalog" හරහා අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ඇතුළත් කරන්න හෝ Excel මගින් Import කරන්න. භාණ්ඩයක් Add/Edit කිරීමේදී අවශ්‍ය නම් භාණ්ඩයේ ඡායාරූපයක් (Item Photo) එක් කළ හැකි අතර පද්ධතිය මගින් එය ස්වයංක්‍රීයව 200KB ට අඩු ප්‍රමාණයකට (Auto-Compress) සකසා ගබඩා කරයි. ඕනෑම වවුචරයක් Print කිරීමේදී "Print with Image" තේරීම මගින් භාණ්ඩයේ රූපය සමඟ හෝ රූපය රහිතව Print කළ හැක. Barcode Scan කිරීමේදී එක වරක් Detect වූ සැණින් Camera එක ඉබේම නතර වන අතර ඊළඟ භාණ්ඩය සඳහා "Scan Now" බටන් එක භාවිත කළ හැක.',
       },
       {
-        stepTitle: '3. Sub-Site Lock, Teams View-Only පාලනය සහ ස්වකීය Site Team Transfer වගකීම',
+        stepTitle: '3. Head Office මගින් Teams / Master සෑදීම (Users View-Only), අනිවාර්ය Section සහ Delete/Rename Lock',
         detail:
-          'Regional Sites යටතේ Sub-Site Branches සෑදිය හැකි අතර බඩු හෝ FOC ලබාදුන් Sub-Site Delete/Parent මාරු කිරීම Lock වේ. Team Register කිරීමේදී Project Section අනිවාර්ය වන අතර ("Alex NC Team 1" / "Alex Civil Team 1"), In-Hand 0 වූ පසු Section මාරු කළ හැක. විශේෂ පාලන නීතිය: Main Admin හැර අනෙකුත් සියලුම නිලධාරීන්ට "Teams" කොටස View-Only ලෙස පෙනෙන අතර, Site නිලධාරීන්ට තමන්ගේ Site එකේ Teams සඳහා පමණක් Transfer / Return / Confirm Permanent සිදු කිරීමේ බලය ලැබේ — එමෙන්ම Transfer කළ නිලධාරියාගේ නම හා වගකීම Team History හි ස්ථිරව සටහන් වේ.',
+          'Master Catalog, Branches (Regional හා Sub-Sites — බඩු/FOC දුන් Sub-Site Delete/මාරු Lock වේ) සහ Field Teams සෑදීම හා Edit කිරීම සිදු කරන්නේ Head Office (Main Admin) පමණි. සාමාන්‍ය Staff Users ලට Teams අලුතින් සෑදීමට, වෙනස් කිරීමට හෝ Delete කිරීමට නොහැක (View-Only වේ). Team එකක් Register කරද්දී අදාළ Project Section එක තේරීම අනිවාර්ය වන අතර එකම කණ්ඩායම Sections දෙකක වැඩ කරයි නම් වෙන වෙනම නම්වලින් ("Alex NC Team 1", "Alex Civil Team 1") දැමිය යුතුය. වැදගත් ආරක්ෂාව: Team එකකට බඩු Issue කර ඇත්නම් එම Team එක Delete කිරීම හෝ නම වෙනස් කිරීම කළ නොහැකි අතර, අත ඇති බඩු 0 වූ පසු පමණක් Section මාරු කළ හැක.',
       },
       {
         stepTitle: '4. නිලධාරීන්ගේ ගිණුම්, Site Assignment History (Start/End Dates) සහ Auto Email Verification',
@@ -367,9 +367,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'ප්‍රමිතියෙන් තොර හෝ වැඩිපුර ලැබුණු භාණ්ඩ ආපසු සැපයුම්කරු වෙත යැවීමේදී "Return to Vendor (RTV) / Debit Note" සහ Gate Pass පත්‍රිකා නිකුත් කරන්න. වැඩබිම්වලදී හානි වූ භාණ්ඩ අලුත්වැඩියා කර නැවත ප්‍රධාන තොගයට එකතු කිරීමට Damaged Stock කොටස භාවිත කරන්න.',
       },
       {
-        stepTitle: '4. Client Free Stock (FOC) පියවර 5 Reconciliation Flow, වර්ණ ගැන්වූ Project Cards සහ Central Reports',
+        stepTitle: '4. Client Free Stock (FOC) — Auto Branch හඳුනාගැනීම හා Lock වීම, පියවර 5 Reconciliation සහ Central Reports',
         detail:
-          '"Client Free Stock" හි "+ Log Client Free Stock" තුළ Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට Lock වේ ("ALL AREAS" ලෙස සෑදූ Project සඳහා ඕනෑම Site එකකට නිකුත් කළ හැක). FOC වාර්තා පැහැදිලි පියවර 5 ක්‍රමයට පෙන්වයි: (1) Central Stock FOC ලැබීම -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Project Completion පසු Client වෙත ආපසු භාර දිය හැකි ඉතිරිය (Returnable Balance). වෙනස් වර්ණවලින් වෙන් කළ Main Project Cards යටතේ සෑම Sub-Project එකකම (උදා: KT-RGL-0505, KT-ABK-0506) Flow එක වෙන වෙනමත්, අවසානයේ මුළු Main Project එකේම Full Usage & Balance Report එකත් ලබාගත හැක. එමෙන්ම Central Stock වෙතින් එක් එක් Issued Item එක වෙන වෙනමත්, Project එකේ සියලු Items එකටත් A4/PDF Report ලෙස ගත හැක.',
+          '"Client Free Stock -> + Log Client Free Stock" තුළ Project එක තේරූ සැණින් එම Project එක අයත් Site Branch එක ස්වයංක්‍රීයව Auto-Detect වී Lock වේ ("ALL AREAS" Project සඳහා ඕනෑම Site එකකට දිය හැක). FOC වාර්තා පැහැදිලි පියවර 5 ක්‍රමයට පෙන්වයි: (1) Central FOC ලැබීම -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Project අවසානයේ Client වෙත ආපසු දිය හැකි ඉතිරිය (Returnable Balance). වෙනස් වර්ණවලින් වෙන් කළ Main Project Cards යටතේ සෑම Sub-Project එකකම Flow එක සහ අවසාන Full Usage & Balance Report එකද, Central Stock වෙතින් එක් එක් Item හෝ මුළු Project A4/PDF Report එකද ලබාගත හැක.',
       },
       {
         stepTitle: '5. Central Stock Item Summary — 3-Tier අනුපිළිවෙළ (Sub-Site ඇති/නැති) සහ Dropdown Item Images',
@@ -410,9 +410,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Site Branch Stock (Site Inventories)" වගුවේ 5-Stage Summary බටන් පැහැදිලිව දිස්වන අතර Regional Site වෙතින් කෙලින්ම "Issue Stock to Sub-Site" ලබාදිය හැක. තවද Field Teams සහ Sub-Sites වෙතින් "Damaged / Scrap" ලෙස Return වූ බඩු සාමාන්‍ය තොගයෙන් වෙන්ව බැලීමට "Damaged Returns" ටැබ් එක ඇත. එම ටැබ් එක ඇතුළතින්ම Sub-Site භාණ්ඩ Parent Regional Branch එකටත්, Regional භාණ්ඩ Central Main Warehouse වෙතත් BRM වවුචර මගින් සෘජුවම Return කළ හැක.',
       },
       {
-        stepTitle: '4. Regional සහ Sub-Site දෙවර්ගයේම වැඩ කණ්ඩායම් නිකුත් කිරීම් (IN) සහ Site-Separated Team Stock',
+        stepTitle: '4. Teams වෙත නිකුත් කිරීම (IN), Team Transfer ක්‍රියාවලිය, වෙන් කළ පරණ තොග සහ සම්පූර්ණ Team History',
         detail:
-          'Regional Site Branches වගේම Sub-Site Branches ඇතුළතද සාමාන්‍ය පරිදි "Issue to Teams" හරහා Field Teams වෙත භාණ්ඩ නිකුත් කර Issue Note (IN) මුද්‍රණය කළ හැක. "Team In-Hand Stock" හි Transfer කළ Team වල පරණ Site බඩු "Stock to Return - [Previous Site Name]" ලෙස වෙනම පෙන්වයි.',
+          'Regional සහ Sub-Site ශාඛා දෙකේම Teams වෙත "Issue to Teams" මගින් බඩු නිකුත් කර Issue Note (IN) මුද්‍රණය කළ හැක. Site නිලධාරීන්ට තමන්ගේ Site එකේ සිටින Teams පමණක් වෙනත් Site එකකට Transfer කළ හැක: පරණ Site එකේ බඩු ඉතිරිව ඇත්නම් Team එක "Temporary Assigned to - [New Site]" ලෙස මාරු වන අතර, පරණ බඩු "Stock to Return - [Previous Site Name]" ලෙස වෙනම පෙන්වයි (අලුත් Site එකේ බඩු සමඟ මිශ්‍ර නොවේ). පරණ බඩු 0 වූ පසු Permanent "[Team Name] (Ref: [Previous Site])" බවට පත්වේ. සෑම Transfer එකකදීම කලින් Site, දිනය සහ Transfer කළ නිලධාරියාගේ නම හා වගකීම Team History හි සටහන් වේ.',
       },
     ],
     keyOutputs: [
@@ -438,14 +438,14 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Project & New Section Registry -> New Section Registry & Material Templates" හි "+ Add New Section" (හෝ Quick-Load බටන්) මගින් පහත International Templates එක ක්ලික් එකකින් Load කරගත හැක: (1) Telecom New Connection (ITU-T G.984 / FTTH — NC No, ONT Serial, FDP/Splitter Port, Optical Power dBm), (2) Water Supply Project (ISO 4064 / AWWA — Water Account No, Water Meter Serial, Pipe Diameter DN/PN, Pressure Bar, Ferrule/Saddle Size), (3) Electrical Power Project (IEC 60364 — Consumer Account No, Energy Meter Serial kWh, Phase/Voltage, Contract Demand kVA, Earth Resistance Ω), (4) Solar PV & Net-Metering Project (IEC 62446 — Solar Project/Net-Metering Ref, Inverter Serial, System Capacity kWp DC/kW AC, PV Module & Panel Count, Battery BESS kWh), හෝ (5) Standard EPC Project. එමෙන්ම "+ Add Field" බටන් එක මගින් ඔබට අවශ්‍ය ඕනෑම අලුත් Field එකක් (හෝ Project Register කරන තැනදීම "+ Add Custom Field") එකතු කරගත හැක.',
       },
       {
-        stepTitle: '2. "Main Project -> Under New Connections", Section අනුව Filter වන Field Teams සහ Client FOC',
+        stepTitle: '2. Branch අනුව Project Assign වීම, Section-Filtered Teams සහ Usage හි ස්වයංක්‍රීය FOC Auto-Detect හා Reduction',
         detail:
-          'Telecom, Water, Electrical, සහ Solar යන සියලුම New Connection Section 4 තුළම Standalone, Main Project, හෝ Under Main Project ලෙස Register කළ හැක (Site Branch හෝ "ALL AREAS" තේරිය හැක). විශේෂයෙන්ම "Material Usage / Daily Progress Entry" තුළ අදාළ Project Section එක (New Connection, Cable, Civil ආදිය) තේරූ විට "Executing Field Team *" Dropdown එකේ පෙන්වන්නේ එම Section එක යටතේ Register කළ Teams පමණි — එවිට කිසිදාක Sections අතර Teams මාරු වීමක් සිදු නොවේ! තවද FOC තොග ඇත්නම් පමණක් අදාළ Section එකේ FOC Main Projects පෙන්වයි.',
+          'සෑම Project එකක්ම (Standalone, Main Project, හෝ Under Main Project) අදාළ Site Branch එකකට Assign කෙරේ (හෝ සියලුම ශාඛා සඳහා "ALL AREAS"). "Material Usage / Daily Progress Entry" හි අදාළ Project Section එක තේරූ විට "Executing Field Team *" Dropdown එකේ පෙන්වන්නේ එම Section එකට Register කළ Teams පමණි. තවද Main Project එකක් යටතේ Usage දමන විට එම ශාඛාවට හා Section එකට අදාළ Client FOC තොගය ස්වයංක්‍රීයව Auto-Detect වී, භාවිත කළ හා අපතේ ගිය ප්‍රමාණයන් (Used + Wastage) එම FOC තොගයෙන් ඉබේම අඩු වී (Automatic Reduction) ශේෂය යාවත්කාලීන වේ.',
       },
       {
-        stepTitle: '3. "Wastage Qty", Site-Only / ALL AREAS Stock සහ Main Project & Sub-Project Reconciliation වාර්තාව',
+        stepTitle: '3. "Wastage Qty", අදාළ Site තොග පමණක් භාවිතය සහ Main Project & Sub-Project Reconciliation වාර්තාව',
         detail:
-          'Qty Used සමඟ "Wastage Qty" සටහන් කළ හැකි අතර Main Project එකක් තෝරාගත් විට වර්ණ ගැන්වූ Cards මගින් වෙන් වූ ඒ යටතේ ඇති සෑම Sub-Project එකකම (උදා: KT-RGL-0505, KT-ABK-0506) Flow එක වෙන වෙනම පෙන්වා අවසානයේ Project Completion පසු Client වෙත භාර දිය යුතු Returnable Balance ඇතුළත් Full Usage & Balance Report එක ලබාදෙයි. තනි Sub-Project එකක් තේරූ විට එම Sub-Project එකට පමණක් අදාළ Usage Flow එක පෙන්වයි.',
+          'Qty Used සමඟ "Wastage Qty" සටහන් කළ හැකි අතර Teams භාවිත කරන්නේ Project එකට අදාළ Site Branch එකේ බඩු පමණි ("ALL AREAS" හැර). Main Project එකක් තෝරාගත් විට වර්ණ ගැන්වූ Cards මගින් සෑම Sub-Project එකකම Flow එක වෙන වෙනමත්, අවසානයේ Project Completion පසු Client වෙත භාර දිය යුතු Returnable Balance ඇතුළත් Full Usage & Balance Report එකත් ලබාදෙයි.',
       },
       {
         stepTitle: '4. Usage Vouchers History — "Full Report for This Site" සහ Upstream Multi-Item Returns (RV / BRM)',
@@ -628,9 +628,11 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
     items: [
       'New Tenant Registry: Auto-Generated View-Only Workspace Slug + Searchable Selector Covering All ~197 World Countries',
       '3-Tier Hierarchy: Central HQ -> Regional Site Branches -> Optional Nested Sub-Site Branches -> Field Teams (Supported in BOTH tiers)',
-      'Sub-Site Stock & FOC Lock: Sub-Sites with any issued stock or Client FOC cannot be deleted or reassigned to another Parent Regional Branch',
-      'Teams View-Only Except Main Admin + Own-Site-Only Transfer Permission with Officer Responsibility Logged in Team History',
+      'Teams Registered Exclusively by Head Office (Main Admin) — Staff Users View-Only & Cannot Delete Teams After Stock Issue',
+      'Mandatory Team Project Section Selection + 0 In-Hand Balance Unlock & Team Name Integrity Lock',
+      'Own-Site Team Site Transfer (Temporary -> Stock to Return Isolated -> Permanent) + Officer Responsibility in Team History',
       'User / Supervisor Site Assignment History: Logs Previous Sites with Exact Start Dates & End Dates on Every Reassignment',
+      'Branch-Assigned Projects & Auto-Detected Client FOC Branch Lock + Automatic FOC Pool Reduction on Daily Usage',
       'Included Capacity: Unlimited Users, Unlimited Field Teams & 1 Central HQ + 20 Regional/Sub-Site Branches (+$10/mo extra site)',
       'Super Admin Personal Accountability: Mandatory Full Name on signup + First-Name check on login stamped as "[Name] (as Super Admin)"',
       'Adaptive 3-Tier Item Summary Flow: Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance',
@@ -692,9 +694,11 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
     items: [
       'නව Tenant Registry: View-Only Auto-Generated Workspace Slug + ලෝකයේ සියලුම රටවල් (~197) Search & Select කිරීම',
       '3-Tier ගබඩා ව්‍යුහය: Central HQ -> Regional Site Branches -> Optional Sub-Site Branches -> Field Teams (Tiers දෙකේම Teams ක්‍රියාත්මක වේ)',
-      'Sub-Site Stock & FOC Lock: බඩු හෝ Client FOC ලබාදුන් Sub-Site එකක් Delete කිරීම හා Parent Regional Branch මාරු කිරීම තහනම් (Lock) කෙරේ',
-      'Main Admin හැර අනිත් සියලු Users ලට Teams View-Only + තම Site එකේ Team Transfer පමණක් කිරීමේ බලය සහ Officer වගකීම Team History හි පෙන්වීම',
+      'Teams ලියාපදිංචිය Head Office (Main Admin) සතු වීම — සාමාන්‍ය Users ලට View-Only වන අතර බඩු දුන් Teams Delete/Rename කළ නොහැක',
+      'Team Register කිරීමේදී අනිවාර්ය Project Section තේරීම + අත ඇති බඩු 0 වූ පසු Section මාරු කිරීමේ ආරක්ෂාව',
+      'තම Site එකේ Team Transfer කිරීම (Temporary -> පරණ බඩු "Stock to Return" වෙන් කිරීම -> Permanent) සහ Officer වගකීම Team History හි පෙන්වීම',
       'User/Supervisor Site Assignment History: වෙනත් Site එකකට Assign කළ විට Previous Sites, Start Dates සහ End Dates ඉතිහාසය සටහන් කිරීම',
+      'Branch අනුව Project Assign වීම සහ Client FOC ස්වයංක්‍රීය Auto-Detect + Daily Usage මත FOC ඉබේම අඩු වීම (Automatic Reduction)',
       'මූලික පැකේජයටම: Unlimited Users, Unlimited Teams & 1 Central HQ + Site Branches 20ක් ඇතුළත් (අමතර Site +$10/mo)',
       'Super Admin පුද්ගලික වගකීම: ලියාපදිංචියේදී අනිවාර්ය Full Name + Login වීමේදී First-Name පරීක්ෂා කර "[නම] (as Super Admin)" ලෙස සටහන් කිරීම',
       'Item Summary පැහැදිලි 3-Tier Flow පිළිවෙළ: Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance',
@@ -860,20 +864,26 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
     );
     y += 34;
 
-    // 6-Stage Flow
+    // 12-Step Complete Chronological Guide
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(30, 38, 64);
-    doc.text('END-TO-END OPERATIONAL FLOW AT A GLANCE (6 CORE STAGES)', marginX, y);
+    doc.text('COMPLETE END-TO-END WORKSPACE FLOW & SYSTEM RULES (12 CLEAR STEPS)', marginX, y);
     y += 4;
 
     const stages = [
-      'Stage 01: Master, Sub-Site Lock & Team Sections - Register HQ + 20 Sites (Sub-Sites with stock/FOC lock against delete/parent change) & assign mandatory Project Sections to Teams (separate section names, 0 balance lock to switch).',
-      'Stage 02: PO, GRN & RTV - Issue Supplier Purchase Orders (PO), print batch GRN vouchers, log Client Free Stock (FOC) & RTV Debit Notes.',
-      'Stage 03: Regional & Sub-Site Stock + Damaged Tab - Parent Regional Branches supply Sub-Sites via "Issue Stock to Sub-Site" or RN; Damaged Returns tab quarantines scrap for direct upstream BRM dispatch.',
-      'Stage 04: Field Crew Issue (Regional & Sub-Site) - Issue materials & tools to Crew Leaders inside both Regional and Sub-Site branches (IN / Gate Pass).',
-      'Stage 05: Section-Filtered Usage & Upstream Returns - Usage filters Teams strictly by selected Project Section; log Qty Used + Wastage (PU) & return surplus/damaged upstream (BRM).',
-      'Stage 06: ISO Formats, Hand-Sign Print & Official Reports - Configure ISO 9001:2015 Formats, Digital Signatures or "Off Digital Signature" wet-ink signing, plus isolated A4 print & PDF report generation for all vouchers and logs.',
+      'Step 01: Create Workspace - Sign up with Company Name, All-Countries Search, Currency, and real Admin Name (Workspace Slug app/... is auto-generated & View-Only).',
+      'Step 02: Head Office Registers Master Data - Only Head Office (Main Admin) adds Items & Tools (with optional <200KB photo), Suppliers (with Payment Terms), and Clients.',
+      'Step 03: Set Up Branches, Sub-Sites & Assign Projects - Head Office creates Regional Branches & optional Sub-Sites (locked once stock/FOC is issued), and assigns each Project to its specific Branch (or "ALL AREAS").',
+      'Step 04: Head Office Registers Teams (With Section & Locks) - Main Admin registers Teams with mandatory Project Section (Staff Users see Teams View-Only and cannot create/edit/delete). Once stock is issued, Teams cannot be deleted or renamed, and Section unlocks only at 0 balance.',
+      'Step 05: Assign Users & Managers to Branches + Site History - Head Office creates Staff/Manager accounts and assigns them to Regional or Sub-Site branches; every move logs Previous Sites, Start Dates & End Dates.',
+      'Step 06: Send PO, Receive GRN & Client FOC Auto-Detect - Issue Supplier POs, confirm GRN deliveries into Main Stock, or log Client Free Stock (selecting a Project auto-detects and locks its assigned Branch).',
+      'Step 07: Request Stock for Branches & Sub-Sites (RN) - Regional Branches request Normal or Branch-matched FOC stock from HQ; Sub-Sites request directly from their Parent Regional Branch (Parent Avl:).',
+      'Step 08: Approve, Dispatch & Receive at Site - HQ approves Regional requests and Parent Regional approves Sub-Site requests (or uses "Issue Stock to Sub-Site"); receiving site confirms receipt into Site Branch Stock.',
+      'Step 09: Issue to Teams (IN) & Team Site Transfer + History - Issue stock to Teams (IN). Staff can transfer ONLY their own site\'s teams: old-site stock stays isolated under "Stock to Return - [Previous Site]" until cleared to 0, logging Team History + Officer Name.',
+      'Step 10: Daily Usage (PU), Section Team Filter & Auto FOC Reduction - Choosing a Project Section filters Teams strictly to that section; Usage auto-detects Branch/Main-Project Client FOC and automatically deducts Used + Wastage from the FOC pool.',
+      'Step 11: Multi-Item Returns (RV / BRM), Damaged Tab & RTV - Teams return unused/damaged items (RV); damaged goods isolate in the Damaged Returns tab for upstream BRM dispatch (Sub-Site -> Parent Regional -> Main HQ -> Vendor RTV).',
+      'Step 12: 3-Tier Lifecycle Summary, Formats & Final A4/PDF Reports - Click any Main Stock item for clean Adaptive 3-Tier flow (Main -> Regional -> [Sub-Site ->] Team -> Usage -> Balance), set ISO/Company Formats & Hand/Digital Signatures, and print A4/PDF reports.',
     ];
 
     doc.setFont('helvetica', 'normal');
@@ -1227,19 +1237,25 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
     );
     current.y += 195;
 
-    // ==================== 2. 6-STAGE OPERATIONAL FLOW ====================
+    // ==================== 2. 12-STEP CHRONOLOGICAL GUIDE & RULES ====================
     current.ctx.font = `800 21px ${fontStack}`;
     current.ctx.fillStyle = '#1e2640';
-    current.ctx.fillText('පද්ධතිය ක්‍රියාත්මක වන ප්‍රධාන පියවර 6 (Operational Flow at a Glance)', MARGIN_X, current.y);
+    current.ctx.fillText('ආරම්භයේ සිට අවසානය දක්වා පද්ධතිය සහ විශේෂ නීති (පියවර 12)', MARGIN_X, current.y);
     current.y += 32;
 
     const siStages = [
-      'පියවර 01 (Sub-Site Lock & අනිවාර්ය Team Sections): Sub-Sites 20+ (බඩු/FOC ඇතිනම් Delete/Parent මාරු Lock) සහ Field Teams වලට අනිවාර්ය Project Section (වෙනම නම්, 0 Balance වූ පසු Section මාරු කිරීම).',
-      'පියවර 02 (PO, GRN & පියවර 5 FOC): PO නිකුත් කිරීම, GRN, සහ Client FOC (Central -> Site -> Team -> Usage -> Returnable Balance) සටහන් කිරීම.',
-      'පියවර 03 (Regional/Sub-Site & Damaged Returns ටැබ්): Parent Site මගින් Sub-Site වෙත නිකුත් කිරීම ("Issue Stock to Sub-Site" / RN) සහ Site Branch Stock හි "Damaged Returns" ටැබ් එක.',
-      'පියවර 04 (Field Crew Issue - Tiers 2ම): Regional හා Sub-Site යන දෙකේම Teams වෙත භාණ්ඩ නිකුත් කිරීම (IN) සහ Site-Separated In-Hand තොග.',
-      'පියවර 05 (Section-Filtered Usage & Upstream Returns): Usage හි අදාළ Section එකේ Teams පමණක් පෙන්වීම, Wastage, සහ Sub-Site -> Parent Site -> Central HQ ලෙස Upstream Returns (RV / BRM).',
-      'පියවර 06 (ISO Formats, Hand-Sign & Print Reports): ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" අත්සන් කිරීමේ ක්‍රමය, සහ සියලුම Vouchers & Reports සඳහා A4 මුද්‍රණය සහ PDF වාර්තාකරණ පහසුකම්.',
+      'පියවර 01 (ආයතනය ලියාපදිංචි කරන්න): Company Name, ලෝකයේ ඕනෑම රටක්, මුදල් වර්ගය සහ පරිපාලකගේ නම දී ගිණුම සාදන්න (Workspace Slug ඉබේම සෑදෙන අතර View-Only වේ).',
+      'පියවර 02 (Head Office මගින් Master දත්ත දමන්න): බඩු/උපකරණ, Suppliers (Payment Terms සමඟ) සහ Clients ලියාපදිංචි කරන්නේ Head Office (Main Admin) පමණි.',
+      'පියවර 03 (ශාඛා, Sub-Sites හා Branch අනුව Projects සෑදීම): Regional ශාඛා හා Sub-Sites (බඩු දුන් පසු Delete/මාරු Lock වේ) සාදා, සෑම Project එකක්ම අදාළ Branch එකට Assign කරන්න ("ALL AREAS" ද හැක).',
+      'පියවර 04 (Head Office මගින් Section සමඟ Teams සෑදීම): සාමාන්‍ය Users ලට Teams Register කළ නොහැක (View-Only). Team සෑදීමේදී Project Section අනිවාර්ය වන අතර බඩු Issue කළ Team Delete හෝ Rename කළ නොහැක.',
+      'පියවර 05 (Users හා Managers ලා Branch වලට Assign + History): නිලධාරීන් ශාඛාවලට Assign කරන අතර, වෙනත් ශාඛාවකට මාරු කරද්දී Previous Sites, Start/End Dates ඉතිහාසය සටහන් වේ.',
+      'පියවර 06 (PO දැමීම, GRN හා FOC Auto-Detect): Supplier වෙත PO දමා GRN මගින් ප්‍රධාන ගබඩාවට ගන්න. Client FOC දමද්දී Project එක තේරූ සැණින් අදාළ Branch එක Auto-Detect වී Lock වේ.',
+      'පියවර 07 (ශාඛා සහ Sub-Sites සඳහා Stock Request): Regional ශාඛා HQ වෙතින් ද, Sub-Sites තම Parent Regional ශාඛාවෙන් ද (Parent Avl:) Stock Requisition (RN) මගින් බඩු ඉල්ලුම් කරයි.',
+      'පියවර 08 (අනුමත කර ශාඛාවට ලබාගැනීම): HQ හෝ Regional ශාඛාව Approve කර එවූ පසු (හෝ "Issue Stock to Sub-Site" මගින්) ලැබෙන ශාඛාව Receive කර Site Stock වෙත ගනී.',
+      'පියවර 09 (Teams වලට බඩු දීම, Team Transfer සහ History): ශාඛාවෙන් Teams වෙත බඩු දේ (IN). නිලධාරීන්ට තම Site එකේ Team පමණක් Transfer කළ හැක: පරණ බඩු "Stock to Return" ලෙස වෙන්ව පෙන්වා 0 වූ පසු Permanent වන අතර Transfer කළ නිලධාරියාගේ නම Team History හි සටහන් වේ.',
+      'පියවර 10 (දෛනික Usage, Section Filter හා ස්වයංක්‍රීය FOC අඩුවීම): Usage හි Section තේරූ විට එම Section එකේ Teams පමණක් පෙන්වයි. Main Project FOC තොගය Auto-Detect වී භාවිත/අපතේ ප්‍රමාණ ඉබේම FOC වෙතින් අඩු වේ (Auto Reduction).',
+      'පියවර 11 (ආපසු භාරදීම - RV/BRM, Damaged Tab සහ RTV): Teams ඉතිරි/කැඩුණු බඩු ශාඛාවට දේ (RV). Damaged ඒවා වෙනම Damaged Returns ටැබ් එකෙන් Sub-Site -> Regional -> HQ -> Supplier (RTV) ලෙස යැවේ.',
+      'පියවර 12 (3-Tier Item Summary, Formats සහ අවසන් වාර්තා): ප්‍රධාන ගබඩාවේ Item ක්ලික් කර 3-Tier Flow බැලීම, ISO/Company Formats හා අත්සන් (Hand-Sign/Digital) සැකසීම සහ A4/PDF වාර්තා මුද්‍රණය.',
     ];
 
     current.ctx.font = `600 16.5px ${fontStack}`;
@@ -1668,93 +1684,172 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               </div>
             </div>
 
-            {/* ==================== 6-STAGE VISUAL STOCK FLOW ("AT A GLANCE") ==================== */}
+            {/* ==================== 12-STEP COMPLETE CHRONOLOGICAL FLOW & SYSTEM RULES ==================== */}
             <div className="mt-8 pt-7 border-t border-slate-200/80">
-              <div className="text-xs font-extrabold text-[#081024] mb-4 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-amber-600" />
-                <span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div className="text-xs sm:text-sm font-extrabold text-[#081024] flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    {guideLang === 'si'
+                      ? 'ආරම්භයේ සිට අවසානය දක්වා පද්ධතිය සහ විශේෂ පාලන නීති (පියවර 12)'
+                      : 'Complete End-to-End Flow & Smart System Rules (12 Clear Steps)'}
+                  </span>
+                </div>
+                <span className="text-[11px] font-semibold text-slate-500">
                   {guideLang === 'si'
-                    ? 'පද්ධතියේ සමස්ත ක්‍රියාවලිය කෙටියෙන් (ප්‍රධාන පියවර 6)'
-                    : 'End-to-End Operational Flow at a Glance (6 Core Stages)'}
+                    ? 'Head Office සැකසුම් සිට බඩු ඉල්ලුම්, FOC ස්වයංක්‍රීය අඩුවීම් හා Team Transfers දක්වා'
+                    : 'From Head Office setup to branch projects, team locks, auto FOC reduction & reports'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {(guideLang === 'si'
                   ? [
                       {
                         stage: 'පියවර 01',
-                        title: 'ලියාපදිංචිය, Team Sections & Lock',
-                        desc: 'Sub-Site Stock/FOC Lock, Teams වලට අනිවාර්ය Project Section (වෙනම නම්) සහ 0 Balance Section Lock.',
-                        icon: HardHat,
+                        title: 'ආයතනය ලියාපදිංචි කරන්න',
+                        desc: 'Company Name, ලෝකයේ ඕනෑම රටක් (Search), මුදල් වර්ගය සහ පරිපාලක නම දී ගිණුම සාදන්න. Workspace Slug ඉබේම සෑදෙන අතර View-Only වේ.',
+                        icon: Globe,
                       },
                       {
                         stage: 'පියවර 02',
-                        title: 'PO, GRN, FOC සහ RTV',
-                        desc: 'Item Images සහිත PO නිකුත් කිරීම, GRN, 5-Stage Client FOC ("ALL AREAS" ඇතුළුව) සහ RTV.',
-                        icon: ShoppingCart,
+                        title: 'Head Office මගින් Master දත්ත දමන්න',
+                        desc: 'Items/Tools (200KB ට අඩු Photo සමඟ), Suppliers (Payment Terms සමඟ) සහ Clients ඇතුළත් කරන්නේ Head Office (Main Admin) පමණි.',
+                        icon: Boxes,
                       },
                       {
                         stage: 'පියවර 03',
-                        title: 'ශාඛා තොග සහ Damaged Tab',
-                        desc: 'RN, Central FOC badge, "Issue Stock to Sub-Site" සහ Site "Damaged Returns" වෙනම ටැබ් එක.',
-                        icon: Building2,
+                        title: 'ශාඛා, Sub-Sites හා Branch Projects',
+                        desc: 'Regional ශාඛා හා Sub-Sites (බඩු දුන් පසු Delete/මාරු Lock වේ) සාදන්න. සෑම Project එකක්ම අදාළ Branch එකට Assign කෙරේ (හෝ ALL AREAS).',
+                        icon: FolderKanban,
                       },
                       {
                         stage: 'පියවර 04',
-                        title: 'කණ්ඩායම් නිකුත් කිරීම්',
-                        desc: 'Team Leaders වෙත භාණ්ඩ හා ටූල්ස් නිකුත් කිරීම (IN) සහ අත ඇති තොග පරීක්ෂාව.',
-                        icon: Users2,
+                        title: 'Teams (Section සමඟ) හා Delete Lock',
+                        desc: 'Users ලට Teams සෑදිය නොහැක (View-Only) — Head Office පමණක් Section එක තෝරා Teams සාදයි. බඩු දුන් Team එකක් Delete හෝ Rename කළ නොහැක.',
+                        icon: Lock,
                       },
                       {
                         stage: 'පියවර 05',
-                        title: 'Section Usage, FOC සහ Returns',
-                        desc: 'Section-Filtered Teams මගින් Usage & Wastage, 5-Stage FOC Balance සහ Upstream BRM Returns.',
-                        icon: RotateCcw,
+                        title: 'Users / Managers Assign + Site History',
+                        desc: 'Head Office විසින් Staff Users හා Site Managers ලා ශාඛාවලට Assign කරයි. වෙනත් Site එකකට මාරු කළ විට Previous Sites, Start/End Dates ඉතිහාසය සටහන් වේ.',
+                        icon: UserCheck,
                       },
                       {
                         stage: 'පියවර 06',
-                        title: 'ISO Formats, Hand-Sign සහ Print Reports',
-                        desc: 'ISO 9001:2015 Formats, Digital Signatures හෝ "Off Digital Signature" (Hand-Sign), සහ A4 මුද්‍රණය හා PDF වාර්තාකරණ පහසුකම්.',
-                        icon: Upload,
+                        title: 'PO, GRN සහ FOC Auto-Branch Detect',
+                        desc: 'Supplier වෙත PO යවා GRN මගින් ප්‍රධාන ගබඩාවට ගන්න. Client FOC දමද්දී Project එක තේරූ සැණින් අදාළ Branch එක Auto-Detect වී Lock වේ.',
+                        icon: Gift,
+                      },
+                      {
+                        stage: 'පියවර 07',
+                        title: 'ශාඛා හා Sub-Sites Stock Request (RN)',
+                        desc: 'Regional ශාඛා HQ වෙතින් Normal හෝ Branch FOC ඉල්ලයි. Sub-Sites ඉබේම තම Parent Regional ශාඛාවෙන් (Parent Avl:) බඩු ඉල්ලුම් කරයි.',
+                        icon: Send,
+                      },
+                      {
+                        stage: 'පියවර 08',
+                        title: 'අනුමත කර ශාඛාවට බඩු ලබාගන්න',
+                        desc: 'HQ හෝ Parent Regional අනුමත කර එවූ පසු (හෝ Issue Stock to Sub-Site), ලැබෙන ශාඛාව Receive කර Site Branch Stock වෙත ගනී.',
+                        icon: CheckCircle2,
+                      },
+                      {
+                        stage: 'පියවර 09',
+                        title: 'Teams නිකුත් කිරීම, Transfer & History',
+                        desc: 'Teams වෙත බඩු දේ (IN). නිලධාරීන්ට තම Site එකේ Team පමණක් Transfer කළ හැක: පරණ බඩු "Stock to Return" වෙන්ව තබා 0 වූ පසු Permanent වී Officer නම සටහන් වේ.',
+                        icon: Users2,
+                      },
+                      {
+                        stage: 'පියවර 10',
+                        title: 'Usage, Section Filter & FOC Auto-Reduce',
+                        desc: 'Section තේරූ විට එම Section Teams පමණක් පෙන්වයි. Main Project FOC තොගය Auto-Detect වී භාවිත හා අපතේ ප්‍රමාණ ඉබේම FOC වෙතින් අඩු වේ.',
+                        icon: HardHat,
+                      },
+                      {
+                        stage: 'පියවර 11',
+                        title: 'Returns (RV/BRM), Damaged Tab & RTV',
+                        desc: 'Teams ඉතිරි/කැඩුණු බඩු ශාඛාවට දේ (RV). Damaged ඒවා Damaged Returns ටැබ් හරහා Sub-Site -> Regional -> HQ -> Supplier (RTV) ලෙස ආපසු යැවේ.',
+                        icon: RotateCcw,
+                      },
+                      {
+                        stage: 'පියවර 12',
+                        title: '3-Tier Summary, Formats & Final Reports',
+                        desc: 'Main Stock Item ක්ලික් කර 3-Tier Flow බලන්න (Main -> Regional -> [Sub-Site ->] Team -> Usage -> Balance), Formats/Signatures සකසා A4/PDF Print කරන්න.',
+                        icon: FileText,
                       },
                     ]
                   : [
                       {
-                        stage: 'Stage 01',
-                        title: 'Master, Team Section & Locks',
-                        desc: 'Sub-Site stock/FOC lock, mandatory Team Project Section (separate naming) & 0 balance section switch lock.',
-                        icon: HardHat,
+                        stage: 'Step 01',
+                        title: 'Create Company Workspace',
+                        desc: 'Sign up with Company Name, Searchable All-Countries picker, Currency & Admin Name. Workspace Slug (app/...) is auto-generated as View-Only.',
+                        icon: Globe,
                       },
                       {
-                        stage: 'Stage 02',
-                        title: 'PO, GRN, FOC & RTV',
-                        desc: 'Issue POs with thumbnails, print GRNs, log Client FOC ("ALL AREAS" supported) & RTV.',
-                        icon: ShoppingCart,
+                        stage: 'Step 02',
+                        title: 'Head Office Registers Master Data',
+                        desc: 'Only Head Office (Main Admin) adds Items & Tools (with optional <200KB photo), Suppliers (with Payment Terms), and Clients.',
+                        icon: Boxes,
                       },
                       {
-                        stage: 'Stage 03',
-                        title: 'Site Stock & Damaged Tab',
-                        desc: 'Request stock (RN), "Central FOC" highlights, Sub-Site dispatch & dedicated "Damaged Returns" quarantine tab.',
-                        icon: Building2,
+                        stage: 'Step 03',
+                        title: 'Branches, Sub-Sites & Branch Projects',
+                        desc: 'Head Office sets up Regional Branches & optional Sub-Sites (locked after stock/FOC issue). Every Project is assigned to its Branch (or ALL AREAS).',
+                        icon: FolderKanban,
                       },
                       {
-                        stage: 'Stage 04',
-                        title: 'Field Crew Issue',
-                        desc: 'Issue materials & tools to Crew Leaders (IN) with live custody guard.',
+                        stage: 'Step 04',
+                        title: 'Teams (With Section) & Delete Lock',
+                        desc: 'Staff Users cannot add/edit Teams (View-Only) — Head Office creates Teams with a mandatory Project Section. Stock-issued Teams cannot be deleted or renamed.',
+                        icon: Lock,
+                      },
+                      {
+                        stage: 'Step 05',
+                        title: 'Assign Users & Managers + Site History',
+                        desc: 'Head Office assigns Staff & Site Managers to Branches. Moving any User/Supervisor records Previous Sites, Start Dates & End Dates automatically.',
+                        icon: UserCheck,
+                      },
+                      {
+                        stage: 'Step 06',
+                        title: 'PO, GRN & Client FOC Auto-Detect',
+                        desc: 'Send Supplier POs and receive goods via GRN into Main Stock. When logging Client FOC, picking a Project auto-detects and locks its assigned Branch.',
+                        icon: Gift,
+                      },
+                      {
+                        stage: 'Step 07',
+                        title: 'Request Stock for Branches & Sub-Sites',
+                        desc: 'Regional Branches request Normal or Branch-matched FOC stock from HQ; Sub-Sites automatically request from their Parent Regional Branch (Parent Avl:).',
+                        icon: Send,
+                      },
+                      {
+                        stage: 'Step 08',
+                        title: 'Approve, Dispatch & Receive at Site',
+                        desc: 'HQ approves Regional requests and Parent Regional approves Sub-Site requests (or uses Issue Stock to Sub-Site). Receiving Branch confirms into Site Stock.',
+                        icon: CheckCircle2,
+                      },
+                      {
+                        stage: 'Step 09',
+                        title: 'Issue to Teams, Transfer & History',
+                        desc: 'Issue stock to Teams (IN). Officers can transfer ONLY own-site teams: old-site stock isolates under "Stock to Return" until cleared to 0, logging Officer Name in Team History.',
                         icon: Users2,
                       },
                       {
-                        stage: 'Stage 05',
-                        title: 'Section Usage, FOC & Returns',
-                        desc: 'Section-filtered Usage teams, Wastage, 5-Stage FOC balance & upstream returns (RV/BRM).',
+                        stage: 'Step 10',
+                        title: 'Daily Usage, Section Filter & FOC Reduce',
+                        desc: 'Selecting a Project Section filters Teams strictly to that section. Usage auto-detects Branch/Main-Project FOC and deducts Used + Wastage automatically.',
+                        icon: HardHat,
+                      },
+                      {
+                        stage: 'Step 11',
+                        title: 'Returns (RV/BRM), Damaged Tab & RTV',
+                        desc: 'Teams return extra/damaged items (RV); damaged stock isolates in the Damaged Returns tab for upstream BRM (Sub-Site -> Regional -> HQ -> Vendor RTV).',
                         icon: RotateCcw,
                       },
                       {
-                        stage: 'Stage 06',
-                        title: 'ISO Formats, Hand-Sign & Print Reports',
-                        desc: 'ISO 9001:2015 formats, Digital Signatures or "Off Digital Signature" hand-sign mode, and official A4 print & PDF report generation.',
-                        icon: Upload,
+                        stage: 'Step 12',
+                        title: '3-Tier Summary, Formats & Final Reports',
+                        desc: 'Click any Main Stock item for clean 3-Tier Flow (Main -> Regional -> [Sub-Site ->] Team -> Usage -> Balance), set Formats/Signatures & print A4/PDF.',
+                        icon: FileText,
                       },
                     ]
                 ).map((item) => {
@@ -1772,7 +1867,7 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
                           <StageIcon className="w-4 h-4 text-[#081024] shrink-0" />
                         </div>
                         <h3 className="text-xs sm:text-sm font-black text-[#081024]">{item.title}</h3>
-                        <p className="text-[11px] text-slate-600 mt-1 leading-relaxed font-medium">
+                        <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed font-medium">
                           {item.desc}
                         </p>
                       </div>
