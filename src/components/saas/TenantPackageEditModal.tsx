@@ -23,6 +23,7 @@ import {
 } from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatDateTime, formatDate } from '../../utils/exportUtils';
+import { formatConvertedCurrency, normalizePaymentCurrency } from '../../utils/subscriptionCurrencyUtils';
 
 interface TenantPackageEditModalProps {
   tenant: Tenant | null;
@@ -279,6 +280,18 @@ export const TenantPackageEditModal: React.FC<TenantPackageEditModalProps> = ({
                 <div className="text-[10px] text-emerald-700 font-bold mt-0.5">
                   Sites: {pricingMetrics.includedSiteBranches} Included + {sub.extraSiteSlots || 0} Extra
                 </div>
+                {sub.lastPaymentCurrency && typeof sub.lastPaymentCurrencyAmount === 'number' && (
+                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                    Last Paid:{' '}
+                    <strong className="text-slate-800">
+                      {formatConvertedCurrency(
+                        sub.lastPaymentCurrencyAmount,
+                        normalizePaymentCurrency(sub.lastPaymentCurrency),
+                        true
+                      )}
+                    </strong>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white p-3 rounded-xl border border-slate-200">

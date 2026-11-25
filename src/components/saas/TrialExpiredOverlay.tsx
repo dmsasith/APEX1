@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
+  SubscriptionPaymentCurrency,
   computePlatformPricingMetrics,
   getSubscriptionStatusSummary,
   getTenantBranchQuotaSummary,
@@ -25,6 +26,18 @@ import {
   verifyPaymentsLkSubscription,
   type PaymentsLkGatewayStatus,
 } from '../../utils/paymentsLkClient';
+import { CurrencyRateSelector } from '../subscription/CurrencyRateSelector';
+import {
+  type FxRatesMap,
+  convertUsdToCurrency,
+  detectDefaultPaymentCurrency,
+  fetchLiveMultiCurrencyRates,
+  formatConvertedCurrency,
+  formatFxRateLabel,
+  mergeFxRates,
+  normalizePaymentCurrency,
+  readCachedFxSnapshot,
+} from '../../utils/subscriptionCurrencyUtils';
 
 export const TrialExpiredOverlay: React.FC = () => {
   const { currentTenant, currentUser, activeSites, updateTenantSubscription, platformPricing, config, logout } = useStock();
@@ -45,10 +58,15 @@ export const TrialExpiredOverlay: React.FC = () => {
   const activeBankAccountNumber = config?.bankAccountNumber || masterBankConfig?.bankAccountNumber || '1000 4829 5012';
   const activeBankBranchSwift = config?.bankBranchSwift || masterBankConfig?.bankBranchSwift || 'Mulleriyawa Branch / CCBLLKLX';
   const activeBankQrImage = config?.bankQrImage || masterBankConfig?.bankQrImage || '';
-  const baseStoredRate = config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64;
+  const baseStoredRate = config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 300;
+  const initialFx = readCachedFxSnapshot(baseStoredRate);
 
-  const [usdRate, setUsdRate] = useState<number>(baseStoredRate);
-  const [isLiveRate, setIsLiveRate] = useState<boolean>(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<SubscriptionPaymentCurrency>(() =>
+    detectDefaultPaymentCurrency(currentTenant)
+  );
+  const [fxRates, setFxRates] = useState<FxRatesMap>(initialFx.rates);
+  const [isLiveRate, setIsLiveRate] = useState<boolean>(initialFx.isLive);
+  const [isRefreshingFx, setIsRefreshingFx] = useState<boolean>(false);
   const [gatewayStatus, setGatewayStatus] = useState<PaymentsLkGatewayStatus | null>(null);
   const [gatewayBusy, setGatewayBusy] = useState(false);
   const [gatewayError, setGatewayError] = useState<string | null>(null);
@@ -63,20 +81,41 @@ export const TrialExpiredOverlay: React.FC = () => {
     currentTenant?.subscription?.billingCycle || 'annual'
   );
 
+  const handleRefreshLiveRates = async (forceRefresh = true) => {
+    setIsRefreshingFx(true);
+    try {
+      const snap = await fetchLiveMultiCurrencyRates({
+        forceRefresh,
+        fallbackLkrRate: baseStoredRate,
+      });
+      setFxRates(snap.rates);
+      setIsLiveRate(snap.isLive);
+    } finally {
+      setIsRefreshingFx(false);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     fetchPaymentsLkGatewayStatus().then((st) => {
       if (!mounted) return;
       setGatewayStatus(st);
-      if (st.usdToLkrRate > 50 && st.isLiveFxRate) {
-        setUsdRate(st.usdToLkrRate);
-        setIsLiveRate(true);
+      if (st.fxRates) {
+        setFxRates((prev) => mergeFxRates({ ...prev, ...st.fxRates }, st.usdToLkrRate || baseStoredRate));
+        if (st.isLiveFxRate) {
+          setIsLiveRate(true);
+        }
       }
+    });
+    fetchLiveMultiCurrencyRates({ fallbackLkrRate: baseStoredRate }).then((snap) => {
+      if (!mounted) return;
+      setFxRates(snap.rates);
+      if (snap.isLive) setIsLiveRate(true);
     });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [baseStoredRate]);
 
   if (!currentTenant || currentTenant.id === 'tenant-apex-main') return null;
 
@@ -88,6 +127,13 @@ export const TrialExpiredOverlay: React.FC = () => {
   if (!isTrialExpired && sub.status !== 'canceled' && sub.status !== 'past_due') {
     return null;
   }
+
+  const handleSelectCurrency = (code: SubscriptionPaymentCurrency) => {
+    setSelectedCurrency(code);
+    updateTenantSubscription(currentTenant.id, {
+      preferredPaymentCurrency: code,
+    });
+  };
 
   const isAnnual = selectedPlan === 'annual';
   const activeExtraSiteSlots = Math.max(
@@ -101,10 +147,19 @@ export const TrialExpiredOverlay: React.FC = () => {
       (isAnnual ? 12 : 1)
     ).toFixed(2)
   );
+  const monthlyUsdTotal = Number(
+    (pricingMetrics.monthlyPrice + activeExtraSiteSlots * pricingMetrics.extraSiteMonthlyPrice).toFixed(2)
+  );
+  const annualUsdTotal = Number(
+    (pricingMetrics.annualPrice + activeExtraSiteSlots * pricingMetrics.extraSiteAnnualPrice).toFixed(2)
+  );
   const baseUsdAmount = isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice;
   const selectedUsdAmount = Number((baseUsdAmount + extraAddonUsd).toFixed(2));
   const selectedUsdFormatted = selectedUsdAmount.toFixed(2);
-  const selectedLkrAmount = Math.round(selectedUsdAmount * usdRate);
+  const selectedLkrAmount = convertUsdToCurrency(selectedUsdAmount, 'LKR', fxRates);
+  const selectedCurrencyAmount = convertUsdToCurrency(selectedUsdAmount, selectedCurrency, fxRates);
+  const selectedCurrencyFormatted = formatConvertedCurrency(selectedCurrencyAmount, selectedCurrency, true);
+  const selectedCurrencyRate = fxRates[selectedCurrency] || 1;
   const existingPending = sub.pendingBankPayment?.status === 'pending' ? sub.pendingBankPayment : null;
 
   const handleCopyText = (text: string, label: string) => {
@@ -120,17 +175,23 @@ export const TrialExpiredOverlay: React.FC = () => {
 
     updateTenantSubscription(currentTenant.id, {
       billingCycle: selectedPlan,
+      preferredPaymentCurrency: selectedCurrency,
       pendingBankPayment: {
         submittedAt: new Date().toISOString(),
         referenceNo: cleanedRef,
         amount: selectedUsdAmount,
+        currency: selectedCurrency,
+        paidAmount: selectedCurrencyAmount,
+        exchangeRateUsed: selectedCurrencyRate,
         billingCycle: selectedPlan,
         extraSiteSlotsRequested: activeExtraSiteSlots,
         notes:
           bankNotes.trim() ||
-          (activeExtraSiteSlots > 0
-            ? `Includes +${activeExtraSiteSlots} Extra Site Branch(es) from Lock Screen`
-            : 'Submitted from Workspace Lock Screen'),
+          `${selectedCurrencyFormatted} (@ ${formatFxRateLabel(selectedCurrency, fxRates)})${
+            activeExtraSiteSlots > 0
+              ? ` · Includes +${activeExtraSiteSlots} Extra Site Branch(es)`
+              : ' · Lock Screen'
+          }`,
         slipName: 'Bank_Transfer_Reference',
         status: 'pending',
       },
@@ -157,23 +218,35 @@ export const TrialExpiredOverlay: React.FC = () => {
         billingCycle: selectedPlan,
         tenantId: currentTenant.id,
         extraSiteSlots: activeExtraSiteSlots,
+        selectedCurrency,
         customerEmail: currentTenant.contactEmail,
         customerName: currentTenant.companyName,
         currentUser,
       });
 
+      if (res.fxRates) {
+        setFxRates((prev) => mergeFxRates({ ...prev, ...res.fxRates }, res.usdToLkrRate));
+      }
       updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
 
+      const paidLabel = formatConvertedCurrency(
+        res.selectedCurrencyAmount,
+        res.selectedCurrency || selectedCurrency,
+        true
+      );
+
       if (res.status === 'active') {
-        setGatewayNotice('Subscription activated! Unlocking your workspace...');
+        setGatewayNotice(`Subscription (${paidLabel}) activated! Unlocking your workspace...`);
       } else if (res.checkoutUrl) {
         setFallbackCheckoutUrl(res.checkoutUrl);
         if (isEmbeddedIframe) {
           setGatewayNotice(
-            `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) session ready for Rs. ${res.lkrAmount.toLocaleString()}. Click "Open Checkout", pay in the new tab, then click "Check & Unlock".`
+            `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) session ready for ${paidLabel} (Rs. ${res.lkrAmount.toLocaleString()} LKR settlement). Click "Open Checkout", pay in the new tab, then click "Check & Unlock".`
           );
         } else {
-          setGatewayNotice(`Redirecting to Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) for Rs. ${res.lkrAmount.toLocaleString()}...`);
+          setGatewayNotice(
+            `Redirecting to Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) for ${paidLabel} (Rs. ${res.lkrAmount.toLocaleString()})...`
+          );
           window.location.assign(res.checkoutUrl);
         }
       }
@@ -250,6 +323,18 @@ export const TrialExpiredOverlay: React.FC = () => {
             </div>
           </div>
 
+          {/* Payment Currency & Live FX Rate Selector (LKR + 5 Major Currencies) */}
+          <CurrencyRateSelector
+            selectedCurrency={selectedCurrency}
+            onSelectCurrency={handleSelectCurrency}
+            fxRates={fxRates}
+            isLive={isLiveRate}
+            isRefreshing={isRefreshingFx}
+            onRefreshRates={() => handleRefreshLiveRates(true)}
+            usdAmount={selectedUsdAmount}
+            title="Select Currency & Live FX Rate"
+          />
+
           {/* Pricing Plan Selection: Monthly vs Annual */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
@@ -269,10 +354,13 @@ export const TrialExpiredOverlay: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-xl font-black text-slate-900 mt-2 tabular-nums">
-                  ${(pricingMetrics.monthlyPrice + activeExtraSiteSlots * pricingMetrics.extraSiteMonthlyPrice).toFixed(2)}
+                  {formatConvertedCurrency(
+                    convertUsdToCurrency(monthlyUsdTotal, selectedCurrency, fxRates),
+                    selectedCurrency
+                  )}
                 </div>
-                <div className="text-[11px] text-slate-600 font-medium">
-                  / month{activeExtraSiteSlots > 0 ? ` (incl. +${activeExtraSiteSlots} extra site${activeExtraSiteSlots === 1 ? '' : 's'})` : ' · Billed monthly'}
+                <div className="text-[11px] text-slate-600 font-medium tabular-nums">
+                  / month (${monthlyUsdTotal.toFixed(2)} USD{activeExtraSiteSlots > 0 ? ` · +${activeExtraSiteSlots} extra site${activeExtraSiteSlots === 1 ? '' : 's'}` : ''})
                 </div>
               </div>
             </button>
@@ -297,16 +385,19 @@ export const TrialExpiredOverlay: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-xl font-black text-amber-700 mt-2 tabular-nums">
-                  ${(pricingMetrics.annualPrice + activeExtraSiteSlots * pricingMetrics.extraSiteAnnualPrice).toFixed(2)}
+                  {formatConvertedCurrency(
+                    convertUsdToCurrency(annualUsdTotal, selectedCurrency, fxRates),
+                    selectedCurrency
+                  )}
                 </div>
                 <div className="text-[11px] text-amber-800 font-semibold tabular-nums">
-                  / year{activeExtraSiteSlots > 0 ? ` (incl. +${activeExtraSiteSlots} extra site${activeExtraSiteSlots === 1 ? '' : 's'})` : ` (~$${pricingMetrics.annualMonthlyEquivalentFormatted}/mo · Save $${pricingMetrics.annualSavingsFormatted}/yr)`}
+                  / year (${annualUsdTotal.toFixed(2)} USD{activeExtraSiteSlots > 0 ? ` · +${activeExtraSiteSlots} extra site${activeExtraSiteSlots === 1 ? '' : 's'}` : ` · Save $${pricingMetrics.annualSavingsFormatted}/yr`})
                 </div>
               </div>
             </button>
           </div>
 
-          {/* Instant Online Reactivation via Payments.lk (Auto-Renewing LKR Card Subscription) */}
+          {/* Instant Online Reactivation via Payments.lk */}
           <div className="bg-gradient-to-br from-emerald-50/90 via-white to-sky-50/80 border border-emerald-200 rounded-xl p-4 space-y-3 shadow-2xs">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div>
@@ -322,8 +413,10 @@ export const TrialExpiredOverlay: React.FC = () => {
                   )}
                 </div>
                 <div className="text-[11px] text-slate-600 mt-1 tabular-nums">
-                  Charged in LKR at {isLiveRate ? 'live FX ' : ''}rate ($1 = Rs. {usdRate.toFixed(2)}) ·{' '}
-                  <strong className="text-emerald-700 font-mono">Rs. {selectedLkrAmount.toLocaleString()}</strong>
+                  {formatFxRateLabel(selectedCurrency, fxRates)}
+                  {isLiveRate ? ' ⚡ Live' : ''} ·{' '}
+                  <strong className="text-emerald-700 font-mono">{selectedCurrencyFormatted}</strong>
+                  {selectedCurrency !== 'LKR' ? ` (Gateway LKR: Rs. ${selectedLkrAmount.toLocaleString()})` : ''}
                 </div>
               </div>
 
@@ -341,7 +434,7 @@ export const TrialExpiredOverlay: React.FC = () => {
                 ) : (
                   <>
                     <CreditCard className="w-3.5 h-3.5" />
-                    <span>Pay Rs. {selectedLkrAmount.toLocaleString()} Online</span>
+                    <span>Pay {formatConvertedCurrency(selectedCurrencyAmount, selectedCurrency)} Online</span>
                   </>
                 )}
               </button>
@@ -411,7 +504,13 @@ export const TrialExpiredOverlay: React.FC = () => {
                     </strong>{' '}
                     · Plan Amount:{' '}
                     <strong className="text-amber-700">
-                      ${(existingPending?.amount ?? selectedUsdAmount).toFixed(2)}
+                      {existingPending?.currency && typeof existingPending?.paidAmount === 'number'
+                        ? `${formatConvertedCurrency(
+                            existingPending.paidAmount,
+                            normalizePaymentCurrency(existingPending.currency),
+                            true
+                          )} ($${(existingPending.amount ?? selectedUsdAmount).toFixed(2)} USD)`
+                        : `${selectedCurrencyFormatted} ($${(existingPending?.amount ?? selectedUsdAmount).toFixed(2)} USD)`}
                     </strong>
                     {existingPending?.submittedAt && (
                       <span className="block text-[11px] text-slate-600 mt-0.5">
@@ -463,7 +562,9 @@ export const TrialExpiredOverlay: React.FC = () => {
                   <div>
                     Amount to Transfer:{' '}
                     <strong className="text-amber-700 font-bold">
-                      ${selectedUsdFormatted} / Rs. {selectedLkrAmount.toLocaleString()}
+                      {selectedCurrencyFormatted}
+                      {selectedCurrency !== 'USD' ? ` / $${selectedUsdFormatted} USD` : ''}
+                      {selectedCurrency !== 'LKR' ? ` / Rs. ${selectedLkrAmount.toLocaleString()} LKR` : ''}
                     </strong>
                   </div>
                 </div>

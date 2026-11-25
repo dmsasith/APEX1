@@ -46,6 +46,15 @@ import {
   normalizeLandingVideos,
   extractYouTubeVideoInfo,
 } from '../../types';
+import {
+  SUPPORTED_SUBSCRIPTION_CURRENCIES,
+  type FxRatesMap,
+  convertUsdToCurrency,
+  fetchLiveMultiCurrencyRates,
+  formatConvertedCurrency,
+  normalizePaymentCurrency,
+  readCachedFxSnapshot,
+} from '../../utils/subscriptionCurrencyUtils';
 import { formatDateTime } from '../../utils/exportUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { TenantWorkspaceInspectorModal } from './TenantWorkspaceInspectorModal';
@@ -155,7 +164,10 @@ export const SaasMasterAdminView: React.FC = () => {
     config.bankQrImage || masterBankConfig?.bankQrImage || ''
   );
   const [usdToLkrRate, setUsdToLkrRate] = useState<number>(
-    config.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64
+    config.usdToLkrRate || masterBankConfig?.usdToLkrRate || 300
+  );
+  const [liveFxRates, setLiveFxRates] = useState<FxRatesMap>(
+    () => readCachedFxSnapshot(config.usdToLkrRate || masterBankConfig?.usdToLkrRate || 300).rates
   );
   const [isFetchingRate, setIsFetchingRate] = useState(false);
 
@@ -322,6 +334,18 @@ export const SaasMasterAdminView: React.FC = () => {
       lastBillingDate: new Date().toISOString(),
       nextBillingDate: nextBilling,
       trialEndsAt: nextBilling,
+      ...(pending.currency
+        ? {
+            preferredPaymentCurrency: normalizePaymentCurrency(pending.currency),
+            lastPaymentCurrency: normalizePaymentCurrency(pending.currency),
+          }
+        : {}),
+      ...(typeof pending.paidAmount === 'number'
+        ? { lastPaymentCurrencyAmount: pending.paidAmount }
+        : {}),
+      ...(typeof pending.exchangeRateUsed === 'number'
+        ? { lastPaymentFxRate: pending.exchangeRateUsed }
+        : {}),
       pendingBankPayment: {
         ...pending,
         status: 'approved',
@@ -348,12 +372,14 @@ export const SaasMasterAdminView: React.FC = () => {
   const fetchLiveRate = async () => {
     setIsFetchingRate(true);
     try {
-      const res = await fetch('https://open.er-api.com/v6/latest/USD');
-      const data = await res.json();
-      if (data?.result === 'success' && data?.rates?.LKR) {
-        const rate = parseFloat(data.rates.LKR.toFixed(2));
-        setUsdToLkrRate(rate);
-        showNotification(`Auto-fetched live exchange rate: $1 USD = Rs. ${rate}`);
+      const snap = await fetchLiveMultiCurrencyRates({
+        forceRefresh: true,
+        fallbackLkrRate: usdToLkrRate,
+      });
+      setLiveFxRates(snap.rates);
+      setUsdToLkrRate(snap.rates.LKR);
+      if (snap.isLive) {
+        showNotification(`Synced live FX rates: $1 USD = Rs. ${snap.rates.LKR} LKR · €${snap.rates.EUR} · £${snap.rates.GBP}`);
       }
     } catch (err) {
       console.warn('Failed to fetch live rate:', err);
@@ -1222,6 +1248,14 @@ export const SaasMasterAdminView: React.FC = () => {
                       <strong className="text-slate-800">{p.bankName || 'Commercial Bank / Sampath Bank'}</strong>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-slate-500">Paid Amount &amp; Currency:</span>
+                      <strong className="text-emerald-700 font-mono">
+                        {p.currency && typeof p.paidAmount === 'number'
+                          ? `${formatConvertedCurrency(p.paidAmount, normalizePaymentCurrency(p.currency), true)} ($${Number(p.amount || 0).toFixed(2)} USD)`
+                          : `$${Number(p.amount || 0).toFixed(2)} USD`}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-slate-500">Deposit Slip Reference:</span>
                       <strong className="text-slate-900 font-mono bg-amber-100 px-1.5 py-0.5 rounded">{p.referenceNo}</strong>
                     </div>
@@ -1792,8 +1826,22 @@ export const SaasMasterAdminView: React.FC = () => {
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Live market rate: <strong className="text-slate-800">Rs. {usdToLkrRate.toFixed(2)}</strong>. Pro Monthly (${pricingMetrics.monthlyPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.monthlyPrice * (usdToLkrRate || 332.64)).toLocaleString()}</strong> | Pro Annual (${pricingMetrics.annualPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.annualPrice * (usdToLkrRate || 332.64)).toLocaleString()}</strong>
+                  Live market rate: <strong className="text-slate-800">Rs. {usdToLkrRate.toFixed(2)}</strong>. Pro Monthly (${pricingMetrics.monthlyPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.monthlyPrice * (usdToLkrRate || 300)).toLocaleString()}</strong> | Pro Annual (${pricingMetrics.annualPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.annualPrice * (usdToLkrRate || 300)).toLocaleString()}</strong>
                 </p>
+                <div className="mt-2 grid grid-cols-3 gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-2">
+                  {SUPPORTED_SUBSCRIPTION_CURRENCIES.map((cur) => {
+                    const effectiveRates: FxRatesMap = { ...liveFxRates, LKR: usdToLkrRate || liveFxRates.LKR };
+                    const annualAmt = convertUsdToCurrency(pricingMetrics.annualPrice, cur.code, effectiveRates);
+                    return (
+                      <div key={cur.code} className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-mono tabular-nums">
+                        <div className="font-black text-slate-800">{cur.code}</div>
+                        <div className="text-emerald-700 font-bold">
+                          {formatConvertedCurrency(annualAmt, cur.code)}/yr
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Upload QR Image */}

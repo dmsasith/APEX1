@@ -39,11 +39,21 @@ import { LegalPoliciesView } from './LegalPoliciesView';
 import { LegalDocId } from './legalPoliciesData';
 import { useStock } from '../../context/StockContext';
 import {
+  SubscriptionPaymentCurrency,
   computePlatformPricingMetrics,
   LandingVideoTab,
   normalizeLandingVideos,
   extractYouTubeVideoInfo,
 } from '../../types';
+import { CurrencyRateSelector } from '../subscription/CurrencyRateSelector';
+import {
+  type FxRatesMap,
+  convertUsdToCurrency,
+  fetchLiveMultiCurrencyRates,
+  formatConvertedCurrency,
+  getCurrencyMeta,
+  readCachedFxSnapshot,
+} from '../../utils/subscriptionCurrencyUtils';
 
 interface LandingPageProps {
   onOpenLogin: () => void;
@@ -56,6 +66,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [displayCurrency, setDisplayCurrency] = useState<SubscriptionPaymentCurrency>('USD');
+  const [fxRates, setFxRates] = useState<FxRatesMap>(() => readCachedFxSnapshot().rates);
+  const [isLiveFx, setIsLiveFx] = useState<boolean>(() => readCachedFxSnapshot().isLive);
+  const [isRefreshingFx, setIsRefreshingFx] = useState<boolean>(false);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchLiveMultiCurrencyRates().then((snap) => {
+      if (!mounted) return;
+      setFxRates(snap.rates);
+      setIsLiveFx(snap.isLive);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleRefreshLandingFx = async () => {
+    setIsRefreshingFx(true);
+    try {
+      const snap = await fetchLiveMultiCurrencyRates({ forceRefresh: true });
+      setFxRates(snap.rates);
+      setIsLiveFx(snap.isLive);
+    } finally {
+      setIsRefreshingFx(false);
+    }
+  };
+
+  const displayCurrencyMeta = getCurrencyMeta(displayCurrency);
+  const displayMonthlyPrice = formatConvertedCurrency(
+    convertUsdToCurrency(pricingMetrics.monthlyPrice, displayCurrency, fxRates),
+    displayCurrency
+  );
+  const displayAnnualPrice = formatConvertedCurrency(
+    convertUsdToCurrency(pricingMetrics.annualPrice, displayCurrency, fxRates),
+    displayCurrency
+  );
+  const displayAnnualMonthlyEqv = formatConvertedCurrency(
+    convertUsdToCurrency(pricingMetrics.annualMonthlyEquivalent, displayCurrency, fxRates),
+    displayCurrency
+  );
+  const displayAnnualSavings = formatConvertedCurrency(
+    convertUsdToCurrency(pricingMetrics.annualSavingsAmount, displayCurrency, fxRates),
+    displayCurrency
+  );
+  const displayExtraSiteMonthly = formatConvertedCurrency(
+    convertUsdToCurrency(pricingMetrics.extraSiteMonthlyPrice, displayCurrency, fxRates),
+    displayCurrency
+  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1810,6 +1869,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
               </div>
 
+              {/* Live Currency Preview Switcher (LKR + 5 Major Global Currencies) */}
+              <div className="max-w-3xl mx-auto mb-6">
+                <CurrencyRateSelector
+                  selectedCurrency={displayCurrency}
+                  onSelectCurrency={setDisplayCurrency}
+                  fxRates={fxRates}
+                  isLive={isLiveFx}
+                  isRefreshing={isRefreshingFx}
+                  onRefreshRates={handleRefreshLandingFx}
+                  title="Preview Plans in Your Local Currency (Live FX)"
+                />
+              </div>
+
               {/* 3 Pricing Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto items-stretch pt-2 sm:pt-4">
                 {/* Card 1: Free Trial */}
@@ -1826,7 +1898,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                   <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl sm:text-5xl font-black text-[#081024] tabular-nums">$0</span>
+                      <span className="text-4xl sm:text-5xl font-black text-[#081024] tabular-nums">
+                        {displayCurrency === 'LKR' ? 'Rs. 0' : `${displayCurrencyMeta.symbol}0`}
+                      </span>
                       <span className="text-xs font-bold text-slate-500">/ {pricingMetrics.trialDays} days free</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-extrabold mt-2">
@@ -1884,12 +1958,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   <div className="mb-6 sm:mb-8">
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl sm:text-5xl font-black text-[#081024] tabular-nums">
-                        ${pricingMetrics.monthlyPriceFormatted}
+                        {displayMonthlyPrice}
                       </span>
                       <span className="text-xs font-bold text-slate-500">/ month</span>
                     </div>
-                    <div className="text-[11px] text-slate-500 font-semibold mt-2">
-                      Includes {pricingMetrics.includedSiteBranches} Sites + HQ · Extra site +${pricingMetrics.extraSiteMonthlyPriceClean}/mo
+                    <div className="text-[11px] text-slate-500 font-semibold mt-2 tabular-nums">
+                      Includes {pricingMetrics.includedSiteBranches} Sites + HQ · Extra site +{displayExtraSiteMonthly}/mo
+                      {displayCurrency !== 'USD' ? ` ($${pricingMetrics.monthlyPriceFormatted} USD)` : ''}
                     </div>
                   </div>
 
@@ -1900,7 +1975,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
-                      <span>{pricingMetrics.includedSiteBranches} Regional Sites (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site)</span>
+                      <span>{pricingMetrics.includedSiteBranches} Regional Sites (+{displayExtraSiteMonthly}/mo extra site)</span>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
@@ -1924,7 +1999,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     onClick={() => setIsSignupOpen(true)}
                     className="w-full py-3.5 bg-[#081024] hover:bg-[#0f1d3d] text-amber-300 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#081024]/15 transition cursor-pointer active:scale-95 whitespace-nowrap"
                   >
-                    <span>Select Pro Monthly (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
+                    <span>Select Pro Monthly ({displayMonthlyPrice}/mo)</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -1954,15 +2029,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                     <div className="mb-6 sm:mb-8 relative z-10">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-200 tabular-nums">
-                          ${pricingMetrics.annualPriceFormatted}
+                        <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-200 tabular-nums">
+                          {displayAnnualPrice}
                         </span>
                         <span className="text-xs font-bold text-slate-300">/ year</span>
                       </div>
                       <div className="mt-2 flex items-center gap-1.5 text-amber-200 text-[11px] font-bold tabular-nums">
                         <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                         <span>
-                          Only ~${pricingMetrics.annualMonthlyEquivalentFormatted}/month · Save ${pricingMetrics.annualSavingsFormatted} every year
+                          Only ~{displayAnnualMonthlyEqv}/month · Save {displayAnnualSavings} every year
+                          {displayCurrency !== 'USD' ? ` ($${pricingMetrics.annualPriceClean} USD)` : ''}
                         </span>
                       </div>
                     </div>

@@ -1491,6 +1491,8 @@ export interface QueuedSubscription {
   queuedAt: string;
 }
 
+export type SubscriptionPaymentCurrency = 'LKR' | 'USD' | 'EUR' | 'GBP' | 'AUD' | 'SGD';
+
 export interface TenantSubscription {
   plan: TenantPlan;
   status: TenantSubscriptionStatus;
@@ -1500,14 +1502,18 @@ export interface TenantSubscription {
   annualPrice?: number; // e.g. 189.00
   billingCycle?: 'monthly' | 'annual';
   extraSiteSlots?: number; // Additional paid/granted regional site branch slots beyond includedSiteBranches
-  currency: string; // 'USD'
+  currency: string; // 'USD' (Base SaaS pricing currency)
+  preferredPaymentCurrency?: SubscriptionPaymentCurrency;
   paymentMethodStatus?: 'pending_setup' | 'active';
   lastBillingDate?: string;
   nextBillingDate?: string;
   pendingBankPayment?: {
     submittedAt: string;
     referenceNo: string;
-    amount: number;
+    amount: number; // Authoritative USD equivalent amount
+    currency?: SubscriptionPaymentCurrency | string; // Selected payment currency (e.g. 'LKR', 'USD', 'EUR', 'GBP', 'AUD', 'SGD')
+    paidAmount?: number; // Converted amount in the selected payment currency
+    exchangeRateUsed?: number; // 1 USD -> selected currency rate at submission
     billingCycle: 'monthly' | 'annual';
     extraSiteSlotsRequested?: number;
     notes?: string;
@@ -1529,6 +1535,9 @@ export interface TenantSubscription {
   cancelAtPeriodEnd?: boolean;
   lastLkrAmountCharged?: number;
   lastUsdToLkrRate?: number;
+  lastPaymentCurrency?: SubscriptionPaymentCurrency | string;
+  lastPaymentCurrencyAmount?: number;
+  lastPaymentFxRate?: number;
   lastInvoiceId?: string;
   lastWebhookEventId?: string;
 }

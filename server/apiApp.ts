@@ -15,9 +15,10 @@ import {
   createRecurringSubscriptionForTenant,
   formatPaymentsLkApiError,
   getConfiguredMode,
-  getLiveUsdToLkrRate,
+  getLiveMultiCurrencyRates,
   isSecretKeyConfigured,
   isWebhookSecretConfigured,
+  normalizeServerPaymentCurrency,
   processPaymentsLkWebhook,
   updateAutoRenewForTenant,
   verifyAndSyncTenantSubscription,
@@ -535,15 +536,17 @@ export function createApiApp(): express.Express {
     }
   });
 
-  // Payments.lk Gateway Status (safe public metadata only — never exposes secret keys)
+  // Payments.lk Gateway Status & Live Multi-Currency FX Rates (safe public metadata only)
   app.get('/api/payments/status', async (_req, res) => {
     try {
-      const fx = await getLiveUsdToLkrRate();
+      const fx = await getLiveMultiCurrencyRates();
       res.json({
         configured: isSecretKeyConfigured(),
         webhookConfigured: isWebhookSecretConfigured(),
         mode: getConfiguredMode(),
-        usdToLkrRate: fx.rate,
+        usdToLkrRate: fx.usdToLkrRate,
+        fxRates: fx.rates,
+        fxUpdatedAt: fx.updatedAt,
         isLiveFxRate: fx.isLive,
       });
     } catch {
@@ -552,6 +555,15 @@ export function createApiApp(): express.Express {
         webhookConfigured: isWebhookSecretConfigured(),
         mode: getConfiguredMode(),
         usdToLkrRate: 300.0,
+        fxRates: {
+          USD: 1,
+          LKR: 300.0,
+          EUR: 0.92,
+          GBP: 0.79,
+          AUD: 1.53,
+          SGD: 1.34,
+        },
+        fxUpdatedAt: new Date().toISOString(),
         isLiveFxRate: false,
       });
     }
@@ -636,6 +648,7 @@ export function createApiApp(): express.Express {
       }
 
       const billingCycle = req.body?.billingCycle === 'monthly' ? 'monthly' : 'annual';
+      const selectedCurrency = normalizeServerPaymentCurrency(req.body?.selectedCurrency);
       const extraSiteSlots =
         typeof req.body?.extraSiteSlots === 'number' && !Number.isNaN(req.body.extraSiteSlots)
           ? Math.min(500, Math.max(0, Math.round(req.body.extraSiteSlots)))
@@ -649,6 +662,7 @@ export function createApiApp(): express.Express {
         tenantId: targetTenantId,
         billingCycle,
         extraSiteSlots,
+        selectedCurrency,
         baseReturnUrl: resolveTrustedAppOrigin(req),
         fallbackCustomerEmail:
           typeof req.body?.customerEmail === 'string' ? req.body.customerEmail : undefined,

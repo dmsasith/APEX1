@@ -1,11 +1,14 @@
-import { TenantSubscription, User } from '../types';
+import { SubscriptionPaymentCurrency, TenantSubscription, User } from '../types';
 import { getApiSessionToken, issueWorkspaceSessionToken } from './securityUtils';
+import { DEFAULT_FALLBACK_FX_RATES, FxRatesMap, mergeFxRates } from './subscriptionCurrencyUtils';
 
 export interface PaymentsLkGatewayStatus {
   configured: boolean;
   webhookConfigured: boolean;
   mode: 'test' | 'live' | 'unconfigured';
   usdToLkrRate: number;
+  fxRates: FxRatesMap;
+  fxUpdatedAt: string;
   isLiveFxRate: boolean;
   backendAvailable: boolean;
 }
@@ -20,6 +23,11 @@ export interface CreateSubscriptionResponse {
   lkrAmount: number;
   usdAmount: number;
   usdToLkrRate: number;
+  selectedCurrency: SubscriptionPaymentCurrency;
+  selectedCurrencyAmount: number;
+  fxRateToSelectedCurrency: number;
+  fxRates: FxRatesMap;
+  fxUpdatedAt: string;
   isLiveFxRate: boolean;
   billingCycle: 'monthly' | 'annual';
   extraSiteSlots: number;
@@ -79,17 +87,22 @@ export async function fetchPaymentsLkGatewayStatus(): Promise<PaymentsLkGatewayS
         configured: false,
         webhookConfigured: false,
         mode: 'unconfigured',
-        usdToLkrRate: 300,
+        usdToLkrRate: DEFAULT_FALLBACK_FX_RATES.LKR,
+        fxRates: { ...DEFAULT_FALLBACK_FX_RATES },
+        fxUpdatedAt: new Date().toISOString(),
         isLiveFxRate: false,
         backendAvailable: false,
       };
     }
     const data = await res.json();
+    const usdToLkrRate = Number(data?.usdToLkrRate) || DEFAULT_FALLBACK_FX_RATES.LKR;
     return {
       configured: Boolean(data?.configured),
       webhookConfigured: Boolean(data?.webhookConfigured),
       mode: data?.mode === 'live' ? 'live' : data?.mode === 'test' ? 'test' : 'unconfigured',
-      usdToLkrRate: Number(data?.usdToLkrRate) || 300,
+      usdToLkrRate,
+      fxRates: mergeFxRates(data?.fxRates, usdToLkrRate),
+      fxUpdatedAt: typeof data?.fxUpdatedAt === 'string' ? data.fxUpdatedAt : new Date().toISOString(),
       isLiveFxRate: Boolean(data?.isLiveFxRate),
       backendAvailable: true,
     };
@@ -98,7 +111,9 @@ export async function fetchPaymentsLkGatewayStatus(): Promise<PaymentsLkGatewayS
       configured: false,
       webhookConfigured: false,
       mode: 'unconfigured',
-      usdToLkrRate: 300,
+      usdToLkrRate: DEFAULT_FALLBACK_FX_RATES.LKR,
+      fxRates: { ...DEFAULT_FALLBACK_FX_RATES },
+      fxUpdatedAt: new Date().toISOString(),
       isLiveFxRate: false,
       backendAvailable: false,
     };
@@ -109,6 +124,7 @@ export async function startPaymentsLkAutoSubscription(params: {
   billingCycle: 'monthly' | 'annual';
   tenantId: string;
   extraSiteSlots?: number;
+  selectedCurrency?: SubscriptionPaymentCurrency;
   customerEmail?: string;
   customerName?: string;
   currentUser?: Pick<User, 'id' | 'username'> | null;
@@ -131,6 +147,7 @@ export async function startPaymentsLkAutoSubscription(params: {
       billingCycle: params.billingCycle,
       tenantId: params.tenantId,
       extraSiteSlots: params.extraSiteSlots,
+      selectedCurrency: params.selectedCurrency,
       customerEmail: params.customerEmail,
       customerName: params.customerName,
     }),

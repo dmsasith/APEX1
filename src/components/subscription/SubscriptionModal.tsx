@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
+  SubscriptionPaymentCurrency,
   computePlatformPricingMetrics,
   getSubscriptionStatusSummary,
   getTenantBranchQuotaSummary,
@@ -40,6 +41,18 @@ import {
   verifyPaymentsLkSubscription,
   type PaymentsLkGatewayStatus,
 } from '../../utils/paymentsLkClient';
+import { CurrencyRateSelector } from './CurrencyRateSelector';
+import {
+  type FxRatesMap,
+  convertUsdToCurrency,
+  detectDefaultPaymentCurrency,
+  fetchLiveMultiCurrencyRates,
+  formatConvertedCurrency,
+  formatFxRateLabel,
+  getCurrencyMeta,
+  mergeFxRates,
+  readCachedFxSnapshot,
+} from '../../utils/subscriptionCurrencyUtils';
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -72,10 +85,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const activeBankBranchSwift = config?.bankBranchSwift || masterBankConfig?.bankBranchSwift || 'Mulleriyawa Branch / CCBLLKLX';
   const activeBankQrImage = config?.bankQrImage || masterBankConfig?.bankQrImage || '';
 
-  const [usdRate, setUsdRate] = useState<number>(
-    config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 332.64
+  const fallbackLkr = config?.usdToLkrRate || masterBankConfig?.usdToLkrRate || 300;
+  const initialFx = readCachedFxSnapshot(fallbackLkr);
+
+  const [selectedCurrency, setSelectedCurrency] = useState<SubscriptionPaymentCurrency>(() =>
+    detectDefaultPaymentCurrency(currentTenant)
   );
-  const [isLiveRate, setIsLiveRate] = useState<boolean>(false);
+  const [fxRates, setFxRates] = useState<FxRatesMap>(initialFx.rates);
+  const [isLiveRate, setIsLiveRate] = useState<boolean>(initialFx.isLive);
+  const [isRefreshingFx, setIsRefreshingFx] = useState<boolean>(false);
+
   const [legalDocModal, setLegalDocModal] = useState<LegalDocId | null>(null);
   const [gatewayStatus, setGatewayStatus] = useState<PaymentsLkGatewayStatus | null>(null);
   const [gatewayBusy, setGatewayBusy] = useState(false);
@@ -83,53 +102,57 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const [gatewayNotice, setGatewayNotice] = useState<string | null>(null);
   const [fallbackCheckoutUrl, setFallbackCheckoutUrl] = useState<string | null>(null);
 
-  // Fetch Payments.lk Gateway Status & Server Live USD/LKR FX Rate when opened
+  useEffect(() => {
+    if (!isOpen || !currentTenant) return;
+    setSelectedCurrency(detectDefaultPaymentCurrency(currentTenant));
+  }, [isOpen, currentTenant?.id]);
+
+  const handleRefreshLiveRates = async (forceRefresh = true) => {
+    setIsRefreshingFx(true);
+    try {
+      const snapshot = await fetchLiveMultiCurrencyRates({
+        forceRefresh,
+        fallbackLkrRate: fallbackLkr,
+      });
+      setFxRates(snapshot.rates);
+      setIsLiveRate(snapshot.isLive);
+    } finally {
+      setIsRefreshingFx(false);
+    }
+  };
+
+  // Fetch Payments.lk Gateway Status & Server Live Multi-Currency FX Rates when opened
   useEffect(() => {
     if (!isOpen) return;
     let mounted = true;
     fetchPaymentsLkGatewayStatus().then((st) => {
       if (!mounted) return;
       setGatewayStatus(st);
-      if (st.usdToLkrRate > 50 && st.isLiveFxRate) {
-        setUsdRate(st.usdToLkrRate);
-        setIsLiveRate(true);
+      if (st.fxRates) {
+        setFxRates((prev) => mergeFxRates({ ...prev, ...st.fxRates }, st.usdToLkrRate || fallbackLkr));
+        if (st.isLiveFxRate) {
+          setIsLiveRate(true);
+        }
       }
+    });
+    fetchLiveMultiCurrencyRates({ fallbackLkrRate: fallbackLkr }).then((snapshot) => {
+      if (!mounted) return;
+      setFxRates(snapshot.rates);
+      if (snapshot.isLive) setIsLiveRate(true);
     });
     return () => {
       mounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, fallbackLkr]);
 
-  // Auto-fetch real-time USD to LKR Exchange Rate
-  useEffect(() => {
-    let isMounted = true;
-    fetch('https://open.er-api.com/v6/latest/USD')
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted && data?.result === 'success' && data?.rates?.LKR) {
-          const fetchedRate = parseFloat(data.rates.LKR.toFixed(2));
-          setUsdRate(fetchedRate);
-          setIsLiveRate(true);
-          try {
-            const raw = localStorage.getItem('apex_master_bank_config_v1');
-            const existing = raw ? JSON.parse(raw) : {};
-            localStorage.setItem(
-              'apex_master_bank_config_v1',
-              JSON.stringify({ ...existing, usdToLkrRate: fetchedRate })
-            );
-          } catch (e) {
-            console.warn('Failed to store live rate in localStorage:', e);
-          }
-        }
-      })
-      .catch((err) => {
-        console.warn('Auto USD/LKR exchange rate fetch failed, using stored rate:', err);
+  const handleSelectCurrency = (code: SubscriptionPaymentCurrency) => {
+    setSelectedCurrency(code);
+    if (currentTenant) {
+      updateTenantSubscription(currentTenant.id, {
+        preferredPaymentCurrency: code,
       });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    }
+  };
 
   const minRequiredExtraSlots = Math.max(
     0,
@@ -150,8 +173,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const extraAnnualUsd = Number((extraSiteSlots * pricingMetrics.extraSiteAnnualPrice).toFixed(2));
   const totalMonthlyUsd = Number((pricingMetrics.monthlyPrice + extraMonthlyUsd).toFixed(2));
   const totalAnnualUsd = Number((pricingMetrics.annualPrice + extraAnnualUsd).toFixed(2));
-  const monthlyLkr = Math.round(totalMonthlyUsd * usdRate);
-  const annualLkr = Math.round(totalAnnualUsd * usdRate);
+  const monthlyLkr = convertUsdToCurrency(totalMonthlyUsd, 'LKR', fxRates);
+  const annualLkr = convertUsdToCurrency(totalAnnualUsd, 'LKR', fxRates);
+  const monthlySelectedTotal = convertUsdToCurrency(totalMonthlyUsd, selectedCurrency, fxRates);
+  const annualSelectedTotal = convertUsdToCurrency(totalAnnualUsd, selectedCurrency, fxRates);
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>(
     currentTenant?.subscription?.billingCycle || 'annual'
@@ -176,6 +201,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const isAnnual = billingCycle === 'annual';
   const activeUsdTotal = isAnnual ? totalAnnualUsd : totalMonthlyUsd;
   const activeLkrTotal = isAnnual ? annualLkr : monthlyLkr;
+  const activeSelectedTotal = isAnnual ? annualSelectedTotal : monthlySelectedTotal;
+  const activeSelectedRate = fxRates[selectedCurrency] || 1;
+  const selectedCurrencyMeta = getCurrencyMeta(selectedCurrency);
+  const activeFormattedTotal = formatConvertedCurrency(activeSelectedTotal, selectedCurrency, true);
 
   const handleCopyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -188,17 +217,21 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     if (!txnRef.trim()) return;
 
     updateTenantSubscription(currentTenant.id, {
+      preferredPaymentCurrency: selectedCurrency,
       pendingBankPayment: {
         submittedAt: new Date().toISOString(),
         referenceNo: txnRef.trim(),
         amount: activeUsdTotal,
+        currency: selectedCurrency,
+        paidAmount: activeSelectedTotal,
+        exchangeRateUsed: activeSelectedRate,
         billingCycle: billingCycle,
         extraSiteSlotsRequested: extraSiteSlots,
         notes:
           bankNotes.trim() ||
-          (extraSiteSlots > 0
-            ? `Includes +${extraSiteSlots} Extra Site Branch(es)`
-            : undefined),
+          `${activeFormattedTotal} (@ ${formatFxRateLabel(selectedCurrency, fxRates)})${
+            extraSiteSlots > 0 ? ` · Includes +${extraSiteSlots} Extra Site Branch(es)` : ''
+          }`,
         slipName: slipFileName || 'Bank_Transfer_Slip.pdf',
         status: 'pending',
       },
@@ -229,24 +262,36 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         billingCycle,
         tenantId: currentTenant.id,
         extraSiteSlots,
+        selectedCurrency,
         customerEmail: currentTenant.contactEmail,
         customerName: currentTenant.companyName,
         currentUser,
       });
 
+      if (res.fxRates) {
+        setFxRates((prev) => mergeFxRates({ ...prev, ...res.fxRates }, res.usdToLkrRate));
+      }
       updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
 
+      const selectedPaidLabel = formatConvertedCurrency(
+        res.selectedCurrencyAmount,
+        res.selectedCurrency || selectedCurrency,
+        true
+      );
+
       if (res.status === 'active') {
-        setGatewayNotice('Auto-renewing Pro Subscription activated immediately on your card on file!');
+        setGatewayNotice(
+          `Auto-renewing Pro Subscription (${selectedPaidLabel}) activated immediately on your card on file!`
+        );
       } else if (res.checkoutUrl) {
         setFallbackCheckoutUrl(res.checkoutUrl);
         if (isEmbeddedIframe) {
           setGatewayNotice(
-            `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) session ready for Rs. ${res.lkrAmount.toLocaleString()}. Click "Open Payment Page" to complete payment, then click "Verify Status".`
+            `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) session ready for ${selectedPaidLabel} (LKR settlement: Rs. ${res.lkrAmount.toLocaleString()}). Click "Open Payment Page" to complete payment, then click "Verify Status".`
           );
         } else {
           setGatewayNotice(
-            `Redirecting to Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) secure checkout for Rs. ${res.lkrAmount.toLocaleString()}...`
+            `Redirecting to Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) secure checkout for ${selectedPaidLabel} (Rs. ${res.lkrAmount.toLocaleString()})...`
           );
           window.location.assign(res.checkoutUrl);
         }
@@ -510,29 +555,41 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               </div>
             )}
 
+            {/* Payment Currency & Real-Time FX Selector (LKR + 5 Major Currencies) */}
+            <CurrencyRateSelector
+              selectedCurrency={selectedCurrency}
+              onSelectCurrency={handleSelectCurrency}
+              fxRates={fxRates}
+              isLive={isLiveRate}
+              isRefreshing={isRefreshingFx}
+              onRefreshRates={() => handleRefreshLiveRates(true)}
+              usdAmount={activeUsdTotal}
+              title="Payment Currency & Real-Time Exchange Rates"
+            />
+
             {/* Billing Cycle Selector Switch */}
-            <div className="flex items-center justify-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 max-w-md mx-auto">
+            <div className="flex items-center justify-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 max-w-lg mx-auto">
               <button
                 type="button"
                 onClick={() => setBillingCycle('monthly')}
-                className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer tabular-nums ${
                   billingCycle === 'monthly'
                     ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Monthly (${totalMonthlyUsd.toFixed(2)}/mo)
+                Monthly ({formatConvertedCurrency(monthlySelectedTotal, selectedCurrency)}/mo)
               </button>
               <button
                 type="button"
                 onClick={() => setBillingCycle('annual')}
-                className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer tabular-nums ${
                   billingCycle === 'annual'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>Annual (${totalAnnualUsd.toFixed(2)}/yr)</span>
+                <span>Annual ({formatConvertedCurrency(annualSelectedTotal, selectedCurrency)}/yr)</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded font-black ${billingCycle === 'annual' ? 'bg-amber-400 text-slate-950' : 'bg-emerald-100 text-emerald-800'}`}>
                   Save {pricingMetrics.annualSavingsPercent}%
                 </span>
@@ -578,13 +635,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-[11px]">
-                  <span className="text-slate-600">
-                    Add-On Rate: <strong className="text-slate-900 font-mono">${pricingMetrics.extraSiteMonthlyPriceFormatted}/mo</strong> per additional site branch
+                  <span className="text-slate-600 tabular-nums">
+                    Add-On Rate:{' '}
+                    <strong className="text-slate-900 font-mono">
+                      {formatConvertedCurrency(
+                        convertUsdToCurrency(pricingMetrics.extraSiteMonthlyPrice, selectedCurrency, fxRates),
+                        selectedCurrency
+                      )}/mo
+                    </strong>{' '}
+                    (${pricingMetrics.extraSiteMonthlyPriceFormatted} USD) per additional site
                   </span>
                   <span className="font-bold text-emerald-700 font-mono tabular-nums">
                     {extraSiteSlots > 0
-                      ? `Base $${(isAnnual ? pricingMetrics.annualPrice : pricingMetrics.monthlyPrice).toFixed(2)} + Extra ${extraSiteSlots} Site(s) $${(isAnnual ? extraAnnualUsd : extraMonthlyUsd).toFixed(2)} = $${activeUsdTotal.toFixed(2)}/${isAnnual ? 'yr' : 'mo'}`
-                      : `Total Allowed Branches: ${branchQuota.includedBranches} Sites ($0 add-on)`}
+                      ? `Total (${selectedCurrency}): ${activeFormattedTotal}/${isAnnual ? 'yr' : 'mo'} ($${activeUsdTotal.toFixed(2)} USD)`
+                      : `Total Allowed Branches: ${branchQuota.includedBranches} Sites (${selectedCurrencyMeta.symbol}0 add-on)`}
                   </span>
                 </div>
               </div>
@@ -612,17 +676,21 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                       )}
                     </div>
                     <div className="text-[11px] text-slate-600 tabular-nums">
-                      Visa / Mastercard / Amex · Charged in LKR using live FX rate ($1 = Rs. {usdRate.toFixed(2)}
-                      {isLiveRate ? ' Live' : ''})
+                      Visa / Mastercard / Amex · {formatFxRateLabel(selectedCurrency, fxRates)}
+                      {isLiveRate ? ' ⚡ Live' : ''}
+                      {selectedCurrency !== 'LKR' ? ` · Gateway settles in Rs. ${activeLkrTotal.toLocaleString()} LKR` : ''}
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
                   <div className="text-base font-black text-emerald-700 font-mono tabular-nums">
-                    Rs. {activeLkrTotal.toLocaleString()}
+                    {activeFormattedTotal}
                   </div>
                   <div className="text-[10px] text-slate-500 tabular-nums">
+                    {selectedCurrency !== 'LKR'
+                      ? `LKR Eqv: Rs. ${activeLkrTotal.toLocaleString()} · `
+                      : ''}
                     ${activeUsdTotal.toFixed(2)} USD / {isAnnual ? 'year' : 'month'}
                   </div>
                 </div>
@@ -736,7 +804,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     <>
                       <CreditCard className="w-4 h-4" />
                       <span>
-                        Subscribe Online · Rs. {(isAnnual ? annualLkr : monthlyLkr).toLocaleString()} /{' '}
+                        Subscribe Online · {formatConvertedCurrency(activeSelectedTotal, selectedCurrency)} /{' '}
                         {isAnnual ? 'yr' : 'mo'}
                       </span>
                     </>
@@ -780,13 +848,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   </div>
 
                   <div className="mt-2 text-xs font-bold text-slate-900">
-                    LANKAPAY / Universal Bank QR
+                    LANKAPAY / Universal Bank Wire
                   </div>
-                  <div className="text-[11px] text-slate-700 font-bold mt-1">
-                    Amount: <span className="text-emerald-700 font-mono">${activeUsdTotal.toFixed(2)} (Rs. {activeLkrTotal.toLocaleString()})</span>
+                  <div className="text-[11px] text-slate-700 font-bold mt-1 tabular-nums">
+                    Amount: <span className="text-emerald-700 font-mono">{activeFormattedTotal}</span>
+                    {selectedCurrency !== 'USD' && (
+                      <span className="text-slate-500 font-mono"> (${activeUsdTotal.toFixed(2)} USD)</span>
+                    )}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1">
-                    <span>Rate: $1 USD = Rs. {usdRate.toFixed(2)}</span>
+                  <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1 tabular-nums">
+                    <span>{formatFxRateLabel(selectedCurrency, fxRates)}</span>
                     {isLiveRate && <span className="text-emerald-600 font-bold">⚡ Live</span>}
                   </div>
                 </div>
@@ -902,9 +973,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <div className="text-[11px] text-slate-500">
-                    Amount: <strong className="text-slate-900 font-mono">${activeUsdTotal.toFixed(2)} (Rs. {activeLkrTotal.toLocaleString()})</strong> · Auto-notifies Master Admin
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="text-[11px] text-slate-500 tabular-nums">
+                    Amount:{' '}
+                    <strong className="text-slate-900 font-mono">
+                      {activeFormattedTotal}
+                    </strong>
+                    {selectedCurrency !== 'USD' && (
+                      <span className="font-mono"> (${activeUsdTotal.toFixed(2)} USD)</span>
+                    )}
+                    {selectedCurrency !== 'LKR' && (
+                      <span className="font-mono"> · Rs. {activeLkrTotal.toLocaleString()} LKR</span>
+                    )}{' '}
+                    · Auto-notifies Master Admin
                   </div>
 
                   <button
@@ -988,11 +1069,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           recipientLabel="BILLED TENANT ACCOUNT"
           recipientName={currentTenant.companyName}
           recipientSubDetails={`Registered Contact: ${currentTenant.contactEmail} | Tel: ${currentTenant.contactPhone} | Country: ${currentTenant.country} | Tenant Ref: ${currentTenant.slug.toUpperCase()}`}
-          notes={`Official SaaS Software Subscription Tax Invoice & Payment Receipt. Billing dispatched to registered email (${currentTenant.contactEmail}). Subscription Status: ${(sub.status || 'trialing').toUpperCase()} | Billing Cycle: ${(sub.billingCycle || 'annual').toUpperCase()}`}
+          notes={`Official SaaS Software Subscription Tax Invoice & Payment Receipt. Billing dispatched to registered email (${currentTenant.contactEmail}). Subscription Status: ${(sub.status || 'trialing').toUpperCase()} | Billing Cycle: ${(billingCycle || 'annual').toUpperCase()} | Selected Currency Total: ${activeFormattedTotal} ($${activeUsdTotal.toFixed(2)} USD @ ${formatFxRateLabel(selectedCurrency, fxRates)} · LKR Eqv: Rs. ${activeLkrTotal.toLocaleString()})`}
           items={[
             {
               itemCode: 'SAAS-PRO-SUB',
-              itemName: `ApexStox Base Enterprise Plan - ${sub.billingCycle === 'annual' ? `Annual Subscription ($${pricingMetrics.annualPriceFormatted}/yr · Includes ${branchQuota.includedBranches} Site Branches)` : `Monthly Subscription ($${pricingMetrics.monthlyPriceFormatted}/mo · Includes ${branchQuota.includedBranches} Site Branches)`}`,
+              itemName: `ApexStox Base Enterprise Plan - ${isAnnual ? `Annual Subscription (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.annualPrice, selectedCurrency, fxRates), selectedCurrency, true)} / $${pricingMetrics.annualPriceFormatted} USD per yr · Includes ${branchQuota.includedBranches} Site Branches)` : `Monthly Subscription (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.monthlyPrice, selectedCurrency, fxRates), selectedCurrency, true)} / $${pricingMetrics.monthlyPriceFormatted} USD per mo · Includes ${branchQuota.includedBranches} Site Branches)`}`,
               category: 'Software License & Cloud Infrastructure',
               quantity: 1,
               unit: 'License',
@@ -1001,7 +1082,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               ? [
                   {
                     itemCode: 'SAAS-EXTRA-SITE',
-                    itemName: `Additional Regional Site Branch Add-On ($${pricingMetrics.extraSiteMonthlyPriceFormatted}/mo per extra branch)`,
+                    itemName: `Additional Regional Site Branch Add-On (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.extraSiteMonthlyPrice, selectedCurrency, fxRates), selectedCurrency, true)}/mo · $${pricingMetrics.extraSiteMonthlyPriceFormatted} USD per extra branch)`,
                     category: 'Multi-Site Capacity Expansion',
                     quantity: extraSiteSlots,
                     unit: isAnnual ? 'Site/Yr' : 'Site/Mo',

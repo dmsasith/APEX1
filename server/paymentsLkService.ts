@@ -7,16 +7,29 @@ import {
   type Invoice as GatewayInvoice,
   type Payment as GatewayPayment,
 } from '@payments-lk/node';
-import type { Tenant, TenantSubscription } from '../src/types';
+import type { SubscriptionPaymentCurrency, Tenant, TenantSubscription } from '../src/types';
 
 const FIREBASE_RTDB_BASE = 'https://apexdevoloper-31068-default-rtdb.firebaseio.com';
 const PLATFORM_PRICING_URL = `${FIREBASE_RTDB_BASE}/tenantsData/tenant-apex-main/platformPricing.json`;
 const MASTER_CONFIG_URL = `${FIREBASE_RTDB_BASE}/tenantsData/tenant-apex-main/config.json`;
 const SAAS_TENANTS_URL = `${FIREBASE_RTDB_BASE}/saasTenants.json`;
 
+export type SupportedFxRatesMap = Record<SubscriptionPaymentCurrency, number>;
+
+const DEFAULT_SERVER_FX_RATES: SupportedFxRatesMap = {
+  USD: 1,
+  LKR: 300.0,
+  EUR: 0.92,
+  GBP: 0.79,
+  AUD: 1.53,
+  SGD: 1.34,
+};
+
 interface RateCache {
   rate: number;
+  rates: SupportedFxRatesMap;
   fetchedAt: number;
+  updatedAtIso: string;
   isLive: boolean;
 }
 
@@ -79,32 +92,96 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 4500): Promise<T
   }
 }
 
-export async function getLiveUsdToLkrRate(): Promise<{ rate: number; isLive: boolean }> {
+export function normalizeServerPaymentCurrency(raw?: unknown): SubscriptionPaymentCurrency {
+  const upper = typeof raw === 'string' ? raw.trim().toUpperCase() : '';
+  if (
+    upper === 'LKR' ||
+    upper === 'USD' ||
+    upper === 'EUR' ||
+    upper === 'GBP' ||
+    upper === 'AUD' ||
+    upper === 'SGD'
+  ) {
+    return upper;
+  }
+  return 'LKR';
+}
+
+export async function getLiveMultiCurrencyRates(): Promise<{
+  usdToLkrRate: number;
+  rates: SupportedFxRatesMap;
+  isLive: boolean;
+  updatedAt: string;
+}> {
   if (cachedUsdRate && Date.now() - cachedUsdRate.fetchedAt < RATE_CACHE_TTL_MS) {
-    return { rate: cachedUsdRate.rate, isLive: cachedUsdRate.isLive };
+    return {
+      usdToLkrRate: cachedUsdRate.rate,
+      rates: cachedUsdRate.rates,
+      isLive: cachedUsdRate.isLive,
+      updatedAt: cachedUsdRate.updatedAtIso,
+    };
   }
 
   // 1. Live FX feed
-  const fx = await fetchJsonWithTimeout<{ result?: string; rates?: { LKR?: number } }>(
-    'https://open.er-api.com/v6/latest/USD',
-    4000
-  );
+  const fx = await fetchJsonWithTimeout<{
+    result?: string;
+    time_last_update_utc?: string;
+    rates?: Record<string, number>;
+  }>('https://open.er-api.com/v6/latest/USD', 4500);
+
   const liveLkr = fx?.result === 'success' ? Number(fx?.rates?.LKR) : NaN;
   if (Number.isFinite(liveLkr) && liveLkr > 50 && liveLkr < 2000) {
-    const rounded = parseFloat(liveLkr.toFixed(2));
-    cachedUsdRate = { rate: rounded, fetchedAt: Date.now(), isLive: true };
-    return { rate: rounded, isLive: true };
+    const roundedLkr = parseFloat(liveLkr.toFixed(2));
+    const pick = (code: Exclude<SubscriptionPaymentCurrency, 'USD' | 'LKR'>) => {
+      const val = Number(fx?.rates?.[code]);
+      return Number.isFinite(val) && val > 0.01 && val < 1000
+        ? parseFloat(val.toFixed(4))
+        : DEFAULT_SERVER_FX_RATES[code];
+    };
+    const rates: SupportedFxRatesMap = {
+      USD: 1,
+      LKR: roundedLkr,
+      EUR: pick('EUR'),
+      GBP: pick('GBP'),
+      AUD: pick('AUD'),
+      SGD: pick('SGD'),
+    };
+    const updatedAtIso = fx?.time_last_update_utc || new Date().toISOString();
+    cachedUsdRate = {
+      rate: roundedLkr,
+      rates,
+      fetchedAt: Date.now(),
+      updatedAtIso,
+      isLive: true,
+    };
+    return { usdToLkrRate: roundedLkr, rates, isLive: true, updatedAt: updatedAtIso };
   }
 
-  // 2. Fallback to stored master config rate in Firebase RTDB
+  // 2. Fallback to stored master config LKR rate in Firebase RTDB
   const cfg = await fetchJsonWithTimeout<{ usdToLkrRate?: number }>(MASTER_CONFIG_URL, 3500);
   const cfgRate = Number(cfg?.usdToLkrRate);
   if (Number.isFinite(cfgRate) && cfgRate > 50 && cfgRate < 2000) {
-    return { rate: parseFloat(cfgRate.toFixed(2)), isLive: false };
+    const roundedLkr = parseFloat(cfgRate.toFixed(2));
+    return {
+      usdToLkrRate: roundedLkr,
+      rates: { ...DEFAULT_SERVER_FX_RATES, LKR: roundedLkr },
+      isLive: false,
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   // 3. Safe conservative fallback
-  return { rate: 300.0, isLive: false };
+  return {
+    usdToLkrRate: DEFAULT_SERVER_FX_RATES.LKR,
+    rates: { ...DEFAULT_SERVER_FX_RATES },
+    isLive: false,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export async function getLiveUsdToLkrRate(): Promise<{ rate: number; isLive: boolean }> {
+  const multi = await getLiveMultiCurrencyRates();
+  return { rate: multi.usdToLkrRate, isLive: multi.isLive };
 }
 
 export async function getAuthoritativeUsdPricing(): Promise<{
@@ -320,7 +397,14 @@ async function findOrCreateRecurringPrice(
 function mapGatewaySubscriptionToPatch(
   sub: GatewaySubscription,
   fallbackBillingCycle?: 'monthly' | 'annual',
-  fxContext?: { usdToLkrRate?: number; lkrAmountCents?: number; extraSiteSlots?: number }
+  fxContext?: {
+    usdToLkrRate?: number;
+    lkrAmountCents?: number;
+    extraSiteSlots?: number;
+    selectedCurrency?: SubscriptionPaymentCurrency;
+    selectedCurrencyAmount?: number;
+    fxRateToSelectedCurrency?: number;
+  }
 ): Partial<TenantSubscription> {
   const interval = sub.price?.interval || sub.items?.[0]?.price?.interval;
   const billingCycle: 'monthly' | 'annual' =
@@ -358,6 +442,16 @@ function mapGatewaySubscriptionToPatch(
   if (fxContext?.usdToLkrRate) {
     patch.lastUsdToLkrRate = fxContext.usdToLkrRate;
   }
+  if (fxContext?.selectedCurrency) {
+    patch.preferredPaymentCurrency = fxContext.selectedCurrency;
+    patch.lastPaymentCurrency = fxContext.selectedCurrency;
+  }
+  if (typeof fxContext?.selectedCurrencyAmount === 'number') {
+    patch.lastPaymentCurrencyAmount = fxContext.selectedCurrencyAmount;
+  }
+  if (typeof fxContext?.fxRateToSelectedCurrency === 'number') {
+    patch.lastPaymentFxRate = fxContext.fxRateToSelectedCurrency;
+  }
   if (unitCents) {
     patch.lastLkrAmountCharged = Math.round(unitCents / 100);
   } else if (fxContext?.lkrAmountCents) {
@@ -393,6 +487,11 @@ export interface CreateSubscriptionResult {
   lkrAmount: number;
   usdAmount: number;
   usdToLkrRate: number;
+  selectedCurrency: SubscriptionPaymentCurrency;
+  selectedCurrencyAmount: number;
+  fxRateToSelectedCurrency: number;
+  fxRates: SupportedFxRatesMap;
+  fxUpdatedAt: string;
   isLiveFxRate: boolean;
   billingCycle: 'monthly' | 'annual';
   extraSiteSlots: number;
@@ -403,6 +502,7 @@ export async function createRecurringSubscriptionForTenant(params: {
   tenantId: string;
   billingCycle: 'monthly' | 'annual';
   extraSiteSlots?: number;
+  selectedCurrency?: SubscriptionPaymentCurrency;
   baseReturnUrl: string;
   fallbackCustomerEmail?: string;
   fallbackCustomerName?: string;
@@ -423,10 +523,15 @@ export async function createRecurringSubscriptionForTenant(params: {
     .slice(0, 120);
   const phone = normalizeSriLankanPhone(tenant?.contactPhone);
 
-  const [pricing, fx] = await Promise.all([
+  const [pricing, fxMulti] = await Promise.all([
     getAuthoritativeUsdPricing(),
-    getLiveUsdToLkrRate(),
+    getLiveMultiCurrencyRates(),
   ]);
+
+  const selectedCurrency = normalizeServerPaymentCurrency(
+    params.selectedCurrency || tenant?.subscription?.preferredPaymentCurrency || 'LKR'
+  );
+  const fxRateToSelectedCurrency = fxMulti.rates[selectedCurrency] || 1;
 
   const rawExtraSlots =
     typeof params.extraSiteSlots === 'number' && !Number.isNaN(params.extraSiteSlots)
@@ -438,8 +543,12 @@ export async function createRecurringSubscriptionForTenant(params: {
   const extraUsdAmount =
     extraSiteSlots * pricing.extraSiteMonthlyPrice * (params.billingCycle === 'annual' ? 12 : 1);
   const usdAmount = Number((baseUsdAmount + extraUsdAmount).toFixed(2));
-  const lkrAmount = Math.max(10, Math.round(usdAmount * fx.rate));
+  const lkrAmount = Math.max(10, Math.round(usdAmount * fxMulti.usdToLkrRate));
   const lkrAmountCents = Math.min(100_000_000, Math.max(1000, lkrAmount * 100));
+  const selectedCurrencyAmount =
+    selectedCurrency === 'LKR'
+      ? lkrAmount
+      : Number((usdAmount * fxRateToSelectedCurrency).toFixed(2));
 
   const customer = await lk.customers.create({
     email,
@@ -470,9 +579,12 @@ export async function createRecurringSubscriptionForTenant(params: {
   );
 
   const subscriptionPatch = mapGatewaySubscriptionToPatch(subscription, params.billingCycle, {
-    usdToLkrRate: fx.rate,
+    usdToLkrRate: fxMulti.usdToLkrRate,
     lkrAmountCents,
     extraSiteSlots,
+    selectedCurrency,
+    selectedCurrencyAmount,
+    fxRateToSelectedCurrency,
   });
 
   // Save pending/created gateway linkage in Firebase RTDB so return callback always finds it
@@ -491,8 +603,13 @@ export async function createRecurringSubscriptionForTenant(params: {
     lkrAmountCents,
     lkrAmount: Math.round(lkrAmountCents / 100),
     usdAmount,
-    usdToLkrRate: fx.rate,
-    isLiveFxRate: fx.isLive,
+    usdToLkrRate: fxMulti.usdToLkrRate,
+    selectedCurrency,
+    selectedCurrencyAmount,
+    fxRateToSelectedCurrency,
+    fxRates: fxMulti.rates,
+    fxUpdatedAt: fxMulti.updatedAt,
+    isLiveFxRate: fxMulti.isLive,
     billingCycle: params.billingCycle,
     extraSiteSlots,
     subscriptionPatch,
