@@ -251,7 +251,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       q: 'How is our company data kept separate from other clients (Multi-Tenant Security)?',
-      a: 'ApexStox runs on a strict multi-tenant cloud architecture on Firebase. Each registered company receives an isolated cryptographic tenant partition (tenantId). Company A can never view, search, or access Company B records.',
+      a: 'ApexStox runs on a strict multi-tenant cloud architecture on Secure Cloud. Each registered company receives an isolated cryptographic tenant partition (tenantId). Company A can never view, search, or access Company B records.',
     },
     {
       q: 'Can site branch supervisors view or issue materials from other branches?',
@@ -1670,7 +1670,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       100% Isolated Cloud Workspace for Every Registered Company
                     </h2>
                     <p className="text-slate-300 text-xs sm:text-sm mt-3.5 leading-relaxed">
-                      Each contractor operates in its own dedicated tenant partition on Firebase Realtime Cloud. Your stock balances, supplier rates, Client Register, and field team logs are strictly isolated and protected.
+                      Each contractor operates in its own dedicated tenant partition on Realtime Cloud. Your stock balances, supplier rates, Client Register, and field team logs are strictly isolated and protected.
                     </p>
 
                     <div className="mt-7 space-y-4">
@@ -1719,7 +1719,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                         <Layers className="w-4 h-4" />
                         <span>Tenant Data Isolation Model</span>
                       </span>
-                      <span className="text-[11px] font-mono text-slate-300">Firebase Cloud RTDB</span>
+                      <span className="text-[11px] font-mono text-slate-300">Secure Cloud RTDB</span>
                     </div>
 
                     <div className="space-y-3.5">
