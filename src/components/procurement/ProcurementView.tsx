@@ -1805,6 +1805,14 @@ Email: ${tenantEmail}`;
                     <option value="Cash on Delivery">Cash on Delivery (COD)</option>
                     <option value="Immediate">Immediate Bank Transfer</option>
                   </select>
+                  <p className="mt-1 text-[11px] text-slate-500 italic">
+                    {supTerms === 'Net 30' && 'ℹ️ Full payment due 30 days after goods receipt / GRN approval.'}
+                    {supTerms === 'Net 15' && 'ℹ️ Short credit term: Full payment due 15 days after delivery.'}
+                    {supTerms === 'Net 60' && 'ℹ️ Extended credit term: Full payment due 60 days after delivery.'}
+                    {supTerms === 'Advance 50%' && 'ℹ️ 50% advance upfront on PO, 50% balance paid upon delivery/GRN.'}
+                    {supTerms === 'Cash on Delivery' && 'ℹ️ Payment settled in cash or cheque immediately upon goods delivery.'}
+                    {supTerms === 'Immediate' && 'ℹ️ Payment transferred immediately upon invoice approval or prior to dispatch.'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Category Supplied</label>
