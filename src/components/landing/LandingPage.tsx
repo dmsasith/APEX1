@@ -2268,8 +2268,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                             </td>
 
                             {/* Apex Stock Highlighted Column */}
-                            <td className="py-3.5 px-4 align-middle bg-amber-400/12 border-x border-amber-400/30 font-extrabold text-amber-200 text-xs sm:text-sm leading-relaxed">
-                              {row.apex}
+                            <td className="py-3.5 px-4 align-middle bg-emerald-500/10 border-x border-emerald-500/30 font-bold text-emerald-300 text-xs sm:text-sm leading-relaxed">
+                              {(() => {
+                                const rawApex = row.apex.trim();
+                                if (rawApex.startsWith('✓')) {
+                                  const rest = rawApex.replace(/^✓\s*/, '');
+                                  return (
+                                    <div className="flex items-start gap-2">
+                                      <span
+                                        className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-500/25 border border-emerald-400/60 text-emerald-300 font-black text-xs leading-none shrink-0 mt-0.5"
+                                        aria-label="Included"
+                                      >
+                                        ✓
+                                      </span>
+                                      <span className="text-emerald-200 font-bold leading-relaxed">{rest}</span>
+                                    </div>
+                                  );
+                                }
+                                return <span className="text-emerald-200 font-bold leading-relaxed">{row.apex}</span>;
+                              })()}
                             </td>
 
                             {/* Sortly */}
