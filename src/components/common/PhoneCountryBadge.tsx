@@ -24,6 +24,9 @@ export const PhoneCountryBadge: React.FC<PhoneCountryBadgeProps> = ({
     currencySymbol: currencyOverride || config?.currencySymbol || currentTenant?.currencySymbol,
   });
 
+  const isFlex = Boolean(analysis.country.isFlexibleLength);
+  const flexRange = `${analysis.country.minDigits ?? 6}–${analysis.country.maxDigits ?? 12}`;
+
   if (analysis.isEmpty) {
     return (
       <span
@@ -36,7 +39,7 @@ export const PhoneCountryBadge: React.FC<PhoneCountryBadgeProps> = ({
       >
         <span>{analysis.country.flag}</span>
         <span>{analysis.country.dialCode}</span>
-        <span className="opacity-75">• {analysis.expectedTotalDigits} digits</span>
+        <span className="opacity-75">• {isFlex ? `${flexRange} digits` : `${analysis.expectedTotalDigits} digits`}</span>
       </span>
     );
   }
@@ -53,7 +56,7 @@ export const PhoneCountryBadge: React.FC<PhoneCountryBadgeProps> = ({
       >
         <span>{analysis.country.flag}</span>
         <span>{analysis.country.dialCode}</span>
-        <span>• {analysis.enteredTotalDigits}/{analysis.expectedTotalDigits} digits</span>
+        <span>• {isFlex ? `${analysis.enteredTotalDigits} digits` : `${analysis.enteredTotalDigits}/${analysis.expectedTotalDigits} digits`}</span>
         <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
       </span>
     );
@@ -70,7 +73,7 @@ export const PhoneCountryBadge: React.FC<PhoneCountryBadgeProps> = ({
     >
       <span>{analysis.country.flag}</span>
       <span>{analysis.country.dialCode}</span>
-      <span>• {analysis.enteredTotalDigits}/{analysis.expectedTotalDigits} digits</span>
+      <span>• {isFlex ? `${analysis.enteredTotalDigits} (${flexRange}) digits` : `${analysis.enteredTotalDigits}/${analysis.expectedTotalDigits} digits`}</span>
       <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
     </span>
   );

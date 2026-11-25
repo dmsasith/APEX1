@@ -12,7 +12,6 @@ import {
   X,
   ArrowRight,
   AlertCircle,
-  Globe,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -24,12 +23,13 @@ import {
 import { TermsConditionsModal } from './TermsConditionsModal';
 import { LegalDocId } from './legalPoliciesData';
 import {
-  COUNTRY_PHONE_RULES,
   detectActivePhoneCountry,
   enforceCountryPhoneInput,
   analyzeCountryPhone,
 } from '../../utils/phoneCountryUtils';
+import { ALL_WORLD_COUNTRIES } from '../../utils/worldCountriesData';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
+import { SearchableCountrySelect } from '../common/SearchableCountrySelect';
 
 interface TenantSignupModalProps {
   isOpen: boolean;
@@ -74,16 +74,18 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
     currencySymbol: formData.currencySymbol,
   });
 
-  const handleCompanyNameChange = (name: string) => {
-    const slug = name
+  const generateWorkspaceSlug = (name: string): string =>
+    name
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
+
+  const handleCompanyNameChange = (name: string) => {
     setFormData((prev) => ({
       ...prev,
       companyName: name,
-      slug,
+      slug: generateWorkspaceSlug(name),
     }));
   };
 
@@ -128,7 +130,11 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      const res = registerTenant(formData);
+      const submissionPayload: TenantRegistrationForm = {
+        ...formData,
+        slug: generateWorkspaceSlug(formData.companyName),
+      };
+      const res = registerTenant(submissionPayload);
       if (res.success) {
         setSuccessMsg(res.message);
         setTimeout(() => {
@@ -213,22 +219,29 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Workspace Slug / Identifier
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="block text-xs font-bold text-slate-300">
+                    Workspace Slug / Identifier
+                  </label>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                    <Lock className="w-3 h-3 text-slate-500" />
+                    <span>Auto-generated · View-Only</span>
+                  </span>
+                </div>
                 <div className="relative">
-                  <span className="text-[11px] text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 font-mono">
+                  <span className="text-[11px] text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 font-mono pointer-events-none">
                     app/
                   </span>
                   <input
                     type="text"
-                    placeholder="apex-telecom"
+                    readOnly
+                    tabIndex={-1}
+                    aria-readonly="true"
+                    placeholder="auto-generated-from-company"
                     value={formData.slug}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, slug: e.target.value.toLowerCase() }))
-                    }
-                    className="w-full pl-11 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-mono text-emerald-400 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+                    className="w-full pl-11 pr-8 py-2 bg-slate-950/45 border border-slate-800/90 rounded-xl text-xs font-mono text-emerald-400/90 placeholder:text-slate-600 cursor-not-allowed select-all focus:outline-none"
                   />
+                  <Lock className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -342,34 +355,24 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Operating Country
+                    Operating Country (All Countries)
                   </label>
-                  <div className="relative">
-                    <Globe className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <select
-                      value={formData.country || 'Sri Lanka'}
-                      onChange={(e) => {
-                        const selectedCountry = e.target.value;
-                        const matchedRule = COUNTRY_PHONE_RULES.find((r) => r.name === selectedCountry);
-                        setFormData((prev) => ({
-                          ...prev,
-                          country: selectedCountry,
-                          currencySymbol: matchedRule?.currencies[0] || prev.currencySymbol,
-                          contactPhone: enforceCountryPhoneInput(prev.contactPhone || '', {
-                            tenantCountry: selectedCountry,
-                            currencySymbol: matchedRule?.currencies[0] || prev.currencySymbol,
-                          }),
-                        }));
-                      }}
-                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
-                    >
-                      {COUNTRY_PHONE_RULES.map((rule) => (
-                        <option key={rule.code} value={rule.name}>
-                          {rule.flag} {rule.name} ({rule.dialCode})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <SearchableCountrySelect
+                    variant="dark"
+                    value={formData.country || 'Sri Lanka'}
+                    onChange={(selectedCountryObj) => {
+                      const nextCurrency = selectedCountryObj.defaultCurrency || formData.currencySymbol;
+                      setFormData((prev) => ({
+                        ...prev,
+                        country: selectedCountryObj.name,
+                        currencySymbol: nextCurrency,
+                        contactPhone: enforceCountryPhoneInput(prev.contactPhone || '', {
+                          tenantCountry: selectedCountryObj.name,
+                          currencySymbol: nextCurrency,
+                        }),
+                      }));
+                    }}
+                  />
                 </div>
 
                 <div>
@@ -396,6 +399,32 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                       <option value="QAR">QAR (Qatari Riyal)</option>
                       <option value="SAR">SAR (Saudi Riyal)</option>
                       <option value="MVR">MVR (Maldivian Rufiyaa)</option>
+                      {(() => {
+                        const presetCurrencies = new Set([
+                          'Rs.',
+                          '$',
+                          '€',
+                          '£',
+                          '₹',
+                          'AED',
+                          'A$',
+                          'S$',
+                          'QAR',
+                          'SAR',
+                          'MVR',
+                        ]);
+                        const uniqueExtra = new Map<string, string>();
+                        ALL_WORLD_COUNTRIES.forEach((wc) => {
+                          if (!presetCurrencies.has(wc.defaultCurrency) && !uniqueExtra.has(wc.defaultCurrency)) {
+                            uniqueExtra.set(wc.defaultCurrency, wc.currencyLabel);
+                          }
+                        });
+                        return Array.from(uniqueExtra.entries()).map(([code, label]) => (
+                          <option key={code} value={code}>
+                            {label}
+                          </option>
+                        ));
+                      })()}
                     </select>
                   </div>
                 </div>

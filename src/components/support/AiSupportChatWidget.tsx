@@ -68,18 +68,26 @@ const QUICK_PROMPTS: QuickPrompt[] = [
   },
   {
     id: 'team-site-transfer-stock-to-return',
-    labelEn: '👷‍♂️ Team Site Transfer, "Stock to Return" & Name Lock?',
-    labelSi: '👷‍♂️ Team Site Transfer, "Stock to Return" සහ Name Lock?',
-    promptEn: 'How do Field Team Site Transfers (Temporary Assigned vs. Permanent with Ref: Previous Site), Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]"), and Team Name locking after stock issue work?',
-    promptSi: 'Team එකක් වෙන Site එකකට Transfer කිරීම (Temporary vs Permanent Ref: Old Site), Team In-Hand Stock වල "Stock to Return - [Site Name]" වෙනම පෙන්වීම සහ බඩු ගත් Team Name වෙනස් කිරීම Lock වීම වැඩ කරන්නේ කොහොමද?',
+    labelEn: '👷‍♂️ Teams View-Only, Own-Site Transfer & History?',
+    labelSi: '👷‍♂️ Teams View-Only, Site Transfer සහ History?',
+    promptEn: 'How do View-Only Teams access for non-Main-Admin staff, Own-Site Team Transfers with officer responsibility in Team History, and Site-Separated Team In-Hand Stock ("Stock to Return") work?',
+    promptSi: 'Main Admin හැර අනිත් Users ලට Teams View-Only වීම, තම Site එකේ Team Transfer පමණක් කර Team History හි වගකීම සටහන් වීම සහ "Stock to Return - [Site Name]" වැඩ කරන්නේ කොහොමද?',
     targetTab: 'team-stock',
   },
   {
+    id: 'user-site-history-multi-currency',
+    labelEn: '💱 Multi-Currency Billing (LKR + 5 FX) & Site History?',
+    labelSi: '💱 මුදල් ඒකක 6 (Real-Time FX) සහ User Site History?',
+    promptEn: 'How do User/Supervisor Site Assignment History (Previous Sites, Start & End Dates) and Multi-Currency Subscriptions (LKR, USD, EUR, GBP, AUD, SGD with real-time FX rates) work?',
+    promptSi: 'User හෝ Supervisor කෙනෙක් වෙන Site එකකට Assign කරද්දී Previous Sites/Start/End Dates History සහ LKR ඇතුළු මුදල් ඒකක 6 Real-Time FX වලින් ගෙවන්නේ කොහොමද?',
+    targetTab: 'manage-users',
+  },
+  {
     id: 'item-lifecycle-summary',
-    labelEn: '📋 Item Lifecycle & Forward Summary?',
-    labelSi: '📋 Item Select කළාම Summary බලන්නේ කොහොමද?',
-    promptEn: 'How do I view and print the End-to-End Item Lifecycle Summary in Central Stock and the Forward Traceability Summary in Site Branch Stock?',
-    promptSi: 'Central Stock එකේ සහ Site Branch Stock එකේ Item එකක් Select කළාම යටින් පෙන්වන සම්පූර්ණ Summary එක බලලා Print කරගන්නේ කොහොමද?',
+    labelEn: '📋 3-Tier Item Lifecycle & Forward Summary?',
+    labelSi: '📋 3-Tier Item Summary පිළිවෙළ බලන්නේ කොහොමද?',
+    promptEn: 'How does the adaptive 3-tier Item Lifecycle Summary flow (Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance) work in Central Stock & Site Branch Stock?',
+    promptSi: 'Central Stock හා Site Branch Stock හි 3-tier Item Summary flow පිළිවෙළ (Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance) බලලා Print කරන්නේ කොහොමද?',
     targetTab: 'main-stock',
   },
   {
@@ -215,8 +223,8 @@ const getWelcomeMessage = (lang: 'en' | 'si'): ChatMessage => ({
   role: 'model',
   text:
     lang === 'en'
-      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through all **ApexStox** features & latest updates:\n• **Mandatory Team Project Sections & 0-Balance Lock** (separate multi-section naming like `Alex NC Team 1` / `Alex Civil Team 1` + strict Section-Filtered **Executing Field Team** in Material Usage)\n• **Site Branch Stock "Damaged Returns" Tab** (quarantined Team/Sub-Site Damaged returns + direct upstream `BRM` return to Parent Site or Central HQ)\n• **3-Tier Hierarchy & Sub-Site Stock/FOC Lock** (protection against deleting or reassigning Sub-Sites after stock/FOC issue)\n• **5-Stage Client FOC Reconciliation ("ALL AREAS" supported)**, **Team Transfers**, **"Off Digital Signature" Hand-Sign Printing**, and **9 Live "Glass Tone" Themes**.\n\nSelect a quick topic above or type your question below!'
-      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\n**ApexStox** පද්ධතියේ නවතම විශේෂාංග සහ පහසුකම් ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න:\n• **අනිවාර්ය Team Project Sections & 0 Balance Lock** (`Alex NC Team 1` / `Alex Civil Team 1` ලෙස වෙනම නම්, In-Hand 0 කළ පසු Section මාරු කිරීම & Material Usage හි එම Section Teams පමණක් පෙන්වීම)\n• **Site Branch Stock "Damaged Returns" ටැබ් එක** (Teams/Sub-Sites වෙතින් ආ Damaged බඩු වෙන්ව බලා සෘජුවම Parent/Main වෙත BRM Return කිරීම)\n• **3-Tier Sub-Site Stock/FOC Lock** (බඩු හෝ FOC ලබාදුන් Sub-Sites Delete හා Parent මාරු Lock වීම)\n• **පියවර 5 FOC Reconciliation**, **Team Transfers**, **"Off Digital Signature" Hand-Sign Print ක්‍රමය** සහ **"Glass Tone" Themes 9**.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
+      ? 'Welcome to **Chat System Support**! 👋\n\nI can guide you step-by-step through all **ApexStox** features & latest updates:\n• **New Tenant Registry:** Auto-generated **View-Only** Workspace Slug & Searchable **All ~197 World Countries** selector\n• **Teams Governance & User Site History:** View-Only Teams for non-Main-Admin, **Own-Site Team Transfers** logged with acting officer in Team History, plus **User/Supervisor Previous Sites (Start & End Dates)**\n• **Adaptive 3-Tier Item Summary & Sub-Site Lock:** Sequential `Main -> Regional -> [Sub-Site ->] Team -> Usage -> Balance` flow & **"Damaged Returns"** tab\n• **Multi-Currency Subscriptions (LKR + USD, EUR, GBP, AUD, SGD Real-Time FX)**, **5-Stage Client FOC**, **"Off Digital Signature"**, and **9 Glass Tone Themes**.\n\nSelect a quick topic above or type your question below!'
+      : 'ආයුබෝවන්! **Chat System Support (සිංහල අංශය)** වෙත සාදරයෙන් පිළිගනිමු! 👋\n\n**ApexStox** පද්ධතියේ නවතම විශේෂාංග සහ පහසුකම් ගැන **සිංහලෙන් හෝ Singlish වලින්** මගෙන් අහන්න:\n• **නව Tenant Registry:** View-Only Auto Workspace Slug සහ ලෝකයේ **සියලුම රටවල් (~197)** Search & Select කිරීම\n• **Teams View-Only, Site Transfer & User Site History:** Main Admin හැර අනිත් අයට Teams View-Only, තම Site එකේ Team Transfer වගකීම Team History හි පෙන්වීම සහ Users/Supervisors **Previous Sites (Start/End Dates)** ඉතිහාසය\n• **3-Tier Item Summary Flow & Sub-Site Lock:** `Main -> Regional -> [Sub-Site ->] Team -> Usage -> Balance` පිළිවෙළ සහ **"Damaged Returns"** ටැබ් එක\n• **මුදල් ඒකක 6 Real-Time FX Subscriptions (LKR, USD, EUR, GBP, AUD, SGD)**, **පියවර 5 FOC**, සහ **"Off Digital Signature"**.\n\nඉහත ඇති බටන් එකක් තෝරන්න හෝ ඔබගේ ගැටලුව පහතින් ටයිප් කරන්න!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 

@@ -1,3 +1,5 @@
+import { ALL_WORLD_COUNTRIES } from './worldCountriesData';
+
 export interface CountryPhoneRule {
   code: string;        // ISO 2-letter code e.g. 'LK'
   name: string;        // Country name e.g. 'Sri Lanka'
@@ -10,6 +12,9 @@ export interface CountryPhoneRule {
   intlPlaceholder: string;  // Example international format e.g. '+94 77 123 4567'
   currencies: string[];
   timezones: string[];
+  isFlexibleLength?: boolean; // True for countries using flexible E.164 range validation (6–12 digits)
+  minDigits?: number;
+  maxDigits?: number;
 }
 
 export const COUNTRY_PHONE_RULES: CountryPhoneRule[] = [
@@ -262,15 +267,75 @@ export const COUNTRY_PHONE_RULES: CountryPhoneRule[] = [
   },
 ];
 
-// Sort dial rules longest dialDigits first so +971 matches before +9, etc.
-const DIAL_SORTED_RULES = [...COUNTRY_PHONE_RULES].sort(
-  (a, b) => b.dialDigits.length - a.dialDigits.length
+// Full list of ~197 world countries combining exact rules (where defined) + flexible international phone rules
+const detailedRuleByCode = new Map<string, CountryPhoneRule>(
+  COUNTRY_PHONE_RULES.map((r) => [r.code.toUpperCase(), r])
 );
+
+export const ALL_COUNTRY_PHONE_RULES: CountryPhoneRule[] = ALL_WORLD_COUNTRIES.map((wc) => {
+  const exact = detailedRuleByCode.get(wc.code.toUpperCase());
+  if (exact) {
+    return {
+      ...exact,
+      name: wc.name, // Clean individual country name (e.g. "United States", "Germany")
+      flag: wc.flag,
+      currencies: exact.currencies.includes(wc.defaultCurrency)
+        ? exact.currencies
+        : [wc.defaultCurrency, ...exact.currencies],
+    };
+  }
+  if (wc.code === 'CA') {
+    return {
+      code: 'CA',
+      name: 'Canada',
+      dialCode: '+1',
+      dialDigits: '1',
+      flag: wc.flag,
+      nationalDigits: 10,
+      allowLeadingZero: false,
+      localPlaceholder: '(416) 555-0199 (10 digits)',
+      intlPlaceholder: '+1 416 555 0199',
+      currencies: ['C$', 'CAD', '$'],
+      timezones: ['America/Toronto', 'America/Vancouver'],
+    };
+  }
+  return {
+    code: wc.code,
+    name: wc.name,
+    dialCode: wc.dialCode,
+    dialDigits: wc.dialDigits,
+    flag: wc.flag,
+    nationalDigits: 9,
+    minDigits: 6,
+    maxDigits: 12,
+    isFlexibleLength: true,
+    allowLeadingZero: true,
+    localPlaceholder: `${wc.dialCode} ... (phone number)`,
+    intlPlaceholder: `${wc.dialCode} ...`,
+    currencies: [wc.defaultCurrency],
+    timezones: wc.timezones || [],
+  };
+});
+
+// Sort dial rules longest dialDigits first so +971 matches before +9, +1-268 before +1, etc.
+// Prioritize detailed rules when dialDigits length matches (so +1 defaults to US unless preferred).
+const DIAL_SORTED_RULES = [...ALL_COUNTRY_PHONE_RULES].sort((a, b) => {
+  if (b.dialDigits.length !== a.dialDigits.length) {
+    return b.dialDigits.length - a.dialDigits.length;
+  }
+  const aDetailed = detailedRuleByCode.has(a.code) ? 1 : 0;
+  const bDetailed = detailedRuleByCode.has(b.code) ? 1 : 0;
+  return bDetailed - aDetailed;
+});
 
 /**
  * Finds a country rule by explicit dial prefix if the input starts with '+' or '00'.
+ * If preferredCountryName is already selected and its dial prefix matches, keeps it.
  */
-export function matchCountryByDialPrefix(phoneValue?: string): CountryPhoneRule | null {
+export function matchCountryByDialPrefix(
+  phoneValue?: string,
+  preferredCountryName?: string
+): CountryPhoneRule | null {
   if (!phoneValue) return null;
   const trimmed = phoneValue.trim();
   let digitsAfterPlus = '';
@@ -282,6 +347,14 @@ export function matchCountryByDialPrefix(phoneValue?: string): CountryPhoneRule 
     return null;
   }
   if (!digitsAfterPlus) return null;
+
+  if (preferredCountryName) {
+    const pref = matchCountryByNameOrCode(preferredCountryName);
+    if (pref && digitsAfterPlus.startsWith(pref.dialDigits)) {
+      return pref;
+    }
+  }
+
   for (const rule of DIAL_SORTED_RULES) {
     if (digitsAfterPlus.startsWith(rule.dialDigits)) {
       return rule;
@@ -291,32 +364,47 @@ export function matchCountryByDialPrefix(phoneValue?: string): CountryPhoneRule 
 }
 
 /**
- * Finds a country rule by country name or ISO code.
+ * Finds a country rule by country name or ISO code across ALL world countries.
+ * Checks exact matches & known aliases first so e.g. "Niger" never collides with "Nigeria".
  */
 export function matchCountryByNameOrCode(countryNameOrCode?: string): CountryPhoneRule | null {
   if (!countryNameOrCode) return null;
   const norm = countryNameOrCode.trim().toLowerCase();
   if (!norm) return null;
-  for (const rule of COUNTRY_PHONE_RULES) {
+
+  // 1. Exact matches across ALL world countries
+  for (const rule of ALL_COUNTRY_PHONE_RULES) {
     if (
       rule.code.toLowerCase() === norm ||
       rule.name.toLowerCase() === norm ||
-      rule.name.toLowerCase().includes(norm) ||
-      norm.includes(rule.name.toLowerCase()) ||
-      rule.dialCode === norm
+      rule.dialCode.toLowerCase() === norm
     ) {
       return rule;
     }
   }
+
+  // 2. Common legacy aliases
   if (norm === 'uk' || norm === 'great britain' || norm === 'england') {
-    return COUNTRY_PHONE_RULES.find(r => r.code === 'GB') || null;
+    return ALL_COUNTRY_PHONE_RULES.find((r) => r.code === 'GB') || COUNTRY_PHONE_RULES[3];
   }
   if (norm === 'uae' || norm === 'dubai') {
-    return COUNTRY_PHONE_RULES.find(r => r.code === 'AE') || null;
+    return ALL_COUNTRY_PHONE_RULES.find((r) => r.code === 'AE') || COUNTRY_PHONE_RULES[2];
   }
-  if (norm === 'usa' || norm === 'united states' || norm === 'canada') {
-    return COUNTRY_PHONE_RULES.find(r => r.code === 'US') || null;
+  if (norm === 'usa' || norm === 'united states / canada') {
+    return ALL_COUNTRY_PHONE_RULES.find((r) => r.code === 'US') || COUNTRY_PHONE_RULES[4];
   }
+  if (norm === 'germany / europe') {
+    return ALL_COUNTRY_PHONE_RULES.find((r) => r.code === 'DE') || COUNTRY_PHONE_RULES[15];
+  }
+
+  // 3. Partial match across all world countries
+  for (const rule of ALL_COUNTRY_PHONE_RULES) {
+    const rName = rule.name.toLowerCase();
+    if (rName.includes(norm) || norm.includes(rName)) {
+      return rule;
+    }
+  }
+
   return null;
 }
 
@@ -369,7 +457,7 @@ function getStoredTenantPhoneContext(): { tenantCountry?: string; currencySymbol
 
 /**
  * Detects the active country phone rule using:
- * 1. Explicit +dialCode in the typed phone number
+ * 1. Explicit +dialCode in the typed phone number (respecting selected country on shared codes like +1)
  * 2. Explicit tenantCountry / form country override (or stored active tenant country)
  * 3. Currency symbol if distinctive (or stored active tenant currency, e.g. Rs. -> Sri Lanka)
  * 4. Browser timezone (e.g. Asia/Colombo -> Sri Lanka)
@@ -380,21 +468,21 @@ export function detectActivePhoneCountry(options?: {
   tenantCountry?: string;
   currencySymbol?: string;
 }): CountryPhoneRule {
-  // 1. Check dialed prefix (+94, +971, +44, +1, etc.)
-  const byDial = matchCountryByDialPrefix(options?.phoneValue);
-  if (byDial) return byDial;
-
   const stored = getStoredTenantPhoneContext();
   const effectiveCountry = options?.tenantCountry || stored.tenantCountry;
   const effectiveCurrency = options?.currencySymbol || stored.currencySymbol;
 
-  // 2. Check explicit or stored tenant country
+  // 1. Check dialed prefix (+94, +971, +44, +1, +33, etc.)
+  const byDial = matchCountryByDialPrefix(options?.phoneValue, effectiveCountry);
+  if (byDial) return byDial;
+
+  // 2. Check explicit or stored tenant country across ALL world countries
   const byCountry = matchCountryByNameOrCode(effectiveCountry);
   if (byCountry) return byCountry;
 
-  // 3. Check currency symbol (so 'Rs.' / 'LKR' always resolves to Sri Lanka even on Windows UTC+5:30 Asia/Calcutta)
+  // 3. Check currency symbol (e.g. 'Rs.' / 'LKR' -> Sri Lanka)
   if (effectiveCurrency) {
-    const byCurr = COUNTRY_PHONE_RULES.find(r => r.currencies.includes(effectiveCurrency));
+    const byCurr = ALL_COUNTRY_PHONE_RULES.find((r) => r.currencies.includes(effectiveCurrency));
     if (byCurr) return byCurr;
   }
 
@@ -402,7 +490,7 @@ export function detectActivePhoneCountry(options?: {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz) {
-      const byTz = COUNTRY_PHONE_RULES.find(r => r.timezones.includes(tz));
+      const byTz = ALL_COUNTRY_PHONE_RULES.find((r) => r.timezones.includes(tz));
       if (byTz) return byTz;
     }
   } catch {
@@ -410,7 +498,7 @@ export function detectActivePhoneCountry(options?: {
   }
 
   // 5. Default to Sri Lanka (+94)
-  return COUNTRY_PHONE_RULES[0];
+  return ALL_COUNTRY_PHONE_RULES.find((r) => r.code === 'LK') || COUNTRY_PHONE_RULES[0];
 }
 
 export interface PhoneAnalysisResult {
@@ -427,12 +515,15 @@ export interface PhoneAnalysisResult {
   statusLabel: string;
 }
 
+const isFlexibleCountValid = (entered: number, country: CountryPhoneRule, extraLeadingZero: number = 0): boolean => {
+  const min = (country.minDigits ?? 6) + extraLeadingZero;
+  const max = (country.maxDigits ?? 12) + extraLeadingZero;
+  return entered >= min && entered <= max;
+};
+
 /**
  * Analyzes a phone number against the active country rule.
- * Supports:
- * - International format: `+94 77 123 4567` (expects 9 subscriber digits after +94 -> 11 total digits)
- * - Local trunk '0' format: `077 123 4567` (expects 10 total digits: '0' + 9 subscriber digits)
- * - Direct national format: `77 123 4567` (expects 9 subscriber digits)
+ * Supports exact national rules for 19 primary countries and standard ITU E.164 range validation (6-12 subscriber digits) for all other world countries.
  */
 export function analyzeCountryPhone(
   phoneValue: string,
@@ -447,6 +538,10 @@ export function analyzeCountryPhone(
     tenantCountry: options?.tenantCountry,
     currencySymbol: options?.currencySymbol,
   });
+
+  const isFlex = Boolean(country.isFlexibleLength);
+  const minSub = country.minDigits ?? 6;
+  const maxSub = country.maxDigits ?? 12;
 
   const trimmed = (phoneValue || '').trim();
   const allDigits = trimmed.replace(/\D/g, '');
@@ -466,11 +561,13 @@ export function analyzeCountryPhone(
       error: options?.required
         ? `Please enter a valid ${country.name} (${country.dialCode}) phone number.`
         : undefined,
-      statusLabel: `${country.flag} ${country.dialCode} • ${defaultExpected} digits (${country.localPlaceholder.split(' (')[0]})`,
+      statusLabel: isFlex
+        ? `${country.flag} ${country.dialCode} • ${minSub}–${maxSub} digits`
+        : `${country.flag} ${country.dialCode} • ${defaultExpected} digits (${country.localPlaceholder.split(' (')[0]})`,
     };
   }
 
-  // Case 1: International format starting with '+' or '00' or starting with dialDigits when length > nationalDigits
+  // Case 1: International format starting with '+' or '00'
   const startsWithPlus = trimmed.startsWith('+');
   const startsWith00 = !startsWithPlus && trimmed.startsWith('00');
 
@@ -483,7 +580,6 @@ export function analyzeCountryPhone(
       ? rawDigitsAfterPrefix.slice(country.dialDigits.length)
       : rawDigitsAfterPrefix;
 
-    // If user typed +94077..., ignore the redundant trunk '0' after +94
     const hasRedundantZero = country.allowLeadingZero && subscriberPart.startsWith('0');
     if (hasRedundantZero) {
       subscriberPart = subscriberPart.slice(1);
@@ -491,7 +587,7 @@ export function analyzeCountryPhone(
 
     const enteredSub = subscriberPart.length;
     const expectedSub = country.nationalDigits;
-    const isComplete = enteredSub === expectedSub;
+    const isComplete = isFlex ? isFlexibleCountValid(enteredSub, country) : enteredSub === expectedSub;
 
     return {
       country,
@@ -499,23 +595,27 @@ export function analyzeCountryPhone(
       enteredSubscriberDigits: enteredSub,
       expectedSubscriberDigits: expectedSub,
       enteredTotalDigits: enteredSub,
-      expectedTotalDigits: expectedSub,
+      expectedTotalDigits: isFlex ? maxSub : expectedSub,
       isValid: isComplete,
       isComplete,
       isEmpty: false,
       error: isComplete
         ? undefined
-        : `${country.name} (${country.dialCode}) requires ${expectedSub} digits after ${country.dialCode} (currently ${enteredSub}/${expectedSub}).`,
-      statusLabel: `${country.flag} ${country.dialCode} • ${enteredSub}/${expectedSub} digits`,
+        : isFlex
+          ? `${country.name} (${country.dialCode}) requires ${minSub}–${maxSub} digits after ${country.dialCode} (currently ${enteredSub}).`
+          : `${country.name} (${country.dialCode}) requires ${expectedSub} digits after ${country.dialCode} (currently ${enteredSub}/${expectedSub}).`,
+      statusLabel: isFlex
+        ? `${country.flag} ${country.dialCode} • ${enteredSub} digits`
+        : `${country.flag} ${country.dialCode} • ${enteredSub}/${expectedSub} digits`,
     };
   }
 
-  // Case 2: Local format starting with '0' (for countries with trunk '0' like Sri Lanka 0771234567 = 10 digits)
+  // Case 2: Local format starting with '0'
   if (country.allowLeadingZero && allDigits.startsWith('0')) {
-    const expectedTotal = country.nationalDigits + 1; // e.g., 10 for Sri Lanka (0 + 9 digits)
+    const expectedTotal = country.nationalDigits + 1;
     const enteredTotal = allDigits.length;
     const enteredSub = Math.max(0, enteredTotal - 1);
-    const isComplete = enteredTotal === expectedTotal;
+    const isComplete = isFlex ? isFlexibleCountValid(enteredTotal, country, 1) : enteredTotal === expectedTotal;
 
     return {
       country,
@@ -523,21 +623,26 @@ export function analyzeCountryPhone(
       enteredSubscriberDigits: enteredSub,
       expectedSubscriberDigits: country.nationalDigits,
       enteredTotalDigits: enteredTotal,
-      expectedTotalDigits: expectedTotal,
+      expectedTotalDigits: isFlex ? maxSub + 1 : expectedTotal,
       isValid: isComplete,
       isComplete,
       isEmpty: false,
       error: isComplete
         ? undefined
-        : `${country.name} local number starting with 0 requires ${expectedTotal} digits (currently ${enteredTotal}/${expectedTotal}).`,
-      statusLabel: `${country.flag} ${country.code} (${country.dialCode}) • ${enteredTotal}/${expectedTotal} digits`,
+        : isFlex
+          ? `${country.name} local number requires ${minSub + 1}–${maxSub + 1} digits (currently ${enteredTotal}).`
+          : `${country.name} local number starting with 0 requires ${expectedTotal} digits (currently ${enteredTotal}/${expectedTotal}).`,
+      statusLabel: isFlex
+        ? `${country.flag} ${country.code} (${country.dialCode}) • ${enteredTotal} digits`
+        : `${country.flag} ${country.code} (${country.dialCode}) • ${enteredTotal}/${expectedTotal} digits`,
     };
   }
 
   // Case 3: User typed country code without '+' (e.g., 94771234567 = 11 digits)
+  const minThresholdForPrefixWithoutPlus = isFlex ? minSub : country.nationalDigits;
   if (
     allDigits.startsWith(country.dialDigits) &&
-    allDigits.length > country.nationalDigits
+    allDigits.length > minThresholdForPrefixWithoutPlus
   ) {
     let subscriberPart = allDigits.slice(country.dialDigits.length);
     if (country.allowLeadingZero && subscriberPart.startsWith('0')) {
@@ -545,7 +650,7 @@ export function analyzeCountryPhone(
     }
     const enteredSub = subscriberPart.length;
     const expectedSub = country.nationalDigits;
-    const isComplete = enteredSub === expectedSub;
+    const isComplete = isFlex ? isFlexibleCountValid(enteredSub, country) : enteredSub === expectedSub;
 
     return {
       country,
@@ -553,21 +658,25 @@ export function analyzeCountryPhone(
       enteredSubscriberDigits: enteredSub,
       expectedSubscriberDigits: expectedSub,
       enteredTotalDigits: enteredSub,
-      expectedTotalDigits: expectedSub,
+      expectedTotalDigits: isFlex ? maxSub : expectedSub,
       isValid: isComplete,
       isComplete,
       isEmpty: false,
       error: isComplete
         ? undefined
-        : `${country.name} (${country.dialCode}) requires ${expectedSub} digits after country code (currently ${enteredSub}/${expectedSub}).`,
-      statusLabel: `${country.flag} ${country.dialCode} • ${enteredSub}/${expectedSub} digits`,
+        : isFlex
+          ? `${country.name} (${country.dialCode}) requires ${minSub}–${maxSub} digits after country code (currently ${enteredSub}).`
+          : `${country.name} (${country.dialCode}) requires ${expectedSub} digits after country code (currently ${enteredSub}/${expectedSub}).`,
+      statusLabel: isFlex
+        ? `${country.flag} ${country.dialCode} • ${enteredSub} digits`
+        : `${country.flag} ${country.dialCode} • ${enteredSub}/${expectedSub} digits`,
     };
   }
 
-  // Case 4: National format without leading '0' (e.g., 771234567 in SL or 5552345678 in US)
+  // Case 4: National format without leading '0'
   const expectedSub = country.nationalDigits;
   const enteredSub = allDigits.length;
-  const isComplete = enteredSub === expectedSub;
+  const isComplete = isFlex ? isFlexibleCountValid(enteredSub, country) : enteredSub === expectedSub;
 
   return {
     country,
@@ -575,21 +684,25 @@ export function analyzeCountryPhone(
     enteredSubscriberDigits: enteredSub,
     expectedSubscriberDigits: expectedSub,
     enteredTotalDigits: enteredSub,
-    expectedTotalDigits: expectedSub,
+    expectedTotalDigits: isFlex ? maxSub : expectedSub,
     isValid: isComplete,
     isComplete,
     isEmpty: false,
     error: isComplete
       ? undefined
-      : country.allowLeadingZero
-        ? `${country.name} (${country.dialCode}) requires ${expectedSub + 1} digits with leading 0 (e.g. ${country.localPlaceholder.split(' (')[0]}) or ${expectedSub} digits after ${country.dialCode}.`
-        : `${country.name} (${country.dialCode}) requires ${expectedSub} digits (currently ${enteredSub}/${expectedSub}).`,
-    statusLabel: `${country.flag} ${country.dialCode} • ${enteredSub}/${expectedSub} digits`,
+      : isFlex
+        ? `${country.name} (${country.dialCode}) requires ${minSub}–${maxSub} digits (currently ${enteredSub}).`
+        : country.allowLeadingZero
+          ? `${country.name} (${country.dialCode}) requires ${expectedSub + 1} digits with leading 0 (e.g. ${country.localPlaceholder.split(' (')[0]}) or ${expectedSub} digits after ${country.dialCode}.`
+          : `${country.name} (${country.dialCode}) requires ${expectedSub} digits (currently ${enteredSub}/${expectedSub}).`,
+    statusLabel: isFlex
+      ? `${country.flag} ${country.dialCode} • ${enteredSub} digits`
+      : `${country.flag} ${country.dialCode} • ${enteredSub}/${expectedSub} digits`,
   };
 }
 
 /**
- * Sanitizes and strictly caps a phone number input string so the user cannot enter
+ * Sanitizes and caps a phone number input string so the user cannot enter
  * more digits than valid for the active country.
  */
 export function enforceCountryPhoneInput(
@@ -601,10 +714,8 @@ export function enforceCountryPhoneInput(
 ): string {
   if (!rawInput) return '';
 
-  // Allow only digits, leading '+', spaces, dashes, and parentheses
   const hasLeadingPlus = rawInput.trimStart().startsWith('+');
   let cleaned = rawInput.replace(/[^\d+\s\-()]/g, '');
-  // Ensure '+' only appears at the very start
   if (hasLeadingPlus) {
     cleaned = '+' + cleaned.replace(/\+/g, '').trimStart();
   } else {
@@ -622,41 +733,37 @@ export function enforceCountryPhoneInput(
     return hasLeadingPlus ? '+' : '';
   }
 
-  // Determine maximum total digits allowed in `cleaned`
-  let maxAllowedDigits = country.nationalDigits;
+  const subMaxDigits = country.isFlexibleLength ? (country.maxDigits ?? 12) : country.nationalDigits;
+  let maxAllowedDigits = subMaxDigits;
 
   if (hasLeadingPlus) {
     if (allDigits.startsWith(country.dialDigits)) {
       const afterDial = allDigits.slice(country.dialDigits.length);
       const redundantZero = country.allowLeadingZero && afterDial.startsWith('0') ? 1 : 0;
-      maxAllowedDigits = country.dialDigits.length + redundantZero + country.nationalDigits;
+      maxAllowedDigits = country.dialDigits.length + redundantZero + subMaxDigits;
     } else {
-      // Typing dial code in progress or unknown dial code
-      maxAllowedDigits = country.dialDigits.length + country.nationalDigits;
+      maxAllowedDigits = country.dialDigits.length + subMaxDigits;
     }
   } else if (cleaned.trimStart().startsWith('00')) {
     const after00 = allDigits.slice(2);
     if (after00.startsWith(country.dialDigits)) {
-      maxAllowedDigits = 2 + country.dialDigits.length + country.nationalDigits;
+      maxAllowedDigits = 2 + country.dialDigits.length + subMaxDigits;
     } else {
-      maxAllowedDigits = 2 + 3 + 10;
+      maxAllowedDigits = 2 + 3 + 12;
     }
   } else if (country.allowLeadingZero && allDigits.startsWith('0')) {
-    // Local format starting with single '0' (e.g. 0771234567 -> 10 digits in Sri Lanka)
-    maxAllowedDigits = country.nationalDigits + 1;
+    maxAllowedDigits = subMaxDigits + 1;
   } else if (
     allDigits.startsWith(country.dialDigits) &&
-    allDigits.length > country.nationalDigits
+    allDigits.length > subMaxDigits
   ) {
-    // Country code without '+' (e.g. 94771234567 -> 11 digits)
     const afterDial = allDigits.slice(country.dialDigits.length);
     const redundantZero = country.allowLeadingZero && afterDial.startsWith('0') ? 1 : 0;
-    maxAllowedDigits = country.dialDigits.length + redundantZero + country.nationalDigits;
+    maxAllowedDigits = country.dialDigits.length + redundantZero + subMaxDigits;
   } else {
-    maxAllowedDigits = country.nationalDigits;
+    maxAllowedDigits = subMaxDigits;
   }
 
-  // Walk through `cleaned` and stop once `maxAllowedDigits` digits have been kept
   let digitCount = 0;
   let result = '';
   for (let i = 0; i < cleaned.length; i++) {
@@ -668,7 +775,6 @@ export function enforceCountryPhoneInput(
       digitCount++;
       result += ch;
     } else {
-      // Don't append trailing punctuation after hitting the digit cap
       if (digitCount < maxAllowedDigits) {
         result += ch;
       }

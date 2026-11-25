@@ -275,36 +275,24 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'team name wenas',
     ],
     answerEn: () =>
-      `**Field Team Site Transfer Workflow (Temporary vs. Permanent with "Ref:"), Site-Separated Team In-Hand Stock ("Stock to Return - [Site Name]") & Team Name Lock:**\n\n` +
-      `**1. Transferring a Field Team to a New Site ("Temporary Assigned to - [New Site]"):**\n` +
-      `• In **Master Registrations -> Field Teams** or **Team In-Hand Stock**, click **Transfer / Site History** on any team.\n` +
-      `• Whether the team still has unreturned stock on their current site OR has zero stock, the transfer initially places the team in a **Temporary** state labeled:\n` +
-      `  **"Temporary Assigned to - [New Site Name]"**\n` +
-      `• **If Previous-Site Stock Is Pending:** Once all pending stock from the previous site is returned/cleared, the system automatically promotes the assignment on the new site to **Permanent** and updates the team display name with a permanent prior-site reference:\n` +
-      `  **"[Team Name] (Ref: [Previous Site Name])"**\n` +
-      `• **If Zero Stock Was Held on Previous Site:** **Branch Admin** or **System Admin** can click **Confirm / Promote to Permanent** right inside the Team Transfer & Details modal to promote the assignment to **Permanent** with **(Ref: [Previous Site Name])**.\n\n` +
-      `**2. Site-Separated Team In-Hand Stock ("Stock to Return - [Previous Site Name]"):**\n` +
-      `• In **Team In-Hand Stock**, the system **NEVER combines or sums** a transferred team's materials across different sites:\n` +
-      `  - **Amber Section — "Stock to Return - [Previous Site Name]":** Lists unreturned materials/tools still owed to a previous site. These items **must be returned to that specific previous site** and **cannot be used** for projects on the new site.\n` +
-      `  - **Emerald Section — "[Current Site Name] — Active Site Stock":** Lists materials issued at the team's current assigned site.\n\n` +
-      `**3. Strict Active-Site Material Usage & Team Name Integrity Lock:**\n` +
-      `• In **Material Usage / Daily Progress Entry**, a team can **ONLY consume stock issued under their current project's Site Branch**.\n` +
-      `• **Team Name Lock After Stock Issue:** Once a team has received at least one stock item, its **Team Name** is locked against renaming in **Master Registrations -> Teams** (while Leader, Phone, and Crew Members remain editable) so historical vouchers and custody balances never lose accountability.`,
+      `**Field Team Governance (View-Only Except Main Admin), Own-Site Transfer Responsibility, Site-Separated In-Hand Stock & Team Name Lock:**\n\n` +
+      `**1. Teams Access Control — View-Only for Non-Main-Admin & Own-Site Transfer Only:**\n` +
+      `• Only **Main Admin (Super Admin)** can create, edit, rename, or delete Field Teams. All other roles view the **Field Teams** registry in **View-Only** mode.\n` +
+      `• Site Officers can execute **Team Transfers** (**Transfer** / **Return** / **Confirm Permanent**) **ONLY** for teams stationed at their **own assigned site(s)**, and every transfer stamps the acting officer's **Name, Role & Site** inside **Team History** for full accountability.\n\n` +
+      `**2. Transferring a Field Team ("Temporary Assigned to - [New Site]" -> Permanent "Ref:"):**\n` +
+      `• In **Master Registrations -> Field Teams** or **Team In-Hand Stock**, click **Transfer / Site History** on an eligible team.\n` +
+      `• Transfers begin as **"Temporary Assigned to - [New Site Name]"** and promote to **Permanent "[Team Name] (Ref: [Previous Site Name])"** once old-site stock clears (or via **Confirm Permanent** when zero stock is held).\n\n` +
+      `**3. Site-Separated Team In-Hand Stock ("Stock to Return - [Previous Site Name]") & Name Lock:**\n` +
+      `• Unreturned stock from a previous site stays separated under **"Stock to Return - [Previous Site Name]"** (never summed with current-site stock) and cannot be used on the new site. Once a team receives stock, its **Team Name** locks against renaming.`,
     answerSi: () =>
-      `**Field Team Site Transfer ක්‍රියාවලිය (Temporary vs. Permanent "Ref:"), Site අනුව වෙන් කළ Team In-Hand Stock ("Stock to Return - [Site Name]") සහ Team Name ආරක්ෂාව:**\n\n` +
-      `**1. Team එකක් වෙනත් Site එකකට Transfer කිරීම ("Temporary Assigned to - [New Site]"):**\n` +
-      `• **Master Registrations -> Teams** හෝ **Team In-Hand Stock** හි ඕනෑම Team එකක **"Transfer / Site History"** බටන් එක ක්ලික් කරන්න.\n` +
-      `• කලින් Site එකේ භාර නොදුන් බඩු තිබුණත් නැතත්, මුලින්ම අලුත් Site එකට මාරු කළ විට එම Team එක පෙන්වන්නේ:\n` +
-      `  **"Temporary Assigned to - [New Site Name]"** ලෙසයි.\n` +
-      `• **කලින් Site එකේ බඩු Clear වූ පසු (හෝ බඩු නොගත් Team එකක් නම් Branch/System Admin විසින් Confirm කළ පසු):** එම Team එක අලුත් Site එකේ **Permanent** තත්ත්වයට පත් වන අතර කලින් සිටි Site එකේ නම සමඟ:\n` +
-      `  **"[Team Name] (Ref: [Previous Site Name])"** ලෙස පැහැදිලිව පෙන්වයි.\n\n` +
-      `**2. Team In-Hand Stock බැලීමේදී Site අනුව බඩු වෙන් කර පෙන්වීම (ඔක්කොම බඩු එකතුව පෙන්වන්නේ නැත):**\n` +
-      `• Transfer කරපු Team එකක In-Hand Stock බැලීමේදී පරණ Site එකේ බඩු සහ අලුත් Site එකේ බඩු **කිසිවිටෙක එකට එකතු කර (Combine කර) පෙන්වන්නේ නැත**:\n` +
-      `  - **"Stock to Return - [කලින් හිටපු Site එකේ නම]" (Amber Section):** කලින් හිටපු Site එකට භාර නොදුන් බඩු තොගය අදාළ පරණ Site එකේ නම යටතේ වෙනමම පෙන්වයි. එම බඩු අදාළ පරණ Site එකටම Return කළ යුතුය.\n` +
-      `  - **"[අලුතින් ගිය Site එකේ නම] — Active Site Stock" (Emerald Section):** අලුතින් ගිය Site එකෙන් නිකුත් කළ බඩු එම අලුත් Site එකේ නම යටතේ වෙනම පෙන්වයි.\n\n` +
-      `**3. අලුත් Site එකේ බඩු පමණක් භාවිතා කිරීම සහ බඩු ලබාගත් Team Name වෙනස් කිරීම Lock කිරීම:**\n` +
-      `• **Material Usage / Daily Progress Entry** හිදී එම Team එකට අලුත් Site එකේ වැඩවලට පාවිච්චි කළ හැක්කේ **එම අලුත් Site එකෙන් ගත් බඩු පමණි**.\n` +
-      `• **බඩු ලබාගෙන ඇති Team Name Lock වීම:** එක භාණ්ඩයක් හෝ ලබාගෙන ඇති Team එකක නම (**Team Name**) වෙනස් කළ නොහැකි ලෙස Lock කර ඇත (Leader සහ Members වෙනස් කළ හැක).`,
+      `**Field Team View-Only පාලනය, ස්වකීය Site Transfer වගකීම, Site අනුව වෙන් කළ Team In-Hand Stock සහ Team Name Lock:**\n\n` +
+      `**1. Main Admin හැර අනිත් Users ලට Teams View-Only සහ ස්වකීය Site Transfer පමණක් කිරීම:**\n` +
+      `• අලුත් Teams සෑදීම, නම් වෙනස් කිරීම හෝ Delete කිරීම කළ හැක්කේ **Main Admin** හට පමණි; අනෙකුත් සියලුම Users ලට Teams **View-Only** වේ.\n` +
+      `• Site නිලධාරීන්ට තමන්ට අදාළ Site එකේ සිටින Teams සඳහා පමණක් **Team Transfer / Return / Confirm Permanent** සිදු කළ හැකි අතර **Transfer එක කළ නිලධාරියා කවුද** (නම, තනතුර හා Site වගකීම) **Team History** හි පැහැදිලිව සටහන් වේ.\n\n` +
+      `**2. Team Transfer ක්‍රියාවලිය ("Temporary Assigned to - [New Site]" -> Permanent "Ref:"):**\n` +
+      `• මාරු කළ පසු මුලින්ම **"Temporary Assigned to - [New Site Name]"** ලෙස පෙන්වන අතර පරණ Site එකේ බඩු Clear වූ පසු (හෝ Confirm Permanent කළ පසු) **"[Team Name] (Ref: [Previous Site Name])"** බවට පත් වේ.\n\n` +
+      `**3. Site අනුව වෙන් කළ Team In-Hand Stock සහ Team Name Lock:**\n` +
+      `• කලින් Site එකේ භාර නොදුන් බඩු **"Stock to Return - [පරණ Site නම]"** යටතේ වෙනම පෙන්වයි (අලුත් Site එකේ බඩු සමඟ එකතු නොවේ). බඩු ලබාගත් පසු **Team Name** එක Lock වේ.`,
   },
   {
     id: 'team-project-section-isolation',
@@ -389,31 +377,23 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'site branch stock eken item',
     ],
     answerEn: () =>
-      `**How to View & Print Item Lifecycle & Forward Traceability Summaries (Central Stock & Site Branch Stock):**\n\n` +
-      `**1. Central Stock Item Selection — Full End-to-End Lifecycle Summary:**\n` +
-      `• Open **Main Central Stock** and click on any item row (or click its **Summary** button).\n` +
-      `• Directly underneath that item, an interactive **End-to-End Material Lifecycle & Custody Summary** expands showing:\n` +
-      `  - **Inbound Sources:** How much arrived from each Supplier via **PO / GRN**, **Manual / Spot Entries**, **Client Free Stock (FOC)**, and **Site Good Returns**.\n` +
-      `  - **Site Branch Distribution:** How much was dispatched to each Site Branch, returned, used/wasted, and each site's current **Site Store In-Hand**.\n` +
-      `  - **Field Team Allocation:** How much each Site Branch issued to each Field Team, returned, used, wasted, and each team's current **Team In-Hand**.\n` +
-      `  - **Project Consumption & Wastage:** Every project/NC line where the item was consumed.\n` +
-      `  - **Live Custody KPI Strip:** Central Stock In-Hand, All Sites In-Hand, All Teams In-Hand, Total Used, and Total Wasted/Damaged.\n` +
-      `• Click **Print A4 Summary** or **Download PDF** to print an official report.\n\n` +
-      `**2. Site Branch Stock Item Selection — Forward Traceability Summary:**\n` +
-      `• Open **Site Branch Stock (Site Inventories)**, pick a Site Branch, and click any item row (or **Forward Summary**).\n` +
-      `• It displays everything that happened to that item forward from that branch: HQ/FOC transfers received, quantities issued to each Field Team at that site, Project Used & Wastage, **Site Store In-Hand**, and **Site Teams In-Hand** — with **Print A4 Summary** and **Download PDF**.`,
+      `**How the Adaptive 3-Tier Item Lifecycle & Forward Traceability Summaries Work:**\n\n` +
+      `**1. Central Stock Item Selection — Sequential 3-Tier Flow:**\n` +
+      `• Open **Main Central Stock** and click any item row (or **Summary**) to inspect its full flow:\n` +
+      `  - **When Sub-Sites received stock from Regional:** **1. Main Central -> 2. Regional -> 3. Sub-Site -> 4. Team -> 5. Usage -> 6. Total Balance**.\n` +
+      `  - **When no Sub-Sites are involved:** **1. Main -> 2. Regional -> 3. Team -> 4. Usage -> 5. Total Balance**.\n` +
+      `• Shows PO/GRN, Manual & FOC inbound sources, Regional & Sub-Site In-Hand, Team In-Hand, Used/Wastage, and Central In-Hand — with **Print A4 Summary** and **Download PDF**.\n\n` +
+      `**2. Site Branch Stock — Forward Traceability Summary:**\n` +
+      `• In **Site Branch Stock**, clicking an item opens its branch-forward trace (HQ/Parent receipts -> child Sub-Site dispatch if applicable -> Field Teams -> Usage & Wastage -> Site & Team In-Hand).`,
     answerSi: () =>
-      `**Central Stock සහ Site Branch Stock හි ඕනෑම Item එකක් Select කළ විට පෙන්වන සම්පූර්ණ Summary (Printable A4/PDF):**\n\n` +
-      `**1. Central Stock හි Item එකක් Select කළ විට (Full End-to-End Lifecycle Summary):**\n` +
-      `• **"Main Central Stock"** වගුවේ ඕනෑම Item පේළියක් මත ක්ලික් කරන්න (හෝ **"Summary"** බටන් එක ඔබන්න).\n` +
-      `• එතැනට යටින් එම භාණ්ඩයේ සම්පූර්ණ විස්තරය විවෘත වේ:\n` +
-      `  - **භාණ්ඩ ලැබුණු ආකාරය (Inbound):** කවර සැපයුම්කරුවන්ගෙන් PO / GRN මගින් හෝ Manual / Client FOC මගින් කොපමණ බඩු ආවාද යන්න.\n` +
-      `  - **Site වලට බෙදී ගිය ආකාරය:** එක් එක් Site Branch එකට කොපමණ බෙදී ගියාද සහ දැනට **Site In-Hand** කොපමණ තිබේද යන්න.\n` +
-      `  - **Site වලින් Team වලට බෙදුණු ආකාරය:** එක් එක් Field Team එකට නිකුත් කළ ප්‍රමාණය, Used/Wasted සහ දැනට **Team In-Hand** ප්‍රමාණය.\n` +
-      `  - **මුළු තොග සාරාංශය:** **Central Stock In-Hand**, **Site In-Hand**, **Team In-Hand**, **Total Used** සහ **Total Wasted/Damaged**.\n` +
-      `• **"Print A4 Summary"** හෝ **"Download PDF"** මගින් මෙම සම්පූර්ණ වාර්තාව මුද්‍රණය කරගත හැක.\n\n` +
-      `**2. Site Branch Stock හි Item එකක් Select කළ විට (Forward Traceability Summary):**\n` +
-      `• **"Site Branch Stock"** වෙත ගොස් ඕනෑම Item එකක් මත ක්ලික් කළ විට (හෝ **"Forward Summary"** එබූ විට) එම Site එකට ලැබුණු බඩු එතැන් සිට ඉදිරියට Teams වලට බෙදුණු ආකාරය, Projects වල Used/Waste ගිය ආකාරය සහ Site/Team In-Hand තොග පෙන්වන අතර එයද Print හා PDF කළ හැක.`,
+      `**Central Stock සහ Site Branch Stock හි Item Summary (3-Tier Flow පිළිවෙළ සහ Printable A4/PDF):**\n\n` +
+      `**1. Central Stock Item Summary — 3-Tier අනුපිළිවෙළ:**\n` +
+      `• **"Main Central Stock"** හි ඕනෑම Item පේළියක් ක්ලික් කළ විට (හෝ **"Summary"**) භාණ්ඩය බෙදී ගිය ආකාරය පිළිවෙළට අංකනය කර පෙන්වයි:\n` +
+      `  - **Regional වෙතින් Sub-Sites වලට බඩු දී ඇත්නම්:** **1. Main Central -> 2. Regional -> 3. Sub-Site -> 4. Team -> 5. Usage -> 6. Total Balance**.\n` +
+      `  - **Sub-Site නොමැති නම්:** **1. Main -> 2. Regional -> 3. Team -> 4. Usage -> 5. Total Balance**.\n` +
+      `• **"Print A4 Summary"** සහ **"Download PDF"** මගින් මුද්‍රණය කළ හැක.\n\n` +
+      `**2. Site Branch Stock — Forward Traceability Summary:**\n` +
+      `• **"Site Branch Stock"** හි Item එකක් තේරූ විට එතැන් සිට Sub-Sites, Teams, Projects වෙත ගිය විස්තර සහ ඉතිරි In-Hand තොග පෙන්වයි.`,
   },
   {
     id: 'project-sections-and-templates',
@@ -947,26 +927,24 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'team ekak hadanne',
     ],
     answerEn: (ctx) =>
-      `**How to Register Items, 3-Tier Branches (with Sub-Site Lock), Mandatory Team Project Sections, Suppliers, Clients & Users:**\n\n` +
-      `Open **Master Registrations** from the left sidebar and select the tab you need:\n` +
-      `• **Items:** Register Materials or Machinery with Item Code, Unit, Unit Price, Low-Stock Threshold, and optional Project Reservation.\n` +
-      `• **Sites / Branches (3-Tier Hierarchy · 20 Included + HQ):** Register **🏢 Regional Site Branches** or nested **↳ Sub-Site Branches**. Once stock or Client FOC is issued to a Sub-Site, **deleting it or changing its Parent Regional Branch is locked**.\n` +
-      `• **Field Teams (Mandatory Project Section):** Selecting an **Assigned Project Section *** is required for every team. To send the same crew to multiple sections, register separate section names (e.g., **\`Alex NC Team 1\`**, **\`Alex Civil Team 1\`**). Changing an existing team's section is **locked until In-Hand Stock reaches 0**.\n` +
-      `• **Suppliers, Clients & Users:** Maintain vendor/FOC directories and create staff accounts with Role & Branch locks.\n\n` +
+      `**Workspace Signup (View-Only Auto Slug & All Countries), Master Registrations & Governance:**\n\n` +
+      `• **New Tenant Registration Form:** **Workspace Slug / Identifier** ("app/...") is auto-generated from the Company Name and strictly **View-Only** (non-editable). **Operating Country** provides a **Search & Select** picker covering **all ~197 countries of the world** (syncing default currency & phone validation).\n` +
+      `• **Sites / Branches (3-Tier · 20 Included + HQ):** Create **Regional Site Branches** or child **Sub-Site Branches** (Sub-Sites lock against delete/reassignment once stock or FOC is issued).\n` +
+      `• **Field Teams (View-Only Except Main Admin):** Creating/editing Teams belongs strictly to **Main Admin**; non-Main-Admin staff view Teams as **View-Only** and can only execute **Own-Site Team Transfers** (with officer name logged in Team History).\n` +
+      `• **Users & Site Assignment History:** Track **Previous Sites, Start Dates & End Dates** whenever users/supervisors are assigned to new branches.\n\n` +
       `📌 *Workspace Summary:* **${ctx.activeItemsCount ?? 0}** Items · **${ctx.activeSitesCount ?? 0}** Branches · **${ctx.activeTeamsCount ?? 0}** Teams.`,
     answerSi: (ctx) =>
-      `**Master Registrations හරහා Items, Sub-Site Lock සහිත Branches, අනිවාර්ය Team Sections සහ Users ලියාපදිංචිය:**\n\n` +
-      `වම් පස මෙනුවෙන් **"Master Registrations"** වෙත ගොස් අදාළ ටැබ් එක තෝරන්න:\n` +
-      `• **Items:** අලුත් Materials සහ Machinery ලියාපදිංචි කිරීමට.\n` +
-      `• **Sites / Branches (20ක් ඇතුළත් + Sub-Site Lock):** Regional සහ Sub-Site Branches සෑදීමට (බඩු හෝ FOC ලබාදුන් Sub-Site එකක් Delete කිරීම හා Parent මාරු කිරීම Lock වේ).\n` +
-      `• **Teams (අනිවාර්ය Project Section):** Team Register කිරීමේදී **Project Section** තේරීම අනිවාර්ය වේ. එකම කණ්ඩායම වෙනත් Section වලට යැවීමට වෙනම නම් (**\`Alex NC Team 1\`**, **\`Alex Civil Team 1\`**) යොදන්න. Section මාරු කළ හැක්කේ **In-Hand Stock 0ට Balance කළ පසු පමණි**.\n` +
-      `• **Users (සීමා රහිතයි):** සිස්ටම් එකට ලොග් වන Users, Role එක සහ Branch එක ලබාදීමට.\n\n` +
+      `**නව Tenant ලියාපදිංචිය (View-Only Slug සහ සියලුම රටවල්), Master Registrations සහ Governance:**\n\n` +
+      `• **නව ආයතන ලියාපදිංචිය:** Company Name අනුව **Workspace Slug / Identifier** ඉබේම සෑදෙන අතර එය Edit කළ නොහැකි **View-Only** ක්ෂේත්‍රයකි. **Operating Country** තුළ ලෝකයේ **සියලුම රටවල් (~197)** Search & Select කළ හැක.\n` +
+      `• **Sites / Branches (20ක් ඇතුළත් + Sub-Site Lock):** Regional හා Sub-Site Branches සෑදීම (බඩු/FOC දුන් Sub-Site Lock වේ).\n` +
+      `• **Teams (Main Admin හැර View-Only):** Teams සෑදීම/Edit කිරීම Main Admin සතු වන අතර අනිත් Users ලට Teams **View-Only** වේ; තම Site එකේ Team Transfer පමණක් කළ හැකි අතර නිලධාරියාගේ නම **Team History** හි සටහන් වේ.\n` +
+      `• **Users & Site History:** නිලධාරීන් වෙනත් Site වලට Assign කරද්දී **Previous Sites, Start Dates & End Dates** ඉතිහාසය සුරැකේ.\n\n` +
       `📌 *දැනට පද්ධතියේ:* Items **${ctx.activeItemsCount ?? 0}**ක් · Branches **${ctx.activeSitesCount ?? 0}**ක් · Teams **${ctx.activeTeamsCount ?? 0}**ක් ඇත.`,
   },
   {
     id: 'users-roles-permissions',
     suggestedTab: 'manage-users',
-    keywords: ['role', 'permission', 'access', 'user', 'password', 'login', 'supervisor', 'storekeeper', 'admin', 'view as', 'first name', 'super admin'],
+    keywords: ['role', 'permission', 'access', 'user', 'password', 'login', 'supervisor', 'storekeeper', 'admin', 'view as', 'first name', 'super admin', 'site history', 'start date', 'end date'],
     phrases: [
       'what permissions',
       'my role',
@@ -976,21 +954,22 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'user kenek',
       'mage role',
       'super admin login',
+      'site assignment history',
+      'previous sites',
     ],
     answerEn: (ctx) =>
-      `**User Roles, Super Admin First-Name Accountability, Parent-Site Authority & Multi-Site Permissions:**\n\n` +
+      `**User Roles, User/Supervisor Site Assignment History, Teams View-Only & Super Admin First-Name Login:**\n\n` +
       `You are logged in as **${ctx.userName || 'User'}** with role **${ctx.userRole || 'Staff'}** (Branch: **${ctx.branchName || 'All Branches'}**).\n\n` +
-      `• **Super Admin Central (First-Name Verified):** Full access across HQ, all Regional & Sub-Site branches, POs, Templates, Backups, Audit Trail, Recycle Bin, and **View-As Mode**. Tenant creation requires a real personal Full Name, and Super Admin password logins verify First Name and stamp actions as **[Name] (as Super Admin)**.\n` +
-      `• **All Site Branch Admin:** Cross-branch operational access to Main Stock, Supplier POs, Requisitions, and all Regional & Sub-Site Yards.\n` +
-      `• **Branch Admin (Parent Authority over Sub-Sites):** Manages their assigned Regional/Sub-Site Branch(es). A Parent Regional Branch Admin can also supply stock (**Issue Stock to Sub-Site**) and approve/reject Requisitions submitted by its child **Sub-Site Branches**.\n` +
-      `• **Branch System User:** Standard operational access for their assigned Regional or Sub-Site Branch(es).`,
+      `• **User / Supervisor Site Assignment History:** Reassigning any User or Supervisor to a different Site Branch automatically records an **Assigned Sites History** log displaying **Previous Sites, Start Dates, and End Dates**.\n` +
+      `• **Teams Governance:** **Main Admin** holds full Teams create/edit/delete control. All other roles see Teams as **View-Only** and can only execute **Own-Site Team Transfers** (with officer accountability logged in Team History).\n` +
+      `• **Super Admin Central (First-Name Verified):** Full control across HQ, Regional/Sub-Sites, POs, Templates, Audit Trail & Backups; verifies First Name on login and stamps **[Name] (as Super Admin)**.\n` +
+      `• **All Site Branch Admin / Branch Admin / Branch System User:** Operates across assigned Regional or Sub-Site yards (Parent Regional Branch Admins can dispatch to and approve child Sub-Sites).`,
     answerSi: (ctx) =>
-      `**User Roles, Super Admin First-Name වගකීම් පද්ධතිය සහ Parent-Site බලතල:**\n\n` +
+      `**User Roles, Site Assignment History (Start/End Dates), Teams View-Only සහ Super Admin First-Name Login:**\n\n` +
       `ඔබ දැනට ලොග් වී සිටින්නේ **${ctx.userName || 'User'}** ලෙස **${ctx.userRole || 'Staff'}** තනතුරෙන් (Branch: **${ctx.branchName || 'All Branches'}**).\n\n` +
-      `• **Super Admin Central (First-Name Verified):** සියලුම Regional/Sub-Site Branches, Main Stock, PO, Backups සහ Recycle Bin සඳහා පූර්ණ බලතල. නව ගිණුමේදී සැබෑ Full Name අනිවාර්ය වන අතර Super Admin Password මගින් ලොග් වීමේදී First Name ගැළපීම පරීක්ෂා කර **[නම] (as Super Admin)** ලෙස සටහන් වේ.\n` +
-      `• **All Site Branch Admin:** සියලුම Branches සහ ප්‍රධාන ගබඩාවේ මෙහෙයුම් කටයුතු පාලනය කළ හැක.\n` +
-      `• **Branch Admin (Sub-Sites පාලනය සහිතයි):** තම Branch එකේ මෙහෙයුම් වලට අමතරව, Parent Regional Branch Admin කෙනෙකුට තමන් යටතේ ඇති **Sub-Site Branches** වෙත බඩු නිකුත් කිරීමට සහ Sub-Site Requisitions Approve කිරීමට හැකිය.\n` +
-      `• **Branch System User:** තමන්ට අදාළ Regional හෝ Sub-Site Branch එකේ වැඩ කටයුතු සිදු කරයි.`,
+      `• **User / Supervisor Site Assignment History:** ඕනෑම User හෝ Supervisor කෙනෙකු වෙනත් Site එකකට Assign කරන විට **Previous Sites, Start Dates සහ End Dates** පෙන්වන සම්පූර්ණ Site History වාර්තාවක් පවත්වාගෙන යයි.\n` +
+      `• **Teams පාලනය:** **Main Admin** හැර අනිත් සියලු Users ලට Teams **View-Only** වන අතර තම Site එකේ Team Transfer පමණක් කර **Team History** හි වගකීම සටහන් කරයි.\n` +
+      `• **Super Admin Central (First-Name Verified):** පූර්ණ බලතල හිමි අතර ලොග් වීමේදී First Name පරීක්ෂා කර **[නම] (as Super Admin)** ලෙස සටහන් වේ.`,
   },
   {
     id: 'recycle-bin-delete',
@@ -1173,6 +1152,13 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'stripe',
       'usd',
       'lkr',
+      'eur',
+      'gbp',
+      'aud',
+      'sgd',
+      'currency',
+      'fx',
+      'exchange rate',
       'billing',
       'inbound',
     ],
@@ -1187,31 +1173,29 @@ const KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
       'font size',
       'payments.lk',
       'usd to lkr',
+      'select currency',
+      'multi currency',
       'auto renew',
       'card subscription',
     ],
     answerEn: () =>
-      `**Live "Glass Tone" Themes (Sapphire & Gold Default), Crisp Typography & Recurring Card Subscriptions:**\n\n` +
+      `**Live "Glass Tone" Themes, Crisp Typography & Multi-Currency Subscriptions (LKR + USD, EUR, GBP, AUD, SGD with Real-Time FX):**\n\n` +
       `1. **9 Live "Glass Tone" Themes (Default: Sapphire & Gold):**\n` +
-      `   • The system opens in **Sapphire & Gold** (Royal Navy & Gold matching the landing palette).\n` +
-      `   • Click the **"Glass Tone"** color-swatch dropdown in the top Header sub-bar (or open **System Config**) to switch live across **9 Apple Liquid Glass themes**: *Sapphire & Gold, Liquid Emerald, Oceanic Teal, Cobalt Azure, Liquid Indigo, Liquid Amethyst, Obsidian Amber, Liquid Crimson,* and *Liquid Titanium*.\n` +
-      `   • Switching dynamically rethemes the Header, Workspace Navigation Sidebar, Canvas backdrop, Hero Banners, table hovers, and Mobile Dock.\n\n` +
+      `   • Opens in **Sapphire & Gold**. Click the **"Glass Tone"** dropdown in the Header sub-bar (or **System Config**) to switch live across 9 Apple Liquid Glass themes.\n\n` +
       `2. **Uniform Report/Table Typography & Main Central Stock Layout:**\n` +
-      `   • All tables, **Inbound Receipts History**, and printed A4 reports use standardized crisp **13.5px body / 12px header** typography for effortless reading.\n` +
-      `   • **Main Central Stock** organizes its mode switcher cleanly (*Central Stock Inventory, Returned From Sites, Damaged / Scrap Yard, Inbound Receipts History*).\n\n` +
-      `3. **Auto-Renewing Card Subscriptions (Payments.lk & Stripe + Live USD → LKR):**\n` +
-      `   • Open **Subscription** from the top Header to subscribe to **Pro Monthly** or **Pro Annual** via **Payments.lk / PAYable** or **Stripe** with live server-fetched **USD → LKR** exchange rate conversion and a Customer Billing Portal to manage auto-renewal anytime.`,
+      `   • All tables, **Inbound Receipts History**, and printed A4 reports use standardized crisp **13.5px body / 12px header** typography.\n\n` +
+      `3. **Multi-Currency Subscription Checkout (LKR + 5 Major Currencies with Real-Time FX):**\n` +
+      `   • Inside **Subscription**, **Trial Expired** screen, **Bank Transfer Slips**, and **Billing Invoices**, select **LKR**, **USD**, **EUR**, **GBP**, **AUD**, or **SGD** with live real-time FX conversion rates.\n` +
+      `   • Pay via **Payments.lk / PAYable** (card checkout converts seamlessly to **LKR** at the live FX rate) or **Stripe**, and manage auto-renewal in the Customer Billing Portal.`,
     answerSi: () =>
-      `**සජීවී "Glass Tone" Themes (Sapphire & Gold Default), පැහැදිලි වගු/වාර්තා අකුරු සහ Auto-Renew Subscriptions:**\n\n` +
+      `**සජීවී "Glass Tone" Themes, පැහැදිලි අකුරු සහ ප්‍රධාන මුදල් ඒකක 6 (LKR + USD, EUR, GBP, AUD, SGD) Real-Time Subscriptions:**\n\n` +
       `1. **සජීවී "Glass Tone" Theme 9 ("Sapphire & Gold" Default):**\n` +
-      `   • පද්ධතිය විවෘත වන විට Default වර්ණය ලෙස Landing Page එකට ගැළපෙන **Sapphire & Gold** ක්‍රියාත්මක වේ.\n` +
-      `   • ඉහළ Header තීරුවේ ඇති **"Glass Tone"** Dropdown එකෙන් (හෝ **System Config** වෙතින්) ඕනෑම මොහොතක **Theme 9ක්** අතර සජීවීව මාරු විය හැක: *Sapphire & Gold, Liquid Emerald, Oceanic Teal, Cobalt Azure, Liquid Indigo, Liquid Amethyst, Obsidian Amber, Liquid Crimson* සහ *Liquid Titanium*.\n` +
-      `   • Theme එක මාරු කළ සැණින් Header, Workspace Navigation තීරුව, පසුබිම (Canvas), Banners සහ Mobile Dock සියල්ල අලංකාරව වෙනස් වේ.\n\n` +
-      `2. **වගු සහ වාර්තා වල පැහැදිලි අකුරු ප්‍රමාණය (13.5px) සහ Main Central Stock පෙනුම:**\n` +
-      `   • සියලුම වගු, **Inbound Receipts History** සහ Print කරන A4 වාර්තා එකම ප්‍රමිතියක පැහැදිලි අකුරු ප්‍රමාණයකින් (**13.5px body / 12px headers**) පෙනෙන ලෙස සකසා ඇත.\n` +
-      `   • **Main Central Stock** හි *Central Stock Inventory, Returned From Sites, Damaged / Scrap Yard* සහ *Inbound Receipts History* බටන් ඉතා පිළිවෙළට වෙන් කර ඇත.\n\n` +
-      `3. **Payments.lk / Stripe ස්වයංක්‍රීය කාඩ් Subscriptions (සජීවී USD → LKR):**\n` +
-      `   • ඉහළ Header හි **Subscription** බටන් එක හරහා **Payments.lk / PAYable** (සජීවී **USD → LKR** විනිමය අනුපාතය සමඟ) හෝ **Stripe** මගින් Auto-Renewing Pro Monthly / Pro Annual කාඩ් ගෙවීම් සක්‍රිය කර Customer Billing Portal මගින් පාලනය කළ හැක.`,
+      `   • ඉහළ Header තීරුවේ **"Glass Tone"** Dropdown එකෙන් Theme 9ක් අතර සජීවීව මාරු විය හැක.\n\n` +
+      `2. **වගු සහ වාර්තා වල පැහැදිලි අකුරු ප්‍රමාණය (13.5px):**\n` +
+      `   • සියලුම වගු, **Inbound Receipts History** සහ Print කරන A4 වාර්තා **13.5px / 12px** ප්‍රමිතියෙන් පැහැදිලිව දිස්වේ.\n\n` +
+      `3. **LKR සහ ප්‍රධාන මුදල් ඒකක 5 (USD, EUR, GBP, AUD, SGD) Real-Time FX ගෙවීම්:**\n` +
+      `   • **Subscription**, **Trial Expired** තිරය, **Bank Transfer** සහ **Invoices** තුළ **LKR**, **USD**, **EUR**, **GBP**, **AUD**, හෝ **SGD** තෝරා සජීවී විනිමය අනුපාත (Real-Time FX) සමඟ මිල ගණන් බලා ගෙවිය හැක.\n` +
+      `   • **Payments.lk / PAYable** කාඩ් ගෙවීම් සජීවී අනුපාතයට **LKR** මගින් හා **Stripe** මගින් සිදු කළ හැක.`,
   },
   {
     id: 'directory-audit-letterhead-backup',
@@ -1310,14 +1294,14 @@ export function resolveSmartSystemSupportAnswer(
       suggestedTab: ctx.currentTab || 'dashboard',
       reply:
         `**ApexStox (Apex Stock) Enterprise — සම්පූර්ණ මගපෙන්වීම:**\n\n` +
-        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන සහ නවතම කොටස්:\n` +
-        `1. **3-Tier ගබඩා ව්‍යුහය & Sub-Site Stock/FOC Lock:** Sub-Site Branches සෑදීම, **"Issue Stock to Sub-Site"**, Parent-routed Requisitions, සහ බඩු/FOC ලබාදුන් Sub-Site Delete හා Parent මාරු Lock වීම.\n` +
-        `2. **Site Branch Stock "Damaged Returns" ටැබ් එක:** Teams හා Sub-Sites වෙතින් ආ Damaged/Scrap භාණ්ඩ වෙන්ව බලා සෘජුවම Parent Site / Central Main Warehouse වෙත **BRM** වවුචර මගින් Return කිරීම.\n` +
-        `3. **අනිවාර්ය Team Project Sections & 0 Balance Lock:** Team Register කරද්දී Section තේරීම අනිවාර්ය වීම, වෙනම නම් (**\`Alex NC Team 1\`** / **\`Alex Civil Team 1\`**), In-Hand 0 කළ පසු Section මාරු කිරීම, සහ **Material Usage** හි අදාළ Section එකේ Teams පමණක් පෙන්වීම.\n` +
-        `4. **පියවර 5 Free Stock (FOC) Reconciliation & "ALL AREAS":** Central Receipt -> Site Issue -> Team Issue -> Usage/Wastage -> Returnable Balance පිළිවෙළ, **"Central FOC"** Badge, සහ **"Main Project -> Under New Connections"**.\n` +
-        `5. **Field Team Site Transfer & Site-Separated Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Old Site])"** සහ **"Stock to Return - [Site Name]"**.\n` +
-        `6. **Document Templates & "Off Digital Signature":** ISO 9001:2015 Formats, Digital Signatures, පෑනෙන් අත්සන් තැබීමේ **"Off Digital Signature"** ක්‍රමය, සහ **13.5px** පැහැදිලි වගු/වාර්තා අකුරු.\n` +
-        `7. **"Glass Tone" Live Themes 9 & Auto-Renew Subscriptions:** **"Sapphire & Gold"** Default ලෙස Header හි **"Glass Tone"** වෙතින් Theme 9ක් අතර මාරු වීම සහ Payments.lk / Stripe (USD → LKR) Subscriptions.\n\n` +
+        `ඔබ දැනට **${ctx.userRole || 'Staff'}** ලෙස **${ctx.branchName || 'All Branches'}** හි සිටී. පද්ධතියේ ප්‍රධාන සහ නවතම විශේෂාංග:\n` +
+        `1. **නව Tenant Registry:** View-Only Auto Workspace Slug + ලෝකයේ සියලුම රටවල් (~197) Search & Select කිරීම.\n` +
+        `2. **Teams View-Only & ස්වකීය Site Transfer වගකීම:** Main Admin හැර අනිත් Users ලට Teams View-Only වන අතර තම Site එකේ Team Transfer පමණක් කර **Team History** හි නිලධාරි වගකීම සටහන් වේ.\n` +
+        `3. **User / Supervisor Site Assignment History:** Previous Sites, Start Dates සහ End Dates ඉතිහාසය සුරැකේ.\n` +
+        `4. **3-Tier Item Summary Flow & Sub-Site Stock/FOC Lock:** Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance පිළිවෙළ සහ **Damaged Returns** ටැබ් එක.\n` +
+        `5. **අනිවාර්ය Team Project Sections & 0 Balance Lock:** **\`Alex NC Team 1\`** / **\`Alex Civil Team 1\`** වෙනම නම් සහ Usage හි Section Teams Filter.\n` +
+        `6. **Document Templates & "Off Digital Signature":** ISO 9001:2015 Formats, Digital Signatures සහ පෑනෙන් අත්සන් තැබීමේ **"Off Digital Signature"**.\n` +
+        `7. **Multi-Currency Subscriptions (LKR + USD/EUR/GBP/AUD/SGD Real-Time FX) & Glass Tone Themes 9:** සජීවී විනිමය අනුපාත සහිත කාඩ් ගෙවීම් සහ **"Sapphire & Gold"** Themes.\n\n` +
         `ඉහත Quick Help බටන් එකක් තෝරන්න හෝ ඔබට දැනගැනීමට අවශ්‍ය ඕනෑම කොටසක් ගැන අහන්න!`,
     };
   }
@@ -1326,14 +1310,14 @@ export function resolveSmartSystemSupportAnswer(
     suggestedTab: ctx.currentTab || 'dashboard',
     reply:
       `**ApexStox (Apex Stock) Enterprise — Complete Feature Guide:**\n\n` +
-      `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Here are all modules & latest updates available:\n` +
-      `1. **3-Tier Hierarchy & Sub-Site Stock/FOC Lock:** Nest **Sub-Site Branches** under Regional Sites, use **Issue Stock to Sub-Site** or parent-routed **Stock Requisitions (Parent Avl:)**, with Sub-Site deletion & parent reassignment locked once stock/FOC is issued.\n` +
-      `2. **Site Branch Stock "Damaged Returns" Quarantine Tab:** Inspect **Damaged / Scrap** returns from Teams & Sub-Sites separately from usable stock and dispatch upstream **BRM** vouchers straight to Parent Site or Central HQ.\n` +
-      `3. **Mandatory Team Project Sections, Separate Naming & 0-Balance Lock:** Teams require a Project Section (**\`Alex NC Team 1\`** vs. **\`Alex Civil Team 1\`**), section switching locks until **0 In-Hand Stock**, and **Material Usage** strictly filters **Executing Field Team *** by the selected section.\n` +
-      `4. **5-Stage Client Free Stock (FOC) Reconciliation & "ALL AREAS":** Chronological flow (Central -> Site -> Team -> Usage & Wastage -> Returnable Balance), color-coded Main/Sub-Project cards, **"Central FOC"** badge, and **"Main Project -> Under New Connections"**.\n` +
-      `5. **Field Team Site Transfer & Site-Separated In-Hand Stock:** **"Temporary Assigned to - [New Site]"** -> Permanent **"[Team Name] (Ref: [Previous Site])"** and **"Stock to Return - [Previous Site Name]"**.\n` +
-      `6. **Document Templates & "Off Digital Signature" Hand-Sign Mode:** ISO 9001:2015 formats, Signers, Digital Signatures, plus **"Off Digital Signature"** for generous blank pen-signing & stamp boxes.\n` +
-      `7. **9 Live "Glass Tone" Themes ("Sapphire & Gold" Default) & Recurring Billing:** Switch themes live from Header **Glass Tone** and manage Payments.lk / Stripe auto-renewing card subscriptions with live **USD → LKR** rate conversion.\n\n` +
+      `You are logged in as **${ctx.userRole || 'Staff'}** (${ctx.branchName || 'All Branches'}). Key modules & latest updates:\n` +
+      `1. **New Tenant Registration:** Auto-generated **View-Only** Workspace Slug + Searchable **All ~197 World Countries** selector.\n` +
+      `2. **Teams View-Only Except Main Admin & Own-Site Transfer Accountability:** Only Main Admin can create/edit/delete Teams; site staff have View-Only Teams + **Own-Site Team Transfers** with acting officer logged in **Team History**.\n` +
+      `3. **User / Supervisor Site Assignment History:** Records **Previous Sites, Start Dates & End Dates** on every site reassignment.\n` +
+      `4. **Adaptive 3-Tier Item Summary Flow & Sub-Site Lock:** Sequential **Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance**, plus **"Damaged Returns"** tab.\n` +
+      `5. **Mandatory Team Project Sections & 0-Balance Lock:** Separate section naming (**\`Alex NC Team 1\`** / **\`Alex Civil Team 1\`**) and strict section filtering in Material Usage.\n` +
+      `6. **Document Templates & "Off Digital Signature":** ISO 9001:2015 formats, Signers, Digital Signatures & wet-ink pen signing mode.\n` +
+      `7. **Multi-Currency Billing (LKR, USD, EUR, GBP, AUD, SGD with Real-Time FX) & 9 Glass Tone Themes:** Live FX rates across Payments.lk / Stripe & Header theme switcher.\n\n` +
       `Click any **Quick Help** topic above or ask about any specific feature!`,
   };
 }

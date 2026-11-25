@@ -77,9 +77,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
     icon: Boxes,
     steps: [
       {
-        stepTitle: '1. Workspace Registration, Super Admin First-Name Accountability & 20-Site Default Capacity',
+        stepTitle: '1. Workspace Registration (View-Only Auto Slug, All Countries Picker) & Super Admin First-Name Accountability',
         detail:
-          'Click "Start 7-Day Free Trial" and enter your Company Name, the Super Admin\'s mandatory real Personal Full Name (generic labels like "Admin" are disallowed), Username, and Password. Every plan includes Unlimited Users, Unlimited Field Teams, 1 Central HQ Warehouse, and 20 Regional/Sub-Site Branches (+$10/mo per extra site). Whenever logging in with the Super Admin password, the user enters their personal name: the system verifies First-Name match against the registered Super Admin profile and logs every Audit Trail & Voucher action as "[Name] (as Super Admin)". All Item Codes (ITM-0001), Project IDs, and Vouchers automatically increment from 0001.',
+          'Click "Start 7-Day Free Trial" and enter your Company Name — the Workspace Slug / Identifier (app/...) is auto-generated as strictly View-Only to keep workspace IDs clean. Search and select your Operating Country from all ~197 world countries (by name, ISO code, or +dialCode), automatically matching currency and international phone validation. Enter the Super Admin\'s mandatory real Personal Full Name (generic labels like "Admin" are disallowed), Email, and Password. Every plan includes Unlimited Users, Unlimited Field Teams, 1 Central HQ Warehouse, and 20 Regional/Sub-Site Branches (+$10/mo per extra site). On Super Admin login, First Name is verified and Audit Trail actions stamp "[Name] (as Super Admin)".',
       },
       {
         stepTitle: '2. Register Materials, Heavy Machinery, Auto-Compressed Item Photos (<200KB) & Single-Shot Barcode Scanning',
@@ -87,21 +87,21 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Open "Master Registrations -> Item Catalog" to add Consumable Materials and Returnable Machinery/Tools or bulk import via Excel/CSV. You can optionally attach an Item Photo when adding or editing any item — the system automatically resizes and compresses the image to under 200KB for fast cloud loading, and every printable voucher/report includes a "Print with Image" checkbox to optionally print item thumbnails. When scanning barcodes via Mobile Camera or USB/Wireless Barcode Gun, the scanner detects once, automatically stops and hides the camera view to prevent continuous duplicate scans, and provides a "Scan Now" button to re-activate the scanner.',
       },
       {
-        stepTitle: '3. 3-Tier Branches (Sub-Site Stock/FOC Lock), Mandatory Team Project Section & Balance Lock',
+        stepTitle: '3. 3-Tier Branches (Sub-Site Lock), Teams View-Only Governance & Own-Site Transfer Accountability',
         detail:
-          'In "Master Registrations -> Sites / Branches", create Regional Site Branches (supplied directly by Central HQ) and optionally nest Sub-Site Branches under any Regional Site. Once any stock dispatch or Client FOC entry exists for a Sub-Site, deleting that Sub-Site or switching its Parent Regional Branch is strictly LOCKED to protect FOC and stock lineage (and parent branches with active Sub-Sites cannot be deleted). Under "Field Teams", assigning a Project Section (e.g., New Connection, Cable, Civil) is mandatory. To deploy the same crew across multiple sections, register separate section-specific teams (e.g., "Alex NC Team 1" for New Connection, "Alex Civil Team 1" for Civil). An existing team\'s Project Section can ONLY be changed after its In-Hand Stock is balanced to 0 via Material Usage or Team Returns.',
+          'In "Master Registrations -> Sites / Branches", create Regional Site Branches and optional child Sub-Site Branches (Sub-Sites with issued stock or FOC are strictly LOCKED against deletion or parent reassignment). In "Field Teams", assigning a Project Section is mandatory (separate names like "Alex NC Team 1" / "Alex Civil Team 1"; section switch unlocks only at 0 In-Hand Stock). IMPORTANT GOVERNANCE: Full Teams create/edit/delete access belongs exclusively to Main Admin — all other staff roles see the Teams registry as View-Only, while Site Officers can execute Team Site Transfers ONLY for teams stationed at their own assigned site(s), with Officer Name, Role & Site responsibility permanently logged inside Team History.',
       },
       {
-        stepTitle: '4. Create Staff Logins (Regional, Sub-Site, Multi-Site, HQ) & Auto Email Verification',
+        stepTitle: '4. Staff Logins, User/Supervisor Site Assignment History & Auto Email Verification',
         detail:
-          'Under "User Management", create unlimited accounts for HQ Storekeepers, Regional Branch Admins (who also hold dispatch/approval authority over child Sub-Site Branches), and Sub-Site Supervisors. Assign All Sites (Central HQ), a Single Site/Sub-Site, or Multiple Specific Branches. Account security features 1-click "Send Verification Email" via apexstox.com (support@apexstox.com) for automatic verification.',
+          'Under "User Management", create unlimited accounts for HQ Storekeepers, Regional Branch Admins (with authority over child Sub-Site Branches), and Sub-Site Supervisors across All Sites, Single Site/Sub-Site, or Multi-Site access. Whenever any User or Supervisor is reassigned to another Site Branch, the system automatically maintains an Assigned Sites History recording all Previous Sites along with exact Start Dates and End Dates. Account security includes 1-click "Send Verification Email" via apexstox.com (support@apexstox.com).',
       },
     ],
     keyOutputs: [
-      'Mandatory Personal Super Admin Full Name + First-Name Verified Login ("[Name] (as Super Admin)")',
-      'Unlimited Users & Teams + 1 Central HQ + 20 Regional/Sub-Site Branches (+$10/mo extra) & Sub-Site Stock/FOC Lock',
-      'Mandatory Team Project Section, Multi-Section Naming ("Alex NC Team 1" / "Alex Civil Team 1") & 0 In-Hand Section Lock',
-      'Auto-Compressed Item Photos (<200KB), "Print with Image" & Auto Email Verification (apexstox.com)',
+      'Auto-Generated View-Only Workspace Slug + Searchable All-Countries Registration & Super Admin First-Name Login',
+      'Unlimited Users & Teams + 20 Regional/Sub-Site Branches (+$10/mo extra) & Sub-Site Stock/FOC Lock',
+      'Teams View-Only for Non-Main-Admin + Own-Site-Only Transfer Permission & Officer Responsibility in Team History',
+      'User/Supervisor Site Assignment History (Previous Sites, Start & End Dates) + Auto Email Verification',
     ],
   },
   {
@@ -135,9 +135,9 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Open "Client Free Stock", click "+ Log Client Free Stock", and select "Under Main Project" or "Individual Project". Physical FOC deliveries default to Central Warehouse, while selecting a project automatically LOCKS its "Allocated Site Branch" (or choose "ALL AREAS" for island-wide contracts usable by any branch). Both Client Free Stock and Project Reconciliation follow the clear 5-Stage Standard Reconciliation Flow: (1) Initial FOC Receipt at Central -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Balance / Returnable Stock on Project Completion. Color-coded Main Project cards link every Sub-Project (e.g., KT-RGL-0505, KT-ABK-0506) below with its own flow and end with a consolidated Full Usage & Client Balance Summary. You can also print clean A4/PDF reports per individual issued item or as one Full Consolidated Project Report, and Admins can reassign mis-logged FOC vouchers anytime.',
       },
       {
-        stepTitle: '5. Central Stock Item Selection — Full End-to-End Lifecycle Summary & PO / Return Dropdown Item Images',
+        stepTitle: '5. Central Stock Item Summary — Adaptive 3-Tier Numbered Flow (With/Without Sub-Site) & Dropdown Images',
         detail:
-          'In "Main Stock Control -> Central Stock Inventory", click any item row (or "Summary") to expand its End-to-End Lifecycle & Custody Summary underneath: Inbound Sources (PO/GRN, Manual, Client FOC, Site Good Returns), Site Branch Distribution & Site In-Hand, Field Teams Allocation, Project Consumption & Wastage, and live Custody KPIs with "Print A4 Summary" & "Download PDF". Additionally, item thumbnails appear directly in PO, Requisition, Team Return (RV), and Branch Return (BRM) dropdown lists.',
+          'In "Main Stock Control -> Central Stock Inventory", click any item row (or "Summary") to expand its End-to-End Lifecycle & Custody Summary underneath. The flow automatically numbers stages cleanly based on actual movement: (1) Main Central -> (2) Regional -> (3) Sub-Site (shown as a dedicated step when Regional stock moves to Sub-Sites) -> (4) Team -> (5) Usage -> (6) Total Balance; or when no Sub-Site is involved: (1) Main -> (2) Regional -> (3) Team -> (4) Usage -> (5) Total Balance — ready for "Print A4 Summary" & "Download PDF". Item thumbnails also display inside PO, Requisition, RV, and BRM dropdown lists.',
       },
     ],
     keyOutputs: [
@@ -282,14 +282,14 @@ const GUIDE_CHAPTERS_EN: GuideChapter[] = [
           'Track heavy machinery, generators, testing instruments, and power tools separately across Central Yard, Site Branches, and Field Crews. When printing any voucher or report, use "Customize Voucher Header, Signers & Digital Signatures" to override Document No, Date, Signer Names, Designations, or switch individual signers to "Off Digital Signature (Blank Hand-Sign Space)" without affecting other prints.',
       },
       {
-        stepTitle: '3. Admin Password Verification for Deletions, Audit Trail & Recurring Card Subscriptions (USD -> LKR)',
+        stepTitle: '3. Multi-Currency Subscription (LKR + USD, EUR, GBP, AUD, SGD) with Live FX Rates & Card Auto-Renewal',
         detail:
-          'Any delete, clear, or purge action requires Admin Password verification, and all activity is logged in "Audit Trail" with safe restoration in "Recycle Bin". In the "Subscription" portal, workspaces can activate auto-renewing Pro Monthly or Pro Annual card subscriptions via Payments.lk / PAYable (with live server-fetched USD -> LKR exchange rate conversion) or Stripe, and manage auto-renewal from the Customer Billing Portal.',
+          'Any delete, clear, or purge action requires Admin Password verification, and all activity is logged in "Audit Trail" with safe restoration in "Recycle Bin". In "Subscription", Billing Invoices, Bank Slips, and the Trial Lock screen, workspaces can switch between LKR and 5 major currencies (USD, EUR, GBP, AUD, SGD) displaying real-time FX conversion rates. Pro Monthly or Pro Annual auto-renewing card subscriptions are supported via Payments.lk / PAYable (settling in LKR at live FX rate) and Stripe with Customer Billing Portal management.',
       },
       {
-        stepTitle: '4. Country-Based Phone Digit Validation & 1-Click Full System Backups',
+        stepTitle: '4. Global Country Phone Validation & 1-Click Full System Backups',
         detail:
-          'All phone number inputs automatically detect the logged-in workspace country (e.g., Sri Lanka 10 local digits / 9 subscriber digits) and enforce exact digit limits. Export a complete offline snapshot of your entire workspace (JSON Backup with built-in Offline Backup Viewer) or download multi-sheet Excel reports anytime.',
+          'Phone inputs detect any selected operating country worldwide (exact national digit rules for primary regions plus flexible international E.164 validation globally). Export a complete offline snapshot of your entire workspace (JSON Backup with built-in Offline Backup Viewer) or download multi-sheet Excel reports anytime.',
       },
     ],
     keyOutputs: [
@@ -314,9 +314,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
     icon: Boxes,
     steps: [
       {
-        stepTitle: '1. ආයතන ගිණුම, Super Admin First-Name වගකීම සහ මූලික Site Branches 20 පහසුකම',
+        stepTitle: '1. නව ආයතන ලියාපදිංචිය (View-Only Auto Slug, සියලුම රටවල් Search) සහ Super Admin වගකීම',
         detail:
-          '"Start 7-Day Free Trial" ක්ලික් කර Company Name සමඟ ප්‍රධාන Super Admin ගේ සැබෑ Personal Full Name ("Admin" වැනි පොදු නම් වලට ඉඩ නොදේ), Username සහ Password ඇතුළත් කරන්න. සෑම පැකේජයකටම Unlimited Users, Unlimited Field Teams, 1 Central HQ සහ Site Branches 20ක් නොමිලේ ලැබේ (අමතර Site එකකට +$10/mo). Super Admin Password ගසා ලොග් වන සෑම විටම පුද්ගලයාගේ නමේ First Name ගැළපේදැයි පරීක්ෂා කර සෑම ක්‍රියාවක්ම "[නම] (as Super Admin)" ලෙස Audit Trail හි සටහන් කරයි.',
+          '"Start 7-Day Free Trial" හි Company Name ඇතුළත් කළ විට Workspace Slug / Identifier (app/...) ඉබේම සෑදෙන අතර එය Edit කළ නොහැකි ලෙස View-Only කර ඇත. Operating Country තුළ ලෝකයේ සියලුම රටවල් (~197) Search & Select පහසුකමින් තෝරාගත හැකි අතර Currency හා දුරකථන නීති ස්වයංක්‍රීයව ගැළපේ. ප්‍රධාන Super Admin ගේ සැබෑ Full Name අනිවාර්ය වන අතර Unlimited Users, Unlimited Teams, 1 HQ සහ Site Branches 20ක් (+$10/mo extra) ලැබේ. Super Admin Password මගින් ලොග් වීමේදී First Name පරීක්ෂා කර "[නම] (as Super Admin)" ලෙස Audit Trail හි සටහන් කෙරේ.',
       },
       {
         stepTitle: '2. භාණ්ඩ ලියාපදිංචිය, 200KB ට අඩු Item Image Upload ("Print with Image") සහ Single-Shot Barcode Scanner',
@@ -324,21 +324,21 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Master Registrations -> Item Catalog" හරහා අමුද්‍රව්‍ය (Materials) සහ යන්ත්‍රෝපකරණ (Machinery) ඇතුළත් කරන්න හෝ Excel මගින් Import කරන්න. භාණ්ඩයක් Add/Edit කිරීමේදී අවශ්‍ය නම් භාණ්ඩයේ ඡායාරූපයක් (Item Photo) එක් කළ හැකි අතර පද්ධතිය මගින් එය ස්වයංක්‍රීයව 200KB ට අඩු ප්‍රමාණයකට (Auto-Compress) සකසා ගබඩා කරයි. ඕනෑම වවුචරයක් Print කිරීමේදී "Print with Image" තේරීම මගින් භාණ්ඩයේ රූපය සමඟ හෝ රූපය රහිතව Print කළ හැක. Barcode Scan කිරීමේදී එක වරක් Detect වූ සැණින් Camera එක ඉබේම නතර වන අතර ඊළඟ භාණ්ඩය සඳහා "Scan Now" බටන් එක භාවිත කළ හැක.',
       },
       {
-        stepTitle: '3. Sub-Site ආරක්ෂණ Lock එක, අනිවාර්ය Team Project Section සහ 0 Balance නීතිය',
+        stepTitle: '3. Sub-Site Lock, Teams View-Only පාලනය සහ ස්වකීය Site Team Transfer වගකීම',
         detail:
-          '"Master Registrations -> Sites / Branches" හි Regional Sites යටතේ Sub-Site Branches සෑදිය හැකි අතර, Sub-Site එකකට එක් භාණ්ඩයක් හෝ FOC තොගයක් නිකුත් කළ පසු එම Sub-Site එක Delete කිරීම හෝ Parent Regional Branch එක මාරු කිරීම ස්වයංක්‍රීයව Lock වේ. "Field Teams" ලියාපදිංචියේදී Team එකට අදාළ Project Section එක (උදා: New Connection, Cable, Civil) තේරීම අනිවාර්ය වේ. එකම කණ්ඩායම Section කිහිපයක වැඩට යැවීමට අවශ්‍ය නම් Section එකට අදාළව වෙනම Team Name (උදා: "Alex NC Team 1", "Alex Civil Team 1") යටතේ Register කළ යුතුය. වැඩ කරන Team එකක Project Section මාරු කළ හැක්කේ එම Team එක අත ඇති තොග (In-Hand Balance) Usage හෝ Return මගින් 0ට Balance කළ පසුව පමණි.',
+          'Regional Sites යටතේ Sub-Site Branches සෑදිය හැකි අතර බඩු හෝ FOC ලබාදුන් Sub-Site Delete/Parent මාරු කිරීම Lock වේ. Team Register කිරීමේදී Project Section අනිවාර්ය වන අතර ("Alex NC Team 1" / "Alex Civil Team 1"), In-Hand 0 වූ පසු Section මාරු කළ හැක. විශේෂ පාලන නීතිය: Main Admin හැර අනෙකුත් සියලුම නිලධාරීන්ට "Teams" කොටස View-Only ලෙස පෙනෙන අතර, Site නිලධාරීන්ට තමන්ගේ Site එකේ Teams සඳහා පමණක් Transfer / Return / Confirm Permanent සිදු කිරීමේ බලය ලැබේ — එමෙන්ම Transfer කළ නිලධාරියාගේ නම හා වගකීම Team History හි ස්ථිරව සටහන් වේ.',
       },
       {
-        stepTitle: '4. නිලධාරීන්ගේ ගිණුම් (Regional, Sub-Site, Multi-Site, HQ) සහ Auto Email Verification',
+        stepTitle: '4. නිලධාරීන්ගේ ගිණුම්, Site Assignment History (Start/End Dates) සහ Auto Email Verification',
         detail:
-          '"User Management" යටතේ ප්‍රධාන ගබඩා භාරකරුවන්, Regional Branch Admins (තමන් යටතේ ඇති Sub-Site Branches පාලන බලය සහිත), සහ Sub-Site Supervisors සඳහා සීමා රහිත ගිණුම් සාදන්න. "Send Verification Email" ක්ලික් කර apexstox.com (support@apexstox.com) ලින්ක් එක ක්ලික් කළ සැණින් ගිණුම ස්වයංක්‍රීයව Verify වේ.',
+          '"User Management" හරහා HQ Storekeepers, Regional Branch Admins (Sub-Sites පාලනය සහිත) සහ Sub-Site Supervisors සඳහා සීමා රහිත ගිණුම් සාදන්න. ඕනෑම User හෝ Supervisor කෙනෙකු වෙනත් Site Branch එකකට Assign / මාරු කරන සෑම විටම කලින් සේවය කළ Sites (Previous Sites), Start Dates සහ End Dates සමඟ සම්පූර්ණ Site History වාර්තාවක් ඉබේම පවත්වාගෙන යයි. "Send Verification Email" (apexstox.com) මගින් Email Verify කළ හැක.',
       },
     ],
     keyOutputs: [
-      'අනිවාර්ය Super Admin Full Name ලියාපදිංචිය සහ First-Name Verified Login ("[නම] (as Super Admin)")',
-      'Sub-Site Stock/FOC Lock (බඩු/FOC නිකුත් කළ පසු Delete හා Parent මාරු කිරීම තහනම්)',
-      'අනිවාර්ය Team Project Section, වෙනම නම් ("Alex NC Team 1" / "Alex Civil Team 1") සහ 0 Balance Section Lock',
-      '200KB Auto-Compress Item Images, "Print with Image" සහ ස්වයංක්‍රීය Email Verification (apexstox.com)',
+      'View-Only Auto Workspace Slug + ලෝකයේ සියලුම රටවල් Search & Select පහසුකම',
+      'Main Admin හැර අනිත් Users ලට Teams View-Only + තම Site එකේ Team Transfer & Officer History වගකීම',
+      'User/Supervisor Site Assignment History (Previous Sites, Start Dates & End Dates)',
+      '200KB Auto-Compress Item Images, "Print with Image" සහ ස්වයංක්‍රීය Email Verification',
     ],
   },
   {
@@ -372,9 +372,9 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           '"Client Free Stock" හි "+ Log Client Free Stock" තුළ Project එක තේරූ සැණින් "Allocated Site Branch" එක එම Project එකේ ශාඛාවට Lock වේ ("ALL AREAS" ලෙස සෑදූ Project සඳහා ඕනෑම Site එකකට නිකුත් කළ හැක). FOC වාර්තා පැහැදිලි පියවර 5 ක්‍රමයට පෙන්වයි: (1) Central Stock FOC ලැබීම -> (2) Site Issue -> (3) Team Issue -> (4) Usage & Wastage -> (5) Project Completion පසු Client වෙත ආපසු භාර දිය හැකි ඉතිරිය (Returnable Balance). වෙනස් වර්ණවලින් වෙන් කළ Main Project Cards යටතේ සෑම Sub-Project එකකම (උදා: KT-RGL-0505, KT-ABK-0506) Flow එක වෙන වෙනමත්, අවසානයේ මුළු Main Project එකේම Full Usage & Balance Report එකත් ලබාගත හැක. එමෙන්ම Central Stock වෙතින් එක් එක් Issued Item එක වෙන වෙනමත්, Project එකේ සියලු Items එකටත් A4/PDF Report ලෙස ගත හැක.',
       },
       {
-        stepTitle: '5. Central Stock Item Summary සහ PO / Return Dropdown වල Item Image පෙන්වීම',
+        stepTitle: '5. Central Stock Item Summary — 3-Tier අනුපිළිවෙළ (Sub-Site ඇති/නැති) සහ Dropdown Item Images',
         detail:
-          '"Main Stock Control -> Central Stock Inventory" වගුවේ ඕනෑම භාණ්ඩ පේළියක් මත ක්ලික් කළ විට (හෝ "Summary" බටන් එක එබූ විට) එම භාණ්ඩය PO/GRN, Manual හෝ FOC හරහා ආ ආකාරය, Site සහ Teams වලට බෙදී ගිය ආකාරය, Used/Wasted සහ Central/Site/Team In-Hand තොග සියල්ල "Print A4 Summary" සහ "Download PDF" සමඟ පෙන්වයි. තවද PO දැමීමේදී සහ Team/Branch Returns දැමීමේදී Dropdown ලැයිස්තුවල Item Image එකද පැහැදිලිව පෙන්වයි.',
+          '"Main Stock Control -> Central Stock Inventory" වගුවේ ඕනෑම Item පේළියක් මත ක්ලික් කළ විට (හෝ "Summary") භාණ්ඩය බෙදී ගිය ආකාරය පැහැදිලි පියවර අංක අනුව පෙන්වයි: Regional සිට Sub-Site වෙත බඩු දී ඇත්නම් (1) Main Central -> (2) Regional -> (3) Sub-Site -> (4) Team -> (5) Usage -> (6) Total Balance ලෙසත්, Sub-Site නොමැති අවස්ථාවල (1) Main -> (2) Regional -> (3) Team -> (4) Usage -> (5) Total Balance ලෙසත් "Print A4 Summary" / "Download PDF" සමඟ පෙන්වයි. PO, Requisition, RV සහ BRM Dropdown වල Item Images ද දිස්වේ.',
       },
     ],
     keyOutputs: [
@@ -519,14 +519,14 @@ const GUIDE_CHAPTERS_SI: GuideChapter[] = [
           'සාමාන්‍ය අමුද්‍රව්‍ය වලින් වෙන්ව යන්ත්‍රෝපකරණ සහ ටූල්ස් ප්‍රධාන ගබඩාවේද, ශාඛාවකද, නැතහොත් කණ්ඩායමක් ළඟද යන්න බලාගන්න. ඕනෑම වවුචරයක් Print කිරීමේදී උඩින් ඇති "Customize Voucher Header, Signers & Digital Signatures" ක්ලික් කර එම මුද්‍රණයට පමණක් Document No, දිනය, නිලධාරීන්ගේ නම්, Digital Signatures හෝ "Off Digital Signature (Blank Hand-Sign Space)" තෝරා Print කළ හැක.',
       },
       {
-        stepTitle: '3. Admin Password ආරක්ෂාව, Audit Trail, Recycle Bin සහ Payments.lk / Stripe Auto-Renew Subscriptions',
+        stepTitle: '3. Admin Password ආරක්ෂාව, Audit Trail සහ ප්‍රධාන මුදල් ඒකක 6 (LKR + USD/EUR/GBP/AUD/SGD) Real-Time Subscriptions',
         detail:
-          'පද්ධතියේ ඕනෑම දෙයක් Delete කිරීමේදී Admin Password ඇතුළත් කිරීම අනිවාර්ය වන අතර සෑම ක්‍රියාවක්ම "Audit Trail" හි සටහන් වී මැකුණු දත්ත "Recycle Bin" හරහා Restore කළ හැක. "Subscription" කොටස හරහා Payments.lk / PAYable (සජීවී USD -> LKR විනිමය අනුපාතය සමඟ) හෝ Stripe මගින් ස්වයංක්‍රීයව අලුත් වන (Auto-Renewing) Pro Monthly / Pro Annual කාඩ් ගෙවීම් සක්‍රිය කර Billing Portal හරහා පාලනය කළ හැක.',
+          'ඕනෑම දෙයක් Delete කිරීමේදී Admin Password අනිවාර්ය වන අතර සෑම ක්‍රියාවක්ම "Audit Trail" හි සටහන් වී "Recycle Bin" මගින් Restore කළ හැක. "Subscription" කවුළුව, Trial Lock තිරය, Bank Transfer Slips සහ Invoices තුළ LKR ඇතුළු ප්‍රධාන මුදල් ඒකක 6 (LKR, USD, EUR, GBP, AUD, SGD) සජීවී Real-Time FX විනිමය අනුපාත සමඟ තෝරා ගෙවීම් සිදු කළ හැක (Payments.lk / PAYable කාඩ් ගෙවීම් සජීවී අනුපාතයට LKR මගින් හා Stripe මගින් ක්‍රියාත්මක වේ).',
       },
       {
-        stepTitle: '4. රටට අදාළ දුරකථන අංක ගණන ස්වයංක්‍රීයව හඳුනාගැනීම සහ 1-Click JSON/Excel Backups',
+        stepTitle: '4. සියලුම රටවල් සඳහා දුරකථන අංක පරීක්ෂාව සහ 1-Click JSON/Excel Backups',
         detail:
-          'ලොග් වී සිටින ආයතනයේ රට අනුව (උදා: ශ්‍රී ලංකාව සඳහා ඉලක්කම් 10 / +94 සමඟ 9) දුරකථන අංක ඇතුළත් කරන සෑම තැනකම නිවැරදි අංක ගණන ස්වයංක්‍රීයව පරීක්ෂා කෙරේ. ඕනෑම මොහොතක සම්පූර්ණ පද්ධතියේම දත්ත Offline JSON Backup ගොනුවක් ලෙස හෝ Multi-Sheet Excel වාර්තාවක් ලෙස බාගත කරගත හැක.',
+          'තෝරාගත් රට අනුව දුරකථන අංක වලංගුතාවය ස්වයංක්‍රීයව පරීක්ෂා කෙරේ. ඕනෑම මොහොතක සම්පූර්ණ පද්ධතියේම දත්ත Offline JSON Backup ගොනුවක් ලෙස හෝ Multi-Sheet Excel වාර්තාවක් ලෙස බාගත කරගත හැක.',
       },
     ],
     keyOutputs: [
@@ -624,15 +624,16 @@ const FORMAT_GROUPS_MATRIX_SI: FormatSlotGuide[] = [
 
 const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
   {
-    group: '3-Tier Company Hierarchy, 20 Sites Default & Super Admin Accountability',
+    group: '3-Tier Company Hierarchy, Governance, Site History & All-Countries Registration',
     items: [
-      '3-Tier Hierarchy: Central HQ -> Regional Site Branches -> Optional Nested Sub-Site Branches -> Field Teams (Teams supported in BOTH tiers)',
+      'New Tenant Registry: Auto-Generated View-Only Workspace Slug + Searchable Selector Covering All ~197 World Countries',
+      '3-Tier Hierarchy: Central HQ -> Regional Site Branches -> Optional Nested Sub-Site Branches -> Field Teams (Supported in BOTH tiers)',
       'Sub-Site Stock & FOC Lock: Sub-Sites with any issued stock or Client FOC cannot be deleted or reassigned to another Parent Regional Branch',
-      'Direct Parent-to-Sub-Site Dispatch ("Issue Stock to Sub-Site") & Parent-Routed Sub-Site Requisitions ("Parent Avl:")',
-      'Site Branch Stock "Damaged Returns" Tab: Quarantine Damaged Returns & Return Upstream Directly (Sub-Site -> Parent / Regional -> HQ)',
+      'Teams View-Only Except Main Admin + Own-Site-Only Transfer Permission with Officer Responsibility Logged in Team History',
+      'User / Supervisor Site Assignment History: Logs Previous Sites with Exact Start Dates & End Dates on Every Reassignment',
       'Included Capacity: Unlimited Users, Unlimited Field Teams & 1 Central HQ + 20 Regional/Sub-Site Branches (+$10/mo extra site)',
       'Super Admin Personal Accountability: Mandatory Full Name on signup + First-Name check on login stamped as "[Name] (as Super Admin)"',
-      'Hierarchical Branch Directory & Central Item Traceability: Parent Regional Sites sort neatly above child Sub-Sites with full parent-child flow',
+      'Adaptive 3-Tier Item Summary Flow: Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance',
     ],
   },
   {
@@ -642,7 +643,7 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
       'Color-Coded Main Project Cards + Sub-Project Individual Flow (KT-RGL-0505, KT-ABK-0506) & Full Consolidated Balance Report',
       'Central FOC A4/PDF Reports: Generate Separate Reports per Issued Item OR One Full Consolidated Report for the Entire Project',
       'Site Branch Stock "Central FOC" Highlight Badge & 5-Stage Forward Traceability Summary (Printable A4 / PDF)',
-      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (PO/Manual/FOC Inbound, Site & Sub-Site Distribution, Used/Wasted, In-Hand)',
+      'Central Stock Item Selection -> Full End-to-End Lifecycle Summary (PO/Manual/FOC Inbound, Regional/Sub-Site Flow, Used/Wasted, In-Hand)',
       'Sequential 0001-Based Codes, IDs & Voucher References (ITM-0001, PO-2026-0001, RN-2026-0001)',
       'Single-Shot Camera & USB Gun Barcode Scanner with Auto-Hide & "Scan Now" Button',
       'Supplier Purchase Orders (PO), Multi-Item Atomic GRN Vouchers & Return to Vendor (RTV) Debit Notes',
@@ -670,7 +671,7 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'ISO 9001:2015 Format Settings, Off Digital Signature, Glass Tone Themes & Subscriptions',
+    group: 'ISO 9001:2015 Format Settings, Off Digital Signature, Glass Tone Themes & Multi-Currency Billing',
     items: [
       'Default ISO 9001:2015 Controlled Formats (FORMAT-01 to 04) with Auto-Synced Tenant Company Header',
       'Tab 2 Signer Governance: Prepared By, Approved By & Reviewed By Names, Designations & Departments',
@@ -678,7 +679,7 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
       '"Off Digital Signature" Per-Print Hand-Sign Mode Across All Vouchers & Reports (Generous Dashed Ink-Sign & Stamp Space)',
       'Uniform Crisp Typography (13.5px Body / 12px Headers) Across All Tables, Inbound Ledgers & Printed A4 Reports',
       'Live "Glass Tone" Theme Switcher in Header (9 Apple Liquid Glass Themes, Default "Sapphire & Gold")',
-      'Auto-Renewing Card Subscriptions (Payments.lk / PAYable & Stripe) with Live USD -> LKR FX Rate Conversion',
+      'Multi-Currency Subscription Checkout (LKR, USD, EUR, GBP, AUD, SGD) with Real-Time FX Rates + Payments.lk / Stripe Auto-Renewal',
       'Optional PDF / Image Company Format Upload (Max 1MB Limit), Live A4 Format Studio & Isolated PDF Export',
       'Admin Password Verification Required for All Deletions, Audit Trail, Recycle Bin & 1-Click JSON Backup',
     ],
@@ -687,15 +688,16 @@ const FEATURE_SUMMARY_LIST_EN: FeatureSummaryGroup[] = [
 
 const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
   {
-    group: '3-Tier ආයතනික ව්‍යුහය, Site Branches 20 ධාරිතාව සහ Super Admin First-Name වගකීම',
+    group: '3-Tier ආයතනික ව්‍යුහය, View-Only Teams, Site History සහ සියලුම රටවල් ලියාපදිංචිය',
     items: [
+      'නව Tenant Registry: View-Only Auto-Generated Workspace Slug + ලෝකයේ සියලුම රටවල් (~197) Search & Select කිරීම',
       '3-Tier ගබඩා ව්‍යුහය: Central HQ -> Regional Site Branches -> Optional Sub-Site Branches -> Field Teams (Tiers දෙකේම Teams ක්‍රියාත්මක වේ)',
       'Sub-Site Stock & FOC Lock: බඩු හෝ Client FOC ලබාදුන් Sub-Site එකක් Delete කිරීම හා Parent Regional Branch මාරු කිරීම තහනම් (Lock) කෙරේ',
-      'Regional Site වෙතින් Sub-Site වෙත සෘජු බඩු නිකුත් කිරීම ("Issue Stock to Sub-Site") සහ Parent-Routed Requisitions ("Parent Avl:")',
-      'Site Branch Stock හි "Damaged Returns" වෙනම ටැබ් එක: Damaged/Scrap භාණ්ඩ වෙනම බලා සෘජුවම Parent Site / Central HQ වෙත Return කිරීම',
+      'Main Admin හැර අනිත් සියලු Users ලට Teams View-Only + තම Site එකේ Team Transfer පමණක් කිරීමේ බලය සහ Officer වගකීම Team History හි පෙන්වීම',
+      'User/Supervisor Site Assignment History: වෙනත් Site එකකට Assign කළ විට Previous Sites, Start Dates සහ End Dates ඉතිහාසය සටහන් කිරීම',
       'මූලික පැකේජයටම: Unlimited Users, Unlimited Teams & 1 Central HQ + Site Branches 20ක් ඇතුළත් (අමතර Site +$10/mo)',
       'Super Admin පුද්ගලික වගකීම: ලියාපදිංචියේදී අනිවාර්ය Full Name + Login වීමේදී First-Name පරීක්ෂා කර "[නම] (as Super Admin)" ලෙස සටහන් කිරීම',
-      'Hierarchical Branch Directory & Central Traceability: Parent Regional Site යටතේ Sub-Sites පිළිවෙළට පෙන්වීම',
+      'Item Summary පැහැදිලි 3-Tier Flow පිළිවෙළ: Main Central -> Regional -> [Sub-Site ->] Team -> Usage -> Total Balance',
     ],
   },
   {
@@ -733,7 +735,7 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
     ],
   },
   {
-    group: 'ISO Formats, Off Digital Signature, Glass Tone Themes, Subscriptions සහ ආරක්ෂිත පාලනය',
+    group: 'ISO Formats, Off Digital Signature, Glass Tone Themes, Multi-Currency Subscriptions සහ ආරක්ෂාව',
     items: [
       'Default ISO 9001:2015 Controlled Formats (FORMAT-01 සිට 04) සහ ස්වයංක්‍රීය Tenant Company Header',
       'Tab 2 Signer Governance: Prepared By, Approved By සහ Reviewed By නිලධාරීන්ගේ නම්, තනතුරු සහ අංශ',
@@ -741,7 +743,7 @@ const FEATURE_SUMMARY_LIST_SI: FeatureSummaryGroup[] = [
       'සෑම වවුචරයකම සහ වාර්තාවකම පෑනෙන් අත්සන් (Hand Sign & Stamp) තැබීමට ඉඩ තබන "Off Digital Signature" ක්‍රමය',
       'සියලුම වගු (Inbound Receipts ඇතුළුව) සහ A4 වාර්තා සඳහා පැහැදිලි Uniform අකුරු ප්‍රමාණය (13.5px / 12px)',
       'Header එකෙන් සජීවීව මාරු විය හැකි "Glass Tone" Theme 9 ("Sapphire & Gold" Default ලෙස විවෘත වේ)',
-      'Payments.lk / PAYable සහ Stripe මගින් සජීවී USD -> LKR අනුපාතය සමඟ Auto-Renew කාඩ් Subscriptions',
+      'LKR සහ ප්‍රධාන මුදල් ඒකක 5 (USD, EUR, GBP, AUD, SGD) සජීවී Real-Time FX අනුපාත සමඟ Subscriptions (Payments.lk / Stripe)',
       'PDF හෝ Image මගින් ආයතනයේ Format එක Upload කිරීම (උපරිම 1MB), Live A4 Format Studio සහ Isolated PDF',
       'Delete කිරීමේදී Admin Password අනිවාර්ය වීම, Audit Trail, Recycle Bin සහ 1-Click JSON Offline Backup',
     ],
