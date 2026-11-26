@@ -51,6 +51,7 @@ import {
 } from '../../types';
 import { TeamTransferAndDetailsModal } from '../common/TeamTransferAndDetailsModal';
 import { UserSiteHistoryModal } from '../common/UserSiteHistoryModal';
+import { SiteSelector } from '../common/SiteSelector';
 import {
   canUserTransferTeamAtCurrentSite,
   extractBaseTeamName,
@@ -402,22 +403,16 @@ export const BranchDirectoryView: React.FC<BranchDirectoryViewProps> = ({ onNavi
               <Filter className="w-4 h-4 text-emerald-600" />
               <span>Select Branch Yard:</span>
             </label>
-            <select
-              value={selectedSiteId}
-              onChange={(e) => setSelectedSiteId(e.target.value)}
-              className="px-3 py-2 bg-slate-50 hover:bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent flex-1 max-w-md transition-all shadow-2xs"
-            >
-              <option value="all">🏢 All Branches & Yards (All Members)</option>
-              {orderedActiveSites.map((site) => {
-                const teamCount = activeTeams.filter((t) => t.assignedSiteId === site.id).length;
-                return (
-                  <option key={site.id} value={site.id}>
-                    {site.isMainWarehouse ? '⭐ ' : isSubSite(site) ? '' : '📍 '}
-                    {formatSiteHierarchyLabel(site, activeSites, true)} — {teamCount} team{teamCount !== 1 ? 's' : ''}
-                  </option>
-                );
-              })}
-            </select>
+            <div className="flex-1 max-w-md">
+              <SiteSelector
+                value={selectedSiteId}
+                onChange={setSelectedSiteId}
+                sites={orderedActiveSites}
+                allSites={activeSites}
+                includeAllOption={true}
+                allOptionLabel="🏢 All Branches & Yards (All Members)"
+              />
+            </div>
           </div>
 
           {/* Search Input */}

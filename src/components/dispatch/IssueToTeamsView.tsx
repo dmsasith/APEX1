@@ -32,6 +32,7 @@ import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
 import { StockBalanceCell } from '../common/LowStockIndicator';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { SiteSelector } from '../common/SiteSelector';
 import {
   useUsbBarcodeScanner,
   matchItemByScannedCode,
@@ -362,22 +363,14 @@ export const IssueToTeamsView: React.FC = () => {
                 )}
               </div>
               <div className="relative">
-                <select
+                <SiteSelector
                   value={selectedSiteId}
+                  onChange={(val) => handleSiteChange(val)}
+                  sites={allowedSites}
+                  allSites={activeSites}
+                  includeAllOption={false}
                   disabled={isSingleSiteLocked}
-                  onChange={(e) => handleSiteChange(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none transition-colors ${
-                    isSingleSiteLocked
-                      ? 'bg-slate-100 text-slate-800 border-slate-300 cursor-not-allowed select-none opacity-95'
-                      : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400'
-                  }`}
-                >
-                  {allowedSites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {formatSiteHierarchyLabel(s, activeSites)} {isSiteRestricted ? '(Assigned)' : ''}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               {isSiteRestricted && (
                 <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
