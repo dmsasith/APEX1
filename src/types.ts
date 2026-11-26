@@ -327,14 +327,14 @@ export function formatSiteHierarchyLabel(
   if (!site) return 'Unknown Site';
   const locPart = includeLocation && site.location ? ` (${site.location})` : '';
   if (site.isMainWarehouse) {
-    return `${site.name}${locPart} [Main HQ]`;
+    return `⭐ ${site.name}${locPart} [Main HQ]`;
   }
   if (isSubSite(site)) {
     const parent = getParentSite(site, allSites);
     const parentLabel = parent?.name || site.parentSiteName || 'Parent Branch';
-    return `↳ Sub-Site: ${site.name}${locPart} (Under ${parentLabel})`;
+    return `    ↳ 🏬 Sub-Site: ${site.name}${locPart} (Under ${parentLabel})`;
   }
-  return `${site.name}${locPart}`;
+  return `🏢 ${site.name}${locPart} (Regional Branch)`;
 }
 
 export function sortSitesHierarchically(sitesList: Site[]): Site[] {
