@@ -106,10 +106,17 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
       return;
     }
 
-    if (paymentsLkState === 'success' || paymentsLkState === 'portal_return') {
+    if (
+      paymentsLkState === 'success' ||
+      paymentsLkState === 'addon_success' ||
+      paymentsLkState === 'portal_return'
+    ) {
       setPaymentToast({
         type: 'info',
-        text: 'Verifying your Payments.lk auto-renewing subscription status...',
+        text:
+          paymentsLkState === 'addon_success'
+            ? 'Verifying your prorated extra-branch payment status...'
+            : 'Verifying your Payments.lk auto-renewing subscription status...',
       });
       verifyPaymentsLkSubscription({
         tenantId: currentTenant.id,
@@ -117,13 +124,18 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         currentUser,
       })
         .then((res) => {
-          if (res.subscriptionPatch) {
-            updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+          if (res.subscriptionPatch || res.clearPendingProratedAddon) {
+            updateTenantSubscription(currentTenant.id, {
+              ...(res.subscriptionPatch || {}),
+              ...(res.clearPendingProratedAddon ? { pendingProratedAddon: undefined } : {}),
+            });
           }
           setPaymentToast({
             type: res.verified ? 'success' : 'info',
             text: res.verified
-              ? 'Payments.lk Auto-Renewing Pro Subscription activated! Welcome aboard.'
+              ? res.isProratedAddon
+                ? res.message
+                : 'Payments.lk Auto-Renewing Pro Subscription activated! Welcome aboard.'
               : res.message,
           });
         })

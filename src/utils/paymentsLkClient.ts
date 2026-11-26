@@ -1,4 +1,4 @@
-import { SubscriptionPaymentCurrency, TenantSubscription, User } from '../types';
+import { ProratedExtraSiteCalculation, SubscriptionPaymentCurrency, TenantSubscription, User } from '../types';
 import { getApiSessionToken, issueWorkspaceSessionToken } from './securityUtils';
 import { DEFAULT_FALLBACK_FX_RATES, FxRatesMap, mergeFxRates } from './subscriptionCurrencyUtils';
 
@@ -32,6 +32,9 @@ export interface CreateSubscriptionResponse {
   billingCycle: 'monthly' | 'annual';
   extraSiteSlots: number;
   subscriptionPatch: Partial<TenantSubscription>;
+  isProratedAddon?: boolean;
+  checkoutId?: string;
+  proration?: ProratedExtraSiteCalculation;
 }
 
 export interface VerifySubscriptionResponse {
@@ -40,6 +43,8 @@ export interface VerifySubscriptionResponse {
   subscriptionPatch?: Partial<TenantSubscription>;
   updatedSubscription?: TenantSubscription | null;
   checkoutUrl?: string | null;
+  clearPendingProratedAddon?: boolean;
+  isProratedAddon?: boolean;
   message: string;
 }
 

@@ -315,13 +315,23 @@ export const SaasMasterAdminView: React.FC = () => {
 
     const isAnnual = pending.planRequested === 'pro_annual' || pending.billingCycle === 'annual';
     const plan = isAnnual ? 'pro_annual' : 'pro_monthly';
-    const nextBilling = new Date(
-      Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000
-    ).toISOString();
     const resolvedExtraSiteSlots =
       typeof pending.extraSiteSlotsRequested === 'number'
         ? Math.max(0, Math.round(pending.extraSiteSlotsRequested))
         : Math.max(0, tenant.subscription.extraSiteSlots || 0);
+
+    const existingExpiryIso =
+      tenant.subscription.nextBillingDate || tenant.subscription.trialEndsAt || '';
+    const existingExpiryMs = existingExpiryIso ? new Date(existingExpiryIso).getTime() : NaN;
+    const isProratedAddonApproval =
+      pending.paymentType === 'extra_site_addon' &&
+      tenant.subscription.status === 'active' &&
+      Number.isFinite(existingExpiryMs) &&
+      existingExpiryMs > Date.now();
+
+    const nextBilling = isProratedAddonApproval
+      ? existingExpiryIso
+      : new Date(Date.now() + (isAnnual ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString();
 
     updateTenantSubscription(tenant.id, {
       plan,
@@ -331,9 +341,13 @@ export const SaasMasterAdminView: React.FC = () => {
       billingCycle: isAnnual ? 'annual' : 'monthly',
       extraSiteSlots: resolvedExtraSiteSlots,
       paymentMethodStatus: 'active',
-      lastBillingDate: new Date().toISOString(),
-      nextBillingDate: nextBilling,
-      trialEndsAt: nextBilling,
+      ...(isProratedAddonApproval
+        ? {}
+        : {
+            lastBillingDate: new Date().toISOString(),
+            nextBillingDate: nextBilling,
+            trialEndsAt: nextBilling,
+          }),
       ...(pending.currency
         ? {
             preferredPaymentCurrency: normalizePaymentCurrency(pending.currency),
@@ -354,11 +368,13 @@ export const SaasMasterAdminView: React.FC = () => {
     });
 
     showNotification(
-      `Approved Bank Deposit Slip for ${tenant.companyName}! ${
-        isAnnual
-          ? `Pro Annual ($${pricingMetrics.annualPriceFormatted}/yr)`
-          : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`
-      }${resolvedExtraSiteSlots > 0 ? ` + ${resolvedExtraSiteSlots} Extra Site(s)` : ''} subscription activated.`
+      isProratedAddonApproval
+        ? `Approved Prorated Extra Branch Bank Slip for ${tenant.companyName}! Unlocked ${resolvedExtraSiteSlots} total extra site(s) until ${formatDateTime(nextBilling)}.`
+        : `Approved Bank Deposit Slip for ${tenant.companyName}! ${
+            isAnnual
+              ? `Pro Annual ($${pricingMetrics.annualPriceFormatted}/yr)`
+              : `Pro Monthly ($${pricingMetrics.monthlyPriceFormatted}/mo)`
+          }${resolvedExtraSiteSlots > 0 ? ` + ${resolvedExtraSiteSlots} Extra Site(s)` : ''} subscription activated.`
     );
   };
 
@@ -1270,6 +1286,14 @@ export const SaasMasterAdminView: React.FC = () => {
                         {p.extraSiteSlotsRequested ? ` + ${p.extraSiteSlotsRequested} Extra Site(s)` : ''}
                       </strong>
                     </div>
+                    {p.paymentType === 'extra_site_addon' && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Billing Type:</span>
+                        <strong className="text-indigo-700 font-semibold">
+                          Prorated Add-On (+{p.addedExtraSiteSlots || 1} Site · {p.proratedDays}/{p.totalPeriodDays} days)
+                        </strong>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-slate-500">Submitted At:</span>
                       <span className="text-slate-600 font-medium">{formatDateTime(p.submittedAt)}</span>
@@ -1283,7 +1307,11 @@ export const SaasMasterAdminView: React.FC = () => {
                       className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Approve &amp; Activate Pro</span>
+                      <span>
+                        {p.paymentType === 'extra_site_addon'
+                          ? `Approve & Unlock +${p.addedExtraSiteSlots || 1} Branch`
+                          : 'Approve & Activate Pro'}
+                      </span>
                     </button>
                     <button
                       type="button"

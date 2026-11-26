@@ -267,8 +267,11 @@ export const TrialExpiredOverlay: React.FC = () => {
         subscriptionId: sub.paymentsLkSubscriptionId,
         currentUser,
       });
-      if (res.subscriptionPatch) {
-        updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+      if (res.subscriptionPatch || res.clearPendingProratedAddon) {
+        updateTenantSubscription(currentTenant.id, {
+          ...(res.subscriptionPatch || {}),
+          ...(res.clearPendingProratedAddon ? { pendingProratedAddon: undefined } : {}),
+        });
       }
       setGatewayNotice(res.message);
       if (res.verified) {

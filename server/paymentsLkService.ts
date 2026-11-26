@@ -7,7 +7,13 @@ import {
   type Invoice as GatewayInvoice,
   type Payment as GatewayPayment,
 } from '@payments-lk/node';
-import type { SubscriptionPaymentCurrency, Tenant, TenantSubscription } from '../src/types';
+import {
+  computeProratedExtraSiteAddon,
+  type ProratedExtraSiteCalculation,
+  type SubscriptionPaymentCurrency,
+  type Tenant,
+  type TenantSubscription,
+} from '../src/types';
 
 const FIREBASE_RTDB_BASE = 'https://apexdevoloper-31068-default-rtdb.firebaseio.com';
 const PLATFORM_PRICING_URL = `${FIREBASE_RTDB_BASE}/tenantsData/tenant-apex-main/platformPricing.json`;
@@ -281,6 +287,27 @@ function parseReference(reference: string | null | undefined): {
   return {};
 }
 
+function parseAddonReference(reference: string | null | undefined): {
+  tenantId?: string;
+  billingCycle?: 'monthly' | 'annual';
+  extraSiteSlots?: number;
+} {
+  if (!reference || typeof reference !== 'string') return {};
+  const parts = reference.split(':');
+  if (parts.length >= 2 && parts[0] === 'apex-addon') {
+    const cycle = parts[2] === 'monthly' || parts[2] === 'annual' ? parts[2] : undefined;
+    let extraSiteSlots: number | undefined;
+    if (parts[3] && parts[3].startsWith('xs-')) {
+      const parsed = Number(parts[3].slice(3));
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        extraSiteSlots = Math.min(500, Math.round(parsed));
+      }
+    }
+    return { tenantId: parts[1], billingCycle: cycle, extraSiteSlots };
+  }
+  return {};
+}
+
 async function patchTenantSubscriptionInRtdb(
   tenantId: string,
   subPatch: Partial<TenantSubscription>,
@@ -496,6 +523,102 @@ export interface CreateSubscriptionResult {
   billingCycle: 'monthly' | 'annual';
   extraSiteSlots: number;
   subscriptionPatch: Partial<TenantSubscription>;
+  isProratedAddon?: boolean;
+  checkoutId?: string;
+  proration?: ProratedExtraSiteCalculation;
+}
+
+async function finalizeProratedAddonCheckout(
+  lk: PaymentsLk,
+  tenant: Tenant,
+  opts: {
+    checkoutId?: string;
+    targetExtraSiteSlots: number;
+    billingCycle: 'monthly' | 'annual';
+    amountPaidCents?: number;
+    webhookEventId?: string;
+  }
+): Promise<{
+  alreadyProcessed: boolean;
+  patch: Partial<TenantSubscription>;
+  updatedSub: TenantSubscription | null;
+}> {
+  const existingSub = tenant.subscription;
+  if (
+    opts.checkoutId &&
+    existingSub?.lastProcessedAddonCheckoutId &&
+    existingSub.lastProcessedAddonCheckoutId === opts.checkoutId
+  ) {
+    return {
+      alreadyProcessed: true,
+      patch: {},
+      updatedSub: existingSub,
+    };
+  }
+
+  const pending = existingSub?.pendingProratedAddon;
+  const resolvedExtraSlots = Math.max(
+    Math.round(Number(existingSub?.extraSiteSlots || 0)),
+    Math.min(500, Math.max(0, Math.round(opts.targetExtraSiteSlots)))
+  );
+  const resolvedCycle: 'monthly' | 'annual' =
+    opts.billingCycle ||
+    pending?.billingCycle ||
+    (existingSub?.plan === 'pro_annual' || existingSub?.billingCycle === 'annual'
+      ? 'annual'
+      : 'monthly');
+
+  const patch: Partial<TenantSubscription> = {
+    extraSiteSlots: resolvedExtraSlots,
+    pendingProratedAddon: undefined,
+    ...(opts.checkoutId ? { lastProcessedAddonCheckoutId: opts.checkoutId } : {}),
+    ...(opts.webhookEventId ? { lastWebhookEventId: opts.webhookEventId } : {}),
+  };
+
+  if (pending && (!opts.checkoutId || pending.checkoutId === opts.checkoutId)) {
+    patch.lastUsdToLkrRate = pending.usdToLkrRate;
+    patch.preferredPaymentCurrency = pending.selectedCurrency;
+    patch.lastPaymentCurrency = pending.selectedCurrency;
+    patch.lastPaymentCurrencyAmount = pending.selectedCurrencyAmount;
+    patch.lastPaymentFxRate = pending.fxRateToSelectedCurrency;
+    patch.lastLkrAmountCharged = pending.lkrAmount;
+  } else if (typeof opts.amountPaidCents === 'number' && opts.amountPaidCents > 0) {
+    patch.lastLkrAmountCharged = Math.round(opts.amountPaidCents / 100);
+  }
+
+  // Sync the active Payments.lk recurring subscription price for FUTURE renewals (no extra immediate invoice)
+  const gatewaySubId = existingSub?.paymentsLkSubscriptionId;
+  if (gatewaySubId) {
+    try {
+      const liveSub = await lk.subscriptions.retrieve(gatewaySubId);
+      if (liveSub.status === 'active' || liveSub.status === 'trialing') {
+        const [pricing, fxMulti] = await Promise.all([
+          getAuthoritativeUsdPricing(),
+          getLiveMultiCurrencyRates(),
+        ]);
+        const baseUsd = resolvedCycle === 'annual' ? pricing.annualPrice : pricing.monthlyPrice;
+        const extraUsd =
+          resolvedExtraSlots * pricing.extraSiteMonthlyPrice * (resolvedCycle === 'annual' ? 12 : 1);
+        const newRenewalUsd = Number((baseUsd + extraUsd).toFixed(2));
+        const newRenewalLkr = Math.max(10, Math.round(newRenewalUsd * fxMulti.usdToLkrRate));
+        const newRenewalLkrCents = Math.min(100_000_000, Math.max(1000, newRenewalLkr * 100));
+
+        const newPrice = await findOrCreateRecurringPrice(lk, resolvedCycle, newRenewalLkrCents);
+        const updatedGatewaySub = await lk.subscriptions.update(liveSub.id, {
+          priceId: newPrice.id,
+          quantity: 1,
+          prorationBehavior: 'none',
+          reference: `apex:${tenant.id}:${resolvedCycle}:xs-${resolvedExtraSlots}`,
+        });
+        patch.paymentsLkPriceId = updatedGatewaySub.price?.id || newPrice.id;
+      }
+    } catch (err) {
+      console.warn('[Payments.lk] Future renewal price sync after prorated addon failed:', err);
+    }
+  }
+
+  const updatedSub = await patchTenantSubscriptionInRtdb(tenant.id, patch, false);
+  return { alreadyProcessed: false, patch, updatedSub };
 }
 
 export async function createRecurringSubscriptionForTenant(params: {
@@ -539,6 +662,119 @@ export async function createRecurringSubscriptionForTenant(params: {
       : Number(tenant?.subscription?.extraSiteSlots || 0);
   const extraSiteSlots = Math.min(500, Math.max(0, Math.round(rawExtraSlots)));
 
+  const cleanOrigin = params.baseReturnUrl.replace(/\/+$/, '');
+
+  // Check if this active paid tenant is eligible for a mid-cycle prorated extra-branch add-on
+  let effectiveSubForProration: TenantSubscription | undefined = tenant?.subscription;
+  if (tenant?.subscription?.paymentsLkSubscriptionId) {
+    try {
+      const liveSub = await lk.subscriptions.retrieve(tenant.subscription.paymentsLkSubscriptionId);
+      if (liveSub.status === 'active') {
+        effectiveSubForProration = {
+          ...tenant.subscription,
+          status: 'active',
+          lastBillingDate: liveSub.currentPeriodStart || tenant.subscription.lastBillingDate,
+          nextBillingDate: liveSub.currentPeriodEnd || tenant.subscription.nextBillingDate,
+        };
+      }
+    } catch {
+      // Fallback to stored RTDB period dates
+    }
+  }
+
+  const proration = computeProratedExtraSiteAddon(
+    effectiveSubForProration,
+    pricing,
+    params.billingCycle,
+    extraSiteSlots,
+    Date.now()
+  );
+
+  if (proration.isEligible && tenant) {
+    const usdAmount = proration.proratedTotalUsd;
+    const lkrAmount = Math.max(10, Math.round(usdAmount * fxMulti.usdToLkrRate));
+    const lkrAmountCents = Math.min(100_000_000, Math.max(1000, lkrAmount * 100));
+    const selectedCurrencyAmount =
+      selectedCurrency === 'LKR'
+        ? lkrAmount
+        : Number((usdAmount * fxRateToSelectedCurrency).toFixed(2));
+
+    const successUrl = `${cleanOrigin}/?payments_lk=addon_success&billing_cycle=${params.billingCycle}`;
+    const cancelUrl = `${cleanOrigin}/?payments_lk=cancel&billing_cycle=${params.billingCycle}`;
+    const bucket = Math.floor(Date.now() / 30_000);
+    const periodUnitLabel =
+      proration.billingCycle === 'annual'
+        ? `${proration.remainingDays}/${proration.totalPeriodDays} days (~${proration.remainingMonthsApprox} mos)`
+        : `${proration.remainingDays}/${proration.totalPeriodDays} days`;
+
+    const checkout = await lk.checkouts.create(
+      {
+        amountCents: lkrAmountCents,
+        description: `ApexStox +${proration.addedSlots} Extra Site Branch(es) · Prorated (${periodUnitLabel})`,
+        reference: `apex-addon:${params.tenantId}:${params.billingCycle}:xs-${extraSiteSlots}`,
+        customer: {
+          name,
+          email,
+          ...(phone ? { phone } : {}),
+        },
+        successUrl,
+        cancelUrl,
+        locale: 'en',
+      },
+      {
+        idempotencyKey: `apex-addon-${params.tenantId}-${params.billingCycle}-xs${extraSiteSlots}-${lkrAmountCents}-${bucket}`,
+      }
+    );
+
+    const pendingAddonRecord = {
+      checkoutId: checkout.id,
+      targetExtraSiteSlots: extraSiteSlots,
+      addedExtraSiteSlots: proration.addedSlots,
+      billingCycle: params.billingCycle,
+      proratedDays: proration.remainingDays,
+      totalPeriodDays: proration.totalPeriodDays,
+      usdAmount,
+      lkrAmount,
+      selectedCurrency,
+      selectedCurrencyAmount,
+      fxRateToSelectedCurrency,
+      usdToLkrRate: fxMulti.usdToLkrRate,
+      checkoutUrl: checkout.url,
+      createdAt: new Date().toISOString(),
+    };
+
+    const subscriptionPatch: Partial<TenantSubscription> = {
+      preferredPaymentCurrency: selectedCurrency,
+      pendingProratedAddon: pendingAddonRecord,
+    };
+
+    await patchTenantSubscriptionInRtdb(params.tenantId, subscriptionPatch, false);
+
+    return {
+      subscriptionId: tenant.subscription?.paymentsLkSubscriptionId || checkout.id,
+      customerId: tenant.subscription?.paymentsLkCustomerId || '',
+      status: checkout.status,
+      mode: checkout.mode,
+      checkoutUrl: checkout.url,
+      lkrAmountCents,
+      lkrAmount,
+      usdAmount,
+      usdToLkrRate: fxMulti.usdToLkrRate,
+      selectedCurrency,
+      selectedCurrencyAmount,
+      fxRateToSelectedCurrency,
+      fxRates: fxMulti.rates,
+      fxUpdatedAt: fxMulti.updatedAt,
+      isLiveFxRate: fxMulti.isLive,
+      billingCycle: params.billingCycle,
+      extraSiteSlots,
+      subscriptionPatch,
+      isProratedAddon: true,
+      checkoutId: checkout.id,
+      proration,
+    };
+  }
+
   const baseUsdAmount = params.billingCycle === 'annual' ? pricing.annualPrice : pricing.monthlyPrice;
   const extraUsdAmount =
     extraSiteSlots * pricing.extraSiteMonthlyPrice * (params.billingCycle === 'annual' ? 12 : 1);
@@ -559,7 +795,6 @@ export async function createRecurringSubscriptionForTenant(params: {
 
   const price = await findOrCreateRecurringPrice(lk, params.billingCycle, lkrAmountCents);
 
-  const cleanOrigin = params.baseReturnUrl.replace(/\/+$/, '');
   const successUrl = `${cleanOrigin}/?payments_lk=success&billing_cycle=${params.billingCycle}`;
   const cancelUrl = `${cleanOrigin}/?payments_lk=cancel&billing_cycle=${params.billingCycle}`;
 
@@ -586,6 +821,7 @@ export async function createRecurringSubscriptionForTenant(params: {
     selectedCurrencyAmount,
     fxRateToSelectedCurrency,
   });
+  subscriptionPatch.pendingProratedAddon = undefined;
 
   // Save pending/created gateway linkage in Firebase RTDB so return callback always finds it
   await patchTenantSubscriptionInRtdb(
@@ -625,6 +861,8 @@ export async function verifyAndSyncTenantSubscription(params: {
   subscriptionPatch?: Partial<TenantSubscription>;
   updatedSubscription?: TenantSubscription | null;
   checkoutUrl?: string | null;
+  clearPendingProratedAddon?: boolean;
+  isProratedAddon?: boolean;
   message: string;
 }> {
   const lk = createPaymentsLkClient();
@@ -636,6 +874,58 @@ export async function verifyAndSyncTenantSubscription(params: {
     tenantId: params.tenantId,
     subscriptionId: params.subscriptionId,
   });
+
+  // 1. Check pending mid-cycle prorated branch add-on checkout first if present
+  const pendingAddon = entry?.tenant?.subscription?.pendingProratedAddon;
+  if (entry?.tenant && pendingAddon?.checkoutId) {
+    try {
+      const checkout = await lk.checkouts.retrieve(pendingAddon.checkoutId);
+      const isPaid = checkout.status === 'completed' || checkout.payment?.status === 'succeeded';
+      if (isPaid) {
+        const finalized = await finalizeProratedAddonCheckout(lk, entry.tenant, {
+          checkoutId: checkout.id,
+          targetExtraSiteSlots: pendingAddon.targetExtraSiteSlots,
+          billingCycle: pendingAddon.billingCycle,
+          amountPaidCents: checkout.payment?.amountCents,
+        });
+        return {
+          verified: true,
+          status: 'completed',
+          isProratedAddon: true,
+          clearPendingProratedAddon: true,
+          subscriptionPatch: finalized.patch,
+          updatedSubscription: finalized.updatedSub,
+          message: `Prorated +${pendingAddon.addedExtraSiteSlots} Extra Site Branch(es) verified & unlocked! Renewal date preserved.`,
+        };
+      }
+
+      if (checkout.status === 'expired' || checkout.status === 'canceled') {
+        await patchTenantSubscriptionInRtdb(
+          params.tenantId,
+          { pendingProratedAddon: undefined },
+          false
+        );
+        return {
+          verified: false,
+          status: checkout.status,
+          isProratedAddon: true,
+          clearPendingProratedAddon: true,
+          message: `Prorated Extra Branch checkout ${checkout.status}. You can start a fresh checkout anytime.`,
+        };
+      }
+
+      return {
+        verified: false,
+        status: checkout.status,
+        isProratedAddon: true,
+        checkoutUrl: checkout.url,
+        message: `Prorated Extra Branch checkout is currently "${checkout.status}". Complete payment and click Verify Status.`,
+      };
+    } catch (err) {
+      console.warn('[Payments.lk] Failed retrieving pending prorated addon checkout:', err);
+    }
+  }
+
   const subId = (
     params.subscriptionId ||
     entry?.tenant?.subscription?.paymentsLkSubscriptionId ||
@@ -876,6 +1166,26 @@ export async function processPaymentsLkWebhook(
 
     case 'payment.succeeded': {
       const payment = event.data as GatewayPayment;
+      const addonRef = parseAddonReference(payment.reference);
+      if (addonRef.tenantId && typeof addonRef.extraSiteSlots === 'number') {
+        const entry = await findTenantEntry({ tenantId: addonRef.tenantId });
+        if (entry) {
+          await finalizeProratedAddonCheckout(lk, entry.tenant, {
+            checkoutId: payment.checkoutId || undefined,
+            targetExtraSiteSlots: addonRef.extraSiteSlots,
+            billingCycle:
+              addonRef.billingCycle ||
+              (entry.tenant.subscription?.plan === 'pro_annual' ||
+              entry.tenant.subscription?.billingCycle === 'annual'
+                ? 'annual'
+                : 'monthly'),
+            amountPaidCents: payment.amountCents,
+            webhookEventId: event.id,
+          });
+        }
+        break;
+      }
+
       if (payment.invoiceId) {
         try {
           const inv = await lk.invoices.retrieve(payment.invoiceId);

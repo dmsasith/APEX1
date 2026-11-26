@@ -25,6 +25,7 @@ import { useStock } from '../../context/StockContext';
 import {
   SubscriptionPaymentCurrency,
   computePlatformPricingMetrics,
+  computeProratedExtraSiteAddon,
   getSubscriptionStatusSummary,
   getTenantBranchQuotaSummary,
 } from '../../types';
@@ -206,6 +207,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const selectedCurrencyMeta = getCurrencyMeta(selectedCurrency);
   const activeFormattedTotal = formatConvertedCurrency(activeSelectedTotal, selectedCurrency, true);
 
+  const proration = computeProratedExtraSiteAddon(sub, pricingMetrics, billingCycle, extraSiteSlots);
+  const isProratedAddon = proration.isEligible;
+  const payableUsdTotal = isProratedAddon ? proration.proratedTotalUsd : activeUsdTotal;
+  const payableLkrTotal = convertUsdToCurrency(payableUsdTotal, 'LKR', fxRates);
+  const payableSelectedTotal = convertUsdToCurrency(payableUsdTotal, selectedCurrency, fxRates);
+  const payableFormattedTotal = formatConvertedCurrency(payableSelectedTotal, selectedCurrency, true);
+  const renewalSelectedTotal = convertUsdToCurrency(
+    proration.fullCycleTotalWithNewSlotsUsd,
+    selectedCurrency,
+    fxRates
+  );
+  const renewalFormattedTotal = formatConvertedCurrency(renewalSelectedTotal, selectedCurrency, true);
+
   const handleCopyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopyNotice(`Copied ${label} to clipboard!`);
@@ -221,16 +235,28 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       pendingBankPayment: {
         submittedAt: new Date().toISOString(),
         referenceNo: txnRef.trim(),
-        amount: activeUsdTotal,
+        amount: payableUsdTotal,
         currency: selectedCurrency,
-        paidAmount: activeSelectedTotal,
+        paidAmount: payableSelectedTotal,
         exchangeRateUsed: activeSelectedRate,
         billingCycle: billingCycle,
         extraSiteSlotsRequested: extraSiteSlots,
+        paymentType: isProratedAddon ? 'extra_site_addon' : 'full_plan',
+        ...(isProratedAddon
+          ? {
+              addedExtraSiteSlots: proration.addedSlots,
+              proratedDays: proration.remainingDays,
+              totalPeriodDays: proration.totalPeriodDays,
+            }
+          : {}),
         notes:
           bankNotes.trim() ||
-          `${activeFormattedTotal} (@ ${formatFxRateLabel(selectedCurrency, fxRates)})${
-            extraSiteSlots > 0 ? ` · Includes +${extraSiteSlots} Extra Site Branch(es)` : ''
+          `${payableFormattedTotal} (@ ${formatFxRateLabel(selectedCurrency, fxRates)})${
+            isProratedAddon
+              ? ` · Prorated +${proration.addedSlots} Extra Site(s) (${proration.remainingDays}/${proration.totalPeriodDays} days remaining)`
+              : extraSiteSlots > 0
+              ? ` · Includes +${extraSiteSlots} Extra Site Branch(es)`
+              : ''
           }`,
         slipName: slipFileName || 'Bank_Transfer_Slip.pdf',
         status: 'pending',
@@ -285,7 +311,18 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         );
       } else if (res.checkoutUrl) {
         setFallbackCheckoutUrl(res.checkoutUrl);
-        if (isEmbeddedIframe) {
+        if (res.isProratedAddon) {
+          if (isEmbeddedIframe) {
+            setGatewayNotice(
+              `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) prorated checkout ready for +${res.proration?.addedSlots ?? proration.addedSlots} Extra Site(s) (${selectedPaidLabel} · Rs. ${res.lkrAmount.toLocaleString()} LKR). Click "Open Payment Page" to complete payment, then click "Verify Status".`
+            );
+          } else {
+            setGatewayNotice(
+              `Redirecting to Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) prorated checkout for ${selectedPaidLabel} (Rs. ${res.lkrAmount.toLocaleString()})...`
+            );
+            window.location.assign(res.checkoutUrl);
+          }
+        } else if (isEmbeddedIframe) {
           setGatewayNotice(
             `Payments.lk (${res.mode === 'test' ? 'Sandbox' : 'Live'}) session ready for ${selectedPaidLabel} (LKR settlement: Rs. ${res.lkrAmount.toLocaleString()}). Click "Open Payment Page" to complete payment, then click "Verify Status".`
           );
@@ -315,8 +352,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         subscriptionId: sub.paymentsLkSubscriptionId,
         currentUser,
       });
-      if (res.subscriptionPatch) {
-        updateTenantSubscription(currentTenant.id, res.subscriptionPatch);
+      if (res.subscriptionPatch || res.clearPendingProratedAddon) {
+        updateTenantSubscription(currentTenant.id, {
+          ...(res.subscriptionPatch || {}),
+          ...(res.clearPendingProratedAddon ? { pendingProratedAddon: undefined } : {}),
+        });
       }
       if (res.verified) {
         setFallbackCheckoutUrl(null);
@@ -639,18 +679,47 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     Add-On Rate:{' '}
                     <strong className="text-slate-900 font-mono">
                       {formatConvertedCurrency(
-                        convertUsdToCurrency(pricingMetrics.extraSiteMonthlyPrice, selectedCurrency, fxRates),
+                        convertUsdToCurrency(
+                          isAnnual ? pricingMetrics.extraSiteAnnualPrice : pricingMetrics.extraSiteMonthlyPrice,
+                          selectedCurrency,
+                          fxRates
+                        ),
                         selectedCurrency
-                      )}/mo
+                      )}/{isAnnual ? 'yr' : 'mo'}
                     </strong>{' '}
-                    (${pricingMetrics.extraSiteMonthlyPriceFormatted} USD) per additional site
+                    (${isAnnual ? pricingMetrics.extraSiteAnnualPriceFormatted : pricingMetrics.extraSiteMonthlyPriceFormatted} USD{isAnnual ? ' · $10/mo' : ''} per extra site)
                   </span>
                   <span className="font-bold text-emerald-700 font-mono tabular-nums">
-                    {extraSiteSlots > 0
+                    {isProratedAddon
+                      ? `Due Today (${proration.remainingDays}/${proration.totalPeriodDays}d): ${payableFormattedTotal} ($${payableUsdTotal.toFixed(2)} USD)`
+                      : extraSiteSlots > 0
                       ? `Total (${selectedCurrency}): ${activeFormattedTotal}/${isAnnual ? 'yr' : 'mo'} ($${activeUsdTotal.toFixed(2)} USD)`
                       : `Total Allowed Branches: ${branchQuota.includedBranches} Sites (${selectedCurrencyMeta.symbol}0 add-on)`}
                   </span>
                 </div>
+
+                {isProratedAddon && (
+                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-[11px] text-indigo-950 space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 font-bold">
+                      <span>Fair Mid-Cycle Prorated Branch Add-On (+{proration.addedSlots} New Site{proration.addedSlots > 1 ? 's' : ''})</span>
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-mono tabular-nums">
+                        {proration.remainingDays} / {proration.totalPeriodDays} days remaining
+                        {isAnnual ? ` (~${proration.remainingMonthsApprox} mos)` : ''}
+                      </span>
+                    </div>
+                    <div className="text-indigo-800 tabular-nums">
+                      Base plan is already paid until <strong>{formatDate(proration.periodEndIso)}</strong>. You only pay{' '}
+                      <strong className="font-mono text-indigo-950">
+                        {payableFormattedTotal} (${payableUsdTotal.toFixed(2)} USD)
+                      </strong>{' '}
+                      for the remaining {proration.remainingDays} days ({Math.round(proration.remainingRatio * 100)}% of cycle).
+                    </div>
+                    <div className="text-[10px] text-indigo-700 font-medium tabular-nums">
+                      Your renewal date ({formatDate(proration.periodEndIso)}) stays unchanged · Next renewal total with {extraSiteSlots} extra site(s):{' '}
+                      <strong className="font-mono">{renewalFormattedTotal}/{isAnnual ? 'yr' : 'mo'}</strong>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -662,8 +731,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     <CreditCard className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-black tracking-tight text-slate-900 flex items-center gap-2">
-                      <span>Auto-Renewing Card Subscription (Payments.lk)</span>
+                    <div className="text-xs font-black tracking-tight text-slate-900 flex items-center gap-2 flex-wrap">
+                      <span>
+                        {isProratedAddon
+                          ? 'Prorated Extra Branch Add-On (Payments.lk)'
+                          : 'Auto-Renewing Card Subscription (Payments.lk)'}
+                      </span>
                       {gatewayStatus?.mode === 'test' && (
                         <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">
                           Sandbox Test Mode
@@ -678,20 +751,23 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     <div className="text-[11px] text-slate-600 tabular-nums">
                       Visa / Mastercard / Amex · {formatFxRateLabel(selectedCurrency, fxRates)}
                       {isLiveRate ? ' ⚡ Live' : ''}
-                      {selectedCurrency !== 'LKR' ? ` · Gateway settles in Rs. ${activeLkrTotal.toLocaleString()} LKR` : ''}
+                      {selectedCurrency !== 'LKR' ? ` · Gateway settles in Rs. ${payableLkrTotal.toLocaleString()} LKR` : ''}
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
                   <div className="text-base font-black text-emerald-700 font-mono tabular-nums">
-                    {activeFormattedTotal}
+                    {payableFormattedTotal}
                   </div>
                   <div className="text-[10px] text-slate-500 tabular-nums">
                     {selectedCurrency !== 'LKR'
-                      ? `LKR Eqv: Rs. ${activeLkrTotal.toLocaleString()} · `
+                      ? `LKR Eqv: Rs. ${payableLkrTotal.toLocaleString()} · `
                       : ''}
-                    ${activeUsdTotal.toFixed(2)} USD / {isAnnual ? 'year' : 'month'}
+                    ${payableUsdTotal.toFixed(2)} USD{' '}
+                    {isProratedAddon
+                      ? `(${proration.remainingDays}/${proration.totalPeriodDays}d prorated)`
+                      : `/ ${isAnnual ? 'year' : 'month'}`}
                   </div>
                 </div>
               </div>
@@ -720,28 +796,57 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 </div>
               )}
 
-              {sub.paymentsLkSubscriptionId && (
+              {(sub.paymentsLkSubscriptionId || sub.pendingProratedAddon) && (
                 <div className="p-2.5 bg-white border border-emerald-200 rounded-xl text-[11px] flex flex-wrap items-center justify-between gap-2">
                   <div className="space-y-0.5">
-                    <div className="text-slate-800 font-bold flex items-center gap-1.5">
-                      <span>Gateway Ref:</span>
-                      <span className="font-mono text-emerald-700">{sub.paymentsLkSubscriptionId}</span>
-                      {sub.paymentsLkStatus && (
-                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-[10px] uppercase text-amber-800 font-bold border border-amber-200">
-                          {sub.paymentsLkStatus}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      {sub.cancelAtPeriodEnd
-                        ? 'Auto-renew disabled (ends after current paid period)'
-                        : sub.autoRenew
-                        ? 'Auto-renewal enabled · Card billed automatically each cycle'
-                        : 'Pending initial card authorization on Payments.lk'}
-                    </div>
+                    {sub.pendingProratedAddon ? (
+                      <>
+                        <div className="text-slate-800 font-bold flex items-center gap-1.5 flex-wrap">
+                          <span>Pending Add-On Checkout:</span>
+                          <span className="font-mono text-indigo-700">{sub.pendingProratedAddon.checkoutId}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-[10px] uppercase text-indigo-800 font-bold border border-indigo-200">
+                            +{sub.pendingProratedAddon.addedExtraSiteSlots} Site · {sub.pendingProratedAddon.proratedDays}d
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Complete the prorated checkout, then click Verify Status to unlock immediately without changing your renewal date.
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-slate-800 font-bold flex items-center gap-1.5">
+                          <span>Gateway Ref:</span>
+                          <span className="font-mono text-emerald-700">{sub.paymentsLkSubscriptionId}</span>
+                          {sub.paymentsLkStatus && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-[10px] uppercase text-amber-800 font-bold border border-amber-200">
+                              {sub.paymentsLkStatus}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {sub.cancelAtPeriodEnd
+                            ? 'Auto-renew disabled (ends after current paid period)'
+                            : sub.autoRenew
+                            ? 'Auto-renewal enabled · Card billed automatically each cycle'
+                            : 'Pending initial card authorization on Payments.lk'}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5">
+                    {sub.pendingProratedAddon?.checkoutUrl && !fallbackCheckoutUrl && (
+                      <a
+                        href={sub.pendingProratedAddon.checkoutUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Open Payment Page</span>
+                      </a>
+                    )}
+
                     <button
                       type="button"
                       disabled={gatewayBusy}
@@ -784,7 +889,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                 <div className="text-[11px] text-slate-600">
-                  Instant cloud activation · Card details tokenized securely by PAYable / Payments.lk.
+                  {isProratedAddon
+                    ? 'Instant prorated unlock · Future renewals auto-adjust on your existing cycle date.'
+                    : 'Instant cloud activation · Card details tokenized securely by PAYable / Payments.lk.'}
                 </div>
 
                 <button
@@ -800,6 +907,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     </>
                   ) : gatewayStatus && !gatewayStatus.configured ? (
                     <span>Configure PAYMENTS_LK_SECRET_KEY on Server</span>
+                  ) : isProratedAddon ? (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>
+                        Pay Prorated Add-On · {formatConvertedCurrency(payableSelectedTotal, selectedCurrency)} ({proration.remainingDays}d)
+                      </span>
+                    </>
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4" />
@@ -851,9 +965,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     LANKAPAY / Universal Bank Wire
                   </div>
                   <div className="text-[11px] text-slate-700 font-bold mt-1 tabular-nums">
-                    Amount: <span className="text-emerald-700 font-mono">{activeFormattedTotal}</span>
+                    Amount: <span className="text-emerald-700 font-mono">{payableFormattedTotal}</span>
                     {selectedCurrency !== 'USD' && (
-                      <span className="text-slate-500 font-mono"> (${activeUsdTotal.toFixed(2)} USD)</span>
+                      <span className="text-slate-500 font-mono"> (${payableUsdTotal.toFixed(2)} USD)</span>
                     )}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1 tabular-nums">
@@ -977,13 +1091,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <div className="text-[11px] text-slate-500 tabular-nums">
                     Amount:{' '}
                     <strong className="text-slate-900 font-mono">
-                      {activeFormattedTotal}
+                      {payableFormattedTotal}
                     </strong>
                     {selectedCurrency !== 'USD' && (
-                      <span className="font-mono"> (${activeUsdTotal.toFixed(2)} USD)</span>
+                      <span className="font-mono"> (${payableUsdTotal.toFixed(2)} USD)</span>
                     )}
                     {selectedCurrency !== 'LKR' && (
-                      <span className="font-mono"> · Rs. {activeLkrTotal.toLocaleString()} LKR</span>
+                      <span className="font-mono"> · Rs. {payableLkrTotal.toLocaleString()} LKR</span>
                     )}{' '}
                     · Auto-notifies Master Admin
                   </div>
@@ -1069,27 +1183,39 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           recipientLabel="BILLED TENANT ACCOUNT"
           recipientName={currentTenant.companyName}
           recipientSubDetails={`Registered Contact: ${currentTenant.contactEmail} | Tel: ${currentTenant.contactPhone} | Country: ${currentTenant.country} | Tenant Ref: ${currentTenant.slug.toUpperCase()}`}
-          notes={`Official SaaS Software Subscription Tax Invoice & Payment Receipt. Billing dispatched to registered email (${currentTenant.contactEmail}). Subscription Status: ${(sub.status || 'trialing').toUpperCase()} | Billing Cycle: ${(billingCycle || 'annual').toUpperCase()} | Selected Currency Total: ${activeFormattedTotal} ($${activeUsdTotal.toFixed(2)} USD @ ${formatFxRateLabel(selectedCurrency, fxRates)} · LKR Eqv: Rs. ${activeLkrTotal.toLocaleString()})`}
-          items={[
-            {
-              itemCode: 'SAAS-PRO-SUB',
-              itemName: `ApexStox Base Enterprise Plan - ${isAnnual ? `Annual Subscription (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.annualPrice, selectedCurrency, fxRates), selectedCurrency, true)} / $${pricingMetrics.annualPriceFormatted} USD per yr · Includes ${branchQuota.includedBranches} Site Branches)` : `Monthly Subscription (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.monthlyPrice, selectedCurrency, fxRates), selectedCurrency, true)} / $${pricingMetrics.monthlyPriceFormatted} USD per mo · Includes ${branchQuota.includedBranches} Site Branches)`}`,
-              category: 'Software License & Cloud Infrastructure',
-              quantity: 1,
-              unit: 'License',
-            },
-            ...(extraSiteSlots > 0
+          notes={`Official SaaS Software Subscription Tax Invoice & Payment Receipt. Billing dispatched to registered email (${currentTenant.contactEmail}). Subscription Status: ${(sub.status || 'trialing').toUpperCase()} | Billing Cycle: ${(billingCycle || 'annual').toUpperCase()} | Selected Currency Total: ${payableFormattedTotal} ($${payableUsdTotal.toFixed(2)} USD @ ${formatFxRateLabel(selectedCurrency, fxRates)} · LKR Eqv: Rs. ${payableLkrTotal.toLocaleString()})${isProratedAddon ? ` | Prorated Add-On (${proration.remainingDays}/${proration.totalPeriodDays} days remaining until ${formatDate(proration.periodEndIso)})` : ''}`}
+          items={
+            isProratedAddon
               ? [
                   {
-                    itemCode: 'SAAS-EXTRA-SITE',
-                    itemName: `Additional Regional Site Branch Add-On (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.extraSiteMonthlyPrice, selectedCurrency, fxRates), selectedCurrency, true)}/mo · $${pricingMetrics.extraSiteMonthlyPriceFormatted} USD per extra branch)`,
-                    category: 'Multi-Site Capacity Expansion',
-                    quantity: extraSiteSlots,
-                    unit: isAnnual ? 'Site/Yr' : 'Site/Mo',
+                    itemCode: 'SAAS-EXTRA-SITE-PRORATA',
+                    itemName: `Additional Regional Site Branch Add-On - Prorated (${proration.remainingDays}/${proration.totalPeriodDays} days remaining · ${payableFormattedTotal} / $${payableUsdTotal.toFixed(2)} USD)`,
+                    category: 'Multi-Site Capacity Expansion (Prorated)',
+                    quantity: proration.addedSlots,
+                    unit: isAnnual ? 'Site (Prorated Yr)' : 'Site (Prorated Mo)',
                   },
                 ]
-              : []),
-          ]}
+              : [
+                  {
+                    itemCode: 'SAAS-PRO-SUB',
+                    itemName: `ApexStox Base Enterprise Plan - ${isAnnual ? `Annual Subscription (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.annualPrice, selectedCurrency, fxRates), selectedCurrency, true)} / $${pricingMetrics.annualPriceFormatted} USD per yr · Includes ${branchQuota.includedBranches} Site Branches)` : `Monthly Subscription (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.monthlyPrice, selectedCurrency, fxRates), selectedCurrency, true)} / $${pricingMetrics.monthlyPriceFormatted} USD per mo · Includes ${branchQuota.includedBranches} Site Branches)`}`,
+                    category: 'Software License & Cloud Infrastructure',
+                    quantity: 1,
+                    unit: 'License',
+                  },
+                  ...(extraSiteSlots > 0
+                    ? [
+                        {
+                          itemCode: 'SAAS-EXTRA-SITE',
+                          itemName: `Additional Regional Site Branch Add-On (${formatConvertedCurrency(convertUsdToCurrency(pricingMetrics.extraSiteMonthlyPrice, selectedCurrency, fxRates), selectedCurrency, true)}/mo · $${pricingMetrics.extraSiteMonthlyPriceFormatted} USD per extra branch)`,
+                          category: 'Multi-Site Capacity Expansion',
+                          quantity: extraSiteSlots,
+                          unit: isAnnual ? 'Site/Yr' : 'Site/Mo',
+                        },
+                      ]
+                    : []),
+                ]
+          }
         />
       )}
       <TermsConditionsModal

@@ -1517,6 +1517,10 @@ export interface TenantSubscription {
     exchangeRateUsed?: number; // 1 USD -> selected currency rate at submission
     billingCycle: 'monthly' | 'annual';
     extraSiteSlotsRequested?: number;
+    paymentType?: 'full_plan' | 'extra_site_addon';
+    addedExtraSiteSlots?: number;
+    proratedDays?: number;
+    totalPeriodDays?: number;
     notes?: string;
     slipName?: string;
     slipFileName?: string;
@@ -1525,6 +1529,23 @@ export interface TenantSubscription {
     status: 'pending' | 'approved' | 'rejected';
     approvedAt?: string;
   };
+  pendingProratedAddon?: {
+    checkoutId: string;
+    targetExtraSiteSlots: number;
+    addedExtraSiteSlots: number;
+    billingCycle: 'monthly' | 'annual';
+    proratedDays: number;
+    totalPeriodDays: number;
+    usdAmount: number;
+    lkrAmount: number;
+    selectedCurrency: SubscriptionPaymentCurrency;
+    selectedCurrencyAmount: number;
+    fxRateToSelectedCurrency: number;
+    usdToLkrRate: number;
+    checkoutUrl?: string | null;
+    createdAt: string;
+  };
+  lastProcessedAddonCheckoutId?: string;
   queuedSubscription?: QueuedSubscription;
   // Payments.lk Auto-Renewing Subscription Integration Metadata
   paymentsLkSubscriptionId?: string;
@@ -1541,6 +1562,125 @@ export interface TenantSubscription {
   lastPaymentFxRate?: number;
   lastInvoiceId?: string;
   lastWebhookEventId?: string;
+}
+
+export interface ProratedExtraSiteCalculation {
+  isEligible: boolean;
+  billingCycle: 'monthly' | 'annual';
+  currentExtraSlots: number;
+  targetExtraSlots: number;
+  addedSlots: number;
+  periodStartIso: string;
+  periodEndIso: string;
+  totalPeriodDays: number;
+  remainingDays: number;
+  remainingMonthsApprox: number;
+  remainingRatio: number;
+  fullCyclePerSlotUsd: number;
+  proratedPerSlotUsd: number;
+  proratedTotalUsd: number;
+  fullCycleTotalWithNewSlotsUsd: number;
+}
+
+export function computeProratedExtraSiteAddon(
+  sub: TenantSubscription | undefined | null,
+  pricing: Partial<PlatformPricingConfig> | null | undefined,
+  targetBillingCycle: 'monthly' | 'annual',
+  targetExtraSlots: number,
+  nowMs: number = Date.now()
+): ProratedExtraSiteCalculation {
+  const metrics = computePlatformPricingMetrics(pricing);
+  const currentCycle: 'monthly' | 'annual' =
+    sub?.plan === 'pro_annual' || sub?.billingCycle === 'annual' ? 'annual' : 'monthly';
+  const currentExtraSlots = Math.max(0, Math.round(Number(sub?.extraSiteSlots || 0)));
+  const resolvedTargetSlots = Math.max(0, Math.min(500, Math.round(Number(targetExtraSlots || 0))));
+  const addedSlots = Math.max(0, resolvedTargetSlots - currentExtraSlots);
+
+  const fullCyclePerSlotUsd =
+    targetBillingCycle === 'annual' ? metrics.extraSiteAnnualPrice : metrics.extraSiteMonthlyPrice;
+  const baseUsd = targetBillingCycle === 'annual' ? metrics.annualPrice : metrics.monthlyPrice;
+  const fullCycleTotalWithNewSlotsUsd = Number(
+    (baseUsd + resolvedTargetSlots * fullCyclePerSlotUsd).toFixed(2)
+  );
+
+  const isActivePaidPlan =
+    Boolean(sub) &&
+    sub?.status === 'active' &&
+    (sub?.plan === 'pro_monthly' || sub?.plan === 'pro_annual');
+
+  const endIso = sub?.nextBillingDate || sub?.trialEndsAt || '';
+  const endMs = endIso ? new Date(endIso).getTime() : NaN;
+  const isPeriodActive = Number.isFinite(endMs) && endMs > nowMs;
+  const isSameCycle = targetBillingCycle === currentCycle;
+
+  if (!isActivePaidPlan || !isPeriodActive || !isSameCycle || addedSlots <= 0) {
+    const defaultDays = targetBillingCycle === 'annual' ? 365 : 30;
+    return {
+      isEligible: false,
+      billingCycle: targetBillingCycle,
+      currentExtraSlots,
+      targetExtraSlots: resolvedTargetSlots,
+      addedSlots,
+      periodStartIso: sub?.lastBillingDate || '',
+      periodEndIso: endIso,
+      totalPeriodDays: defaultDays,
+      remainingDays: 0,
+      remainingMonthsApprox: 0,
+      remainingRatio: 1,
+      fullCyclePerSlotUsd,
+      proratedPerSlotUsd: fullCyclePerSlotUsd,
+      proratedTotalUsd: Number((addedSlots * fullCyclePerSlotUsd).toFixed(2)),
+      fullCycleTotalWithNewSlotsUsd,
+    };
+  }
+
+  const defaultDays = currentCycle === 'annual' ? 365 : 30;
+  const startIso = sub?.lastBillingDate || '';
+  const startMs = startIso ? new Date(startIso).getTime() : NaN;
+  let totalPeriodDays = defaultDays;
+  if (Number.isFinite(startMs) && endMs > startMs) {
+    const diffDays = Math.round((endMs - startMs) / 86_400_000);
+    if (currentCycle === 'annual' && diffDays >= 360 && diffDays <= 366) {
+      totalPeriodDays = diffDays;
+    } else if (currentCycle === 'monthly' && diffDays >= 28 && diffDays <= 32) {
+      totalPeriodDays = diffDays;
+    }
+  }
+
+  const remainingDays = Math.min(
+    totalPeriodDays,
+    Math.max(1, Math.ceil((endMs - nowMs) / 86_400_000))
+  );
+  const remainingRatio = Math.min(1, Math.max(1 / totalPeriodDays, remainingDays / totalPeriodDays));
+  const remainingMonthsApprox =
+    currentCycle === 'annual'
+      ? Number(((remainingDays / totalPeriodDays) * 12).toFixed(1))
+      : Number((remainingDays / totalPeriodDays).toFixed(2));
+
+  const rawProratedPerSlot = fullCyclePerSlotUsd * remainingRatio;
+  const proratedPerSlotUsd = Number(rawProratedPerSlot.toFixed(2));
+  const rawProratedTotal = addedSlots * fullCyclePerSlotUsd * remainingRatio;
+  const proratedTotalUsd = Number(
+    Math.max(fullCyclePerSlotUsd > 0 ? 0.1 : 0, rawProratedTotal).toFixed(2)
+  );
+
+  return {
+    isEligible: true,
+    billingCycle: currentCycle,
+    currentExtraSlots,
+    targetExtraSlots: resolvedTargetSlots,
+    addedSlots,
+    periodStartIso: startIso || new Date(endMs - totalPeriodDays * 86_400_000).toISOString(),
+    periodEndIso: new Date(endMs).toISOString(),
+    totalPeriodDays,
+    remainingDays,
+    remainingMonthsApprox,
+    remainingRatio,
+    fullCyclePerSlotUsd,
+    proratedPerSlotUsd,
+    proratedTotalUsd,
+    fullCycleTotalWithNewSlotsUsd,
+  };
 }
 
 export interface TenantBranchQuotaSummary {
