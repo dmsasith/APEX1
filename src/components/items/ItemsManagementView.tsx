@@ -103,7 +103,12 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
   const [newItemImageSizeKb, setNewItemImageSizeKb] = useState<number | undefined>(undefined);
 
   // Edit Item Modal
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editingItem, setEditingItem] = useState<
+    (Omit<Item, 'unitPrice' | 'lowStockThreshold'> & {
+      unitPrice: number | '';
+      lowStockThreshold: number | '';
+    }) | null
+  >(null);
 
   // Image Lightbox Preview & Printable Catalog Sheet Modal
   const [previewImageItem, setPreviewImageItem] = useState<Item | null>(null);
@@ -257,7 +262,11 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
     e.preventDefault();
     if (!editingItem) return;
 
-    updateItem(editingItem.id, editingItem);
+    updateItem(editingItem.id, {
+      ...editingItem,
+      unitPrice: Math.max(0, Number(editingItem.unitPrice || 0)),
+      lowStockThreshold: Math.max(1, Number(editingItem.lowStockThreshold || 1)),
+    });
     showToast(`Item "${editingItem.itemCode}" updated successfully.`);
     setEditingItem(null);
   };
@@ -1473,8 +1482,14 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                       type="number"
                       min="0"
                       step="0.01"
+                      placeholder="0.00"
                       value={editingItem.unitPrice}
-                      onChange={(e) => setEditingItem({ ...editingItem, unitPrice: Number(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem,
+                          unitPrice: e.target.value === '' ? '' : Number(e.target.value),
+                        })
+                      }
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                     />
                   </div>
@@ -1484,8 +1499,14 @@ export const ItemsManagementView: React.FC<ItemsManagementViewProps> = ({ initia
                     <input
                       type="number"
                       min="1"
+                      placeholder="1"
                       value={editingItem.lowStockThreshold}
-                      onChange={(e) => setEditingItem({ ...editingItem, lowStockThreshold: Number(e.target.value) || 1 })}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem,
+                          lowStockThreshold: e.target.value === '' ? '' : Number(e.target.value),
+                        })
+                      }
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                     />
                   </div>

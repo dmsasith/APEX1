@@ -163,7 +163,7 @@ export const SaasMasterAdminView: React.FC = () => {
   const [bankQrImage, setBankQrImage] = useState(
     config.bankQrImage || masterBankConfig?.bankQrImage || ''
   );
-  const [usdToLkrRate, setUsdToLkrRate] = useState<number>(
+  const [usdToLkrRate, setUsdToLkrRate] = useState<number | ''>(
     config.usdToLkrRate || masterBankConfig?.usdToLkrRate || 300
   );
   const [liveFxRates, setLiveFxRates] = useState<FxRatesMap>(
@@ -374,7 +374,7 @@ export const SaasMasterAdminView: React.FC = () => {
     try {
       const snap = await fetchLiveMultiCurrencyRates({
         forceRefresh: true,
-        fallbackLkrRate: usdToLkrRate,
+        fallbackLkrRate: Number(usdToLkrRate || 300),
       });
       setLiveFxRates(snap.rates);
       setUsdToLkrRate(snap.rates.LKR);
@@ -706,9 +706,9 @@ export const SaasMasterAdminView: React.FC = () => {
                   <strong className="text-slate-200 font-mono">${draftPricingMetrics.fullYearAtMonthlyRate.toFixed(2)}/yr</strong>
                 </div>
                 <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                  <span>LKR Equivalent (@ Rs.{usdToLkrRate.toFixed(2)}):</span>
+                  <span>LKR Equivalent (@ Rs.{Number(usdToLkrRate || 332.64).toFixed(2)}):</span>
                   <strong className="text-emerald-300 font-mono">
-                    Rs. {Math.round(draftPricingMetrics.monthlyPrice * (usdToLkrRate || 332.64)).toLocaleString()}/mo
+                    Rs. {Math.round(draftPricingMetrics.monthlyPrice * (Number(usdToLkrRate) || 332.64)).toLocaleString()}/mo
                   </strong>
                 </div>
               </div>
@@ -744,9 +744,9 @@ export const SaasMasterAdminView: React.FC = () => {
                   </strong>
                 </div>
                 <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                  <span>LKR Equivalent (@ Rs.{usdToLkrRate.toFixed(2)}):</span>
+                  <span>LKR Equivalent (@ Rs.{Number(usdToLkrRate || 332.64).toFixed(2)}):</span>
                   <strong className="text-amber-300 font-mono">
-                    Rs. {Math.round(draftPricingMetrics.annualPrice * (usdToLkrRate || 332.64)).toLocaleString()}/yr
+                    Rs. {Math.round(draftPricingMetrics.annualPrice * (Number(usdToLkrRate) || 332.64)).toLocaleString()}/yr
                   </strong>
                 </div>
               </div>
@@ -1821,16 +1821,18 @@ export const SaasMasterAdminView: React.FC = () => {
                     required
                     placeholder="332.64"
                     value={usdToLkrRate}
-                    onChange={(e) => setUsdToLkrRate(parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setUsdToLkrRate(e.target.value === '' ? '' : Number(e.target.value))
+                    }
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Live market rate: <strong className="text-slate-800">Rs. {usdToLkrRate.toFixed(2)}</strong>. Pro Monthly (${pricingMetrics.monthlyPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.monthlyPrice * (usdToLkrRate || 300)).toLocaleString()}</strong> | Pro Annual (${pricingMetrics.annualPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.annualPrice * (usdToLkrRate || 300)).toLocaleString()}</strong>
+                  Live market rate: <strong className="text-slate-800">Rs. {Number(usdToLkrRate || 0).toFixed(2)}</strong>. Pro Monthly (${pricingMetrics.monthlyPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.monthlyPrice * (Number(usdToLkrRate) || 300)).toLocaleString()}</strong> | Pro Annual (${pricingMetrics.annualPriceFormatted}) ≈ <strong>Rs. {Math.round(pricingMetrics.annualPrice * (Number(usdToLkrRate) || 300)).toLocaleString()}</strong>
                 </p>
                 <div className="mt-2 grid grid-cols-3 gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-2">
                   {SUPPORTED_SUBSCRIPTION_CURRENCIES.map((cur) => {
-                    const effectiveRates: FxRatesMap = { ...liveFxRates, LKR: usdToLkrRate || liveFxRates.LKR };
+                    const effectiveRates: FxRatesMap = { ...liveFxRates, LKR: Number(usdToLkrRate) || liveFxRates.LKR };
                     const annualAmt = convertUsdToCurrency(pricingMetrics.annualPrice, cur.code, effectiveRates);
                     return (
                       <div key={cur.code} className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-mono tabular-nums">

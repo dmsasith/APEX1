@@ -117,7 +117,7 @@ export const IssueToTeamsView: React.FC = () => {
   // Search & Add items with the "+" Plus Button requirement
   const [searchItemQuery, setSearchItemQuery] = useState('');
   const [dispatchItemsList, setDispatchItemsList] = useState<
-    Array<{ itemId: string; quantity: number }>
+    Array<{ itemId: string; quantity: number | '' }>
   >([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -156,7 +156,7 @@ export const IssueToTeamsView: React.FC = () => {
     const existing = dispatchItemsList.find((r) => r.itemId === item.id);
     if (existing) {
       if (fromBarcodeScan) {
-        const nextQty = Math.min(existing.quantity + 1, siteStock.availableBalance);
+        const nextQty = Math.min(Number(existing.quantity || 0) + 1, siteStock.availableBalance);
         setDispatchItemsList((prev) =>
           prev.map((r) => (r.itemId === item.id ? { ...r, quantity: nextQty } : r))
         );
@@ -201,7 +201,7 @@ export const IssueToTeamsView: React.FC = () => {
     setDispatchItemsList((prev) => prev.filter((r) => r.itemId !== itemId));
   };
 
-  const handleQuantityChange = (itemId: string, qty: number) => {
+  const handleQuantityChange = (itemId: string, qty: number | '') => {
     setDispatchItemsList((prev) =>
       prev.map((r) => (r.itemId === itemId ? { ...r, quantity: qty } : r))
     );
@@ -229,14 +229,15 @@ export const IssueToTeamsView: React.FC = () => {
     for (const r of dispatchItemsList) {
       const itm = items.find((i) => i.id === r.itemId);
       const stock = getSiteItemStock(selectedSiteId, r.itemId);
+      const qtyNum = Number(r.quantity || 0);
 
-      if (!r.quantity || r.quantity <= 0) {
+      if (!qtyNum || qtyNum <= 0) {
         setErrorMessage(`Please enter a valid quantity for item ${itm?.itemCode}.`);
         return;
       }
-      if (r.quantity > stock.availableBalance) {
+      if (qtyNum > stock.availableBalance) {
         setErrorMessage(
-          `Insufficient stock for ${itm?.itemCode}. Available: ${stock.availableBalance} ${itm?.unit}, requested: ${r.quantity}.`
+          `Insufficient stock for ${itm?.itemCode}. Available: ${stock.availableBalance} ${itm?.unit}, requested: ${qtyNum}.`
         );
         return;
       }
@@ -247,7 +248,10 @@ export const IssueToTeamsView: React.FC = () => {
       siteId: selectedSiteId,
       teamId: selectedTeamId,
       workOrderRef: workOrderRef.trim() || 'WO-GENERAL',
-      items: dispatchItemsList,
+      items: dispatchItemsList.map((r) => ({
+        itemId: r.itemId,
+        quantity: Number(r.quantity),
+      })),
       notes: notes.trim(),
     });
 
@@ -624,7 +628,7 @@ export const IssueToTeamsView: React.FC = () => {
                     {dispatchItemsList.map((row) => {
                       const itm = items.find((i) => i.id === row.itemId);
                       const stock = getSiteItemStock(selectedSiteId, row.itemId);
-                      const isExceeding = row.quantity > stock.availableBalance;
+                      const isExceeding = Number(row.quantity || 0) > stock.availableBalance;
 
                       return (
                         <tr key={row.itemId} className="hover:bg-slate-50">
@@ -654,11 +658,17 @@ export const IssueToTeamsView: React.FC = () => {
                             <div className="flex items-center justify-end gap-1">
                               <input
                                 type="number"
-                                min="1"
+                                min="0.01"
                                 max={stock.availableBalance}
                                 step="any"
                                 value={row.quantity}
-                                onChange={(e) => handleQuantityChange(row.itemId, Number(e.target.value))}
+                                onChange={(e) =>
+                                  handleQuantityChange(
+                                    row.itemId,
+                                    e.target.value === '' ? '' : Number(e.target.value)
+                                  )
+                                }
+                                placeholder="0"
                                 className={`w-24 px-2 py-1 border rounded text-xs font-mono font-bold text-right focus:outline-none ${
                                   isExceeding
                                     ? 'border-red-500 bg-red-50 text-red-700'

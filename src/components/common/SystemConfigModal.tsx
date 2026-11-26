@@ -39,13 +39,13 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
 
   const [companyName, setCompanyName] = useState(config.companyName || '');
   const [systemName, setSystemName] = useState(config.systemName || '');
-  const [defaultLowStockThreshold, setDefaultLowStockThreshold] = useState<number>(config.defaultLowStockThreshold || 10);
+  const [defaultLowStockThreshold, setDefaultLowStockThreshold] = useState<number | ''>(config.defaultLowStockThreshold || 10);
   const [currencySymbol, setCurrencySymbol] = useState(config.currencySymbol || 'Rs.');
   const [address, setAddress] = useState(config.address || '');
   const [phone, setPhone] = useState(config.phone || '');
   const [email, setEmail] = useState(config.email || '');
   const [themeId, setThemeId] = useState(config.glassTone || 'sapphire');
-  const [usdToLkrRate, setUsdToLkrRate] = useState<number>(config.usdToLkrRate || 332.64);
+  const [usdToLkrRate, setUsdToLkrRate] = useState<number | ''>(config.usdToLkrRate || 332.64);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   // Barcode & Scanner Settings
@@ -56,7 +56,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
   const [barcodeBeepEnabled, setBarcodeBeepEnabled] = useState<boolean>(config.barcodeBeepEnabled !== false);
   const [barcodeSymbology, setBarcodeSymbology] = useState<'CODE128' | 'CODE39' | 'EAN13'>(config.barcodeSymbology || 'CODE128');
   const [barcodePrefix, setBarcodePrefix] = useState<string>(config.barcodePrefix || 'APX-');
-  const [usbScanMaxLatencyMs, setUsbScanMaxLatencyMs] = useState<number>(config.usbScanMaxLatencyMs || 60);
+  const [usbScanMaxLatencyMs, setUsbScanMaxLatencyMs] = useState<number | ''>(config.usbScanMaxLatencyMs || 60);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [barcodeSyncNotice, setBarcodeSyncNotice] = useState<string | null>(null);
@@ -397,7 +397,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                       min={20}
                       max={200}
                       value={usbScanMaxLatencyMs}
-                      onChange={(e) => setUsbScanMaxLatencyMs(Number(e.target.value))}
+                      onChange={(e) => setUsbScanMaxLatencyMs(e.target.value === '' ? '' : Number(e.target.value))}
                       className="w-full px-2.5 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white text-slate-900"
                     />
                   </div>
@@ -483,7 +483,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     type="number"
                     min={1}
                     value={defaultLowStockThreshold}
-                    onChange={(e) => setDefaultLowStockThreshold(Number(e.target.value))}
+                    onChange={(e) => setDefaultLowStockThreshold(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900"
                   />
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Default minimum quantity for alert</span>
@@ -529,7 +529,7 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                   step="0.01"
                   min={100}
                   value={usdToLkrRate}
-                  onChange={(e) => setUsdToLkrRate(Number(e.target.value))}
+                  onChange={(e) => setUsdToLkrRate(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold font-mono bg-white text-slate-900"
                 />
               </div>

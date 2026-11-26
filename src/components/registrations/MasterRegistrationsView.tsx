@@ -202,7 +202,12 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
 
   // Edit Modals State
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editingItem, setEditingItem] = useState<
+    (Omit<Item, 'unitPrice' | 'lowStockThreshold'> & {
+      unitPrice: number | '';
+      lowStockThreshold: number | '';
+    }) | null
+  >(null);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [editingSiteUserIds, setEditingSiteUserIds] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
@@ -742,7 +747,11 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
   const handleSaveItemEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
-    updateItem(editingItem.id, editingItem);
+    updateItem(editingItem.id, {
+      ...editingItem,
+      unitPrice: Math.max(0, Number(editingItem.unitPrice || 0)),
+      lowStockThreshold: Math.max(1, Number(editingItem.lowStockThreshold || 1)),
+    });
     showToast(`Item ${editingItem.itemCode} updated successfully.`);
     setEditingItem(null);
   };
@@ -4612,9 +4621,16 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit Price ({config.currencySymbol})</label>
                   <input
                     type="number"
+                    min="0"
                     step="0.01"
+                    placeholder="0.00"
                     value={editingItem.unitPrice}
-                    onChange={(e) => setEditingItem({ ...editingItem, unitPrice: Number(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setEditingItem({
+                        ...editingItem,
+                        unitPrice: e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
                     className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>
@@ -4624,8 +4640,14 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
                   <input
                     type="number"
                     min="1"
+                    placeholder="1"
                     value={editingItem.lowStockThreshold}
-                    onChange={(e) => setEditingItem({ ...editingItem, lowStockThreshold: Number(e.target.value) || 1 })}
+                    onChange={(e) =>
+                      setEditingItem({
+                        ...editingItem,
+                        lowStockThreshold: e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
                     className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono bg-slate-50/50 dark:bg-slate-800/50 dark:text-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 focus:outline-none transition-all"
                   />
                 </div>

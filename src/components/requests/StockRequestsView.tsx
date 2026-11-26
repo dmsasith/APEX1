@@ -211,14 +211,14 @@ export const StockRequestsView: React.FC = () => {
 
   // Approval Modal State
   const [reviewingRequest, setReviewingRequest] = useState<StockTransferRequest | null>(null);
-  const [approvalItems, setApprovalItems] = useState<Array<{ itemId: string; approvedQty: number }>>([]);
+  const [approvalItems, setApprovalItems] = useState<Array<{ itemId: string; approvedQty: number | '' }>>([]);
   const [approvalNotes, setApprovalNotes] = useState('');
   const [showRejectInline, setShowRejectInline] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
   // Site Acceptance Modal State (Edit Received Amount or Direct Accept)
   const [acceptingRequest, setAcceptingRequest] = useState<StockTransferRequest | null>(null);
-  const [receivedItems, setReceivedItems] = useState<Array<{ itemId: string; receivedQty: number }>>([]);
+  const [receivedItems, setReceivedItems] = useState<Array<{ itemId: string; receivedQty: number | '' }>>([]);
   const [acceptanceNotes, setAcceptanceNotes] = useState('');
 
   const allowedRequisitionSites = isCentralAdmin
@@ -557,7 +557,11 @@ export const StockRequestsView: React.FC = () => {
 
   const handleConfirmApproval = () => {
     if (!reviewingRequest) return;
-    approveStockRequest(reviewingRequest.id, approvalItems, approvalNotes.trim());
+    const normalizedApproval = approvalItems.map((item) => ({
+      itemId: item.itemId,
+      approvedQty: Math.max(0, Number(item.approvedQty || 0)),
+    }));
+    approveStockRequest(reviewingRequest.id, normalizedApproval, approvalNotes.trim());
     setReviewingRequest(null);
   };
 
@@ -595,7 +599,7 @@ export const StockRequestsView: React.FC = () => {
       prev.map((item) => {
         const avail = getRequestItemAvailableBalance(reviewingRequest, item.itemId);
         const originalReq = reviewingRequest.items.find((r) => r.itemId === item.itemId);
-        const reqQty = originalReq ? originalReq.requestedQty : item.approvedQty;
+        const reqQty = originalReq ? originalReq.requestedQty : Number(item.approvedQty || 0);
         const capped = Math.max(0, Math.min(reqQty, avail));
         return { ...item, approvedQty: capped };
       })
@@ -669,7 +673,15 @@ export const StockRequestsView: React.FC = () => {
 
   const handleConfirmAcceptance = () => {
     if (!acceptingRequest) return;
-    acceptStockRequest(acceptingRequest.id, receivedItems, acceptanceNotes.trim() || 'Received with verification notes.');
+    const normalizedReceived = receivedItems.map((item) => ({
+      itemId: item.itemId,
+      receivedQty: Math.max(0, Number(item.receivedQty || 0)),
+    }));
+    acceptStockRequest(
+      acceptingRequest.id,
+      normalizedReceived,
+      acceptanceNotes.trim() || 'Received with verification notes.'
+    );
     setAcceptingRequest(null);
   };
 
@@ -2562,8 +2574,9 @@ export const StockRequestsView: React.FC = () => {
                       const itm = items.find((i) => i.id === row.itemId);
                       const approvedVal =
                         approvalItems.find((a) => a.itemId === row.itemId)?.approvedQty ?? row.requestedQty;
+                      const approvedNum = Number(approvedVal || 0);
                       const avail = getRequestItemAvailableBalance(reviewingRequest, row.itemId);
-                      const isExceeding = approvedVal > avail;
+                      const isExceeding = approvedNum > avail;
                       const isZeroStock = avail <= 0;
                       const isPartialStock = !isZeroStock && avail < row.requestedQty;
 
@@ -2630,17 +2643,18 @@ export const StockRequestsView: React.FC = () => {
                                   step="any"
                                   value={approvedVal}
                                   onChange={(e) => {
-                                    const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                    const val = e.target.value === '' ? '' : Number(e.target.value);
                                     setApprovalItems((prev) =>
                                       prev.map((item) =>
                                         item.itemId === row.itemId ? { ...item, approvedQty: val } : item
                                       )
                                     );
                                   }}
+                                  placeholder="0"
                                   className={`w-24 px-2 py-1.5 border rounded-lg text-xs font-mono font-bold text-right focus:outline-none transition-all ${
                                     isExceeding
                                       ? 'border-amber-500 bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-500'
-                                      : approvedVal === 0
+                                      : approvedNum === 0
                                       ? 'border-rose-300 bg-rose-50/60 text-rose-800 focus:ring-2 focus:ring-rose-500'
                                       : 'border-slate-300 focus:ring-2 focus:ring-slate-900 bg-white'
                                   }`}
@@ -2849,13 +2863,14 @@ export const StockRequestsView: React.FC = () => {
                             step="any"
                             value={recvVal}
                             onChange={(e) => {
-                              const val = Number(e.target.value);
+                              const val = e.target.value === '' ? '' : Number(e.target.value);
                               setReceivedItems((prev) =>
                                 prev.map((item) =>
                                   item.itemId === row.itemId ? { ...item, receivedQty: val } : item
                                 )
                               );
                             }}
+                            placeholder="0"
                             className="w-24 px-2 py-1 border border-emerald-400 bg-emerald-50/40 rounded text-xs font-mono font-bold text-right focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                             required
                           />

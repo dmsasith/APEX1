@@ -389,13 +389,13 @@ export const SiteInventoriesView: React.FC = () => {
   // Receiving state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [acceptingShipment, setAcceptingShipment] = useState<StockTransferRequest | null>(null);
-  const [receivedItems, setReceivedItems] = useState<Array<{ itemId: string; receivedQty: number }>>([]);
+  const [receivedItems, setReceivedItems] = useState<Array<{ itemId: string; receivedQty: number | '' }>>([]);
   const [receivingNotes, setReceivingNotes] = useState('');
 
   // Regional Branch -> Direct Issue to Sub-Site Modal State
   const [showIssueToSubSiteModal, setShowIssueToSubSiteModal] = useState(false);
   const [subSiteIssueTargetId, setSubSiteIssueTargetId] = useState('');
-  const [subSiteIssueRows, setSubSiteIssueRows] = useState<Array<{ itemId: string; quantity: number }>>([]);
+  const [subSiteIssueRows, setSubSiteIssueRows] = useState<Array<{ itemId: string; quantity: number | '' }>>([]);
   const [subSiteIssuePurpose, setSubSiteIssuePurpose] = useState('');
   const [subSiteIssueAutoAccept, setSubSiteIssueAutoAccept] = useState(true);
   const [subSiteIssueError, setSubSiteIssueError] = useState('');
@@ -417,10 +417,18 @@ export const SiteInventoriesView: React.FC = () => {
     if (!selectedSite) return;
     setSubSiteIssueError('');
     try {
+      const normalizedRows = subSiteIssueRows.map((r) => ({
+        itemId: r.itemId,
+        quantity: Number(r.quantity || 0),
+      }));
+      if (normalizedRows.some((r) => !r.itemId || r.quantity <= 0)) {
+        setSubSiteIssueError('Please enter a valid quantity greater than zero for every item.');
+        return;
+      }
       const req = issueStockToSubSite({
         sourceSiteId: selectedSite.id,
         subSiteId: subSiteIssueTargetId,
-        items: subSiteIssueRows,
+        items: normalizedRows,
         purpose: subSiteIssuePurpose,
         autoAccept: subSiteIssueAutoAccept,
       });
@@ -729,9 +737,13 @@ export const SiteInventoriesView: React.FC = () => {
 
   const handleConfirmEditReceive = () => {
     if (!acceptingShipment) return;
+    const normalizedReceived = receivedItems.map((r) => ({
+      itemId: r.itemId,
+      receivedQty: Math.max(0, Number(r.receivedQty || 0)),
+    }));
     acceptStockRequest(
       acceptingShipment.id,
-      receivedItems,
+      normalizedReceived,
       receivingNotes.trim() || 'Verified and counted shipment at site yard.'
     );
     setToastMessage(`Shipment ${acceptingShipment.requestNoteNumber} received and updated.`);
@@ -2608,13 +2620,14 @@ export const SiteInventoriesView: React.FC = () => {
                             step="any"
                             value={currentRecv}
                             onChange={(e) => {
-                              const val = e.target.value === '' ? 0 : Number(e.target.value);
+                              const val = e.target.value === '' ? '' : Number(e.target.value);
                               setReceivedItems((prev) =>
                                 prev.map((item) =>
                                   item.itemId === row.itemId ? { ...item, receivedQty: val } : item
                                 )
                               );
                             }}
+                            placeholder="0"
                             className="w-24 px-2 py-1.5 border border-emerald-400 bg-emerald-50/40 rounded text-xs font-mono font-bold text-right focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                             required
                           />
@@ -2818,11 +2831,12 @@ export const SiteInventoriesView: React.FC = () => {
                               step="any"
                               value={row.quantity}
                               onChange={(e) => {
-                                const val = Number(e.target.value);
+                                const val = e.target.value === '' ? '' : Number(e.target.value);
                                 setSubSiteIssueRows((prev) =>
                                   prev.map((r, i) => (i === idx ? { ...r, quantity: val } : r))
                                 );
                               }}
+                              placeholder="0"
                               className="w-24 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold text-right bg-white focus:ring-2 focus:ring-sky-600 focus:outline-none"
                               required
                             />

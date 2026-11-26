@@ -144,7 +144,7 @@ export const ProcurementView: React.FC = () => {
   const [grnNotes, setGrnNotes] = useState('');
   const [grnReceivedBy, setGrnReceivedBy] = useState('');
   const [grnReceiptDate, setGrnReceiptDate] = useState(() => getCountryTodayIsoDate());
-  const [grnItemInputs, setGrnItemInputs] = useState<Record<string, number>>({});
+  const [grnItemInputs, setGrnItemInputs] = useState<Record<string, number | ''>>({});
   const [grnError, setGrnError] = useState('');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -280,10 +280,12 @@ export const ProcurementView: React.FC = () => {
   );
   const [paymentTerms, setPaymentTerms] = useState('Net 30');
   const [orderNotes, setOrderNotes] = useState('');
-  const [taxPercent, setTaxPercent] = useState<number>(0);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [taxPercent, setTaxPercent] = useState<number | ''>(0);
+  const [discountAmount, setDiscountAmount] = useState<number | ''>(0);
   const [poReservedProjectId, setPoReservedProjectId] = useState<string>('none');
-  const [orderItems, setOrderItems] = useState<PurchaseOrderItem[]>([]);
+  const [orderItems, setOrderItems] = useState<
+    Array<Omit<PurchaseOrderItem, 'quantity' | 'unitPrice'> & { quantity: number | ''; unitPrice: number | '' }>
+  >([]);
   const [orderError, setOrderError] = useState('');
 
   const openCreateOrder = () => {
@@ -347,6 +349,7 @@ export const ProcurementView: React.FC = () => {
     setOrderItems((prev) => {
       const updated = [...prev];
       if (catalogItem) {
+        const nextPrice = catalogItem.unitPrice || Number(updated[index].unitPrice || 0);
         updated[index] = {
           ...updated[index],
           itemId: catalogItem.id,
@@ -354,35 +357,35 @@ export const ProcurementView: React.FC = () => {
           itemName: catalogItem.itemName,
           category: catalogItem.category,
           unit: catalogItem.unit,
-          unitPrice: catalogItem.unitPrice || updated[index].unitPrice,
-          lineTotal: (catalogItem.unitPrice || updated[index].unitPrice) * updated[index].quantity,
+          unitPrice: nextPrice,
+          lineTotal: nextPrice * Number(updated[index].quantity || 0),
         };
       }
       return updated;
     });
   };
 
-  const handleItemQuantityChange = (index: number, qty: number) => {
+  const handleItemQuantityChange = (index: number, qty: number | '') => {
     setOrderItems((prev) => {
       const updated = [...prev];
-      const validQty = Math.max(0, qty);
+      const validQty = qty === '' ? '' : Math.max(0, qty);
       updated[index] = {
         ...updated[index],
         quantity: validQty,
-        lineTotal: validQty * updated[index].unitPrice,
+        lineTotal: Number(validQty || 0) * Number(updated[index].unitPrice || 0),
       };
       return updated;
     });
   };
 
-  const handleItemPriceChange = (index: number, price: number) => {
+  const handleItemPriceChange = (index: number, price: number | '') => {
     setOrderItems((prev) => {
       const updated = [...prev];
-      const validPrice = Math.max(0, price);
+      const validPrice = price === '' ? '' : Math.max(0, price);
       updated[index] = {
         ...updated[index],
         unitPrice: validPrice,
-        lineTotal: updated[index].quantity * validPrice,
+        lineTotal: Number(updated[index].quantity || 0) * Number(validPrice || 0),
       };
       return updated;
     });
@@ -424,11 +427,11 @@ export const ProcurementView: React.FC = () => {
   }, [orderItems]);
 
   const calculatedTaxAmount = useMemo(() => {
-    return (calculatedSubtotal * (taxPercent || 0)) / 100;
+    return (calculatedSubtotal * Number(taxPercent || 0)) / 100;
   }, [calculatedSubtotal, taxPercent]);
 
   const calculatedGrandTotal = useMemo(() => {
-    return Math.max(0, calculatedSubtotal + calculatedTaxAmount - (discountAmount || 0));
+    return Math.max(0, calculatedSubtotal + calculatedTaxAmount - Number(discountAmount || 0));
   }, [calculatedSubtotal, calculatedTaxAmount, discountAmount]);
 
   const handleSaveOrder = (status: PurchaseOrderStatus = 'Order Sent') => {
@@ -441,10 +444,17 @@ export const ProcurementView: React.FC = () => {
       setOrderError('Please select a registered supplier.');
       return;
     }
-    if (orderItems.length === 0 || orderItems.some((i) => !i.itemName.trim() || i.quantity <= 0)) {
+    if (orderItems.length === 0 || orderItems.some((i) => !i.itemName.trim() || Number(i.quantity || 0) <= 0)) {
       setOrderError('Please verify line items. All materials must have a name and quantity > 0.');
       return;
     }
+
+    const normalizedOrderItems: PurchaseOrderItem[] = orderItems.map((row) => ({
+      ...row,
+      quantity: Number(row.quantity || 0),
+      unitPrice: Number(row.unitPrice || 0),
+      lineTotal: Number(row.quantity || 0) * Number(row.unitPrice || 0),
+    }));
 
     const selectedProj = activeProjects.find((p) => p.id === poReservedProjectId) || projects.find((p) => p.id === poReservedProjectId);
 
@@ -461,11 +471,11 @@ export const ProcurementView: React.FC = () => {
       deliveryLocation,
       paymentTerms,
       status,
-      items: orderItems,
+      items: normalizedOrderItems,
       subtotal: calculatedSubtotal,
-      taxRatePercent: taxPercent,
+      taxRatePercent: Number(taxPercent || 0),
       taxAmount: calculatedTaxAmount,
-      discountAmount,
+      discountAmount: Number(discountAmount || 0),
       grandTotal: calculatedGrandTotal,
       notes: orderNotes,
       preparedBy: actorDisplayName,
@@ -541,10 +551,10 @@ export const ProcurementView: React.FC = () => {
     setGrnItemInputs(inputs);
   };
 
-  const handleGrnItemInputChange = (itemId: string, val: number) => {
+  const handleGrnItemInputChange = (itemId: string, val: number | '') => {
     setGrnItemInputs((prev) => ({
       ...prev,
-      [itemId]: Math.max(0, val),
+      [itemId]: val === '' ? '' : Math.max(0, val),
     }));
   };
 
@@ -2097,9 +2107,16 @@ Email: ${tenantEmail}`;
                           </label>
                           <input
                             type="number"
-                            min="1"
-                            value={item.quantity || ''}
-                            onChange={(e) => handleItemQuantityChange(idx, parseFloat(e.target.value) || 0)}
+                            min="0.01"
+                            step="any"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              handleItemQuantityChange(
+                                idx,
+                                e.target.value === '' ? '' : Number(e.target.value)
+                              )
+                            }
+                            placeholder="0"
                             className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 text-center"
                           />
                         </div>
@@ -2123,8 +2140,14 @@ Email: ${tenantEmail}`;
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.unitPrice || ''}
-                            onChange={(e) => handleItemPriceChange(idx, parseFloat(e.target.value) || 0)}
+                            value={item.unitPrice}
+                            onChange={(e) =>
+                              handleItemPriceChange(
+                                idx,
+                                e.target.value === '' ? '' : Number(e.target.value)
+                              )
+                            }
+                            placeholder="0.00"
                             className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 text-right"
                           />
                         </div>
@@ -2197,9 +2220,15 @@ Email: ${tenantEmail}`;
                           <td className="py-2.5 px-3 w-32 min-w-[110px]">
                             <input
                               type="number"
-                              min="1"
-                              value={item.quantity || ''}
-                              onChange={(e) => handleItemQuantityChange(idx, parseFloat(e.target.value) || 0)}
+                              min="0.01"
+                              step="any"
+                              value={item.quantity}
+                              onChange={(e) =>
+                                handleItemQuantityChange(
+                                  idx,
+                                  e.target.value === '' ? '' : Number(e.target.value)
+                                )
+                              }
                               className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-emerald-500 rounded-lg text-xs font-bold text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-center"
                               placeholder="0"
                             />
@@ -2222,8 +2251,13 @@ Email: ${tenantEmail}`;
                               type="number"
                               min="0"
                               step="0.01"
-                              value={item.unitPrice || ''}
-                              onChange={(e) => handleItemPriceChange(idx, parseFloat(e.target.value) || 0)}
+                              value={item.unitPrice}
+                              onChange={(e) =>
+                                handleItemPriceChange(
+                                  idx,
+                                  e.target.value === '' ? '' : Number(e.target.value)
+                                )
+                              }
                               className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-emerald-500 rounded-lg text-xs font-mono font-bold text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-right"
                               placeholder="0.00"
                             />
@@ -2282,8 +2316,11 @@ Email: ${tenantEmail}`;
                         type="number"
                         min="0"
                         max="100"
-                        value={taxPercent || ''}
-                        onChange={(e) => setTaxPercent(parseFloat(e.target.value) || 0)}
+                        step="any"
+                        value={taxPercent}
+                        onChange={(e) =>
+                          setTaxPercent(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))
+                        }
                         className="w-14 px-1.5 py-0.5 bg-white border border-slate-200 rounded text-center text-xs font-bold"
                         placeholder="0"
                       />
@@ -2301,8 +2338,13 @@ Email: ${tenantEmail}`;
                       <input
                         type="number"
                         min="0"
-                        value={discountAmount || ''}
-                        onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                        step="any"
+                        value={discountAmount}
+                        onChange={(e) =>
+                          setDiscountAmount(
+                            e.target.value === '' ? '' : Math.max(0, Number(e.target.value))
+                          )
+                        }
                         className="w-24 px-2 py-0.5 bg-white border border-slate-200 rounded text-right text-xs font-mono font-bold"
                         placeholder="0"
                       />
@@ -2804,8 +2846,9 @@ Email: ${tenantEmail}`;
                         const prevRec = it.receivedQuantity || 0;
                         const remaining = Math.max(0, it.quantity - prevRec);
                         const currentInput = grnItemInputs[it.itemId] !== undefined ? grnItemInputs[it.itemId] : remaining;
-                        const isRemainingFulfilled = currentInput >= remaining && remaining > 0;
-                        const isPartial = currentInput > 0 && currentInput < remaining;
+                        const currentInputNum = Number(currentInput || 0);
+                        const isRemainingFulfilled = currentInputNum >= remaining && remaining > 0;
+                        const isPartial = currentInputNum > 0 && currentInputNum < remaining;
 
                         return (
                           <tr key={idx} className={remaining === 0 ? 'bg-slate-50/60 opacity-60' : 'hover:bg-slate-50/50'}>
@@ -2846,13 +2889,14 @@ Email: ${tenantEmail}`;
                                     min="0"
                                     max={remaining}
                                     step="any"
-                                    value={currentInput === 0 ? 0 : (currentInput || '')}
+                                    value={currentInput}
                                     onChange={(e) =>
                                       handleGrnItemInputChange(
                                         it.itemId,
-                                        parseFloat(e.target.value) || 0
+                                        e.target.value === '' ? '' : Number(e.target.value)
                                       )
                                     }
+                                    placeholder="0"
                                     className={`w-24 px-2 py-1.5 rounded-lg text-right text-xs font-bold font-mono border focus:outline-none focus:ring-2 ${
                                       isRemainingFulfilled
                                         ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 focus:ring-emerald-500/20'

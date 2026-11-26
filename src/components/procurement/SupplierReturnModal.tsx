@@ -94,8 +94,8 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
       itemCode: string;
       itemName: string;
       unit: string;
-      quantity: number;
-      unitCost: number;
+      quantity: number | '';
+      unitCost: number | '';
       reasonCategory: ReturnReasonCategory;
       defectRemarks: string;
       batchNo: string;
@@ -125,7 +125,7 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
   const [transporterName, setTransporterName] = useState(editingReturn?.transporterName || '');
   const [vehicleNo, setVehicleNo] = useState(editingReturn?.vehicleNo || '');
   const [driverContact, setDriverContact] = useState(editingReturn?.driverContact || '');
-  const [taxPercent, setTaxPercent] = useState<number>(0);
+  const [taxPercent, setTaxPercent] = useState<number | ''>(0);
   const [notes, setNotes] = useState(editingReturn?.notes || '');
   const [dispatchNow, setDispatchNow] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -183,8 +183,12 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
   };
 
   // Calculations
-  const subtotal = returnItems.reduce((sum, it) => sum + it.quantity * it.unitCost, 0);
-  const taxAmount = taxPercent > 0 ? (subtotal * taxPercent) / 100 : 0;
+  const subtotal = returnItems.reduce(
+    (sum, it) => sum + Number(it.quantity || 0) * Number(it.unitCost || 0),
+    0
+  );
+  const taxRateNum = Number(taxPercent || 0);
+  const taxAmount = taxRateNum > 0 ? (subtotal * taxRateNum) / 100 : 0;
   const grandTotal = subtotal + taxAmount;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -203,14 +207,15 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
 
     // Validate quantities and stock availability
     for (const it of returnItems) {
-      if (it.quantity <= 0) {
+      const qtyNum = Number(it.quantity || 0);
+      if (qtyNum <= 0) {
         setErrorMessage(`Quantity for item "${it.itemName}" must be greater than zero.`);
         return;
       }
       const available = getAvailableStockForItem(it.itemId);
-      if (it.quantity > available) {
+      if (qtyNum > available) {
         setErrorMessage(
-          `Cannot return ${it.quantity} ${it.unit} of "${it.itemName}". Available stock in ${
+          `Cannot return ${qtyNum} ${it.unit} of "${it.itemName}". Available stock in ${
             locationType === 'Main Stock' ? 'Main Warehouse' : 'Selected Site'
           } is only ${available} ${it.unit}.`
         );
@@ -514,8 +519,8 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
                     <tbody className="divide-y divide-slate-100">
                       {returnItems.map((row, idx) => {
                         const available = getAvailableStockForItem(row.itemId);
-                        const isOverStock = row.quantity > available;
-                        const lineTotal = row.quantity * row.unitCost;
+                        const isOverStock = Number(row.quantity || 0) > available;
+                        const lineTotal = Number(row.quantity || 0) * Number(row.unitCost || 0);
 
                         const catItem = items.find((c) => c.id === row.itemId);
 
@@ -552,12 +557,16 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
                             <td className="py-2.5 px-3">
                               <input
                                 type="number"
-                                min={1}
+                                min={0.01}
                                 max={available}
+                                step="any"
                                 value={row.quantity}
                                 onChange={(e) =>
-                                  handleUpdateItem(idx, { quantity: Math.max(1, Number(e.target.value) || 1) })
+                                  handleUpdateItem(idx, {
+                                    quantity: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)),
+                                  })
                                 }
+                                placeholder="0"
                                 className={`w-full px-2 py-1.5 border rounded text-xs font-bold ${
                                   isOverStock
                                     ? 'border-rose-500 bg-rose-50 text-rose-900'
@@ -575,8 +584,11 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
                                 step="any"
                                 value={row.unitCost}
                                 onChange={(e) =>
-                                  handleUpdateItem(idx, { unitCost: Math.max(0, Number(e.target.value) || 0) })
+                                  handleUpdateItem(idx, {
+                                    unitCost: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)),
+                                  })
                                 }
+                                placeholder="0.00"
                                 className="w-full px-2 py-1.5 border border-slate-300 rounded text-xs font-mono text-right focus:border-emerald-500"
                               />
                             </td>
@@ -641,8 +653,12 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
                       type="number"
                       min={0}
                       max={100}
+                      step="any"
                       value={taxPercent}
-                      onChange={(e) => setTaxPercent(Math.max(0, Number(e.target.value) || 0))}
+                      onChange={(e) =>
+                        setTaxPercent(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))
+                      }
+                      placeholder="0"
                       className="w-16 px-2 py-1 border border-slate-300 rounded text-center text-xs font-mono"
                     />
                   </div>

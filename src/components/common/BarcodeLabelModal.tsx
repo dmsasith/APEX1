@@ -75,7 +75,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
   title = 'Print & Export Item Barcode Labels',
 }) => {
   const { config } = useStock();
-  const [copiesPerItem, setCopiesPerItem] = useState<number>(1);
+  const [copiesPerItem, setCopiesPerItem] = useState<number | ''>(1);
   const [labelSize, setLabelSize] = useState<'compact' | 'standard' | 'large'>('standard');
   const [showPriceOnLabel, setShowPriceOnLabel] = useState<boolean>(false);
   const [showCompanyOnLabel, setShowCompanyOnLabel] = useState<boolean>(true);
@@ -90,7 +90,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
 
   const expandedLabels: Item[] = [];
   items.forEach((item) => {
-    const count = Math.max(1, Math.min(50, copiesPerItem));
+    const count = Math.max(1, Math.min(50, Number(copiesPerItem) || 1));
     for (let c = 0; c < count; c++) {
       expandedLabels.push(item);
     }
@@ -152,7 +152,12 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
                 min={1}
                 max={30}
                 value={copiesPerItem}
-                onChange={(e) => setCopiesPerItem(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+                onChange={(e) =>
+                  setCopiesPerItem(
+                    e.target.value === '' ? '' : Math.min(30, Math.max(0, Number(e.target.value)))
+                  )
+                }
+                placeholder="1"
                 className="w-16 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white text-center"
               />
             </div>

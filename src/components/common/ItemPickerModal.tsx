@@ -74,9 +74,9 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
   // Selected Items Map: itemId -> { item, quantity, unitCost }
-  const [selectionMap, setSelectionMap] = useState<Map<string, { item: Item; quantity: number; unitCost: number }>>(
-    new Map()
-  );
+  const [selectionMap, setSelectionMap] = useState<
+    Map<string, { item: Item; quantity: number | ''; unitCost: number }>
+  >(new Map());
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanToast, setScanToast] = useState<string | null>(null);
 
@@ -101,7 +101,7 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
       if (existing) {
         next.set(matched.id, {
           ...existing,
-          quantity: existing.quantity + 1,
+          quantity: Number(existing.quantity || 0) + 1,
         });
       } else {
         next.set(matched.id, {
@@ -151,7 +151,7 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
   // Initialize or reset selections when modal opens
   useEffect(() => {
     if (isOpen) {
-      const initialMap = new Map<string, { item: Item; quantity: number; unitCost: number }>();
+      const initialMap = new Map<string, { item: Item; quantity: number | ''; unitCost: number }>();
       initialSelected.forEach((entry) => {
         const found = activeItems.find((i) => i.id === entry.itemId);
         if (found) {
@@ -256,19 +256,19 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
   };
 
   // Update Item Quantity in Selection
-  const updateQuantity = (itemId: string, qty: number) => {
+  const updateQuantity = (itemId: string, qty: number | '', removeOnZero = false) => {
     setSelectionMap((prev) => {
       const next = new Map(prev);
       const existing = next.get(itemId);
       if (existing) {
-        if (qty <= 0) {
+        if (removeOnZero && Number(qty || 0) <= 0) {
           next.delete(itemId);
         } else {
           next.set(itemId, { ...existing, quantity: qty });
         }
       } else {
         const found = activeItems.find((i) => i.id === itemId);
-        if (found && qty > 0) {
+        if (found && Number(qty || 0) > 0) {
           next.set(itemId, {
             item: found,
             quantity: qty,
@@ -305,7 +305,13 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
 
   // Confirm and Pass Selected Data
   const handleConfirm = () => {
-    const list: SelectedItemEntry[] = Array.from(selectionMap.values()).filter((e) => e.quantity > 0);
+    const list: SelectedItemEntry[] = Array.from(selectionMap.values())
+      .filter((e) => Number(e.quantity || 0) > 0)
+      .map((e) => ({
+        item: e.item,
+        quantity: Number(e.quantity),
+        unitCost: e.unitCost,
+      }));
     onConfirm(list);
     onClose();
   };
@@ -346,9 +352,12 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
   if (!isOpen) return null;
 
   const totalSelectedCount = selectionMap.size;
-  const totalSelectedUnits = Array.from(selectionMap.values()).reduce((sum, e) => sum + (e.quantity || 0), 0);
+  const totalSelectedUnits = Array.from(selectionMap.values()).reduce(
+    (sum, e) => sum + Number(e.quantity || 0),
+    0
+  );
   const totalEstimatedCost = Array.from(selectionMap.values()).reduce(
-    (sum, e) => sum + (e.quantity || 0) * (e.unitCost || 0),
+    (sum, e) => sum + Number(e.quantity || 0) * (e.unitCost || 0),
     0
   );
 
@@ -822,7 +831,9 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => updateQuantity(item.id, (selectedEntry?.quantity || 1) - 1)}
+                                  onClick={() =>
+                                    updateQuantity(item.id, (Number(selectedEntry?.quantity) || 1) - 1, true)
+                                  }
                                   className="w-7 h-7 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 flex items-center justify-center transition-colors"
                                   title="Decrease quantity by 1"
                                 >
@@ -830,15 +841,23 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
                                 </button>
                                 <input
                                   type="number"
-                                  min="1"
+                                  min="0"
                                   step="any"
                                   value={selectedEntry?.quantity ?? defaultQuantity}
-                                  onChange={(e) => updateQuantity(item.id, parseFloat(e.target.value) || 0)}
+                                  onChange={(e) =>
+                                    updateQuantity(
+                                      item.id,
+                                      e.target.value === '' ? '' : Number(e.target.value)
+                                    )
+                                  }
+                                  placeholder="0"
                                   className="w-16 px-1.5 py-1 text-center font-mono font-bold text-xs border border-emerald-500 rounded-lg bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => updateQuantity(item.id, (selectedEntry?.quantity || 0) + 1)}
+                                  onClick={() =>
+                                    updateQuantity(item.id, Number(selectedEntry?.quantity || 0) + 1)
+                                  }
                                   className="w-7 h-7 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 flex items-center justify-center transition-colors"
                                   title="Increase quantity by 1"
                                 >
@@ -850,7 +869,9 @@ export const ItemPickerModal: React.FC<ItemPickerModalProps> = ({
                                     <button
                                       key={preset}
                                       type="button"
-                                      onClick={() => updateQuantity(item.id, (selectedEntry?.quantity || 0) + preset)}
+                                      onClick={() =>
+                                        updateQuantity(item.id, Number(selectedEntry?.quantity || 0) + preset)
+                                      }
                                       className="px-1.5 py-1 text-[10px] font-mono bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors"
                                       title={`Add +${preset}`}
                                     >
