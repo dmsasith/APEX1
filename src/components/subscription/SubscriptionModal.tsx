@@ -126,21 +126,31 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     let mounted = true;
+
+    const cached = readCachedFxSnapshot(fallbackLkr);
+    setFxRates(cached.rates);
+    setIsLiveRate(cached.isLive);
+
+    setIsRefreshingFx(true);
+    fetchLiveMultiCurrencyRates({ forceRefresh: true, fallbackLkrRate: fallbackLkr })
+      .then((snapshot) => {
+        if (!mounted) return;
+        setFxRates(snapshot.rates);
+        setIsLiveRate(snapshot.isLive);
+      })
+      .finally(() => {
+        if (mounted) setIsRefreshingFx(false);
+      });
+
     fetchPaymentsLkGatewayStatus().then((st) => {
       if (!mounted) return;
       setGatewayStatus(st);
-      if (st.fxRates) {
+      if (st.isLiveFxRate && st.fxRates) {
         setFxRates((prev) => mergeFxRates({ ...prev, ...st.fxRates }, st.usdToLkrRate || fallbackLkr));
-        if (st.isLiveFxRate) {
-          setIsLiveRate(true);
-        }
+        setIsLiveRate(true);
       }
     });
-    fetchLiveMultiCurrencyRates({ fallbackLkrRate: fallbackLkr }).then((snapshot) => {
-      if (!mounted) return;
-      setFxRates(snapshot.rates);
-      if (snapshot.isLive) setIsLiveRate(true);
-    });
+
     return () => {
       mounted = false;
     };
@@ -603,7 +613,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               isLive={isLiveRate}
               isRefreshing={isRefreshingFx}
               onRefreshRates={() => handleRefreshLiveRates(true)}
-              usdAmount={activeUsdTotal}
+              usdAmount={payableUsdTotal}
               title="Payment Currency & Real-Time Exchange Rates"
             />
 

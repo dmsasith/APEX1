@@ -228,6 +228,25 @@ export function readCachedFxSnapshot(fallbackLkrRate?: number): LiveFxSnapshot {
   };
 }
 
+let inFlightFxPromise: Promise<LiveFxSnapshot> | null = null;
+
+function persistLiveFxSnapshot(snapshot: LiveFxSnapshot) {
+  try {
+    localStorage.setItem(
+      FX_STORAGE_KEY,
+      JSON.stringify({ ...snapshot, cachedAtMs: Date.now() })
+    );
+    const masterRaw = localStorage.getItem('apex_master_bank_config_v1');
+    const existingMaster = masterRaw ? JSON.parse(masterRaw) : {};
+    localStorage.setItem(
+      'apex_master_bank_config_v1',
+      JSON.stringify({ ...existingMaster, usdToLkrRate: snapshot.rates.LKR })
+    );
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export async function fetchLiveMultiCurrencyRates(options?: {
   forceRefresh?: boolean;
   fallbackLkrRate?: number;
@@ -256,51 +275,96 @@ export async function fetchLiveMultiCurrencyRates(options?: {
     }
   }
 
-  try {
-    const res = await fetch('https://open.er-api.com/v6/latest/USD', {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.result === 'success' && data?.rates) {
-        const rates = mergeFxRates(
-          {
-            USD: 1,
-            LKR: Number(data.rates.LKR),
-            EUR: Number(data.rates.EUR),
-            GBP: Number(data.rates.GBP),
-            AUD: Number(data.rates.AUD),
-            SGD: Number(data.rates.SGD),
-          },
-          options?.fallbackLkrRate
-        );
-        const snapshot: LiveFxSnapshot = {
-          rates,
-          isLive: true,
-          fetchedAt: data.time_last_update_utc || new Date().toISOString(),
-          source: 'open.er-api.com',
-        };
-        try {
-          localStorage.setItem(
-            FX_STORAGE_KEY,
-            JSON.stringify({ ...snapshot, cachedAtMs: Date.now() })
-          );
-          const masterRaw = localStorage.getItem('apex_master_bank_config_v1');
-          const existingMaster = masterRaw ? JSON.parse(masterRaw) : {};
-          localStorage.setItem(
-            'apex_master_bank_config_v1',
-            JSON.stringify({ ...existingMaster, usdToLkrRate: rates.LKR })
-          );
-        } catch {
-          // ignore storage errors
-        }
-        return snapshot;
-      }
-    }
-  } catch {
-    // fallback below
+  if (inFlightFxPromise) {
+    return inFlightFxPromise;
   }
 
-  return readCachedFxSnapshot(options?.fallbackLkrRate);
+  inFlightFxPromise = (async () => {
+    const parseRatesObject = (
+      rawRates: Record<string, unknown> | undefined,
+      source: string,
+      fetchedAt?: string
+    ): LiveFxSnapshot | null => {
+      const lkr = Number(rawRates?.LKR);
+      if (!Number.isFinite(lkr) || lkr <= 50 || lkr >= 2000) return null;
+      const rates = mergeFxRates(
+        {
+          USD: 1,
+          LKR: lkr,
+          EUR: Number(rawRates?.EUR),
+          GBP: Number(rawRates?.GBP),
+          AUD: Number(rawRates?.AUD),
+          SGD: Number(rawRates?.SGD),
+        },
+        options?.fallbackLkrRate
+      );
+      const snapshot: LiveFxSnapshot = {
+        rates,
+        isLive: true,
+        fetchedAt: fetchedAt || new Date().toISOString(),
+        source,
+      };
+      persistLiveFxSnapshot(snapshot);
+      return snapshot;
+    };
+
+    // 1. Primary live FX feed
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD', {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.result === 'success' && data?.rates) {
+          const snap = parseRatesObject(data.rates, 'open.er-api.com', data.time_last_update_utc);
+          if (snap) return snap;
+        }
+      }
+    } catch {
+      // try secondary feed
+    }
+
+    // 2. Secondary live FX feed
+    try {
+      const res2 = await fetch('https://api.exchangerate-api.com/v4/latest/USD', {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (data2?.rates) {
+          const snap = parseRatesObject(data2.rates, 'exchangerate-api.com', data2.date);
+          if (snap) return snap;
+        }
+      }
+    } catch {
+      // try backend endpoint
+    }
+
+    // 3. Backend /api/payments/status live FX feed
+    try {
+      const res3 = await fetch('/api/payments/status', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(4500),
+      });
+      const ct = res3.headers.get('content-type') || '';
+      if (res3.ok && ct.includes('application/json')) {
+        const data3 = await res3.json();
+        if (data3?.isLiveFxRate && data3?.fxRates) {
+          const snap = parseRatesObject(data3.fxRates, 'server-fx', data3.fxUpdatedAt);
+          if (snap) return snap;
+        }
+      }
+    } catch {
+      // fallback below
+    }
+
+    return readCachedFxSnapshot(options?.fallbackLkrRate);
+  })().finally(() => {
+    inFlightFxPromise = null;
+  });
+
+  return inFlightFxPromise;
 }

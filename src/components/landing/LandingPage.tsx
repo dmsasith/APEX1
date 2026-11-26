@@ -73,7 +73,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
   useEffect(() => {
     let mounted = true;
-    fetchLiveMultiCurrencyRates().then((snap) => {
+    fetchLiveMultiCurrencyRates({ forceRefresh: true }).then((snap) => {
       if (!mounted) return;
       setFxRates(snap.rates);
       setIsLiveFx(snap.isLive);

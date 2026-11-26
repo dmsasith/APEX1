@@ -97,21 +97,26 @@ export const TrialExpiredOverlay: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
+    setIsRefreshingFx(true);
+    fetchLiveMultiCurrencyRates({ forceRefresh: true, fallbackLkrRate: baseStoredRate })
+      .then((snap) => {
+        if (!mounted) return;
+        setFxRates(snap.rates);
+        setIsLiveRate(snap.isLive);
+      })
+      .finally(() => {
+        if (mounted) setIsRefreshingFx(false);
+      });
+
     fetchPaymentsLkGatewayStatus().then((st) => {
       if (!mounted) return;
       setGatewayStatus(st);
-      if (st.fxRates) {
+      if (st.isLiveFxRate && st.fxRates) {
         setFxRates((prev) => mergeFxRates({ ...prev, ...st.fxRates }, st.usdToLkrRate || baseStoredRate));
-        if (st.isLiveFxRate) {
-          setIsLiveRate(true);
-        }
+        setIsLiveRate(true);
       }
     });
-    fetchLiveMultiCurrencyRates({ fallbackLkrRate: baseStoredRate }).then((snap) => {
-      if (!mounted) return;
-      setFxRates(snap.rates);
-      if (snap.isLive) setIsLiveRate(true);
-    });
+
     return () => {
       mounted = false;
     };
