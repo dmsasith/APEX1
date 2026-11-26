@@ -8,6 +8,7 @@ interface SearchableCountrySelectProps {
   onChange: (country: WorldCountryEntry) => void;
   variant?: 'dark' | 'light';
   placeholder?: string;
+  buttonClassName?: string;
 }
 
 export const SearchableCountrySelect: React.FC<SearchableCountrySelectProps> = ({
@@ -15,6 +16,7 @@ export const SearchableCountrySelect: React.FC<SearchableCountrySelectProps> = (
   onChange,
   variant = 'dark',
   placeholder = 'Select Operating Country...',
+  buttonClassName = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -130,7 +132,7 @@ export const SearchableCountrySelect: React.FC<SearchableCountrySelectProps> = (
           isDark
             ? 'bg-slate-950/80 border border-slate-800 text-white hover:border-slate-700 focus:outline-none focus:border-emerald-500'
             : 'bg-white border border-slate-300 text-slate-900 font-medium hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900'
-        }`}
+        } ${buttonClassName}`}
       >
         <Globe
           className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${

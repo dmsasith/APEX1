@@ -154,7 +154,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
   return (
     <>
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Top Header */}
         <div className="relative px-6 pt-6 pb-5 border-b border-slate-800/80 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900">
           <button
@@ -164,7 +164,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2 pr-8">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
               <ShieldCheck className="w-3 h-3" />
               <span>{pricingMetrics.trialDays}-Day Free Trial · $0 Today</span>
@@ -200,30 +200,32 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Company Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Company / Organization Name *
-                </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
+              <div className="flex flex-col">
+                <div className="min-h-[22px] flex items-center mb-1.5">
+                  <label className="text-xs font-bold text-slate-300 leading-none">
+                    Company / Organization Name *
+                  </label>
+                </div>
                 <div className="relative">
-                  <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     required
                     placeholder="e.g. Apex Telecommunications"
                     value={formData.companyName}
                     onChange={(e) => handleCompanyNameChange(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full h-10 pl-9 pr-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <label className="block text-xs font-bold text-slate-300">
-                    Workspace Slug / Identifier
+              <div className="flex flex-col">
+                <div className="min-h-[22px] flex items-center justify-between gap-2 mb-1.5">
+                  <label className="text-xs font-bold text-slate-300 leading-none whitespace-nowrap">
+                    Workspace Slug
                   </label>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 whitespace-nowrap shrink-0">
                     <Lock className="w-3 h-3 text-slate-500" />
                     <span>Auto-generated · View-Only</span>
                   </span>
@@ -239,7 +241,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                     aria-readonly="true"
                     placeholder="auto-generated-from-company"
                     value={formData.slug}
-                    className="w-full pl-11 pr-8 py-2 bg-slate-950/45 border border-slate-800/90 rounded-xl text-xs font-mono text-emerald-400/90 placeholder:text-slate-600 cursor-not-allowed select-all focus:outline-none"
+                    className="w-full h-10 pl-11 pr-8 bg-slate-950/45 border border-slate-800/90 rounded-xl text-xs font-mono text-emerald-400/90 placeholder:text-slate-600 cursor-not-allowed select-all focus:outline-none"
                   />
                   <Lock className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -247,18 +249,20 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
             </div>
 
             {/* Administrator Account */}
-            <div className="border-t border-slate-800/80 pt-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-2 block">
+            <div className="border-t border-slate-800/80 pt-3.5 space-y-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block">
                 Super Admin Account
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Super Admin Full Name <span className="text-emerald-400">(Mandatory) *</span>
-                  </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
+                <div className="flex flex-col">
+                  <div className="min-h-[22px] flex items-center mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 leading-none">
+                      Super Admin Full Name <span className="text-emerald-400">(Mandatory) *</span>
+                    </label>
+                  </div>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
                       required
@@ -267,20 +271,25 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, adminFullName: e.target.value }))
                       }
-                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-10 pl-9 pr-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Your First Name is verified on Super Admin login &amp; actions log as <strong className="text-slate-200">{stripSuperAdminSuffix(formData.adminFullName) || 'Your Name'} (as Super Admin)</strong>.
+                  <p className="text-[10px] text-slate-400 mt-1.5 leading-snug">
+                    Your First Name is verified on Super Admin login &amp; actions log as{' '}
+                    <strong className="text-slate-200">
+                      {stripSuperAdminSuffix(formData.adminFullName) || 'Your Name'} (as Super Admin)
+                    </strong>.
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Admin Work Email *
-                  </label>
+                <div className="flex flex-col">
+                  <div className="min-h-[22px] flex items-center mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 leading-none">
+                      Admin Work Email *
+                    </label>
+                  </div>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       required
@@ -289,17 +298,21 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, adminEmail: e.target.value }))
                       }
-                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-10 pl-9 pr-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Admin Password * (Min 6 chars)
-                  </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
+                <div className="flex flex-col">
+                  <div className="min-h-[22px] flex items-center mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 leading-none">
+                      Admin Password * (Min 6 chars)
+                    </label>
+                  </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="password"
                       required
@@ -309,25 +322,26 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, adminPassword: e.target.value }))
                       }
-                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-10 pl-9 pr-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <label className="block text-xs font-bold text-slate-300">
+                <div className="flex flex-col">
+                  <div className="min-h-[22px] flex items-center justify-between gap-2 mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 leading-none whitespace-nowrap">
                       Contact Phone Number
                     </label>
                     <PhoneCountryBadge
                       value={formData.contactPhone}
                       countryOverride={formData.country}
                       currencyOverride={formData.currencySymbol}
+                      className="whitespace-nowrap shrink-0"
                       dark
                     />
                   </div>
                   <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="tel"
                       placeholder={activeCountryRule.localPlaceholder}
@@ -339,7 +353,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                         });
                         setFormData((prev) => ({ ...prev, contactPhone: capped }));
                       }}
-                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-10 pl-9 pr-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
@@ -347,18 +361,21 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
             </div>
 
             {/* Country, Warehouse & Currency Preferences */}
-            <div className="border-t border-slate-800/80 pt-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-2 block">
+            <div className="border-t border-slate-800/80 pt-3.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-2.5 block">
                 Country, Warehouse &amp; Currency
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Operating Country (All Countries)
-                  </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-start">
+                <div className="flex flex-col min-w-0">
+                  <div className="min-h-[20px] flex items-center mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 leading-none whitespace-nowrap">
+                      Operating Country
+                    </label>
+                  </div>
                   <SearchableCountrySelect
                     variant="dark"
+                    buttonClassName="h-10"
                     value={formData.country || 'Sri Lanka'}
                     onChange={(selectedCountryObj) => {
                       const nextCurrency = selectedCountryObj.defaultCurrency || formData.currencySymbol;
@@ -375,18 +392,20 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Default Currency Symbol
-                  </label>
+                <div className="flex flex-col min-w-0">
+                  <div className="min-h-[20px] flex items-center mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 leading-none whitespace-nowrap">
+                      Default Currency
+                    </label>
+                  </div>
                   <div className="relative">
-                    <Coins className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Coins className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <select
                       value={formData.currencySymbol}
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, currencySymbol: e.target.value }))
                       }
-                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full h-10 pl-9 pr-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                     >
                       <option value="Rs.">Rs. (Sri Lankan Rupee)</option>
                       <option value="$">$ (USD - US Dollar)</option>
@@ -429,12 +448,14 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Initial Central Main Yard
-                  </label>
+                <div className="flex flex-col min-w-0">
+                  <div className="min-h-[20px] flex items-center mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 leading-none whitespace-nowrap">
+                      Initial Main Warehouse
+                    </label>
+                  </div>
                   <div className="relative">
-                    <Warehouse className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Warehouse className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
                       placeholder="Central Main Warehouse"
@@ -445,7 +466,7 @@ export const TenantSignupModal: React.FC<TenantSignupModalProps> = ({
                           initialWarehouseName: e.target.value,
                         }))
                       }
-                      className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-10 pl-9 pr-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
