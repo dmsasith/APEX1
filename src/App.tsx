@@ -224,8 +224,10 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
       case 'projects':
       case 'project-management':
         return <ProjectsManagementView />;
+      case 'projects-sections':
+        return <ProjectsManagementView initialTab="sections" />;
       case 'project-usage':
-        return <ProjectMaterialUsageView />;
+        return <ProjectMaterialUsageView onNavigate={handleSelectTab} />;
       case 'registrations':
       case 'master-registrations':
         return <MasterRegistrationsView initialTab="items" />;
@@ -327,7 +329,7 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
       {/* Main Body with Sleek Glass Desktop Sidebar - Aligned to exact 1600px grid as Header */}
       <div className="flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 gap-6 items-start">
         <div className="hidden lg:block no-print shrink-0">
-          <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
+          <Sidebar currentTab={currentTab === 'projects-sections' ? 'projects' : currentTab} onSelectTab={setCurrentTab} />
         </div>
 
         {/* Viewport Content */}

@@ -90,7 +90,13 @@ interface ItemEntryRow {
   wastageQuantity?: number | '';
 }
 
-export const ProjectMaterialUsageView: React.FC = () => {
+interface ProjectMaterialUsageViewProps {
+  onNavigate?: (tab: string) => void;
+}
+
+const DEFAULT_SEEDED_SECTION_IDS = new Set(['pt-tnc', 'pt-tcd', 'pt-mfr']);
+
+export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> = ({ onNavigate }) => {
   const {
     sites,
     activeSites,
@@ -177,9 +183,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
     '';
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId);
 
+  // User-registered Project Sections only (exclude legacy built-in seeded defaults)
+  const registeredSections = React.useMemo(
+    () => activeProjectTypes.filter((pt) => !DEFAULT_SEEDED_SECTION_IDS.has(pt.id)),
+    [activeProjectTypes]
+  );
+
   // Section / Project Type Selection (Step 1)
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(activeProjectTypes[0]?.id || '');
-  const targetSection = activeProjectTypes.find((pt) => pt.id === selectedSectionId);
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(registeredSections[0]?.id || '');
+  useEffect(() => {
+    if (registeredSections.length === 0) {
+      if (selectedSectionId !== '') setSelectedSectionId('');
+    } else if (!registeredSections.some((pt) => pt.id === selectedSectionId)) {
+      setSelectedSectionId(registeredSections[0].id);
+    }
+  }, [registeredSections, selectedSectionId]);
+  const targetSection = registeredSections.find((pt) => pt.id === selectedSectionId);
   const isNewConnectionSection = isTelecomNewConnectionSection(targetSection);
   const activeSectionCoreLabels = React.useMemo(
     () => getEffectiveSectionCoreLabels(targetSection),
@@ -1117,6 +1136,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
         );
         return;
       }
+    }
+
+    if (!selectedSectionId) {
+      setErrorMsg('Please register and select a Project Section in Card 1 using the Section Registry button.');
+      return;
     }
 
     if (isNewConnectionSection) {
@@ -2245,51 +2269,86 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Sub-Panel A: Project Section / Type Selector */}
-                <div className="p-3.5 bg-[#182e40]/85 border border-[#4879a0]/70 rounded-xl space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <label className="text-[11px] font-extrabold text-sky-200 uppercase tracking-wider flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-sky-300" />
-                      <span>Project Section / Type *</span>
-                    </label>
-                    <span className="text-[10px] font-semibold text-sky-200/80">
-                      Select section first to load matching teams &amp; formats
-                    </span>
+                {/* Sub-Panel A: Project Section / Type Selector (User-Added Sections Only) */}
+                <div className="p-3.5 bg-[#182e40]/85 border border-[#4879a0]/70 rounded-xl space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="text-[11px] font-extrabold text-sky-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-sky-300" />
+                        <span>Project Section / Type *</span>
+                      </label>
+                      <span className="text-[11px] text-sky-100/80 block mt-0.5">
+                        Register New Project Section: <strong>e.g. Telecom / Water / Power New Connection, Cable Development, etc.</strong>
+                      </span>
+                    </div>
+
+                    {onNavigate && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('projects-sections')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 text-xs font-extrabold transition cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Section Registry</span>
+                      </button>
+                    )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {activeProjectTypes.map((pt) => {
-                      const isSelected = selectedSectionId === pt.id;
-                      const bomCount = (pt.templateItems || []).length;
-                      return (
+
+                  {registeredSections.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-slate-900/75 border-2 border-dashed border-sky-400/60 text-center space-y-2.5">
+                      <div className="text-xs sm:text-sm font-extrabold text-white">
+                        Register New Project Section: e.g. Telecom / Water / Power New Connection, etc.
+                      </div>
+                      <p className="text-[11px] text-sky-100/85 max-w-xl mx-auto">
+                        No project sections have been added yet. Register your sections in the Section Registry — only the sections you add will appear here.
+                      </p>
+                      {onNavigate && (
                         <button
-                          key={pt.id}
                           type="button"
-                          onClick={() => handleSelectSection(pt.id)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2 ${
-                            isSelected
-                              ? 'bg-[#0e2233] text-white border-sky-400 shadow-md ring-2 ring-sky-300/60'
-                              : 'bg-white/95 hover:bg-white text-slate-900 border-white/80 shadow-xs'
-                          }`}
+                          onClick={() => onNavigate('projects-sections')}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-extrabold transition cursor-pointer shadow-sm"
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
-                              {pt.code || 'SEC'}
-                            </div>
-                            <div className="text-xs font-bold leading-snug whitespace-normal break-words">
-                              {pt.name}
-                            </div>
-                          </div>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 mt-0.5 ${
-                              isSelected ? 'bg-sky-500/25 text-sky-200 border border-sky-400/40' : 'bg-slate-100 text-slate-700'
+                          <Plus className="w-4 h-4" />
+                          <span>Open New Section Registry</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {registeredSections.map((pt) => {
+                        const isSelected = selectedSectionId === pt.id;
+                        const bomCount = (pt.templateItems || []).length;
+                        return (
+                          <button
+                            key={pt.id}
+                            type="button"
+                            onClick={() => handleSelectSection(pt.id)}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-[#0e2233] text-white border-sky-400 shadow-md ring-2 ring-sky-300/60'
+                                : 'bg-white/95 hover:bg-white text-slate-900 border-white/80 shadow-xs'
                             }`}
                           >
-                            {bomCount} BOM
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                            <div className="min-w-0 flex-1">
+                              <div className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
+                                {pt.code || 'SEC'}
+                              </div>
+                              <div className="text-xs font-bold leading-snug whitespace-normal break-words">
+                                {pt.name}
+                              </div>
+                            </div>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 mt-0.5 ${
+                                isSelected ? 'bg-sky-500/25 text-sky-200 border border-sky-400/40' : 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {bomCount} BOM
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Sub-Panel B: Branch, Field Team, Supervisor, Date & Work Scope */}

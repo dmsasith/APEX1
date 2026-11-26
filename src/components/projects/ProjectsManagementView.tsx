@@ -62,7 +62,11 @@ import {
   getEffectiveSectionCustomFields,
 } from '../../utils/sectionTemplates';
 
-export const ProjectsManagementView: React.FC = () => {
+interface ProjectsManagementViewProps {
+  initialTab?: 'projects' | 'sections';
+}
+
+export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ initialTab }) => {
   const {
     sites,
     activeSites,
@@ -175,7 +179,12 @@ export const ProjectsManagementView: React.FC = () => {
     return { siteId: '', siteName: p.siteName || '' };
   };
 
-  const [activeTab, setActiveTab] = useState<'projects' | 'sections'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'sections'>(initialTab || 'projects');
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [searchQuery, setSearchQuery] = useState('');
   const [siteBranchFilter, setSiteBranchFilter] = useState('all');
   const [districtFilter, setDistrictFilter] = useState('all');
