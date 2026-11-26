@@ -2245,11 +2245,17 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Project Section / Type Buttons */}
-                <div>
-                  <label className="block text-[11px] font-bold text-sky-100 uppercase tracking-wider mb-1.5">
-                    Project Section / Type *
-                  </label>
+                {/* Sub-Panel A: Project Section / Type Selector */}
+                <div className="p-3.5 bg-[#182e40]/85 border border-[#4879a0]/70 rounded-xl space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-[11px] font-extrabold text-sky-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-sky-300" />
+                      <span>Project Section / Type *</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-sky-200/80">
+                      Select section first to load matching teams &amp; formats
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {activeProjectTypes.map((pt) => {
                       const isSelected = selectedSectionId === pt.id;
@@ -2286,140 +2292,156 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Area, Field Team, Supervisor, Date & Work Scope */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 items-end">
-                  {/* Site Branch / Area */}
-                  <div className="flex flex-col justify-end h-full min-w-0">
-                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
-                      Site Branch / Area *
-                    </label>
-                    <select
-                      value={selectedSiteId}
-                      onChange={(e) => handleSiteChange(e.target.value)}
-                      disabled={isSingleSiteLocked || (isNewConnectionSection && isNcTeamAreaLocked)}
-                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                    >
-                      {allowedSites.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {formatSiteHierarchyLabel(s, activeSites, true)}
-                        </option>
-                      ))}
-                    </select>
+                {/* Sub-Panel B: Branch, Field Team, Supervisor, Date & Work Scope */}
+                <div className="p-3.5 bg-[#1e384f]/90 border border-[#4879a0]/70 rounded-xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#3d6889]/70 pb-2">
+                    <span className="text-[11px] font-extrabold text-sky-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-sky-300" />
+                      <span>Site Branch, Team &amp; Area Details</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-sky-200/80">
+                      Filtered for: {targetSection?.name || 'Selected Section'}
+                    </span>
                   </div>
 
-                  {/* Executing Field Team (Filtered Strictly by Selected Section) */}
-                  <div className="flex flex-col justify-end h-full min-w-0">
-                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate" title={`Executing Field Team * (${targetSection?.code || targetSection?.name || 'Section'})`}>
-                      Executing Field Team * ({targetSection?.code || targetSection?.name || 'Section'})
-                    </label>
-                    <select
-                      value={selectedTeamId}
-                      onChange={(e) => handleTeamChange(e.target.value)}
-                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
-                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                      required
-                    >
-                      {availableTeams.length === 0 ? (
-                        <option value="">
-                          No Teams Registered Under {targetSection?.name || 'This Section'}
-                        </option>
-                      ) : (
-                        availableTeams.map((t) => {
-                          const selSiteName =
-                            activeSites.find((s) => s.id === selectedSiteId)?.name || 'Site';
-                          const isPendingFromPrev = t.assignedSiteId !== selectedSiteId;
-                          return (
-                            <option key={t.id} value={t.id}>
-                              {t.teamName}
-                              {isPendingFromPrev
-                                ? ` [Clearing Pending Stock on ${selSiteName}]`
-                                : t.assignmentStatus === 'Temporary'
-                                ? ` [${getTemporaryAssignmentBadgeLabel(selSiteName)}]`
-                                : ''}{' '}
-                              (Lead: {t.teamLeaderName})
-                            </option>
-                          );
-                        })
-                      )}
-                    </select>
-                    {availableTeams.length === 0 && (
-                      <p className="mt-1 text-[10px] font-semibold text-amber-200 leading-snug">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3.5 gap-y-3 items-start">
+                    {/* Site Branch / Area */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate">
+                        Site Branch / Area *
+                      </label>
+                      <select
+                        value={selectedSiteId}
+                        onChange={(e) => handleSiteChange(e.target.value)}
+                        disabled={isSingleSiteLocked || (isNewConnectionSection && isNcTeamAreaLocked)}
+                        className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                      >
+                        {allowedSites.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {formatSiteHierarchyLabel(s, activeSites, true)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Executing Field Team (Filtered Strictly by Selected Section) */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate" title={`Executing Field Team * (${targetSection?.code || targetSection?.name || 'Section'})`}>
+                        Executing Field Team * ({targetSection?.code || targetSection?.name || 'Section'})
+                      </label>
+                      <select
+                        value={selectedTeamId}
+                        onChange={(e) => handleTeamChange(e.target.value)}
+                        disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                        className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                        required
+                      >
+                        {availableTeams.length === 0 ? (
+                          <option value="">
+                            No Teams Registered Under {targetSection?.name || 'This Section'}
+                          </option>
+                        ) : (
+                          availableTeams.map((t) => {
+                            const selSiteName =
+                              activeSites.find((s) => s.id === selectedSiteId)?.name || 'Site';
+                            const isPendingFromPrev = t.assignedSiteId !== selectedSiteId;
+                            return (
+                              <option key={t.id} value={t.id}>
+                                {t.teamName}
+                                {isPendingFromPrev
+                                  ? ` [Clearing Pending Stock on ${selSiteName}]`
+                                  : t.assignmentStatus === 'Temporary'
+                                  ? ` [${getTemporaryAssignmentBadgeLabel(selSiteName)}]`
+                                  : ''}{' '}
+                                (Lead: {t.teamLeaderName})
+                              </option>
+                            );
+                          })
+                        )}
+                      </select>
+                    </div>
+
+                    {/* Supervisor / Team Leader */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate">
+                        Supervisor or Team Leader *
+                      </label>
+                      <input
+                        type="text"
+                        value={supervisorName}
+                        disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                        onChange={(e) => setSupervisorName(e.target.value)}
+                        placeholder="e.g. Team Leader Name"
+                        list="supervisor-presets-unified"
+                        className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                        required
+                      />
+                      <datalist id="supervisor-presets-unified">
+                        {currentTeam && <option value={currentTeam.teamLeaderName} />}
+                        {activeUsers.map((u) => (
+                          <option key={u.id} value={u.fullName}>
+                            {u.fullName} ({u.role})
+                          </option>
+                        ))}
+                      </datalist>
+                    </div>
+
+                    {/* Work / Exchange Area */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate">
+                        Work / Exchange Area
+                      </label>
+                      <input
+                        type="text"
+                        value={ncSessionArea}
+                        disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                        onChange={(e) => setNcSessionArea(e.target.value)}
+                        placeholder="e.g. Kalutara (KLL), Maharagama"
+                        className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Usage Date */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate">
+                        Usage Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={usageDate}
+                        disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                        onChange={(e) => setUsageDate(e.target.value)}
+                        className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                        required
+                      />
+                    </div>
+
+                    {/* Work Details / Scope */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate">
+                        Work Details / Remarks
+                      </label>
+                      <input
+                        type="text"
+                        value={workDetails}
+                        onChange={(e) => setWorkDetails(e.target.value)}
+                        placeholder="e.g. Fibre Drop Installation, Splice & Termination"
+                        className="w-full h-9 text-xs font-medium px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      />
+                    </div>
+                  </div>
+
+                  {availableTeams.length === 0 && (
+                    <div className="px-3 py-2 rounded-lg bg-amber-500/15 border border-amber-300/40 text-[11px] font-semibold text-amber-200 flex items-center gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                      <span>
                         No teams on this site are assigned to <strong>{targetSection?.name || 'this section'}</strong>
                         {siteAssignedTeams.length > 0
                           ? ` (${siteAssignedTeams.length} site team(s) belong to other sections).`
                           : '.'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Supervisor / Team Leader */}
-                  <div className="flex flex-col justify-end h-full min-w-0">
-                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
-                      Supervisor or Team Leader *
-                    </label>
-                    <input
-                      type="text"
-                      value={supervisorName}
-                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
-                      onChange={(e) => setSupervisorName(e.target.value)}
-                      placeholder="e.g. Team Leader Name"
-                      list="supervisor-presets-unified"
-                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                      required
-                    />
-                    <datalist id="supervisor-presets-unified">
-                      {currentTeam && <option value={currentTeam.teamLeaderName} />}
-                      {activeUsers.map((u) => (
-                        <option key={u.id} value={u.fullName}>
-                          {u.fullName} ({u.role})
-                        </option>
-                      ))}
-                    </datalist>
-                  </div>
-
-                  {/* Work / Exchange Area */}
-                  <div className="flex flex-col justify-end h-full min-w-0">
-                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
-                      Work / Exchange Area
-                    </label>
-                    <input
-                      type="text"
-                      value={ncSessionArea}
-                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
-                      onChange={(e) => setNcSessionArea(e.target.value)}
-                      placeholder="e.g. Kalutara (KLL), Maharagama"
-                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                    />
-                  </div>
-
-                  {/* Usage Date */}
-                  <div className="flex flex-col justify-end h-full min-w-0">
-                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
-                      Usage Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={usageDate}
-                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
-                      onChange={(e) => setUsageDate(e.target.value)}
-                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                      required
-                    />
-                  </div>
-
-                  {/* Work Details / Scope */}
-                  <div className="flex flex-col justify-end h-full min-w-0">
-                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
-                      Work Details / Remarks
-                    </label>
-                    <input
-                      type="text"
-                      value={workDetails}
-                      onChange={(e) => setWorkDetails(e.target.value)}
-                      placeholder="e.g. Fibre Drop Installation, Splice & Termination"
-                      className="w-full h-9 text-xs font-medium px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
-                    />
-                  </div>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* AUTO-DETECTED CLIENT FREE STOCK (FOC) BANNER ON AREA & SECTION SELECTION */}
