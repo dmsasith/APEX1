@@ -42,6 +42,12 @@ import {
 import { useStock } from '../../context/StockContext';
 import { Item, ClientFreeIssueEntry, ClientFreeIssueItemRow, Client, isSuperAdmin } from '../../types';
 import { formatNumber, formatDate, formatDateTime, exportToCsv } from '../../utils/exportUtils';
+import {
+  formatIsoToCountryYyyyMmDd,
+  getCountryTodayIsoDate,
+  pickBestTimestamp,
+  resolveTimestampForDateInput,
+} from '../../utils/countryTimezoneUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { matchDigitalSignature } from '../../utils/signatureUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -263,7 +269,7 @@ export const ClientFreeIssueView: React.FC = () => {
   const [formProjectId, setFormProjectId] = useState(activeProjects[0]?.id || '');
   const [formAssignedSiteId, setFormAssignedSiteId] = useState('');
   const [formDispatchNoteNo, setFormDispatchNoteNo] = useState('');
-  const [formReceivedDate, setFormReceivedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formReceivedDate, setFormReceivedDate] = useState(() => getCountryTodayIsoDate());
   const [formReceivedBy, setFormReceivedBy] = useState(actorDisplayName || 'Logistics Coordinator');
   const [formStorageLocation, setFormStorageLocation] = useState('Main Central Warehouse');
   const [formNotes, setFormNotes] = useState('');
@@ -565,7 +571,7 @@ export const ClientFreeIssueView: React.FC = () => {
               voucherNumber: v.voucherNumber,
               dispatchNoteNo: v.dispatchNoteNo || 'N/A',
               clientName: v.clientName,
-              receivedDate: v.receivedDate || v.createdAt,
+              receivedDate: pickBestTimestamp(v.receivedDate, v.createdAt) || v.createdAt,
               receivedBy: v.receivedBy || 'Central Store',
               storageLocation: v.storageLocation || 'Main Central Warehouse',
               qty: Number(row.quantity) || 0,
@@ -661,7 +667,7 @@ export const ClientFreeIssueView: React.FC = () => {
             return {
               id: u.id,
               usageVoucherNumber: u.usageVoucherNumber,
-              date: u.usageDate || u.date,
+              date: pickBestTimestamp(u.date, u.createdAt, u.usageDate) || u.date,
               subProjectId: u.projectId,
               siteId: u.siteId,
               projectCode: projObj?.projectId || p.projectId,
@@ -927,7 +933,7 @@ export const ClientFreeIssueView: React.FC = () => {
     const resolvedBranch = resolveProjectBranch(initialProj);
     setFormAssignedSiteId(resolvedBranch.siteId || branchSites[0]?.id || '');
     setFormDispatchNoteNo(`DN-${new Date().getFullYear()}-${String(clientFreeIssues.length + 1).padStart(4, '0')}`);
-    setFormReceivedDate(new Date().toISOString().split('T')[0]);
+    setFormReceivedDate(getCountryTodayIsoDate());
     setFormReceivedBy(actorDisplayName || 'Logistics Coordinator');
     setFormStorageLocation(mainWarehouseName);
     setFormNotes('');
@@ -957,7 +963,7 @@ export const ClientFreeIssueView: React.FC = () => {
     setFormAssignedSiteId(entry.assignedSiteId || resolvedBranch.siteId || branchSites[0]?.id || '');
     setFormDispatchNoteNo(entry.dispatchNoteNo || '');
     setFormReceivedDate(
-      entry.receivedDate ? entry.receivedDate.split('T')[0] : new Date().toISOString().split('T')[0]
+      entry.receivedDate ? formatIsoToCountryYyyyMmDd(entry.receivedDate) : getCountryTodayIsoDate()
     );
     setFormReceivedBy(entry.receivedBy || actorDisplayName || 'Logistics Coordinator');
     setFormStorageLocation(mainWarehouseName);
@@ -1067,7 +1073,7 @@ export const ClientFreeIssueView: React.FC = () => {
       assignedSiteName: resolvedAllocName || targetProj?.siteName,
       siteIdentifier: targetProj?.siteIdentifier || '',
       dispatchNoteNo: formDispatchNoteNo.trim(),
-      receivedDate: formReceivedDate,
+      receivedDate: resolveTimestampForDateInput(formReceivedDate, editingVoucher?.receivedDate),
       receivedBy: formReceivedBy.trim(),
       storageLocation: mainWarehouseName,
       items: validRows,
@@ -2221,7 +2227,7 @@ export const ClientFreeIssueView: React.FC = () => {
                                               <td className="py-2 px-3 font-mono font-bold text-teal-800">
                                                 {uLog.usageVoucherNumber}
                                               </td>
-                                              <td className="py-2 px-3 text-slate-600">{formatDate(uLog.date)}</td>
+                                              <td className="py-2 px-3 text-slate-600">{formatDateTime(uLog.date)}</td>
                                               <td className="py-2 px-3 font-semibold text-slate-800">
                                                 {uLog.teamName}
                                               </td>
@@ -3918,7 +3924,7 @@ export const ClientFreeIssueView: React.FC = () => {
                             <tr key={i}>
                               <td className="py-2 px-3 font-mono font-bold text-indigo-700">{v.voucherNumber}</td>
                               <td className="py-2 px-3 font-mono text-slate-700">{v.dispatchNoteNo}</td>
-                              <td className="py-2 px-3 text-slate-600">{formatDate(v.receivedDate)}</td>
+                              <td className="py-2 px-3 text-slate-600">{formatDateTime(v.receivedDate)}</td>
                               <td className="py-2 px-3 text-slate-700">{v.receivedBy}</td>
                               <td className="py-2 px-3 text-right font-mono font-extrabold text-indigo-800">
                                 +{formatNumber(v.qty)}
@@ -3956,7 +3962,7 @@ export const ClientFreeIssueView: React.FC = () => {
                               <tr key={i}>
                                 <td className="py-2 px-2.5 font-mono font-bold text-sky-800">{r.requestNoteNumber}</td>
                                 <td className="py-2 px-2.5 text-slate-700">
-                                  {r.siteName} · {formatDate(r.date)}
+                                  {r.siteName} · {formatDateTime(r.date)}
                                 </td>
                                 <td className="py-2 px-2.5 text-right font-mono font-extrabold text-sky-800">
                                   {formatNumber(r.qty)}
@@ -3992,7 +3998,7 @@ export const ClientFreeIssueView: React.FC = () => {
                               <tr key={i}>
                                 <td className="py-2 px-2.5 font-mono font-bold text-violet-800">{t.issueNoteNumber}</td>
                                 <td className="py-2 px-2.5 text-slate-700">
-                                  {t.teamName} · {formatDate(t.date)}
+                                  {t.teamName} · {formatDateTime(t.date)}
                                 </td>
                                 <td className="py-2 px-2.5 text-right font-mono font-extrabold text-violet-800">
                                   {formatNumber(t.qty)}
@@ -4095,7 +4101,7 @@ export const ClientFreeIssueView: React.FC = () => {
                                 {u.projectName}
                               </td>
                               <td className="py-2 px-3 font-semibold text-slate-700">{u.teamName}</td>
-                              <td className="py-2 px-3 text-slate-600">{formatDate(u.date)}</td>
+                              <td className="py-2 px-3 text-slate-600">{formatDateTime(u.date)}</td>
                               <td className="py-2 px-3 text-right font-mono font-bold text-teal-700">
                                 {formatNumber(u.usedQty)}
                               </td>
@@ -4893,7 +4899,7 @@ export const ClientFreeIssueView: React.FC = () => {
                                 <td className="py-2 px-2.5 font-mono font-bold text-teal-800">
                                   {uLog.usageVoucherNumber}
                                 </td>
-                                <td className="py-2 px-2.5 text-slate-600">{formatDate(uLog.date)}</td>
+                                <td className="py-2 px-2.5 text-slate-600">{formatDateTime(uLog.date)}</td>
                                 <td className="py-2 px-2.5 font-semibold text-slate-800">{uLog.teamName}</td>
                                 <td className="py-2 px-2.5 text-slate-800">
                                   <span className="font-mono font-bold mr-1">{spIt.itemCode}</span>

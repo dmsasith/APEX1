@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
+import { pickBestTimestamp } from '../../utils/countryTimezoneUtils';
 import { StockBalanceCell } from '../common/LowStockIndicator';
 import {
   StockTransferRequest,
@@ -840,7 +841,7 @@ export const SiteInventoriesView: React.FC = () => {
         rows.push({
           'Site Name': selectedSite.name,
           'Voucher No': pu.usageVoucherNumber,
-          Date: pu.usageDate || pu.date,
+          Date: formatDateTime(pickBestTimestamp(pu.date, pu.createdAt, pu.usageDate)),
           'Project Name': pu.projectName,
           'Customer Name': pu.customerName || '',
           'Customer Phone': pu.customerPhone || '',
@@ -1881,7 +1882,7 @@ export const SiteInventoriesView: React.FC = () => {
                       <span className="text-xs text-slate-600">Project: {foc.projectName}</span>
                     </div>
                     <span className="text-xs text-slate-500 font-mono">
-                      {formatDateTime(foc.receivedDate || foc.createdAt)}
+                      {formatDateTime(pickBestTimestamp(foc.receivedDate, foc.createdAt))}
                     </span>
                   </div>
 
@@ -2087,7 +2088,7 @@ export const SiteInventoriesView: React.FC = () => {
 
                         <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{formatDateTime(pu.usageDate || pu.date)}</span>
+                          <span>{formatDateTime(pickBestTimestamp(pu.date, pu.createdAt, pu.usageDate))}</span>
                         </span>
                       </div>
 
@@ -2665,7 +2666,13 @@ export const SiteInventoriesView: React.FC = () => {
           onClose={() => setSelectedUsageForPrint(null)}
           title="SITE MATERIAL USAGE VOUCHER"
           documentNumber={selectedUsageForPrint.usageVoucherNumber}
-          documentDate={selectedUsageForPrint.usageDate || selectedUsageForPrint.date}
+          documentDate={
+            pickBestTimestamp(
+              selectedUsageForPrint.date,
+              selectedUsageForPrint.createdAt,
+              selectedUsageForPrint.usageDate
+            ) || selectedUsageForPrint.date
+          }
           recipientLabel="Site / Project Office"
           recipientName={selectedUsageForPrint.projectName}
           recipientSubDetails={`Supervisor / Lead: ${selectedUsageForPrint.supervisorOrLeaderName || selectedUsageForPrint.supervisorOrLeader} | Executing Team: ${selectedUsageForPrint.teamName} | Section: ${selectedUsageForPrint.projectTypeName || 'General'}${selectedUsageForPrint.siteIdentifier ? ` | Site ID: ${selectedUsageForPrint.siteIdentifier}` : ''}${selectedUsageForPrint.customerPhone ? ` | Tel: ${selectedUsageForPrint.customerPhone}` : ''}`}

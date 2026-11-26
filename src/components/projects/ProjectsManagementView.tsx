@@ -44,7 +44,8 @@ import {
   isUserAllSites,
   getUserAssignedSiteIds,
 } from '../../types';
-import { formatNumber } from '../../utils/exportUtils';
+import { formatNumber, formatDateTime } from '../../utils/exportUtils';
+import { pickBestTimestamp } from '../../utils/countryTimezoneUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
   COUNTRY_PHONE_RULES,
@@ -3760,7 +3761,7 @@ export const ProjectsManagementView: React.FC = () => {
                             {pu.teamName || 'Team'}
                           </td>
                           <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">
-                            {pu.usageDate || (pu.date ? new Date(pu.date).toLocaleDateString() : '—')}
+                            {formatDateTime(pickBestTimestamp(pu.date, pu.createdAt, pu.usageDate))}
                           </td>
                           <td className="py-2.5 px-3">
                             <div className="space-y-0.5">

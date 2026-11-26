@@ -28,6 +28,7 @@ import {
   sortSitesHierarchically,
 } from '../../types';
 import { formatNumber, formatDateTime } from '../../utils/exportUtils';
+import { pickBestTimestamp } from '../../utils/countryTimezoneUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { matchDigitalSignature } from '../../utils/signatureUtils';
 
@@ -274,7 +275,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           projectId: f.projectId,
           assignedSiteName: siteName,
           storageLocation: f.storageLocation || 'Main Central Warehouse',
-          date: f.receivedDate || f.createdAt,
+          date: pickBestTimestamp(f.receivedDate, f.createdAt) || f.createdAt,
           receivedBy: f.receivedBy || 'Central Store',
           qty: Number(row.quantity),
           remarks: row.remarks || f.notes,
@@ -1016,7 +1017,7 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
         logs.push({
           id: u.id,
           voucherNo: u.usageVoucherNumber,
-          date: u.usageDate || u.date,
+          date: pickBestTimestamp(u.date, u.createdAt, u.usageDate) || u.date,
           projectId: u.projectId,
           projectCode: proj?.projectId || 'PRJ',
           projectName: u.projectName || proj?.projectName || 'Project Installation',

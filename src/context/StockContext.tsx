@@ -70,6 +70,11 @@ import {
 import { DEFAULT_SECTION_FORMATS, deriveCompanyMonogram } from '../utils/formatAnalyzerUtils';
 import { generateUniqueBarcode, matchItemByScannedCode } from '../utils/barcodeUtils';
 import {
+  formatIsoToCountryYyyyMmDd,
+  resolveTimestampForDateInput,
+  setActiveWorkspaceCountry,
+} from '../utils/countryTimezoneUtils';
+import {
   canUserTransferTeamAtCurrentSite,
   extractBaseTeamName,
   formatPermanentTransferredTeamName,
@@ -2272,6 +2277,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   }, [tenants, activeTenantId, currentTenantId]);
 
+  setActiveWorkspaceCountry(currentTenant?.country);
+
+  useEffect(() => {
+    setActiveWorkspaceCountry(currentTenant?.country);
+  }, [currentTenant?.country]);
+
   const [config, setConfig] = useState<SystemConfig>(() =>
     loadTenantData(currentTenantId, 'config', isDefaultTenant ? INITIAL_CONFIG : {
       companyName: currentTenant.companyName || 'New Company Workspace',
@@ -4192,7 +4203,9 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     const receiverName = batchReceipt?.receivedBy || actorDisplayName;
-    const nowIso = batchReceipt?.receiptDate || new Date().toISOString();
+    const nowIso = batchReceipt?.receiptDate
+      ? resolveTimestampForDateInput(batchReceipt.receiptDate, undefined, currentTenant?.country)
+      : new Date().toISOString();
     const batchGrnNumber = `GRN-${po.poNumber}-${String((po.receiptHistory?.length || 0) + 1).padStart(4, '0')}`;
 
     const updatedItems = [...po.items];
@@ -8987,10 +9000,21 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
+    const submissionIso = new Date().toISOString();
+    const rawDateInput = data.usageDate || data.date;
+    const resolvedTimestamp = resolveTimestampForDateInput(rawDateInput, submissionIso, currentTenant?.country);
+    const cleanUsageDay =
+      rawDateInput && /^\d{4}-\d{2}-\d{2}/.test(rawDateInput.trim())
+        ? rawDateInput.trim().slice(0, 10)
+        : formatIsoToCountryYyyyMmDd(resolvedTimestamp, currentTenant?.country);
+
     const newUsage: ProjectMaterialUsage = {
       ...data,
       id: `pu-${Date.now()}`,
       usageVoucherNumber,
+      date: resolvedTimestamp,
+      usageDate: cleanUsageDay,
+      createdAt: submissionIso,
       teamName,
       projectName: projName,
       parentProjectId: data.parentProjectId || proj?.parentProjectId || undefined,
@@ -9118,11 +9142,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ): ClientFreeIssueEntry => {
     const nextNum = clientFreeIssues.length + 1;
     const voucherNumber = `FOC-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
+    const submissionIso = new Date().toISOString();
+    const resolvedReceivedDate = resolveTimestampForDateInput(
+      data.receivedDate,
+      submissionIso,
+      currentTenant?.country
+    );
     const newEntry: ClientFreeIssueEntry = {
       ...data,
       id: `foc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       voucherNumber,
-      createdAt: new Date().toISOString(),
+      receivedDate: resolvedReceivedDate,
+      createdAt: submissionIso,
       isDeleted: false,
     };
     setClientFreeIssues((prev) => {
@@ -9144,8 +9175,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateClientFreeIssue = (id: string, updates: Partial<ClientFreeIssueEntry>) => {
     const existing = clientFreeIssues.find((e) => e.id === id);
+    const resolvedUpdates = { ...updates };
+    if (updates.receivedDate !== undefined) {
+      resolvedUpdates.receivedDate = resolveTimestampForDateInput(
+        updates.receivedDate,
+        existing?.receivedDate || existing?.createdAt,
+        currentTenant?.country
+      );
+    }
     setClientFreeIssues((prev) => {
-      const next = prev.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry));
+      const next = prev.map((entry) => (entry.id === id ? { ...entry, ...resolvedUpdates } : entry));
       saveToStorage('clientFreeIssues', next);
       saveTenantData(currentTenantIdRef.current, 'clientFreeIssues', next);
       return next;
@@ -9497,7 +9536,23 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateProjectUsage = (id: string, updates: Partial<ProjectMaterialUsage>) => {
     setProjectUsages((prev) => {
-      const next = prev.map((pu) => (pu.id === id ? { ...pu, ...updates } : pu));
+      const next = prev.map((pu) => {
+        if (pu.id !== id) return pu;
+        const merged: ProjectMaterialUsage = { ...pu, ...updates };
+        if (updates.usageDate !== undefined || updates.date !== undefined) {
+          const nextRawDate = updates.usageDate ?? updates.date;
+          merged.date = resolveTimestampForDateInput(
+            nextRawDate,
+            pu.date || pu.createdAt,
+            currentTenant?.country
+          );
+          merged.usageDate =
+            nextRawDate && /^\d{4}-\d{2}-\d{2}/.test(nextRawDate.trim())
+              ? nextRawDate.trim().slice(0, 10)
+              : formatIsoToCountryYyyyMmDd(merged.date, currentTenant?.country);
+        }
+        return merged;
+      });
       saveTenantData(currentTenantIdRef.current, 'projectUsages', next);
       return next;
     });

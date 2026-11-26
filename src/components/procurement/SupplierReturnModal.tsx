@@ -23,6 +23,7 @@ import {
 } from '../../types';
 import { useStock } from '../../context/StockContext';
 import { formatNumber } from '../../utils/exportUtils';
+import { getCountryTodayIsoDate } from '../../utils/countryTimezoneUtils';
 import { SearchableItemSelect } from '../common/SearchableItemSelect';
 import { enforceCountryPhoneInput, detectActivePhoneCountry } from '../../utils/phoneCountryUtils';
 import { PhoneCountryBadge } from '../common/PhoneCountryBadge';
@@ -77,7 +78,7 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({
   );
   const [poReference, setPoReference] = useState(editingReturn?.poReference || '');
   const [returnDate, setReturnDate] = useState(
-    editingReturn?.returnDate || new Date().toISOString().split('T')[0]
+    editingReturn?.returnDate || getCountryTodayIsoDate()
   );
   const [expectedSettlementDate, setExpectedSettlementDate] = useState(
     editingReturn?.expectedSettlementDate || ''

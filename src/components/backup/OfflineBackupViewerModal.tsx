@@ -26,6 +26,7 @@ import {
 import { StockBackup, Item, Site, Team, MainStockEntry, TeamIssue, TeamReturn, ProjectMaterialUsage, PurchaseOrder } from '../../types';
 import { exportBackupToExcel } from '../../utils/excelExportUtils';
 import { exportToCsv, formatDateTime, formatNumber } from '../../utils/exportUtils';
+import { pickBestTimestamp } from '../../utils/countryTimezoneUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { STORAGE_KEY_PREFIX } from '../../context/StockContext';
 
@@ -718,7 +719,9 @@ export const OfflineBackupViewerModal: React.FC<OfflineBackupViewerModalProps> =
                             return (
                               <tr key={usage.id} className="hover:bg-slate-50">
                                 <td className="p-3 font-mono font-bold text-slate-900">{usage.usageVoucherNumber}</td>
-                                <td className="p-3 text-slate-600">{usage.usageDate || usage.date}</td>
+                                <td className="p-3 text-slate-600">
+                                  {formatDateTime(pickBestTimestamp(usage.date, usage.createdAt, usage.usageDate))}
+                                </td>
                                 <td className="p-3">
                                   <div className="font-bold text-slate-900">{usage.projectName}</div>
                                   <div className="text-[11px] text-slate-500">{usage.customerName || usage.projectId}</div>

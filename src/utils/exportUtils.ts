@@ -1,3 +1,11 @@
+import {
+  extractCalendarDateParts,
+  getActiveWorkspaceTimezone,
+  getCountryTodayIsoDate,
+  getTimezoneForCountry,
+  isDateOnlyOrMidnightUtcIso,
+} from './countryTimezoneUtils';
+
 export function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
   if (!rows || !rows.length) {
     console.warn('No data available to export.');
@@ -17,7 +25,10 @@ export function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
             const rawCell = row[k];
             let cellStr = '';
             if (rawCell !== null && rawCell !== undefined) {
-              cellStr = rawCell instanceof Date ? rawCell.toLocaleString() : String(rawCell);
+              cellStr =
+                rawCell instanceof Date
+                  ? rawCell.toLocaleString('en-US', { timeZone: getActiveWorkspaceTimezone() })
+                  : String(rawCell);
             }
             cellStr = cellStr.replace(/"/g, '""');
             return `"${cellStr}"`;
@@ -30,17 +41,34 @@ export function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `${filename.replace(/\.csv$/, '')}_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `${filename.replace(/\.csv$/, '')}_${getCountryTodayIsoDate()}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
 
-export function formatDateTime(isoString?: string): string {
+function formatCalendarDateOnly(isoString: string): string | null {
+  if (!isDateOnlyOrMidnightUtcIso(isoString)) return null;
+  const parts = extractCalendarDateParts(isoString);
+  if (!parts) return null;
+  const utcDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  return utcDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+export function formatDateTime(isoString?: string, countryOrTz?: string): string {
   if (!isoString) return '—';
   try {
+    const calendarOnly = formatCalendarDateOnly(isoString);
+    if (calendarOnly) return calendarOnly;
+
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return isoString;
+    const tz = countryOrTz ? getTimezoneForCountry(countryOrTz) : getActiveWorkspaceTimezone();
     return d.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -48,26 +76,36 @@ export function formatDateTime(isoString?: string): string {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
+      timeZone: tz,
     });
   } catch {
     return isoString;
   }
 }
 
-export function formatDateTimeParts(isoString?: string): { date: string; time: string } {
+export function formatDateTimeParts(
+  isoString?: string,
+  countryOrTz?: string
+): { date: string; time: string } {
   if (!isoString) return { date: '—', time: '' };
   try {
+    const calendarOnly = formatCalendarDateOnly(isoString);
+    if (calendarOnly) return { date: calendarOnly, time: '' };
+
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return { date: isoString, time: '' };
+    const tz = countryOrTz ? getTimezoneForCountry(countryOrTz) : getActiveWorkspaceTimezone();
     const date = d.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      timeZone: tz,
     });
     const time = d.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
+      timeZone: tz,
     });
     return { date, time };
   } catch {
@@ -75,15 +113,20 @@ export function formatDateTimeParts(isoString?: string): { date: string; time: s
   }
 }
 
-export function formatDate(isoString?: string): string {
+export function formatDate(isoString?: string, countryOrTz?: string): string {
   if (!isoString) return '—';
   try {
+    const calendarOnly = formatCalendarDateOnly(isoString);
+    if (calendarOnly) return calendarOnly;
+
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return isoString;
+    const tz = countryOrTz ? getTimezoneForCountry(countryOrTz) : getActiveWorkspaceTimezone();
     return d.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      timeZone: tz,
     });
   } catch {
     return isoString;

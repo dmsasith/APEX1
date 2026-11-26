@@ -54,6 +54,12 @@ import {
   formatSiteHierarchyLabel,
 } from '../../types';
 import { formatNumber, formatDateTime, exportToCsv } from '../../utils/exportUtils';
+import {
+  formatIsoToCountryYyyyMmDd,
+  getCountryTodayIsoDate,
+  pickBestTimestamp,
+  resolveTimestampForDateInput,
+} from '../../utils/countryTimezoneUtils';
 import { printHtmlElement, downloadElementAsPdf } from '../../utils/printUtils';
 import { matchDigitalSignature } from '../../utils/signatureUtils';
 import { PrintableDocumentModal } from '../common/PrintableDocumentModal';
@@ -612,7 +618,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const [supervisorName, setSupervisorName] = useState<string>(currentTeam?.teamLeaderName || '');
 
   // Date and details
-  const [usageDate, setUsageDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [usageDate, setUsageDate] = useState<string>(() => getCountryTodayIsoDate());
   const [workDetails, setWorkDetails] = useState('');
 
   // Team in-hand stock calculation — STRICTLY isolated to selectedSiteId (never combined across sites)
@@ -1284,7 +1290,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
         teamName: targetTeam?.teamName || 'Field Team',
         supervisorOrLeader: supervisorName.trim(),
         supervisorOrLeaderName: supervisorName.trim(),
-        date: usageDate,
+        date: resolveTimestampForDateInput(usageDate),
+        usageDate,
         workDetails:
           workDetails.trim() ||
           (isNewConnectionSection
@@ -1363,7 +1370,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
     setEditingVoucher(usage);
     setEditTeamId(usage.teamId);
     setEditSupervisor(usage.supervisorOrLeaderName || usage.supervisorOrLeader || '');
-    setEditDate(usage.usageDate || (usage.date ? usage.date.split('T')[0] : ''));
+    setEditDate(usage.usageDate || (usage.date ? formatIsoToCountryYyyyMmDd(usage.date) : ''));
     setEditWorkDetails(usage.workDetails || '');
     setEditItemRows(
       usage.items.map((i) => ({
@@ -1689,7 +1696,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
         teamEntry!.voucherLines.push({
           voucherId: pu.id,
           voucherNumber: pu.usageVoucherNumber,
-          date: pu.usageDate || (pu.date ? pu.date.split('T')[0] : '—'),
+          date: formatDateTime(pickBestTimestamp(pu.date, pu.createdAt, pu.usageDate)),
           subProjectName: pu.projectName || targetProj.projectName,
           supervisor: lName,
           workDetails: pu.workDetails || '—',
@@ -3656,7 +3663,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               teamName: targetTeam?.teamName || 'Field Team',
                               supervisorOrLeader: supervisorName.trim(),
                               supervisorOrLeaderName: supervisorName.trim(),
-                              date: usageDate,
+                              date: resolveTimestampForDateInput(usageDate),
+                              usageDate,
                               workDetails: workDetails.trim() || `Installed materials on project ${finalProjName}`,
                               items: validRowsToSubmit.map((r) => ({ itemId: r.itemId, quantity: Number(r.quantity) })),
                             },
@@ -4006,7 +4014,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           {usage.usageVoucherNumber}
                         </td>
                         <td className="py-3 px-3.5 whitespace-nowrap text-slate-600 font-mono text-xs">
-                          {usage.usageDate || usage.date}
+                          {formatDateTime(pickBestTimestamp(usage.date, usage.createdAt, usage.usageDate))}
                         </td>
                         <td className="py-3 px-3.5">
                           <div className="font-bold text-slate-900 text-sm">{usage.projectName}</div>
@@ -4840,7 +4848,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       'Team Name': `${fullSiteReportData.teamsBreakdown.length} Team(s)`,
                       'Team Leader / Supervisor': 'GRAND TOTAL',
                       'Voucher #': `${fullSiteReportData.vouchersCount} Voucher(s)`,
-                      'Date': new Date().toISOString().split('T')[0],
+                      'Date': getCountryTodayIsoDate(),
                       'Scope / Sub-Project': 'FULL PROJECT TOTAL',
                       'Item Code': 'GRAND-TOTAL',
                       'Item Description': 'Full Project Combined Total (All Teams)',
@@ -4992,7 +5000,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-left sm:text-right text-xs font-mono text-slate-600 shrink-0">
-                  <div className="font-bold text-slate-900">Report Date: {new Date().toISOString().split('T')[0]}</div>
+                  <div className="font-bold text-slate-900">Report Date: {getCountryTodayIsoDate()}</div>
                   <div>Teams Count: {fullSiteReportData.teamsBreakdown.length} Team(s)</div>
                   <div>Usage Vouchers: {fullSiteReportData.vouchersCount} Slip(s)</div>
                 </div>
@@ -5395,7 +5403,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
           onClose={() => setSelectedUsageForPrint(null)}
           title="PROJECT MATERIAL CONSUMPTION VOUCHER"
           documentNumber={selectedUsageForPrint.usageVoucherNumber}
-          documentDate={selectedUsageForPrint.usageDate || selectedUsageForPrint.date}
+          documentDate={
+            pickBestTimestamp(
+              selectedUsageForPrint.date,
+              selectedUsageForPrint.createdAt,
+              selectedUsageForPrint.usageDate
+            ) || selectedUsageForPrint.date
+          }
           recipientLabel="Project Office"
           recipientName={selectedUsageForPrint.projectName}
           recipientSubDetails={`Supervisor / Lead: ${selectedUsageForPrint.supervisorOrLeader || selectedUsageForPrint.supervisorOrLeaderName} | Team: ${selectedUsageForPrint.teamName} | Section: ${selectedUsageForPrint.projectTypeName || 'General'}${selectedUsageForPrint.siteIdentifier ? ` | Site ID: ${selectedUsageForPrint.siteIdentifier}` : ''}${selectedUsageForPrint.customerPhone ? ` | Tel: ${selectedUsageForPrint.customerPhone}` : ''}`}

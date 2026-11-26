@@ -50,6 +50,11 @@ import {
 } from '../../types';
 import { getThemeConfig } from '../../utils/themeUtils';
 import { formatNumber, formatDate, formatDateTime } from '../../utils/exportUtils';
+import {
+  getCountryOffsetIsoDate,
+  getCountryTodayIsoDate,
+  resolveTimestampForDateInput,
+} from '../../utils/countryTimezoneUtils';
 import { exportElementToPdf, printHtmlElement } from '../../utils/printUtils';
 import { matchDigitalSignature } from '../../utils/signatureUtils';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -138,7 +143,7 @@ export const ProcurementView: React.FC = () => {
   const [grnDeliveryNote, setGrnDeliveryNote] = useState('');
   const [grnNotes, setGrnNotes] = useState('');
   const [grnReceivedBy, setGrnReceivedBy] = useState('');
-  const [grnReceiptDate, setGrnReceiptDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [grnReceiptDate, setGrnReceiptDate] = useState(() => getCountryTodayIsoDate());
   const [grnItemInputs, setGrnItemInputs] = useState<Record<string, number>>({});
   const [grnError, setGrnError] = useState('');
 
@@ -268,12 +273,8 @@ export const ProcurementView: React.FC = () => {
 
   const [poNumber, setPoNumber] = useState('');
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
-  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [expectedDate, setExpectedDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return d.toISOString().split('T')[0];
-  });
+  const [orderDate, setOrderDate] = useState(() => getCountryTodayIsoDate());
+  const [expectedDate, setExpectedDate] = useState(() => getCountryOffsetIsoDate(7));
   const [deliveryLocation, setDeliveryLocation] = useState(
     'Central Main Warehouse Logistics Yard, Himbutana, Mulleriyawa'
   );
@@ -296,10 +297,8 @@ export const ProcurementView: React.FC = () => {
       setSelectedSupplierId('');
       setPaymentTerms('Net 30');
     }
-    setOrderDate(new Date().toISOString().split('T')[0]);
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    setExpectedDate(d.toISOString().split('T')[0]);
+    setOrderDate(getCountryTodayIsoDate());
+    setExpectedDate(getCountryOffsetIsoDate(7));
     setDeliveryLocation('Central Main Warehouse Logistics Yard, Himbutana, Mulleriyawa');
     setOrderNotes('Goods to be delivered in sound packaging with original delivery note & test certificates.');
     setTaxPercent(0);
@@ -509,7 +508,7 @@ export const ProcurementView: React.FC = () => {
     setGrnDeliveryNote('');
     setGrnNotes('');
     setGrnReceivedBy(actorDisplayName || 'Central Store In-Charge');
-    setGrnReceiptDate(new Date().toISOString().split('T')[0]);
+    setGrnReceiptDate(getCountryTodayIsoDate());
     setGrnError('');
 
     // Pre-populate each item input with remaining balance
@@ -590,7 +589,7 @@ export const ProcurementView: React.FC = () => {
       receivedBy: grnReceivedBy.trim() || actorDisplayName || 'Central Store In-Charge',
       deliveryNoteNo: grnDeliveryNote.trim(),
       notes: grnNotes.trim(),
-      receiptDate: grnReceiptDate ? new Date(grnReceiptDate).toISOString() : new Date().toISOString(),
+      receiptDate: resolveTimestampForDateInput(grnReceiptDate),
       items: batchItems,
     });
 

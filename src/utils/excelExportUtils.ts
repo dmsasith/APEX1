@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx';
 import { StockBackup } from '../types';
+import { getCountryTodayIsoDate, pickBestTimestamp } from './countryTimezoneUtils';
+import { formatDateTime } from './exportUtils';
 
 export function exportBackupToExcel(backup: StockBackup, filename?: string) {
   const wb = XLSX.utils.book_new();
@@ -139,7 +141,7 @@ export function exportBackupToExcel(backup: StockBackup, filename?: string) {
         const itm = snap.items?.find((i) => i.id === row.itemId);
         usagesData.push({
           'Usage Voucher #': u.usageVoucherNumber,
-          'Usage Date': u.usageDate || u.date,
+          'Usage Date': formatDateTime(pickBestTimestamp(u.date, u.createdAt, u.usageDate)),
           'Project Name': u.projectName,
           'Project ID / Ref': u.projectId,
           'Customer': u.customerName || '',
@@ -179,7 +181,7 @@ export function exportBackupToExcel(backup: StockBackup, filename?: string) {
   }
 
   const cleanCompanyName = (snap.config?.companyName || 'StockSystem').replace(/[^a-z0-9]/gi, '_');
-  const finalFilename = filename || `${cleanCompanyName}_Emergency_Full_Backup_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const finalFilename = filename || `${cleanCompanyName}_Emergency_Full_Backup_${getCountryTodayIsoDate()}.xlsx`;
 
   XLSX.writeFile(wb, finalFilename);
 }

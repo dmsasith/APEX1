@@ -807,6 +807,7 @@ export interface ProjectMaterialUsage {
   loggedBy: string;
   date: string;
   usageDate?: string;
+  createdAt?: string;
   workDetails: string;
   items: ProjectUsageItemRow[];
   isDeleted?: boolean;
