@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FolderKanban,
   Plus,
@@ -578,6 +578,89 @@ export const ProjectMaterialUsageView: React.FC = () => {
     [activeTargetProject, resolveProjectBranch]
   );
 
+  // Auto-detect active Client Free Stock (FOC) pools for the selected Section & Area (or ALL AREAS)
+  const detectedAreaFocPools = React.useMemo(() => {
+    const selectedSiteObj = sites.find((s) => s.id === selectedSiteId);
+    const siteNameLower = (selectedSiteObj?.name || '').trim().toLowerCase();
+
+    const candidateProjects = activeProjects.filter((p) => {
+      if (selectedSectionId && !doesProjectMatchSection(p, selectedSectionId)) return false;
+
+      const focList = getProjectFreeStockList(p.id);
+      const hasAvailableFoc = focList.some(
+        (fm) => (fm.uninstalledProjectBalance || 0) > 0 || (fm.remainingBalance || 0) > 0
+      );
+      if (!hasAvailableFoc) return false;
+
+      if (p.parentProjectId && activeProjects.some((mp) => mp.id === p.parentProjectId)) {
+        return false;
+      }
+
+      if (!selectedSiteId) return true;
+
+      const branch = resolveProjectBranch(p);
+      if (
+        branch.siteId === 'ALL_AREAS' ||
+        p.siteId === 'ALL_AREAS' ||
+        (p.siteName && p.siteName.trim().toUpperCase() === 'ALL AREAS') ||
+        branch.siteId === selectedSiteId
+      ) {
+        return true;
+      }
+
+      const matchingVoucher = (clientFreeIssues || []).some(
+        (v) =>
+          !v.isDeleted &&
+          (v.projectId === p.id || v.parentProjectId === p.id) &&
+          (v.assignedSiteId === 'ALL_AREAS' ||
+            v.assignedSiteId === selectedSiteId ||
+            (siteNameLower && v.assignedSiteName?.trim().toLowerCase() === siteNameLower))
+      );
+      if (matchingVoucher) return true;
+
+      return activeProjects.some(
+        (sp) => sp.parentProjectId === p.id && sp.siteId === selectedSiteId
+      );
+    });
+
+    return candidateProjects
+      .map((p) => {
+        const branch = resolveProjectBranch(p);
+        const isExactArea =
+          branch.siteId === selectedSiteId ||
+          activeProjects.some((sp) => sp.parentProjectId === p.id && sp.siteId === selectedSiteId);
+        const focItems = getProjectFreeStockList(p.id).filter(
+          (fm) => (fm.uninstalledProjectBalance || 0) > 0 || (fm.remainingBalance || 0) > 0
+        );
+        const matchingVoucher = (clientFreeIssues || []).find(
+          (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id)
+        );
+        return {
+          project: p,
+          focItems,
+          clientName: matchingVoucher?.clientName || p.customerName || 'Client FOC',
+          isExactArea,
+          isAllAreas:
+            branch.siteId === 'ALL_AREAS' ||
+            p.siteId === 'ALL_AREAS' ||
+            matchingVoucher?.assignedSiteId === 'ALL_AREAS',
+        };
+      })
+      .sort((a, b) => Number(b.isExactArea) - Number(a.isExactArea));
+  }, [
+    activeProjects,
+    sites,
+    selectedSiteId,
+    selectedSectionId,
+    doesProjectMatchSection,
+    getProjectFreeStockList,
+    resolveProjectBranch,
+    clientFreeIssues,
+  ]);
+
+  const primaryDetectedAreaFoc = detectedAreaFocPools[0] || null;
+  const lastAutoFocKeyRef = useRef<string>('');
+
   const parentOfActiveTarget = React.useMemo(() => {
     if (activeTargetProject?.parentProjectId) {
       return projects.find((mp) => mp.id === activeTargetProject.parentProjectId);
@@ -653,6 +736,8 @@ export const ProjectMaterialUsageView: React.FC = () => {
   const handleSelectSection = (secId: string) => {
     setSelectedSectionId(secId);
     setExistingMainParentFilter('all');
+    setEntryCustomFieldValues({});
+    lastAutoFocKeyRef.current = '';
     const sec = activeProjectTypes.find((pt) => pt.id === secId);
 
     // Strictly filter site teams to those registered under the newly selected Project Section
@@ -759,6 +844,51 @@ export const ProjectMaterialUsageView: React.FC = () => {
     effectiveNcMainProjectId,
     sectionProjects,
     selectedProjectId,
+  ]);
+
+  // Auto-link detected Client FOC pool when Area (Site Branch) or Section changes in Card 1
+  useEffect(() => {
+    const scopeKey = `${selectedSectionId}::${selectedSiteId}`;
+    if (!primaryDetectedAreaFoc) {
+      lastAutoFocKeyRef.current = scopeKey;
+      return;
+    }
+
+    const focPoolProj = primaryDetectedAreaFoc.project;
+    if (isNewConnectionSection) {
+      if (
+        lastAutoFocKeyRef.current !== scopeKey ||
+        !ncParentMainProjectId ||
+        getProjectFreeStockList(ncParentMainProjectId).every(
+          (f) => Math.max(f.uninstalledProjectBalance || 0, f.remainingBalance || 0) <= 0
+        )
+      ) {
+        if (ncParentMainProjectId !== focPoolProj.id) {
+          setNcParentMainProjectId(focPoolProj.id);
+        }
+        setExistingProjectFocClientId(primaryDetectedAreaFoc.clientName);
+        lastAutoFocKeyRef.current = scopeKey;
+      }
+    } else if (lastAutoFocKeyRef.current !== scopeKey) {
+      lastAutoFocKeyRef.current = scopeKey;
+      const childInSite = activeProjects.find(
+        (sp) => sp.parentProjectId === focPoolProj.id && sp.siteId === selectedSiteId
+      );
+      const targetIdToLink = childInSite ? childInSite.id : focPoolProj.id;
+      setProjectEntryMode('existing');
+      setExistingMainParentFilter('all');
+      setSelectedProjectId(targetIdToLink);
+      setNewParentProjectId(focPoolProj.id);
+      setExistingProjectFocClientId(primaryDetectedAreaFoc.clientName);
+    }
+  }, [
+    selectedSectionId,
+    selectedSiteId,
+    primaryDetectedAreaFoc,
+    isNewConnectionSection,
+    ncParentMainProjectId,
+    activeProjects,
+    getProjectFreeStockList,
   ]);
 
   // Quick-add a New Connection Main Project with ONLY Main Project Name + ALL AREAS / Site Area (No Customer or DP fields!)
@@ -965,20 +1095,33 @@ export const ProjectMaterialUsageView: React.FC = () => {
       }
     });
     const finalCustomValues =
-      !isNewConnectionSection && Object.keys(cleanedCustomValues).length > 0 ? cleanedCustomValues : undefined;
+      Object.keys(cleanedCustomValues).length > 0 ? cleanedCustomValues : undefined;
 
-    if (!isNewConnectionSection && projectEntryMode === 'new') {
-      for (const cf of activeSectionCustomFields) {
-        if (cf.required && !cleanedCustomValues[cf.label]?.trim()) {
-          setErrorMsg(`Please enter a value for required field "${cf.label}" in Step 2.`);
-          return;
-        }
+    for (const cf of activeSectionCustomFields) {
+      if (cf.required && !cleanedCustomValues[cf.label]?.trim()) {
+        setErrorMsg(`Please enter a value for required field "${cf.label}" in Card 2 (Section Standard Formats).`);
+        return;
+      }
+    }
+
+    const mobileToCheck = ncEntryCustomerMobile.trim() || entryCustomerPhone.trim();
+    if (mobileToCheck) {
+      const phoneCheck = analyzeCountryPhone(mobileToCheck, {
+        tenantCountry: ncPhoneCountry || currentTenant?.country,
+        currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+      });
+      if (!phoneCheck.isValid) {
+        setErrorMsg(
+          phoneCheck.error ||
+            `Customer Phone Number requires ${phoneCheck.expectedTotalDigits} digits for ${phoneCheck.country.name} (${phoneCheck.country.dialCode}).`
+        );
+        return;
       }
     }
 
     if (isNewConnectionSection) {
       if (!selectedSiteId) {
-        setErrorMsg('Please select your Site Branch / Area in Step 1.');
+        setErrorMsg('Please select your Site Branch / Area in Card 1.');
         return;
       }
     } else if (projectEntryMode === 'new') {
@@ -991,26 +1134,13 @@ export const ProjectMaterialUsageView: React.FC = () => {
           setErrorMsg('Please enter the Sub-Project Name / Work Area.');
           return;
         }
-      } else if (!entryCustomerName.trim()) {
+      } else if (!entryCustomerName.trim() && !ncEntryCustomerName.trim()) {
         setErrorMsg('Please enter the Project or Customer Name.');
         return;
       }
-      if (entryCustomerPhone.trim()) {
-        const phoneCheck = analyzeCountryPhone(entryCustomerPhone, {
-          tenantCountry: ncPhoneCountry || currentTenant?.country,
-          currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
-        });
-        if (!phoneCheck.isValid) {
-          setErrorMsg(
-            phoneCheck.error ||
-              `Customer Phone Number requires ${phoneCheck.expectedTotalDigits} digits for ${phoneCheck.country.name} (${phoneCheck.country.dialCode}).`
-          );
-          return;
-        }
-      }
     } else {
       if (!selectedProjectId) {
-        setErrorMsg('Please select a project from the list.');
+        setErrorMsg('Please select a project from Card 2.');
         return;
       }
     }
@@ -1108,14 +1238,18 @@ export const ProjectMaterialUsageView: React.FC = () => {
     try {
       let finalProjectId = selectedProjectId;
       let finalProjectName = targetProject?.projectName || 'Project';
-      let finalSiteIdentifier = targetProject?.siteIdentifier || '';
-      let finalCustomerPhone = targetProject?.customerPhone || '';
-      let finalCustomerName = targetProject?.customerName || '';
+      let finalSiteIdentifier = ncEntryNumber.trim() || targetProject?.siteIdentifier || '';
+      let finalCustomerPhone = ncEntryCustomerMobile.trim() || targetProject?.customerPhone || '';
+      let finalCustomerName = ncEntryCustomerName.trim() || targetProject?.customerName || '';
       let finalParentProjectId = targetProject?.parentProjectId;
-      let finalNcNumber = targetProject?.ncNumber || targetProject?.siteIdentifier || '';
-      let finalOntSerialNo = targetProject?.ontSerialNo || '';
-      let finalCustomerAddress = targetProject?.customerAddress || '';
-      let finalExchangeArea = targetProject?.exchangeArea || targetProject?.subArea || ncSessionArea.trim();
+      let finalNcNumber = ncEntryNumber.trim() || targetProject?.ncNumber || targetProject?.siteIdentifier || '';
+      let finalOntSerialNo = ncEntryOntSerial.trim() || targetProject?.ontSerialNo || '';
+      let finalCustomerAddress = ncEntryCustomerAddress.trim() || targetProject?.customerAddress || '';
+      let finalExchangeArea =
+        ncEntryExchangeArea.trim() ||
+        targetProject?.exchangeArea ||
+        targetProject?.subArea ||
+        ncSessionArea.trim();
 
       if (isNewConnectionSection) {
         const selectedSiteObj = sites.find((s) => s.id === selectedSiteId);
@@ -1126,7 +1260,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
           updateProject(ncParentObj.id, { projectScope: 'main' });
         }
 
-        // Resolve or auto-create the Site Area Sub-Project under the Main Project (no customer or DP details needed)
+        // Resolve or auto-create the Site Area Sub-Project under the Main Project
         let resolvedAreaSub = existingAreaSubProject;
         if (!resolvedAreaSub) {
           resolvedAreaSub = addProject({
@@ -1159,14 +1293,15 @@ export const ProjectMaterialUsageView: React.FC = () => {
 
         finalProjectId = resolvedAreaSub.id;
         finalProjectName = resolvedAreaSub.projectName;
-        finalSiteIdentifier = resolvedAreaSub.projectId;
-        finalCustomerPhone = '';
-        finalCustomerName = ncParentObj?.customerName || resolvedAreaSub.projectName;
+        finalSiteIdentifier = ncEntryNumber.trim() || resolvedAreaSub.projectId;
+        finalCustomerPhone = ncEntryCustomerMobile.trim() || '';
+        finalCustomerName =
+          ncEntryCustomerName.trim() || ncParentObj?.customerName || resolvedAreaSub.projectName;
         finalParentProjectId = ncParentObj?.id || resolvedAreaSub.parentProjectId;
-        finalNcNumber = resolvedAreaSub.projectId;
-        finalOntSerialNo = '';
-        finalCustomerAddress = '';
-        finalExchangeArea = siteAreaDisplay;
+        finalNcNumber = ncEntryNumber.trim() || resolvedAreaSub.projectId;
+        finalOntSerialNo = ncEntryOntSerial.trim() || '';
+        finalCustomerAddress = ncEntryCustomerAddress.trim() || '';
+        finalExchangeArea = ncEntryExchangeArea.trim() || ncSessionArea.trim() || siteAreaDisplay;
       } else if (projectEntryMode === 'new') {
         const selectedSiteObj = sites.find((s) => s.id === selectedSiteId);
         const parentMainObj =
@@ -1178,16 +1313,23 @@ export const ProjectMaterialUsageView: React.FC = () => {
           ? projects.filter((p) => p.parentProjectId === parentMainObj.id).length
           : 0;
 
-        const generatedProjId = entrySiteId.trim()
-          ? entrySiteId.trim().toUpperCase()
+        const generatedProjId = (ncEntryNumber.trim() || entrySiteId.trim())
+          ? (ncEntryNumber.trim() || entrySiteId.trim()).toUpperCase()
           : parentMainObj
           ? `${parentMainObj.projectId}-SUB-${String(existingSubsUnderParent + 1).padStart(4, '0')}`
           : `PRJ-${new Date().getFullYear()}-${String(projects.length + 1).padStart(4, '0')}`;
 
         const resolvedProjectName =
-          newProjectScope === 'sub' ? entrySubProjectName.trim() : entryCustomerName.trim();
+          newProjectScope === 'sub'
+            ? entrySubProjectName.trim()
+            : entryCustomerName.trim() || ncEntryCustomerName.trim();
         const resolvedCustomerName =
-          entryCustomerName.trim() || parentMainObj?.customerName || resolvedProjectName;
+          ncEntryCustomerName.trim() ||
+          entryCustomerName.trim() ||
+          parentMainObj?.customerName ||
+          resolvedProjectName;
+        const resolvedCustomerPhone =
+          ncEntryCustomerMobile.trim() || entryCustomerPhone.trim() || parentMainObj?.customerPhone || undefined;
 
         const registeredProject = addProject({
           projectId: generatedProjId,
@@ -1199,8 +1341,12 @@ export const ProjectMaterialUsageView: React.FC = () => {
           siteId: selectedSiteObj?.id || parentMainObj?.siteId,
           siteName: selectedSiteObj?.name || parentMainObj?.siteName,
           customerName: resolvedCustomerName,
-          customerPhone: entryCustomerPhone.trim() || parentMainObj?.customerPhone || undefined,
-          siteIdentifier: entrySiteId.trim().toUpperCase() || undefined,
+          customerPhone: resolvedCustomerPhone,
+          siteIdentifier: (ncEntryNumber.trim() || entrySiteId.trim()).toUpperCase() || undefined,
+          ncNumber: ncEntryNumber.trim() || undefined,
+          ontSerialNo: ncEntryOntSerial.trim() || undefined,
+          customerAddress: ncEntryCustomerAddress.trim() || undefined,
+          exchangeArea: ncEntryExchangeArea.trim() || entrySubArea.trim() || undefined,
           projectTypeId: selectedSectionId || parentMainObj?.projectTypeId || undefined,
           projectTypeName: activeSec?.name || parentMainObj?.projectTypeName,
           referenceNo: parentMainObj?.referenceNo || `REF-${String(projects.length + 1).padStart(4, '0')}`,
@@ -1208,7 +1354,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
             entryDistrict.trim() ||
             parentMainObj?.district ||
             (selectedSiteObj?.location || selectedSiteObj?.name || 'General'),
-          subArea: entrySubArea.trim() || 'Field Site',
+          subArea: ncEntryExchangeArea.trim() || entrySubArea.trim() || 'Field Site',
           customFieldValues: finalCustomValues,
           status: 'Active',
         });
@@ -1220,7 +1366,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
         finalCustomerName = registeredProject.customerName || '';
         finalParentProjectId = registeredProject.parentProjectId;
       } else {
-        if (existingProjectFocClientId && !isNewConnectionSection) {
+        if (existingProjectFocClientId && !ncEntryCustomerName.trim()) {
           finalCustomerName = existingProjectFocClientId;
         }
       }
@@ -2045,79 +2191,36 @@ export const ProjectMaterialUsageView: React.FC = () => {
               </div>
             )}
 
-            {/* Project Section / Type Selector Bar */}
-            <div className="mb-4 p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm">
-              <div className="flex items-center justify-between mb-2.5 border-b border-[#3d6889] pb-2">
-                <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-sky-300" />
-                  <span>{isNewConnectionSection ? 'Select Project Section / Type *' : '1. Select Project Section / Type *'}</span>
-                </label>
-                {targetSection && (
-                  <span className="text-[11px] font-bold text-slate-800 bg-white/95 border border-white/80 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-                    <CheckCircle2 className="w-3 h-3 text-teal-600" />
-                    <span>{(targetSection.templateItems || []).length} BOM Template item(s)</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Visual Section Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {activeProjectTypes.map((pt) => {
-                  const isSelected = selectedSectionId === pt.id;
-                  const bomCount = (pt.templateItems || []).length;
-                  return (
-                    <button
-                      key={pt.id}
-                      type="button"
-                      onClick={() => handleSelectSection(pt.id)}
-                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2.5 ${
-                        isSelected
-                          ? 'bg-[#0e2233] text-white border-sky-400 shadow-md ring-2 ring-sky-300/60'
-                          : 'bg-white/95 hover:bg-white text-slate-900 border-white/80 shadow-xs'
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>{pt.code || 'SEC'}</div>
-                        <div className="text-xs font-bold leading-snug whitespace-normal break-words">{pt.name}</div>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 mt-0.5 ${
-                          isSelected ? 'bg-sky-500/25 text-sky-200 border border-sky-400/40' : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {bomCount} BOM
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             <form onSubmit={handleSubmitUsage} className="space-y-4">
-              {isNewConnectionSection ? (
-                /* ============================================================================
-                 * STREAMLINED TELECOM NEW CONNECTION (NC) 3-STEP WORKFLOW (1 -> 2 -> 3)
-                 * ============================================================================ */
-                <>
-                  {/* STEP 1 (NC): TEAM & AREA SELECTION (TOP-MOST, LOCKS UNTIL PAGE REFRESH) */}
-                  <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3d6889] pb-2.5">
-                      <div>
-                        <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                          <Users2 className="w-4 h-4 text-sky-300" />
-                          <span>1. Team & Area Selection (Field Team & Exchange Area)</span>
-                        </span>
-                        <span className="text-[11px] text-sky-100/85 block mt-0.5">
-                          {isNcTeamAreaLocked
-                            ? 'Team & Area are locked for this session so you can continuously enter NC lines without re-selecting. Refresh page to change.'
-                            : 'Select the executing Field Team and Area once — after locking or submitting, it stays fixed until you refresh the page.'}
-                        </span>
-                      </div>
+              {/* ============================================================================
+               * CARD 1 — TEAM & AREA SELECTION (Section, Area/Site, Team & Auto-Detected FOC)
+               * ============================================================================ */}
+              <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3d6889] pb-2.5">
+                  <div>
+                    <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Users2 className="w-4 h-4 text-sky-300" />
+                      <span>1. Team &amp; Area Selection</span>
+                    </span>
+                    <span className="text-[11px] text-sky-100/85 block mt-0.5">
+                      {isNewConnectionSection && isNcTeamAreaLocked
+                        ? 'Section, Team & Area are locked for this session so you can log entries continuously.'
+                        : 'Select your Project Section, Site Branch / Area, and Executing Team. Active Client FOC stock is detected automatically.'}
+                    </span>
+                  </div>
 
-                      {isNcTeamAreaLocked ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/50 text-[11px] font-extrabold uppercase tracking-wider shrink-0 self-start sm:self-auto">
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    {targetSection && (
+                      <span className="text-[11px] font-bold text-slate-800 bg-white/95 border border-white/80 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs">
+                        <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                        <span>{(targetSection.templateItems || []).length} BOM · {activeSectionCustomFields.length} Tech Field(s)</span>
+                      </span>
+                    )}
+                    {isNewConnectionSection &&
+                      (isNcTeamAreaLocked ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/50 text-[11px] font-extrabold uppercase tracking-wider">
                           <Lock className="w-3.5 h-3.5 text-amber-300" />
-                          <span>Locked Until Page Refresh</span>
+                          <span>Locked Session</span>
                         </span>
                       ) : (
                         <button
@@ -2130,195 +2233,404 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             setErrorMsg('');
                             setIsNcTeamAreaLocked(true);
                             setSuccessToast(
-                              `Team "${currentTeam?.teamName || 'Team'}" & Area "${ncSessionArea || 'Selected Area'}" locked for continuous NC Line entry!`
+                              `Team "${currentTeam?.teamName || 'Team'}" & Area "${ncSessionArea || activeSiteAreaDisplayName}" locked for this session!`
                             );
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 text-xs font-extrabold transition cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 text-xs font-extrabold transition cursor-pointer shadow-xs"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Confirm & Lock Team / Area</span>
+                          <span>Lock Team / Area</span>
                         </button>
-                      )}
-                    </div>
+                      ))}
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {/* Site Branch */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Site Branch *
-                        </label>
-                        <select
-                          value={selectedSiteId}
-                          onChange={(e) => handleSiteChange(e.target.value)}
-                          disabled={isSingleSiteLocked || isNcTeamAreaLocked}
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                {/* Project Section / Type Buttons */}
+                <div>
+                  <label className="block text-[11px] font-bold text-sky-100 uppercase tracking-wider mb-1.5">
+                    Project Section / Type *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {activeProjectTypes.map((pt) => {
+                      const isSelected = selectedSectionId === pt.id;
+                      const bomCount = (pt.templateItems || []).length;
+                      return (
+                        <button
+                          key={pt.id}
+                          type="button"
+                          onClick={() => handleSelectSection(pt.id)}
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2 ${
+                            isSelected
+                              ? 'bg-[#0e2233] text-white border-sky-400 shadow-md ring-2 ring-sky-300/60'
+                              : 'bg-white/95 hover:bg-white text-slate-900 border-white/80 shadow-xs'
+                          }`}
                         >
-                          {allowedSites.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {formatSiteHierarchyLabel(s, activeSites, true)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
+                              {pt.code || 'SEC'}
+                            </div>
+                            <div className="text-xs font-bold leading-snug whitespace-normal break-words">
+                              {pt.name}
+                            </div>
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 mt-0.5 ${
+                              isSelected ? 'bg-sky-500/25 text-sky-200 border border-sky-400/40' : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {bomCount} BOM
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                      {/* Exchange Area / Work Area */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Exchange Area / Work Area *
-                        </label>
-                        <input
-                          type="text"
-                          value={ncSessionArea}
-                          disabled={isNcTeamAreaLocked}
-                          onChange={(e) => setNcSessionArea(e.target.value)}
-                          placeholder="e.g. Kalutara (KLL), Maharagama"
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                        />
-                      </div>
-
-                      {/* Executing Field Team (Filtered Strictly by Selected Project Section) */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Executing Field Team * ({targetSection?.code || targetSection?.name || 'Section'})
-                        </label>
-                        <select
-                          value={selectedTeamId}
-                          onChange={(e) => handleTeamChange(e.target.value)}
-                          disabled={isNcTeamAreaLocked}
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                          required
-                        >
-                          {availableTeams.length === 0 ? (
-                            <option value="">
-                              No Teams Registered Under {targetSection?.name || 'This Section'}
-                            </option>
-                          ) : (
-                            availableTeams.map((t) => {
-                              const selSiteName =
-                                activeSites.find((s) => s.id === selectedSiteId)?.name || 'Site';
-                              const isPendingFromPrev = t.assignedSiteId !== selectedSiteId;
-                              return (
-                                <option key={t.id} value={t.id}>
-                                  {t.teamName}
-                                  {isPendingFromPrev
-                                    ? ` [Clearing Pending Stock on ${selSiteName}]`
-                                    : t.assignmentStatus === 'Temporary'
-                                    ? ` [${getTemporaryAssignmentBadgeLabel(selSiteName)}]`
-                                    : ''}{' '}
-                                  (Lead: {t.teamLeaderName})
-                                </option>
-                              );
-                            })
-                          )}
-                        </select>
-                        {availableTeams.length === 0 && (
-                          <p className="mt-1 text-[10px] font-semibold text-amber-200 leading-snug">
-                            No teams on this site are assigned to <strong>{targetSection?.name || 'this section'}</strong>
-                            {siteAssignedTeams.length > 0
-                              ? ` (${siteAssignedTeams.length} site team(s) belong to other sections or need section assignment in Master Registrations).`
-                              : '.'}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Supervisor / Team Leader */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Supervisor or Team Leader *
-                        </label>
-                        <input
-                          type="text"
-                          value={supervisorName}
-                          disabled={isNcTeamAreaLocked}
-                          onChange={(e) => setSupervisorName(e.target.value)}
-                          placeholder="e.g. Team Leader Name"
-                          list="supervisor-presets-nc"
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                          required
-                        />
-                        <datalist id="supervisor-presets-nc">
-                          {currentTeam && <option value={currentTeam.teamLeaderName} />}
-                          {activeUsers.map((u) => (
-                            <option key={u.id} value={u.fullName}>
-                              {u.fullName} ({u.role})
-                            </option>
-                          ))}
-                        </datalist>
-                      </div>
-
-                      {/* Usage Date */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Usage Date *
-                        </label>
-                        <input
-                          type="date"
-                          value={usageDate}
-                          disabled={isNcTeamAreaLocked}
-                          onChange={(e) => setUsageDate(e.target.value)}
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
-                          required
-                        />
-                      </div>
-
-                      {/* Optional Installation Note */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Work Remarks (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={workDetails}
-                          onChange={(e) => setWorkDetails(e.target.value)}
-                          placeholder="e.g. FTTH New Connection Drop & ONT"
-                          className="w-full text-xs font-medium px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
-                        />
-                      </div>
-                    </div>
+                {/* Area, Field Team, Supervisor, Date & Work Scope */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 items-end">
+                  {/* Site Branch / Area */}
+                  <div className="flex flex-col justify-end h-full min-w-0">
+                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
+                      Site Branch / Area *
+                    </label>
+                    <select
+                      value={selectedSiteId}
+                      onChange={(e) => handleSiteChange(e.target.value)}
+                      disabled={isSingleSiteLocked || (isNewConnectionSection && isNcTeamAreaLocked)}
+                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                    >
+                      {allowedSites.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {formatSiteHierarchyLabel(s, activeSites, true)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* STEP 2 (NC / WATER / ELECTRIC / SOLAR): MAIN PROJECT & AUTO-SELECTED SITE AREA SUB-PROJECT FLOW */}
-                  <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3d6889] pb-2.5">
-                      <div>
-                        <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                          <FolderPlus className="w-4 h-4 text-sky-300" />
-                          <span>
-                            2. Main Project &amp; Auto-Selected Site Area Sub-Project ({targetSection?.name || 'New Connections'})
+                  {/* Executing Field Team (Filtered Strictly by Selected Section) */}
+                  <div className="flex flex-col justify-end h-full min-w-0">
+                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate" title={`Executing Field Team * (${targetSection?.code || targetSection?.name || 'Section'})`}>
+                      Executing Field Team * ({targetSection?.code || targetSection?.name || 'Section'})
+                    </label>
+                    <select
+                      value={selectedTeamId}
+                      onChange={(e) => handleTeamChange(e.target.value)}
+                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                      required
+                    >
+                      {availableTeams.length === 0 ? (
+                        <option value="">
+                          No Teams Registered Under {targetSection?.name || 'This Section'}
+                        </option>
+                      ) : (
+                        availableTeams.map((t) => {
+                          const selSiteName =
+                            activeSites.find((s) => s.id === selectedSiteId)?.name || 'Site';
+                          const isPendingFromPrev = t.assignedSiteId !== selectedSiteId;
+                          return (
+                            <option key={t.id} value={t.id}>
+                              {t.teamName}
+                              {isPendingFromPrev
+                                ? ` [Clearing Pending Stock on ${selSiteName}]`
+                                : t.assignmentStatus === 'Temporary'
+                                ? ` [${getTemporaryAssignmentBadgeLabel(selSiteName)}]`
+                                : ''}{' '}
+                              (Lead: {t.teamLeaderName})
+                            </option>
+                          );
+                        })
+                      )}
+                    </select>
+                    {availableTeams.length === 0 && (
+                      <p className="mt-1 text-[10px] font-semibold text-amber-200 leading-snug">
+                        No teams on this site are assigned to <strong>{targetSection?.name || 'this section'}</strong>
+                        {siteAssignedTeams.length > 0
+                          ? ` (${siteAssignedTeams.length} site team(s) belong to other sections).`
+                          : '.'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Supervisor / Team Leader */}
+                  <div className="flex flex-col justify-end h-full min-w-0">
+                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
+                      Supervisor or Team Leader *
+                    </label>
+                    <input
+                      type="text"
+                      value={supervisorName}
+                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                      onChange={(e) => setSupervisorName(e.target.value)}
+                      placeholder="e.g. Team Leader Name"
+                      list="supervisor-presets-unified"
+                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                      required
+                    />
+                    <datalist id="supervisor-presets-unified">
+                      {currentTeam && <option value={currentTeam.teamLeaderName} />}
+                      {activeUsers.map((u) => (
+                        <option key={u.id} value={u.fullName}>
+                          {u.fullName} ({u.role})
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
+
+                  {/* Work / Exchange Area */}
+                  <div className="flex flex-col justify-end h-full min-w-0">
+                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
+                      Work / Exchange Area
+                    </label>
+                    <input
+                      type="text"
+                      value={ncSessionArea}
+                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                      onChange={(e) => setNcSessionArea(e.target.value)}
+                      placeholder="e.g. Kalutara (KLL), Maharagama"
+                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Usage Date */}
+                  <div className="flex flex-col justify-end h-full min-w-0">
+                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
+                      Usage Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={usageDate}
+                      disabled={isNewConnectionSection && isNcTeamAreaLocked}
+                      onChange={(e) => setUsageDate(e.target.value)}
+                      className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                      required
+                    />
+                  </div>
+
+                  {/* Work Details / Scope */}
+                  <div className="flex flex-col justify-end h-full min-w-0">
+                    <label className="block text-xs font-bold text-slate-100 leading-snug mb-1">
+                      Work Details / Remarks
+                    </label>
+                    <input
+                      type="text"
+                      value={workDetails}
+                      onChange={(e) => setWorkDetails(e.target.value)}
+                      placeholder="e.g. Fibre Drop Installation, Splice & Termination"
+                      className="w-full h-9 text-xs font-medium px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    />
+                  </div>
+                </div>
+
+                {/* AUTO-DETECTED CLIENT FREE STOCK (FOC) BANNER ON AREA & SECTION SELECTION */}
+                {(projectFreeMaterials.length > 0 || primaryDetectedAreaFoc) && (() => {
+                  const bannerFocPool =
+                    projectFreeMaterials.some(
+                      (f) => (f.uninstalledProjectBalance || 0) > 0 || (f.remainingBalance || 0) > 0
+                    )
+                      ? {
+                          project:
+                            effectiveNcMainProjectObj ||
+                            (activeTargetProject?.parentProjectId
+                              ? projects.find((mp) => mp.id === activeTargetProject.parentProjectId)
+                              : activeTargetProject) ||
+                            primaryDetectedAreaFoc?.project,
+                          focItems: projectFreeMaterials.filter(
+                            (f) => (f.uninstalledProjectBalance || 0) > 0 || (f.remainingBalance || 0) > 0
+                          ),
+                          clientName:
+                            existingProjectFocClientId ||
+                            primaryDetectedAreaFoc?.clientName ||
+                            activeTargetProject?.customerName ||
+                            'Client / Principal',
+                          isLinkedToCurrentTarget: true,
+                        }
+                      : primaryDetectedAreaFoc
+                      ? { ...primaryDetectedAreaFoc, isLinkedToCurrentTarget: false }
+                      : null;
+
+                  if (!bannerFocPool || bannerFocPool.focItems.length === 0) return null;
+
+                  return (
+                    <div className="p-3.5 bg-gradient-to-r from-indigo-950/95 via-purple-950/95 to-indigo-950/95 border-2 border-purple-400/80 rounded-xl text-xs space-y-2 shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-500/35 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-purple-400/20 border border-purple-300/50 flex items-center justify-center text-purple-200 shrink-0">
+                            <Gift className="w-4 h-4" />
                           </span>
-                        </span>
-                        <span className="text-[11px] text-sky-100/85 block mt-0.5">
-                          Select the Main Project — your active Site Area (<strong>{activeSiteAreaDisplayName}</strong>) is automatically selected as the Sub-Project to build the usage &amp; FOC reconciliation flow. No customer or DP details required.
-                        </span>
+                          <div>
+                            <div className="font-extrabold text-white flex flex-wrap items-center gap-1.5">
+                              <span>Client Material (FOC) Available for this Area</span>
+                              {bannerFocPool.project && (
+                                <span className="font-mono text-[11px] bg-purple-500/30 border border-purple-300/40 px-2 py-0.5 rounded text-purple-100">
+                                  [{bannerFocPool.project.projectId}] {bannerFocPool.project.projectName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-purple-200/90 mt-0.5">
+                              Client: <strong className="text-white">{bannerFocPool.clientName}</strong> · Items in this pool automatically deduct from Client FOC Stock; all other items deduct from Company Stock.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                          {bannerFocPool.isLinkedToCurrentTarget ? (
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-400/20 border border-emerald-300/50 text-emerald-200 font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Auto-Linked for Session</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!bannerFocPool.project) return;
+                                if (isNewConnectionSection) {
+                                  setNcParentMainProjectId(bannerFocPool.project.id);
+                                } else {
+                                  setProjectEntryMode('existing');
+                                  setSelectedProjectId(bannerFocPool.project.id);
+                                  setNewParentProjectId(bannerFocPool.project.id);
+                                }
+                                setExistingProjectFocClientId(bannerFocPool.clientName);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-purple-400 hover:bg-purple-300 text-slate-950 font-extrabold text-[11px] cursor-pointer shadow-xs"
+                            >
+                              Auto-Link This Area FOC Pool
+                            </button>
+                          )}
+                        </div>
                       </div>
 
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                        {bannerFocPool.focItems.map((fm) => {
+                          const focAvail = Math.max(fm.uninstalledProjectBalance || 0, fm.remainingBalance || 0);
+                          return (
+                            <div
+                              key={fm.itemId}
+                              className="flex items-center justify-between gap-2 bg-white/95 px-2.5 py-1.5 rounded-lg border border-purple-200 font-mono text-[11px]"
+                            >
+                              <span className="text-slate-900 font-bold truncate">
+                                [{fm.itemCode}] {fm.itemName}
+                              </span>
+                              <span className="shrink-0 font-extrabold text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                                {formatNumber(focAvail)} {fm.unit} Left
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {detectedAreaFocPools.length > 1 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] text-purple-200">
+                          <span className="font-bold">Other FOC Pools in this Area/Section:</span>
+                          {detectedAreaFocPools.map((pool) => {
+                            const isActivePool = bannerFocPool.project?.id === pool.project.id;
+                            return (
+                              <button
+                                key={pool.project.id}
+                                type="button"
+                                onClick={() => {
+                                  if (isNewConnectionSection) {
+                                    setNcParentMainProjectId(pool.project.id);
+                                  } else {
+                                    setProjectEntryMode('existing');
+                                    setSelectedProjectId(pool.project.id);
+                                    setNewParentProjectId(pool.project.id);
+                                  }
+                                  setExistingProjectFocClientId(pool.clientName);
+                                }}
+                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] border cursor-pointer transition ${
+                                  isActivePool
+                                    ? 'bg-white text-purple-950 border-white'
+                                    : 'bg-purple-900/60 text-purple-100 border-purple-400/50 hover:bg-purple-800/80'
+                                }`}
+                              >
+                                [{pool.project.projectId}] {pool.project.projectName}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* ============================================================================
+               * CARD 2 — SECTION STANDARD FORMATS (Loaded from New Section Registry)
+               * ============================================================================ */}
+              <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3d6889] pb-2.5">
+                  <div>
+                    <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-sky-300" />
+                      <span>
+                        2. Section Standard Formats — {targetSection?.name || 'Project Section'}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-sky-100/85 block mt-0.5">
+                      {activeSectionCoreLabels.bannerSubtitle}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+                    <span className="px-2.5 py-1 rounded-full bg-sky-500/20 border border-sky-300/40 text-sky-100 text-[10px] font-extrabold uppercase tracking-wider">
+                      {activeSectionCoreLabels.badgeLabel}
+                    </span>
+                    {isNewConnectionSection ? (
                       <button
                         type="button"
                         onClick={() => {
                           setShowQuickAddNcMainModal((prev) => !prev);
                           if (!quickNcMainSiteId) setQuickNcMainSiteId('ALL_AREAS');
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 self-start sm:self-auto shadow-xs cursor-pointer transition shrink-0"
+                        className="px-3 py-1 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 font-extrabold text-[11px] flex items-center gap-1 shadow-xs cursor-pointer transition"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>{showQuickAddNcMainModal ? 'Close Quick Add' : '+ Add Main Project'}</span>
+                        <span>{showQuickAddNcMainModal ? 'Close Quick Add' : 'Add Main Project'}</span>
                       </button>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 text-[11px] font-semibold shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setProjectEntryMode('existing')}
+                          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                            projectEntryMode === 'existing'
+                              ? 'bg-teal-700 text-white shadow-2xs font-bold'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                          }`}
+                        >
+                          Registered Project ({sectionProjects.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProjectEntryMode('new');
+                            if (!newParentProjectId && (primaryDetectedAreaFoc?.project.id || mainProjectsList.length > 0)) {
+                              setNewParentProjectId(primaryDetectedAreaFoc?.project.id || mainProjectsList[0]?.id || '');
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                            projectEntryMode === 'new'
+                              ? 'bg-teal-700 text-white shadow-2xs font-bold'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                          }`}
+                        >
+                          + New Sub-Project / Site
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                    {/* Quick Add Main Project (Only Main Project Name + ALL AREAS or Relevant Area — No Customer/DP Details) */}
+                {/* Target Project / Sub-Project Selection Bar */}
+                {isNewConnectionSection ? (
+                  <div className="space-y-2.5">
                     {(showQuickAddNcMainModal || ncCandidateMainProjects.length === 0) && (
-                      <div className="p-3.5 bg-slate-900/95 border-2 border-sky-400/80 rounded-xl space-y-3 shadow-sm">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-xs font-extrabold text-sky-300 uppercase tracking-wider block">
-                              🏢 Quick Add Main Project ({targetSection?.name || 'New Connections'})
-                            </span>
-                            <span className="text-[11px] text-slate-300 block">
-                              Enter only the Main Project Name and choose <strong>🌐 ALL AREAS</strong> (or a specific Site Area). Your current Site Area (<strong>{activeSiteAreaDisplayName}</strong>) will auto-link as a Sub-Project.
-                            </span>
-                          </div>
+                      <div className="p-3 bg-slate-900/95 border border-sky-400/80 rounded-xl space-y-2.5">
+                        <div className="text-xs font-extrabold text-sky-300 uppercase tracking-wider">
+                          🏢 Quick Add Main Project ({targetSection?.name || 'New Connections'})
                         </div>
-
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
                           <div className="sm:col-span-6">
                             <label className="block text-[11px] font-bold text-slate-200 mb-1">
@@ -2332,7 +2644,6 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               className="w-full px-3 py-2 text-xs font-bold border border-white/80 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400"
                             />
                           </div>
-
                           <div className="sm:col-span-4">
                             <label className="block text-[11px] font-bold text-slate-200 mb-1">
                               Assigned Area *
@@ -2342,9 +2653,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               onChange={(e) => setQuickNcMainSiteId(e.target.value)}
                               className="w-full px-3 py-2 text-xs font-extrabold border border-emerald-400 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                             >
-                              <option value="ALL_AREAS">
-                                🌐 ALL AREAS (All Site Branches Can Use)
-                              </option>
+                              <option value="ALL_AREAS">🌐 ALL AREAS (All Site Branches)</option>
                               {sortSitesHierarchically(activeSites.filter((s) => !s.isMainWarehouse)).map((s) => (
                                 <option key={s.id} value={s.id}>
                                   {formatSiteHierarchyLabel(s, activeSites, true)}
@@ -2352,7 +2661,6 @@ export const ProjectMaterialUsageView: React.FC = () => {
                               ))}
                             </select>
                           </div>
-
                           <div className="sm:col-span-2">
                             <button
                               type="button"
@@ -2367,66 +2675,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       </div>
                     )}
 
-                    {/* 1. MAIN PROJECT SELECTOR */}
-                    <div className="p-3.5 bg-gradient-to-r from-indigo-950/90 via-purple-950/90 to-indigo-950/90 border-2 border-purple-400/70 rounded-xl space-y-3 shadow-sm">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-lg bg-purple-500/30 border border-purple-300/50 flex items-center justify-center text-purple-200 shrink-0">
-                            <Building2 className="w-4 h-4" />
-                          </span>
-                          <div>
-                            <span className="text-xs font-extrabold text-white uppercase tracking-wider block">
-                              1. Select Main Project ({targetSection?.name || 'New Connections'})
-                            </span>
-                            <span className="text-[11px] text-purple-200/90 block">
-                              Choose the Umbrella Main Project. Each Site Area automatically becomes a Sub-Project under this Main Project.
-                            </span>
-                          </div>
-                        </div>
-                        {projectFreeMaterials.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const focRows: ItemEntryRow[] = projectFreeMaterials
-                                .filter((fm) => fm.remainingBalance > 0)
-                                .map((fm) => ({
-                                  itemId: fm.itemId,
-                                  quantity: '',
-                                  wastageQuantity: '',
-                                }));
-                              if (focRows.length > 0) {
-                                setItemRows(focRows);
-                                setSuccessToast(
-                                  `Loaded ${focRows.length} Client FOC material item(s) from Main Project [${effectiveNcMainProjectObj?.projectId || 'Pool'}] into Step 3.`
-                                );
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-purple-400 hover:bg-purple-300 text-slate-950 font-extrabold text-[11px] flex items-center gap-1.5 shrink-0 cursor-pointer transition shadow-xs"
-                          >
-                            <Gift className="w-3.5 h-3.5" />
-                            <span>Load FOC Materials ({projectFreeMaterials.filter((f) => f.remainingBalance > 0).length})</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch bg-white/95 p-3 rounded-xl border border-white/80 text-slate-900">
+                      <div className="lg:col-span-6 flex flex-col justify-between">
+                        <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
+                          Linked Main Project Pool ({targetSection?.name})
+                        </label>
                         <select
                           value={effectiveNcMainProjectId}
-                          onChange={(e) => {
-                            const chosenMainId = e.target.value;
-                            setNcParentMainProjectId(chosenMainId);
-                          }}
-                          className="w-full px-3 py-2.5 border border-purple-300 rounded-lg text-xs font-extrabold text-slate-900 bg-white focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                          onChange={(e) => setNcParentMainProjectId(e.target.value)}
+                          className="w-full h-10 px-3 border border-slate-300 rounded-lg text-xs font-extrabold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-400 focus:outline-none"
                         >
                           {ncCandidateMainProjects.length === 0 ? (
-                            <option value="">
-                              -- No Main Project Registered Yet for {targetSection?.name || 'This Section'} (Use Quick Add Above) --
-                            </option>
+                            <option value="">-- No Main Project Registered Yet (Click Add Main Project) --</option>
                           ) : (
                             <>
                               {ncCandidateMainProjects.map((mp) => {
                                 const focItems = getProjectFreeStockList(mp.id);
-                                const areaSubsCount = activeProjects.filter((c) => c.parentProjectId === mp.id).length;
                                 const areaBadge =
                                   mp.siteId === 'ALL_AREAS' || mp.siteName === 'ALL AREAS'
                                     ? '🌐 ALL AREAS'
@@ -2434,850 +2698,447 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 return (
                                   <option key={mp.id} value={mp.id}>
                                     🏢 [{mp.projectId}] {mp.projectName} ({areaBadge})
-                                    {focItems.length > 0
-                                      ? ` — 🎁 ${focItems.length} FOC Material(s) Available`
-                                      : ' — Normal Company Stock'}
-                                    {areaSubsCount > 0 ? ` · (${areaSubsCount} Site Area Sub-Project(s))` : ''}
+                                    {focItems.length > 0 ? ` — 🎁 ${focItems.length} FOC Item(s)` : ' — Company Stock'}
                                   </option>
                                 );
                               })}
-                              <option value="">-- Normal Company Stock Without Main Project --</option>
+                              <option value="">-- Direct Company Stock (No Main Project) --</option>
                             </>
                           )}
                         </select>
                       </div>
 
-                      {/* 2. AUTO-SELECTED SUB-PROJECT (SITE AREA FLOW) */}
-                      <div className="p-3 bg-emerald-950/90 border-2 border-emerald-400/80 rounded-xl space-y-2 text-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-slate-950 font-black text-[10px] uppercase tracking-wider">
-                              ↳ 2. Auto-Selected Sub-Project (Site Area)
-                            </span>
-                            <span className="text-emerald-200 font-bold text-[11px]">
-                              Automatically linked from your Step 1 Site Branch (<strong>{activeSiteAreaDisplayName}</strong>)
-                            </span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/50 text-emerald-200 font-extrabold text-[10px]">
-                            {existingAreaSubProject
-                              ? '✓ Site Area Sub-Project Active'
-                              : '⚡ Auto-Creates & Links on Usage Post'}
+                      <div className="lg:col-span-6 flex flex-col justify-center bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 min-h-[58px]">
+                        <div className="text-[10px] font-extrabold uppercase text-emerald-800 flex items-center justify-between gap-2">
+                          <span>↳ Auto-Selected Area Sub-Project</span>
+                          <span className="text-emerald-700 shrink-0">
+                            {existingAreaSubProject ? '✓ Active' : '⚡ Auto-Links on Submit'}
                           </span>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-white/95 p-2.5 rounded-lg border border-emerald-200 text-slate-900">
-                          <div>
-                            <span className="text-[10px] font-extrabold uppercase text-slate-400 block">
-                              Main Project (Umbrella)
-                            </span>
-                            <span className="font-extrabold text-indigo-950 text-xs block truncate">
-                              {effectiveNcMainProjectObj
-                                ? `[${effectiveNcMainProjectObj.projectId}] ${effectiveNcMainProjectObj.projectName}`
-                                : 'Direct Area Usage (No Main Project)'}
-                            </span>
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] font-extrabold uppercase text-emerald-700 block">
-                              ↳ Sub-Project (Your Site Area)
-                            </span>
-                            <span className="font-mono font-black text-emerald-900 text-xs block truncate">
-                              [{existingAreaSubProject?.projectId || expectedAreaSubProjectCode}]{' '}
-                              {existingAreaSubProject?.projectName || expectedAreaSubProjectName}
-                            </span>
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] font-extrabold uppercase text-slate-400 block">
-                              Site Area &amp; Reconciliation Flow
-                            </span>
-                            <span className="font-bold text-slate-800 text-xs flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>
-                                🏢 {activeSiteAreaDisplayName} → Main Project Full Balance Report
-                              </span>
-                            </span>
-                          </div>
+                        <div className="font-mono font-bold text-emerald-950 text-xs truncate mt-0.5">
+                          [{existingAreaSubProject?.projectId || expectedAreaSubProjectCode}]{' '}
+                          {existingAreaSubProject?.projectName || expectedAreaSubProjectName}
                         </div>
-
-                        {/* Show all Site Area Sub-Projects linked under this Main Project */}
-                        {effectiveNcMainProjectObj && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                            <span className="text-[10px] font-bold text-emerald-200/90 uppercase">
-                              Site Area Sub-Projects Under [{effectiveNcMainProjectObj.projectId}]:
-                            </span>
-                            {activeProjects
-                              .filter((sp) => sp.parentProjectId === effectiveNcMainProjectObj.id)
-                              .map((sp) => {
-                                const isCurrentArea = sp.id === existingAreaSubProject?.id || sp.siteId === selectedSiteId;
-                                return (
-                                  <span
-                                    key={sp.id}
-                                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${
-                                      isCurrentArea
-                                        ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-2xs'
-                                        : 'bg-slate-800/90 text-slate-200 border-slate-600'
-                                    }`}
-                                  >
-                                    ↳ [{sp.projectId}] {sp.siteName || sp.projectName}
-                                    {isCurrentArea ? ' (Active Area)' : ''}
-                                  </span>
-                                );
-                              })}
-                            {!existingAreaSubProject && (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-400 text-slate-950 border border-emerald-300">
-                                ↳ [{expectedAreaSubProjectCode}] {activeSiteAreaDisplayName} (Auto-Selected Area)
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
-
-                      {/* 3. Shared Main Project Client FOC Stock Pool Summary */}
-                      {projectFreeMaterials.length > 0 && (
-                        <div className="p-3 bg-white/95 border border-purple-200 rounded-xl text-xs space-y-2 shadow-2xs">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-purple-950 font-bold border-b border-purple-100 pb-1.5">
-                            <span className="flex items-center gap-1.5 text-xs">
-                              <Gift className="w-3.5 h-3.5 text-purple-700 shrink-0" />
-                              <span>
-                                Main Project Client FOC Pool:{' '}
-                                <strong className="font-black">
-                                  [{effectiveNcMainProjectObj?.projectId || targetProject?.projectId}]{' '}
-                                  {effectiveNcMainProjectObj?.projectName || targetProject?.projectName}
-                                </strong>
-                              </span>
-                            </span>
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-purple-700 text-white self-start sm:self-auto">
-                              Auto-Deducts for {activeSiteAreaDisplayName} Sub-Project
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {projectFreeMaterials.map((fm) => (
-                              <div
-                                key={fm.itemId}
-                                className="flex flex-col justify-between bg-purple-50/60 px-2.5 py-2 rounded-lg border border-purple-200/80 font-mono text-[11px] gap-1"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-slate-900 font-bold truncate">
-                                    [{fm.itemCode}] {fm.itemName}
-                                  </span>
-                                  <span className="shrink-0 font-extrabold text-purple-800 bg-white px-2 py-0.5 rounded border border-purple-300">
-                                    {formatNumber(fm.remainingBalance)} {fm.unit} Left
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between text-[10px] text-slate-600">
-                                  <span>FOC Received: {formatNumber(fm.totalReceived)} {fm.unit}</span>
-                                  <span>Total Main Project Used: {formatNumber(fm.totalUsed)} {fm.unit}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
-                </>
-              ) : (
-                /* ============================================================================
-                 * STANDARD SECTIONS WORKFLOW (STEPS 2 & 3 FOR OTHER SECTIONS)
-                 * ============================================================================ */
-                <>
-                  {/* Step 2 Card: Project, Sub-Project & Customer Details */}
-                  <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3d6889] pb-2.5">
-                      <div>
-                        <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                          <FolderPlus className="w-4 h-4 text-sky-300" />
-                          <span>2. Project / Sub-Project & Customer Identification</span>
-                        </span>
-                        <span className="text-[11px] text-sky-100/85 block mt-0.5">
-                          Select a Sub-Project under a Major Project (auto-deducts from Main Project Free Stock) or an Individual Project.
-                        </span>
-                      </div>
+                ) : projectEntryMode === 'new' ? (
+                  <div className="p-3 bg-white/95 border border-white/80 rounded-xl space-y-3 text-slate-900">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewProjectScope('sub');
+                          if (!newParentProjectId && (primaryDetectedAreaFoc?.project.id || mainProjectsList.length > 0)) {
+                            setNewParentProjectId(primaryDetectedAreaFoc?.project.id || mainProjectsList[0]?.id || '');
+                          }
+                        }}
+                        className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
+                          newProjectScope === 'sub'
+                            ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-300'
+                            : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold text-amber-950">↳ New Sub-Project (Under Main Project)</div>
+                        <div className="text-[11px] text-slate-600">Links to Parent Main Project &amp; auto-deducts from its Client FOC pool.</div>
+                      </button>
 
-                      {/* Mode Switcher */}
-                      <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-[11px] font-semibold self-start sm:self-auto shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => setProjectEntryMode('existing')}
-                          className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                            projectEntryMode === 'existing'
-                              ? 'bg-teal-700 text-white shadow-2xs font-bold'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                          }`}
-                        >
-                          Select Registered Project ({sectionProjects.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProjectEntryMode('new');
-                            if (!newParentProjectId && mainProjectsList.length > 0) {
-                              setNewParentProjectId(mainProjectsList[0].id);
-                            }
-                          }}
-                          className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                            projectEntryMode === 'new'
-                              ? 'bg-teal-700 text-white shadow-2xs font-bold'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                          }`}
-                        >
-                          + Register New Sub-Project / Site
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewProjectScope('individual')}
+                        className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
+                          newProjectScope === 'individual'
+                            ? 'bg-teal-50 border-teal-500 ring-1 ring-teal-300'
+                            : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold text-teal-950">📄 New Individual Project</div>
+                        <div className="text-[11px] text-slate-600">Standalone project or customer job ledger.</div>
+                      </button>
                     </div>
 
-                    {projectEntryMode === 'new' ? (
-                      <div className="space-y-3 pt-1">
-                        {/* Choose whether registering a Sub-Project under a Main Project or a Standalone Individual Project */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNewProjectScope('sub');
-                              if (!newParentProjectId && mainProjectsList.length > 0) {
-                                setNewParentProjectId(mainProjectsList[0].id);
-                              }
-                            }}
-                            className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                              newProjectScope === 'sub'
-                                ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-200'
-                                : 'bg-white border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="text-xs font-extrabold text-amber-950 flex items-center justify-between">
-                              <span>↳ New Sub-Project (Under Main Project)</span>
-                              {newProjectScope === 'sub' && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-600 text-white">Active</span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-slate-600 mt-0.5">
-                              Create a Sub-Project under an existing Major Project and draw from its shared Free Stock pool.
-                            </p>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setNewProjectScope('individual')}
-                            className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                              newProjectScope === 'individual'
-                                ? 'bg-teal-50/90 border-teal-500 ring-2 ring-teal-200'
-                                : 'bg-white border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="text-xs font-extrabold text-teal-950 flex items-center justify-between">
-                              <span>📄 New Individual Project (Standalone)</span>
-                              {newProjectScope === 'individual' && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-700 text-white">Active</span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-slate-600 mt-0.5">
-                              Register a standalone single project or direct customer job with its own ledger.
-                            </p>
-                          </button>
-                        </div>
-
-                        {newProjectScope === 'sub' && (
-                          <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2.5">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-bold text-amber-950 mb-1">
-                                  Select Parent Major / Main Project *
-                                </label>
-                                <select
-                                  value={newParentProjectId}
-                                  onChange={(e) => {
-                                    setNewParentProjectId(e.target.value);
-                                    const parentObj = projects.find((p) => p.id === e.target.value);
-                                    if (parentObj?.customerName) setEntryCustomerName(parentObj.customerName);
-                                    if (parentObj?.district) setEntryDistrict(parentObj.district);
-                                  }}
-                                  className="w-full text-xs font-bold px-3 py-2 border border-amber-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                  required={newProjectScope === 'sub'}
-                                >
-                                  <option value="">
-                                    {mainProjectsList.length > 0
-                                      ? `-- Choose Major / Main Project (${targetSection?.code || 'Section'}) --`
-                                      : `-- No Major / Main Projects in ${targetSection?.name || 'this Section'} --`}
-                                  </option>
-                                  {mainProjectsList.map((mp) => (
-                                    <option key={mp.id} value={mp.id}>
-                                      🏢 [{mp.projectId}] {mp.projectName} {mp.customerName ? `(${mp.customerName})` : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div>
-                                <label className="block text-xs font-bold text-amber-950 mb-1">
-                                  New Sub-Project Name / Site Section *
-                                </label>
-                                <input
-                                  type="text"
-                                  value={entrySubProjectName}
-                                  onChange={(e) => setEntrySubProjectName(e.target.value)}
-                                  placeholder="e.g. Homagama Phase 2, Tower B Sector 3"
-                                  className="w-full text-xs font-bold px-3 py-2 border border-amber-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                  required={newProjectScope === 'sub'}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-100 mb-1">
-                              FOC Client / Principal Name {newProjectScope === 'individual' ? '*' : '(Inherited if blank)'}
-                            </label>
-                            <select
-                              value={entryCustomerName}
-                              onChange={(e) => setEntryCustomerName(e.target.value)}
-                              className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                              required={newProjectScope === 'individual'}
-                            >
-                              <option value="">-- Select Registered Client / Principal --</option>
-                              {activeClients.map((clt) => (
-                                <option key={clt.id} value={clt.name}>
-                                  {clt.name} ({clt.clientCode} — {clt.category || 'Client'})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {(() => {
-                            const stdPhoneAnalysis = analyzeCountryPhone(entryCustomerPhone, {
-                              tenantCountry: ncPhoneCountry || currentTenant?.country,
-                              currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
-                            });
-                            return (
-                              <div>
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                  <label className="block text-xs font-bold text-slate-100">
-                                    Customer Phone Number
-                                  </label>
-                                  <PhoneCountryBadge
-                                    value={entryCustomerPhone}
-                                    countryOverride={ncPhoneCountry}
-                                    currencyOverride={config?.currencySymbol}
-                                    dark
-                                  />
-                                </div>
-                                <div className="flex items-stretch gap-1.5">
-                                  <select
-                                    value={stdPhoneAnalysis.country.name}
-                                    onChange={(e) => {
-                                      const chosenCountry = e.target.value;
-                                      setNcPhoneCountry(chosenCountry);
-                                      setEntryCustomerPhone((prev) =>
-                                        enforceCountryPhoneInput(prev, {
-                                          tenantCountry: chosenCountry,
-                                          currencySymbol: config?.currencySymbol,
-                                        })
-                                      );
-                                    }}
-                                    title="Select Country for Phone Digit Counting"
-                                    className="px-2 py-2 text-xs font-bold border border-white/80 rounded-lg bg-slate-100 text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 shrink-0 cursor-pointer"
-                                  >
-                                    {COUNTRY_PHONE_RULES.map((rule) => (
-                                      <option key={rule.code} value={rule.name}>
-                                        {rule.flag} {rule.dialCode} ({rule.code})
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <div className="relative flex-1">
-                                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                                    <input
-                                      type="tel"
-                                      value={entryCustomerPhone}
-                                      onChange={(e) => {
-                                        const raw = e.target.value;
-                                        const dialedRule = matchCountryByDialPrefix(raw);
-                                        const activeCountryName = dialedRule ? dialedRule.name : ncPhoneCountry;
-                                        if (dialedRule && dialedRule.name !== ncPhoneCountry) {
-                                          setNcPhoneCountry(dialedRule.name);
-                                        }
-                                        setEntryCustomerPhone(
-                                          enforceCountryPhoneInput(raw, {
-                                            tenantCountry: activeCountryName || currentTenant?.country,
-                                            currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
-                                          })
-                                        );
-                                      }}
-                                      placeholder={stdPhoneAnalysis.country.localPlaceholder}
-                                      className="w-full pl-8 pr-3 py-2 text-xs font-mono border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-100 mb-1">
-                              Site ID / Sub-Project Code
-                            </label>
-                            <div className="relative">
-                              <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                              <input
-                                type="text"
-                                value={entrySiteId}
-                                onChange={(e) => setEntrySiteId(e.target.value)}
-                                placeholder="e.g. SUB-01, SITE-0891"
-                                className="w-full pl-8 pr-3 py-2 text-xs font-mono uppercase border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-slate-100 mb-1">
-                              District
-                            </label>
-                            <input
-                              type="text"
-                              value={entryDistrict}
-                              onChange={(e) => setEntryDistrict(e.target.value)}
-                              placeholder="e.g. Colombo, Kandy"
-                              className="w-full text-xs font-medium px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-slate-100 mb-1">
-                              Sub Area / Location
-                            </label>
-                            <input
-                              type="text"
-                              value={entrySubArea}
-                              onChange={(e) => setEntrySubArea(e.target.value)}
-                              placeholder="e.g. Maharagama, Sector 4"
-                              className="w-full text-xs font-medium px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Duplicate Detection Alert Banner */}
-                        {duplicateMatches.length > 0 && (
-                          <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
-                            <div className="flex items-start gap-2">
-                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                              <div>
-                                <span className="font-bold">Existing Match Found:</span> Found {duplicateMatches.length} registered project(s) matching this Phone or Site ID:
-                                <div className="font-semibold text-amber-900 mt-0.5">
-                                  {duplicateMatches.map((m) => `"${m.projectName}" (${m.siteIdentifier ? `Site: ${m.siteIdentifier}, ` : ''}${m.customerPhone ? `Tel: ${m.customerPhone}` : m.projectId})`).join(' | ')}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setProjectEntryMode('existing');
-                                  setSelectedProjectId(duplicateMatches[0].id);
-                                  setSuccessToast(`Switched to existing project "${duplicateMatches[0].projectName}". Material usage will attach to this project.`);
-                                }}
-                                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-2xs cursor-pointer"
-                              >
-                                Link to Existing Project
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="pt-1 space-y-2.5">
-                        {/* Quick Scope Filter + Main Project Family Filter */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2 rounded-lg border border-slate-200/90">
-                          <div className="flex flex-wrap items-center gap-1">
-                            {(
-                              [
-                                { id: 'all', label: 'All Projects' },
-                                { id: 'sub', label: '↳ Sub-Projects (Under Main)' },
-                                { id: 'main', label: '🏢 Major / Main Projects' },
-                                { id: 'individual', label: '📄 Individual Projects' },
-                              ] as const
-                            ).map((tab) => (
-                              <button
-                                key={tab.id}
-                                type="button"
-                                onClick={() => {
-                                  setExistingScopeFilter(tab.id);
-                                  const nextList = activeProjects.filter((p) => {
-                                    if (!doesProjectMatchSection(p, selectedSectionId)) return false;
-                                    const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
-                                    const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
-                                    const isIndiv = !isMain && !isSub;
-                                    if (tab.id === 'sub') return isSub;
-                                    if (tab.id === 'main') return isMain;
-                                    if (tab.id === 'individual') return isIndiv;
-                                    return true;
-                                  });
-                                  setSelectedProjectId(nextList[0]?.id || '');
-                                }}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                                  existingScopeFilter === tab.id
-                                    ? 'bg-teal-700 text-white shadow-2xs'
-                                    : 'text-slate-600 hover:bg-slate-100'
-                                }`}
-                              >
-                                {tab.label}
-                              </button>
-                            ))}
-                          </div>
-
+                    {newProjectScope === 'sub' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Parent Major / Main Project *
+                          </label>
                           <select
-                            value={existingMainParentFilter}
+                            value={newParentProjectId}
                             onChange={(e) => {
-                              const val = e.target.value;
-                              setExistingMainParentFilter(val);
-                              if (val !== 'all') {
-                                const firstSub = activeProjects.find(
-                                  (p) => p.parentProjectId === val && doesProjectMatchSection(p, selectedSectionId)
-                                );
-                                setSelectedProjectId(firstSub ? firstSub.id : val);
-                              } else {
-                                const firstInSec = activeProjects.find((p) => doesProjectMatchSection(p, selectedSectionId));
-                                setSelectedProjectId(firstInSec ? firstInSec.id : '');
-                              }
+                              setNewParentProjectId(e.target.value);
+                              const parentObj = projects.find((p) => p.id === e.target.value);
+                              if (parentObj?.customerName) setEntryCustomerName(parentObj.customerName);
+                              if (parentObj?.district) setEntryDistrict(parentObj.district);
                             }}
-                            className="text-[11px] font-bold px-2.5 py-1 border border-purple-200 rounded-md bg-purple-50 text-purple-900 focus:outline-none"
+                            className="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            required={newProjectScope === 'sub'}
                           >
-                            <option value="all">
+                            <option value="">
                               {mainProjectsList.length > 0
-                                ? `🏢 Filter by Main Project (${targetSection?.code || 'Section'}): All (${mainProjectsList.length})`
-                                : `🏢 Filter by Main Project (${targetSection?.code || 'Section'}): None Registered`}
+                                ? `-- Choose Major / Main Project (${targetSection?.code || 'Section'}) --`
+                                : `-- No Major / Main Projects in ${targetSection?.name || 'this Section'} --`}
                             </option>
                             {mainProjectsList.map((mp) => (
                               <option key={mp.id} value={mp.id}>
-                                🏢 [{mp.projectId}] {mp.projectName}
+                                🏢 [{mp.projectId}] {mp.projectName} {mp.customerName ? `(${mp.customerName})` : ''}
                               </option>
                             ))}
                           </select>
                         </div>
-
                         <div>
-                          <label className="block text-xs font-bold text-slate-100 mb-1">
-                            Choose Sub-Project / Project for Material Usage *
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            New Sub-Project Name / Work Area *
                           </label>
-                          <select
-                            value={selectedProjectId}
-                            onChange={(e) => setSelectedProjectId(e.target.value)}
-                            className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                            required
-                          >
-                            {sectionProjects.length === 0 ? (
-                              <option value="">No matching projects (Change filter or click &quot;+ Register New Sub-Project&quot;)</option>
-                            ) : (
-                              sectionProjects.map((p) => {
-                                const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
-                                const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
-                                const prefix = isSub
-                                  ? `↳ [SUB of ${p.parentProjectCode || p.parentProjectName || 'Main'}]`
-                                  : isMain
-                                  ? '🏢 [MAIN PROJECT]'
-                                  : '📄 [INDIVIDUAL]';
-                                const pBranch = resolveProjectBranch(p);
-                                return (
-                                  <option key={p.id} value={p.id}>
-                                    {prefix} [{p.projectId}] {p.projectName}{pBranch.siteName ? ` — [Site: ${pBranch.siteName}]` : ''} {p.subArea ? `· ${p.subArea}` : ''}
-                                  </option>
-                                );
-                              })
-                            )}
-                          </select>
+                          <input
+                            type="text"
+                            value={entrySubProjectName}
+                            onChange={(e) => setEntrySubProjectName(e.target.value)}
+                            placeholder="e.g. Homagama Phase 2, Tower B Sector 3"
+                            className="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            required={newProjectScope === 'sub'}
+                          />
                         </div>
-
-                        {/* If a Major / Main Project is selected, show its Sub-Projects for 1-click selection */}
-                        {targetProject &&
-                          (targetProject.projectScope === 'main' ||
-                            activeProjects.some((sub) => sub.parentProjectId === targetProject.id)) && (
-                            <div className="p-3 bg-purple-50/90 border border-purple-200 rounded-xl space-y-2">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-xs font-extrabold text-purple-950 flex items-center gap-1.5">
-                                  <span>🏢 Major / Main Project Selected:</span>
-                                  <span className="font-mono bg-purple-100 px-1.5 py-0.5 rounded border border-purple-300">
-                                    {targetProject.projectName}
-                                  </span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setProjectEntryMode('new');
-                                    setNewProjectScope('sub');
-                                    setNewParentProjectId(targetProject.id);
-                                    if (targetProject.customerName) setEntryCustomerName(targetProject.customerName);
-                                    if (targetProject.district) setEntryDistrict(targetProject.district);
-                                  }}
-                                  className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] cursor-pointer shadow-2xs"
-                                >
-                                  + Create New Sub-Project Under This Main Project
-                                </button>
-                              </div>
-                              {(() => {
-                                const childSubs = activeProjects.filter((s) => s.parentProjectId === targetProject.id);
-                                if (childSubs.length === 0) {
-                                  return (
-                                    <p className="text-[11px] text-purple-800">
-                                      No Sub-Projects registered under this Main Project yet. Click the button above to add a Sub-Project or log directly onto the Main Project.
-                                    </p>
-                                  );
-                                }
-                                return (
-                                  <div>
-                                    <div className="text-[11px] text-purple-800 font-semibold mb-1.5">
-                                      Click a Sub-Project below to log field usage under that specific Sub-Project (automatically deducts from this Main Project&apos;s Free Stock):
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {childSubs.map((sub) => (
-                                        <button
-                                          key={sub.id}
-                                          type="button"
-                                          onClick={() => setSelectedProjectId(sub.id)}
-                                          className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-950 border border-amber-300 text-[11px] font-bold transition cursor-pointer shadow-2xs"
-                                        >
-                                          ↳ [{sub.projectId}] {sub.projectName}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          )}
-
-                        {/* If a Sub-Project is selected, show its Parent Main Project banner */}
-                        {targetProject && targetProject.parentProjectId && (
-                          <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 rounded bg-amber-600 text-white font-extrabold text-[10px] uppercase">
-                                ↳ Sub-Project
-                              </span>
-                              <span>
-                                Linked under Main Project:{' '}
-                                <strong className="text-purple-900">
-                                  [{targetProject.parentProjectCode || 'MAIN'}] {targetProject.parentProjectName}
-                                </strong>
-                              </span>
-                            </div>
-                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              ✓ Deducts from Main Project Free Stock Pool
-                            </span>
-                          </div>
-                        )}
-
-                        {projectFreeMaterials.length > 0 && (
-                          <div className="mt-2">
-                            <label className="block text-xs font-bold text-slate-100 mb-1">
-                              Associated FOC Client / Principal (Optional)
-                            </label>
-                            <select
-                              value={existingProjectFocClientId}
-                              onChange={(e) => setExistingProjectFocClientId(e.target.value)}
-                              className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                            >
-                              <option value="">-- Select Registered Client / Principal --</option>
-                              {activeClients.map((clt) => (
-                                <option key={clt.id} value={clt.name}>
-                                  {clt.name} ({clt.clientCode} — {clt.category || 'Client'})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {targetProject && (
-                          <div className="mt-2 p-2.5 bg-white border border-slate-200 rounded-lg text-[11px] text-slate-700 flex flex-wrap items-center gap-3 shadow-2xs">
-                            <span><strong>Project Code:</strong> {targetProject.projectId}</span>
-                            {targetProject.parentProjectName && (
-                              <span><strong>Parent Main Project:</strong> {targetProject.parentProjectName}</span>
-                            )}
-                            <span><strong>Phone:</strong> {targetProject.customerPhone || 'N/A'}</span>
-                            <span><strong>District:</strong> {targetProject.district || 'General'}</span>
-                            <span><strong>Sub-Area:</strong> {targetProject.subArea || '—'}</span>
-                          </div>
-                        )}
                       </div>
-                    )}
-
-                    {/* Shared Main Project / Individual Project Free Stock Pool Banner */}
-                    {projectFreeMaterials.length > 0 && (
-                      <div className="mt-2.5 p-3.5 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border border-indigo-200 rounded-xl text-xs space-y-2 shadow-2xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-indigo-950 font-bold border-b border-indigo-100/80 pb-2">
-                          <span className="flex items-center gap-1.5 text-xs">
-                            <Gift className="w-4 h-4 text-indigo-600 shrink-0" />
-                            <span>
-                              {targetProject?.parentProjectId || (projectEntryMode === 'new' && newProjectScope === 'sub')
-                                ? `Shared Main Project Free Stock Pool (${targetProject?.parentProjectName || projects.find((p) => p.id === newParentProjectId)?.projectName || 'Main Project'})`
-                                : 'Client / Principal FOC Free Stock Allocated'}
-                            </span>
-                          </span>
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white shadow-2xs self-start sm:self-auto">
-                            Auto-Deducted from Main Pool
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-600">
-                          Material usage logged on this {targetProject?.parentProjectId ? 'Sub-Project' : 'project'} automatically deducts from the Client Free Stock balance below while tracking this Sub-Project&apos;s individual consumption separately:
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
-                          {projectFreeMaterials.map((fm) => (
-                            <div key={fm.itemId} className="flex flex-col justify-between bg-white px-3 py-2 rounded-lg border border-indigo-100 font-mono text-[11px] shadow-2xs gap-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-900 font-bold truncate pr-2">[{fm.itemCode}] {fm.itemName}</span>
-                                <span className="shrink-0 font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                                  {formatNumber(fm.remainingBalance)} {fm.unit} Left in Pool
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-[10px] text-slate-500">
-                                <span>Pool Received: {formatNumber(fm.totalReceived)} {fm.unit}</span>
-                                {targetProject?.parentProjectId && (
-                                  <span className="text-amber-700 font-bold">
-                                    This Sub-Project Used: {formatNumber(fm.directUsed || 0)} {fm.unit}
-                                  </span>
-                                )}
-                                <span>Total Pool Used: {formatNumber(fm.totalUsed)} {fm.unit}</span>
-                              </div>
-                            </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Project / Client Name *
+                        </label>
+                        <select
+                          value={entryCustomerName}
+                          onChange={(e) => setEntryCustomerName(e.target.value)}
+                          className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          <option value="">-- Select Registered Client / Principal (or enter Customer Name below) --</option>
+                          {activeClients.map((clt) => (
+                            <option key={clt.id} value={clt.name}>
+                              {clt.name} ({clt.clientCode} — {clt.category || 'Client'})
+                            </option>
                           ))}
-                        </div>
+                        </select>
                       </div>
                     )}
                   </div>
+                ) : (
+                  <div className="space-y-2 bg-white/95 p-3 rounded-xl border border-white/80 text-slate-900">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(
+                          [
+                            { id: 'all', label: 'All Projects' },
+                            { id: 'sub', label: '↳ Sub-Projects' },
+                            { id: 'main', label: '🏢 Main Projects' },
+                            { id: 'individual', label: '📄 Individual' },
+                          ] as const
+                        ).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              setExistingScopeFilter(tab.id);
+                              const nextList = activeProjects.filter((p) => {
+                                if (!doesProjectMatchSection(p, selectedSectionId)) return false;
+                                const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
+                                const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
+                                const isIndiv = !isMain && !isSub;
+                                if (tab.id === 'sub') return isSub;
+                                if (tab.id === 'main') return isMain;
+                                if (tab.id === 'individual') return isIndiv;
+                                return true;
+                              });
+                              setSelectedProjectId(nextList[0]?.id || '');
+                            }}
+                            className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                              existingScopeFilter === tab.id
+                                ? 'bg-teal-700 text-white shadow-2xs'
+                                : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
 
-                  {/* Step 3 Card: Site Branch, Field Team & Execution Details */}
-                  <div className="p-4 bg-gradient-to-br from-[#233e54] via-[#27465f] to-[#2b4d68] border border-[#3c6687] rounded-xl shadow-sm space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#3d6889] pb-2">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                        <Building2 className="w-4 h-4 text-sky-300" />
-                        <span>3. Site Branch & Field Team Execution</span>
-                      </span>
+                      <select
+                        value={existingMainParentFilter}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setExistingMainParentFilter(val);
+                          if (val !== 'all') {
+                            const firstSub = activeProjects.find(
+                              (p) => p.parentProjectId === val && doesProjectMatchSection(p, selectedSectionId)
+                            );
+                            setSelectedProjectId(firstSub ? firstSub.id : val);
+                          } else {
+                            const firstInSec = activeProjects.find((p) => doesProjectMatchSection(p, selectedSectionId));
+                            setSelectedProjectId(firstInSec ? firstInSec.id : '');
+                          }
+                        }}
+                        className="text-[11px] font-bold px-2.5 py-1 border border-purple-200 rounded-md bg-purple-50 text-purple-900 focus:outline-none"
+                      >
+                        <option value="all">
+                          {mainProjectsList.length > 0
+                            ? `🏢 Filter Main Project: All (${mainProjectsList.length})`
+                            : `🏢 No Main Projects`}
+                        </option>
+                        {mainProjectsList.map((mp) => (
+                          <option key={mp.id} value={mp.id}>
+                            🏢 [{mp.projectId}] {mp.projectName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Site Branch */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Site Branch *
-                        </label>
-                        <select
-                          value={selectedSiteId}
-                          onChange={(e) => handleSiteChange(e.target.value)}
-                          disabled={isSingleSiteLocked}
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 disabled:opacity-75"
-                        >
-                          {allowedSites.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {formatSiteHierarchyLabel(s, activeSites, true)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Executing Field Team (Filtered Strictly by Selected Project Section) */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Executing Field Team * ({targetSection?.code || targetSection?.name || 'Section'})
-                        </label>
-                        <select
-                          value={selectedTeamId}
-                          onChange={(e) => handleTeamChange(e.target.value)}
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                          required
-                        >
-                          {availableTeams.length === 0 ? (
-                            <option value="">
-                              No Teams Registered Under {targetSection?.name || 'This Section'}
-                            </option>
-                          ) : (
-                            availableTeams.map((t) => {
-                              const selSiteName =
-                                activeSites.find((s) => s.id === selectedSiteId)?.name || 'Site';
-                              const isPendingFromPrev = t.assignedSiteId !== selectedSiteId;
-                              return (
-                                <option key={t.id} value={t.id}>
-                                  {t.teamName}
-                                  {isPendingFromPrev
-                                    ? ` [Clearing Pending Stock on ${selSiteName}]`
-                                    : t.assignmentStatus === 'Temporary'
-                                    ? ` [${getTemporaryAssignmentBadgeLabel(selSiteName)}]`
-                                    : ''}{' '}
-                                  (Lead: {t.teamLeaderName})
-                                </option>
-                              );
-                            })
-                          )}
-                        </select>
-                        {availableTeams.length === 0 && (
-                          <p className="mt-1 text-[10px] font-semibold text-amber-200 leading-snug">
-                            No teams on this site are assigned to <strong>{targetSection?.name || 'this section'}</strong>
-                            {siteAssignedTeams.length > 0
-                              ? ` (${siteAssignedTeams.length} site team(s) belong to other sections or need section assignment in Master Registrations).`
-                              : '.'}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Supervisor / Team Leader */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Supervisor or Team Leader *
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={supervisorName}
-                            onChange={(e) => setSupervisorName(e.target.value)}
-                            placeholder="e.g. John Doe / Team Leader"
-                            list="supervisor-presets"
-                            className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                            required
-                          />
-                          <datalist id="supervisor-presets">
-                            {currentTeam && <option value={currentTeam.teamLeaderName} />}
-                            {activeUsers.map((u) => (
-                              <option key={u.id} value={u.fullName}>
-                                {u.fullName} ({u.role})
-                              </option>
-                            ))}
-                          </datalist>
-                        </div>
-                      </div>
-
-                      {/* Date */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-100 mb-1">
-                          Usage Date *
-                        </label>
-                        <input
-                          type="date"
-                          value={usageDate}
-                          onChange={(e) => setUsageDate(e.target.value)}
-                          className="w-full text-xs font-semibold px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    {/* Work Details / Scope */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-100 mb-1">
-                        Work Details / Scope of Installation
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Target Project / Sub-Project *
+                      </label>
+                      <select
+                        value={selectedProjectId}
+                        onChange={(e) => setSelectedProjectId(e.target.value)}
+                        className="w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        required
+                      >
+                        {sectionProjects.length === 0 ? (
+                          <option value="">No matching projects (Click &quot;+ New Sub-Project / Site&quot;)</option>
+                        ) : (
+                          sectionProjects.map((p) => {
+                            const isMain = p.projectScope === 'main' || activeProjects.some((sub) => sub.parentProjectId === p.id);
+                            const isSub = p.projectScope === 'sub' || Boolean(p.parentProjectId);
+                            const prefix = isSub
+                              ? `↳ [SUB of ${p.parentProjectCode || p.parentProjectName || 'Main'}]`
+                              : isMain
+                              ? '🏢 [MAIN PROJECT]'
+                              : '📄 [INDIVIDUAL]';
+                            const pBranch = resolveProjectBranch(p);
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {prefix} [{p.projectId}] {p.projectName}{pBranch.siteName ? ` — [Site: ${pBranch.siteName}]` : ''}
+                              </option>
+                            );
+                          })
+                        )}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION STANDARD FORMAT FIELDS (Auto-Loaded from New Section Registry) */}
+                <div className="p-3.5 bg-white/95 border border-sky-200 rounded-xl space-y-3 text-slate-900 shadow-2xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                    <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-sky-600" />
+                      <span>{activeSectionCoreLabels.bannerTitle}</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Core Template + Registry Custom Fields
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3.5 gap-y-3 items-end">
+                    {/* Field 1: Primary ID */}
+                    <div className="flex flex-col justify-end h-full min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-700 leading-snug mb-1">
+                        {activeSectionCoreLabels.primaryIdLabel}
                       </label>
                       <input
                         type="text"
-                        value={workDetails}
-                        onChange={(e) => setWorkDetails(e.target.value)}
-                        placeholder="e.g. Fibre Drop Installation, Rosette termination & testing"
-                        className="w-full text-xs font-medium px-3 py-2 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                        value={ncEntryNumber}
+                        onChange={(e) => {
+                          setNcEntryNumber(e.target.value);
+                          if (projectEntryMode === 'new') setEntrySiteId(e.target.value);
+                        }}
+                        placeholder={activeSectionCoreLabels.primaryIdPlaceholder}
+                        className="w-full h-9 px-3 text-xs font-mono border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </div>
+
+                    {/* Field 2: Device / Equipment / Meter Serial No */}
+                    <div className="flex flex-col justify-end h-full min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-700 leading-snug mb-1">
+                        {activeSectionCoreLabels.serialNoLabel}
+                      </label>
+                      <input
+                        type="text"
+                        value={ncEntryOntSerial}
+                        onChange={(e) => setNcEntryOntSerial(e.target.value)}
+                        placeholder={activeSectionCoreLabels.serialNoPlaceholder}
+                        className="w-full h-9 px-3 text-xs font-mono border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </div>
+
+                    {/* Field 3: Customer / Subscriber Name */}
+                    <div className="flex flex-col justify-end h-full min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-700 leading-snug mb-1">
+                        {activeSectionCoreLabels.customerNameLabel}
+                      </label>
+                      <input
+                        type="text"
+                        value={ncEntryCustomerName}
+                        onChange={(e) => setNcEntryCustomerName(e.target.value)}
+                        placeholder={activeSectionCoreLabels.customerNamePlaceholder}
+                        className="w-full h-9 px-3 text-xs font-semibold border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </div>
+
+                    {/* Field 4: Installation Address */}
+                    <div className="flex flex-col justify-end h-full min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-700 leading-snug mb-1">
+                        {activeSectionCoreLabels.addressLabel}
+                      </label>
+                      <input
+                        type="text"
+                        value={ncEntryCustomerAddress}
+                        onChange={(e) => setNcEntryCustomerAddress(e.target.value)}
+                        placeholder={activeSectionCoreLabels.addressPlaceholder}
+                        className="w-full h-9 px-3 text-xs font-medium border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </div>
+
+                    {/* Field 5: Customer Mobile No */}
+                    {(() => {
+                      const phoneAnalysis = analyzeCountryPhone(ncEntryCustomerMobile, {
+                        tenantCountry: ncPhoneCountry || currentTenant?.country,
+                        currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+                      });
+                      return (
+                        <div className="flex flex-col justify-end h-full min-w-0">
+                          <div className="flex items-center justify-between gap-1.5 mb-1">
+                            <label className="text-[11px] font-bold text-slate-700 leading-snug truncate">
+                              {activeSectionCoreLabels.mobileLabel}
+                            </label>
+                            <PhoneCountryBadge
+                              value={ncEntryCustomerMobile}
+                              countryOverride={ncPhoneCountry}
+                              currencyOverride={config?.currencySymbol}
+                              className="whitespace-nowrap shrink-0 !px-1.5 !py-0 !text-[9.5px] leading-4"
+                            />
+                          </div>
+                          <div className="flex items-stretch gap-1 h-9">
+                            <select
+                              value={phoneAnalysis.country.name}
+                              onChange={(e) => {
+                                const chosen = e.target.value;
+                                setNcPhoneCountry(chosen);
+                                setNcEntryCustomerMobile((prev) =>
+                                  enforceCountryPhoneInput(prev, {
+                                    tenantCountry: chosen,
+                                    currencySymbol: config?.currencySymbol,
+                                  })
+                                );
+                              }}
+                              className="h-9 px-1.5 text-[11px] font-bold border border-slate-300 rounded-lg bg-slate-100 text-slate-900 shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500"
+                            >
+                              {COUNTRY_PHONE_RULES.map((rule) => (
+                                <option key={rule.code} value={rule.name}>
+                                  {rule.flag} {rule.dialCode}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="tel"
+                              value={ncEntryCustomerMobile}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                const dialed = matchCountryByDialPrefix(raw);
+                                const activeCountryName = dialed ? dialed.name : ncPhoneCountry;
+                                if (dialed && dialed.name !== ncPhoneCountry) {
+                                  setNcPhoneCountry(dialed.name);
+                                }
+                                setNcEntryCustomerMobile(
+                                  enforceCountryPhoneInput(raw, {
+                                    tenantCountry: activeCountryName || currentTenant?.country,
+                                    currencySymbol: config?.currencySymbol || currentTenant?.currencySymbol,
+                                  })
+                                );
+                              }}
+                              placeholder={phoneAnalysis.country.localPlaceholder}
+                              className="flex-1 min-w-0 w-full h-9 px-2.5 text-xs font-mono border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Field 6: Zone / Exchange Area */}
+                    <div className="flex flex-col justify-end h-full min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-700 leading-snug mb-1">
+                        {activeSectionCoreLabels.areaLabel}
+                      </label>
+                      <input
+                        type="text"
+                        value={ncEntryExchangeArea}
+                        onChange={(e) => setNcEntryExchangeArea(e.target.value)}
+                        placeholder={activeSectionCoreLabels.areaPlaceholder}
+                        className="w-full h-9 px-3 text-xs font-medium border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       />
                     </div>
                   </div>
-                </>
-              )}
 
-              {/* Step 3 (in NC mode) / Step 4 (in Standard mode): Materials Consumed Table */}
+                  {/* Pre-Configured International Technical / Custom Fields from New Section Registry */}
+                  {activeSectionCustomFields.length > 0 && (
+                    <div className="pt-2.5 border-t border-indigo-100">
+                      <div className="text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Compass className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span>
+                          Section Technical Fields ({activeSectionCustomFields.length} Field{activeSectionCustomFields.length === 1 ? '' : 's'} Linked to {targetSection?.name})
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3.5 gap-y-3 items-end">
+                        {activeSectionCustomFields.map((cf) => (
+                          <div key={cf.id} className="flex flex-col justify-end h-full min-w-0">
+                            <label
+                              className="block text-[11px] font-bold text-slate-700 leading-snug mb-1"
+                              title={cf.label}
+                            >
+                              {cf.label} {cf.required && <span className="text-rose-600">*</span>}
+                            </label>
+                            {cf.fieldType === 'select' && cf.options && cf.options.length > 0 ? (
+                              <select
+                                value={entryCustomFieldValues[cf.label] || ''}
+                                onChange={(e) =>
+                                  setEntryCustomFieldValues((prev) => ({
+                                    ...prev,
+                                    [cf.label]: e.target.value,
+                                  }))
+                                }
+                                required={cf.required}
+                                className="w-full h-9 px-3 text-xs font-medium border border-indigo-200 rounded-lg bg-indigo-50/40 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              >
+                                <option value="">-- Select {cf.label} --</option>
+                                {cf.options.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type={cf.fieldType === 'number' ? 'number' : 'text'}
+                                value={entryCustomFieldValues[cf.label] || ''}
+                                onChange={(e) =>
+                                  setEntryCustomFieldValues((prev) => ({
+                                    ...prev,
+                                    [cf.label]: e.target.value,
+                                  }))
+                                }
+                                placeholder={cf.placeholder || `Enter ${cf.label}`}
+                                required={cf.required}
+                                className="w-full h-9 px-3 text-xs font-medium border border-indigo-200 rounded-lg bg-indigo-50/40 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ============================================================================
+               * CARD 3 — ITEMS / MATERIAL ENTRY CARD (Mixed Client FOC & Company Stock)
+               * ============================================================================ */}
               <div
                 className={`p-4 rounded-xl shadow-sm border transition-colors ${
                   isProjectSiteLocked
@@ -3302,9 +3163,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                         <Boxes className="w-4 h-4 text-emerald-300" />
                       )}
                       <span>
-                        {isNewConnectionSection
-                          ? `3. Material Usage for Selected NC Line (Deducted from ${currentTeam?.teamName || 'Team'} Custody)`
-                          : `4. Materials Consumed (Deducted from ${currentTeam?.teamName || 'Team'} Custody)`}
+                        3. Items / Materials Used (Deducted from {currentTeam?.teamName || 'Team'} Custody)
                       </span>
                       {isProjectSiteLocked && (
                         <span className="ml-1 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
@@ -3319,12 +3178,37 @@ export const ProjectMaterialUsageView: React.FC = () => {
                     >
                       {isProjectSiteLocked
                         ? `Material usage entry is disabled because the selected project belongs to another site branch.`
-                        : isNewConnectionSection
-                        ? `Enter the materials used on this NC Line and submit. Step 1 (Team & Area) will remain locked so you can immediately enter the next NC Line.`
-                        : `Standard section template items pre-loaded below. Enter actual quantities used or add extra items.`}
+                        : projectFreeMaterials.some((f) => (f.uninstalledProjectBalance || 0) > 0 || (f.remainingBalance || 0) > 0)
+                        ? `Seamless Mixed Stock Active: Items in the detected Client FOC Pool automatically deduct from FOC; all other items deduct from Company Stock.`
+                        : `Section BOM template items pre-loaded below. Enter actual quantities used or add extra items.`}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+                    {projectFreeMaterials.some((f) => (f.uninstalledProjectBalance || 0) > 0 || (f.remainingBalance || 0) > 0) && (
+                      <button
+                        type="button"
+                        disabled={isProjectSiteLocked}
+                        onClick={() => {
+                          const focRows: ItemEntryRow[] = projectFreeMaterials
+                            .filter((fm) => (fm.uninstalledProjectBalance || 0) > 0 || (fm.remainingBalance || 0) > 0)
+                            .map((fm) => ({
+                              itemId: fm.itemId,
+                              quantity: '',
+                              wastageQuantity: '',
+                            }));
+                          if (focRows.length > 0) {
+                            setItemRows(focRows);
+                            setSuccessToast(
+                              `Loaded ${focRows.length} Client FOC material item(s) into Card 3.`
+                            );
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold bg-purple-400 text-slate-950 rounded-lg hover:bg-purple-300 disabled:opacity-40 transition cursor-pointer shadow-xs"
+                      >
+                        <Gift className="w-3.5 h-3.5" />
+                        <span>Load FOC Items ({projectFreeMaterials.filter((f) => (f.uninstalledProjectBalance || 0) > 0 || (f.remainingBalance || 0) > 0).length})</span>
+                      </button>
+                    )}
                     {config.barcodeEnabled !== false && (
                       <button
                         type="button"
@@ -3343,10 +3227,42 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-extrabold bg-white text-emerald-950 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer shadow-xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>+ Add Extra Item</span>
+                      <span>Add Extra Item</span>
                     </button>
                   </div>
                 </div>
+
+                {/* Live Mixed Stock Allocation Summary Strip */}
+                {!isProjectSiteLocked && projectFreeMaterials.some((f) => (f.uninstalledProjectBalance || 0) > 0 || (f.remainingBalance || 0) > 0) && (() => {
+                  const focMatchedCount = itemRows.filter((r) => {
+                    if (!r.itemId || !effectiveFocLookupProjectId) return false;
+                    const fb = getClientFreeStockBalance(effectiveFocLookupProjectId, r.itemId);
+                    return fb.totalReceived > 0 && ((fb.uninstalledProjectBalance || 0) > 0 || (fb.remainingBalance || 0) > 0);
+                  }).length;
+                  const companyMatchedCount = itemRows.filter((r) => {
+                    if (!r.itemId) return false;
+                    if (!effectiveFocLookupProjectId) return true;
+                    const fb = getClientFreeStockBalance(effectiveFocLookupProjectId, r.itemId);
+                    return !(fb.totalReceived > 0 && ((fb.uninstalledProjectBalance || 0) > 0 || (fb.remainingBalance || 0) > 0));
+                  }).length;
+
+                  return (
+                    <div className="mb-3 px-3 py-2 rounded-lg bg-slate-900/50 border border-emerald-300/30 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white">
+                      <span className="font-bold flex items-center gap-1.5">
+                        <Gift className="w-3.5 h-3.5 text-purple-300 shrink-0" />
+                        <span>Mixed Material Mode Active:</span>
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-purple-500/30 border border-purple-300/50 font-bold text-purple-100">
+                          🎁 {focMatchedCount} Client FOC Item(s)
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/25 border border-emerald-300/40 font-bold text-emerald-100">
+                          🏢 {companyMatchedCount} Company Stock Item(s)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Prominent Site Mismatch Lock Banner */}
                 {isProjectSiteLocked && (
@@ -3369,9 +3285,6 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           Site Branch — not under{' '}
                           <strong>{currentUser?.fullName}&apos;s site ({userSiteLabel})</strong>. Material usage entry is locked.
                         </p>
-                        <p className="text-[11px] font-bold text-slate-600">
-                          තෝරාගත් ව්‍යාපෘතිය අයත් වන්නේ &ldquo;{selectedProjectBranch.siteName}&rdquo; ශාඛාවට බැවින්, {currentUser?.fullName} ({userSiteLabel}) යටතේ මෙම ව්‍යාපෘතියට Material Usage ඇතුළත් කළ නොහැක.
-                        </p>
                         {userOwnsProjectSite &&
                           allowedSites.some((s) => s.id === selectedProjectBranch.siteId) && (
                             <div className="pt-1.5">
@@ -3380,7 +3293,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 onClick={() => handleSiteChange(selectedProjectBranch.siteId)}
                                 className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-xs cursor-pointer transition"
                               >
-                                Switch Step 3 Site Branch to &ldquo;{selectedProjectBranch.siteName}&rdquo;
+                                Switch Site Branch to &ldquo;{selectedProjectBranch.siteName}&rdquo;
                               </button>
                             </div>
                           )}
@@ -3414,28 +3327,66 @@ export const ProjectMaterialUsageView: React.FC = () => {
                       const wastageQtyNum = Number(row.wastageQuantity) || 0;
                       const totalRowDeducted = usedQtyNum + wastageQtyNum;
                       const isOverLimit = totalRowDeducted > inHandBalance && (row.quantity !== '' || (row.wastageQuantity !== '' && row.wastageQuantity !== undefined));
+                      const rowFocInfo =
+                        row.itemId && effectiveFocLookupProjectId
+                          ? getClientFreeStockBalance(effectiveFocLookupProjectId, row.itemId)
+                          : null;
+                      const rowFocAvail = rowFocInfo
+                        ? Math.max(rowFocInfo.uninstalledProjectBalance || 0, rowFocInfo.remainingBalance || 0)
+                        : 0;
+                      const isRowClientFoc = Boolean(rowFocInfo && rowFocInfo.totalReceived > 0 && rowFocAvail > 0);
 
                       return (
                         <div
                           key={idx}
-                          className={`bg-white border rounded-xl p-3 flex flex-col lg:flex-row items-center gap-3 transition-colors shadow-xs ${
-                            isOverLimit ? 'border-rose-400 bg-rose-50' : 'border-white/90 hover:border-emerald-300'
+                          className={`bg-white border rounded-xl p-3 sm:p-3.5 space-y-2.5 transition-colors shadow-xs ${
+                            isOverLimit
+                              ? 'border-rose-400 bg-rose-50'
+                              : isRowClientFoc
+                              ? 'border-purple-300 hover:border-purple-400'
+                              : 'border-white/90 hover:border-emerald-300'
                           }`}
                         >
-                          {/* Item select */}
-                          <div className="flex-1 w-full">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                              Material Item #{idx + 1} *
-                            </label>
-                            <div className="flex items-center gap-2">
+                          {/* Row 1: Full-Width Material Item Selector */}
+                          <div className="w-full">
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                  Material Item #{idx + 1} *
+                                </label>
+                                {row.itemId &&
+                                  (isRowClientFoc ? (
+                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                                      🎁 Client FOC Stock ({formatNumber(rowFocAvail)} {itemObj?.unit || 'units'} Left)
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                      🏢 Company Stock
+                                    </span>
+                                  ))}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItemRow(idx)}
+                                disabled={itemRows.length <= 1 || isProjectSiteLocked}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-md disabled:opacity-30 cursor-pointer transition-colors"
+                                title="Remove Row"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Remove</span>
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
                               {itemObj?.imageUrl ? (
                                 <img
                                   src={itemObj.imageUrl}
                                   alt={itemObj.itemName}
-                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0 bg-white"
+                                  className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0 bg-white"
                                 />
                               ) : (
-                                <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                                <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
                                   <Boxes className="w-4 h-4" />
                                 </div>
                               )}
@@ -3443,7 +3394,7 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                 value={row.itemId}
                                 disabled={isProjectSiteLocked}
                                 onChange={(e) => handleRowChange(idx, 'itemId', e.target.value)}
-                                className="w-full text-xs font-semibold px-2.5 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-slate-100"
+                                className="flex-1 min-w-0 w-full text-xs font-semibold px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-slate-100"
                                 required
                               >
                                 <option value="">-- Select Material Item --</option>
@@ -3460,10 +3411,11 @@ export const ProjectMaterialUsageView: React.FC = () => {
                                     prevSiteLocks.length > 0 ? ` [⚠️ ${prevSiteLocks.join(' | ')} — Cannot Use Here]` : '';
                                   const focBal = effectiveFocLookupProjectId
                                     ? getClientFreeStockBalance(effectiveFocLookupProjectId, itm.id)
-                                    : { remainingBalance: 0, totalReceived: 0 };
+                                    : { remainingBalance: 0, uninstalledProjectBalance: 0, totalReceived: 0 };
+                                  const focOptAvail = Math.max(focBal.uninstalledProjectBalance || 0, focBal.remainingBalance || 0);
                                   const focTag =
-                                    focBal.totalReceived > 0 && focBal.remainingBalance > 0
-                                      ? ` [🎁 Client FOC: ${formatNumber(focBal.remainingBalance)} ${itm.unit} Left]`
+                                    focBal.totalReceived > 0 && focOptAvail > 0
+                                      ? ` [🎁 Client FOC: ${formatNumber(focOptAvail)} ${itm.unit} Left]`
                                       : '';
                                   let resTag = '';
                                   if (itm.isProjectReserved && itm.reservedProjectId) {
@@ -3487,95 +3439,85 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Available In-Hand Display */}
-                          <div className="w-full sm:w-28 text-center sm:text-left">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                              Team In-Hand
-                            </label>
-                            <div
-                              className={`text-xs font-bold px-2.5 py-2 rounded-lg border text-center font-mono ${
-                                inHandBalance > 0
-                                  ? 'text-teal-800 bg-teal-50 border-teal-200'
-                                  : 'text-slate-500 bg-slate-100 border-slate-200'
-                              }`}
-                            >
-                              {formatNumber(inHandBalance)} {itemObj?.unit || 'units'}
+                          {/* Row 2: Balanced 4-Column Quantities & Custody Row */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100">
+                            {/* Available In-Hand Display */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                                Team In-Hand
+                              </label>
+                              <div
+                                className={`text-xs font-bold px-2.5 py-2 rounded-lg border text-center font-mono ${
+                                  inHandBalance > 0
+                                    ? 'text-teal-800 bg-teal-50 border-teal-200'
+                                    : 'text-slate-500 bg-slate-100 border-slate-200'
+                                }`}
+                              >
+                                {formatNumber(inHandBalance)} {itemObj?.unit || 'units'}
+                              </div>
                             </div>
-                          </div>
 
-                          {/* Quantity Used (Installed) input */}
-                          <div className="w-full sm:w-28">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-1">
-                              Qty Used *
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="any"
-                              disabled={isProjectSiteLocked}
-                              value={row.quantity}
-                              onChange={(e) =>
-                                handleRowChange(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))
-                              }
-                              placeholder="Used Qty"
-                              className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-white focus:outline-none text-center font-mono ${
-                                isOverLimit ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900' : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
-                              }`}
-                            />
-                          </div>
-
-                          {/* Wastage Quantity input */}
-                          <div className="w-full sm:w-28">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">
-                              Wastage Qty
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="any"
-                              disabled={isProjectSiteLocked}
-                              value={row.wastageQuantity ?? ''}
-                              onChange={(e) =>
-                                handleRowChange(idx, 'wastageQuantity', e.target.value === '' ? '' : Number(e.target.value))
-                              }
-                              placeholder="0 (Opt)"
-                              className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-amber-50/40 focus:bg-white focus:outline-none text-center font-mono ${
-                                isOverLimit
-                                  ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900'
-                                  : 'border-amber-300 focus:ring-2 focus:ring-amber-500 text-amber-900'
-                              }`}
-                            />
-                          </div>
-
-                          {/* Total Deducted (Used + Wastage) */}
-                          <div className="w-full sm:w-28 text-center">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                              Total Deduct
-                            </label>
-                            <div
-                              className={`text-xs font-black px-2 py-2 rounded-lg border text-center font-mono ${
-                                isOverLimit
-                                  ? 'bg-rose-100 text-rose-900 border-rose-300'
-                                  : totalRowDeducted > 0
-                                  ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
-                                  : 'bg-slate-50 text-slate-400 border-slate-200'
-                              }`}
-                            >
-                              {formatNumber(totalRowDeducted)} {itemObj?.unit || ''}
+                            {/* Quantity Used (Installed) input */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-1">
+                                Qty Used *
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                disabled={isProjectSiteLocked}
+                                value={row.quantity}
+                                onChange={(e) =>
+                                  handleRowChange(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))
+                                }
+                                placeholder="Used Qty"
+                                className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-white focus:outline-none text-center font-mono ${
+                                  isOverLimit ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900' : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
+                                }`}
+                              />
                             </div>
-                          </div>
 
-                          {/* Remove Row Button */}
-                          <div className="pt-2 lg:pt-5">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItemRow(idx)}
-                              disabled={itemRows.length <= 1 || isProjectSiteLocked}
-                              className="p-2 text-slate-400 hover:text-rose-600 rounded-lg disabled:opacity-30 cursor-pointer transition-colors"
-                              title="Remove Row"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {/* Wastage Quantity input */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">
+                                Wastage Qty
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                disabled={isProjectSiteLocked}
+                                value={row.wastageQuantity ?? ''}
+                                onChange={(e) =>
+                                  handleRowChange(idx, 'wastageQuantity', e.target.value === '' ? '' : Number(e.target.value))
+                                }
+                                placeholder="0 (Opt)"
+                                className={`w-full text-xs font-bold px-2.5 py-2 border rounded-lg bg-amber-50/40 focus:bg-white focus:outline-none text-center font-mono ${
+                                  isOverLimit
+                                    ? 'border-rose-400 ring-2 ring-rose-200 text-rose-900'
+                                    : 'border-amber-300 focus:ring-2 focus:ring-amber-500 text-amber-900'
+                                }`}
+                              />
+                            </div>
+
+                            {/* Total Deducted (Used + Wastage) */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                                Total Deduct
+                              </label>
+                              <div
+                                className={`text-xs font-black px-2 py-2 rounded-lg border text-center font-mono ${
+                                  isOverLimit
+                                    ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                    : totalRowDeducted > 0
+                                    ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                                }`}
+                              >
+                                {formatNumber(totalRowDeducted)} {itemObj?.unit || ''}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       );
@@ -3634,13 +3576,22 @@ export const ProjectMaterialUsageView: React.FC = () => {
                           let finalProjId = selectedProjectId;
                           let finalProjName = targetProject?.projectName || 'Project';
                           if (projectEntryMode === 'new') {
-                            if (!entryCustomerName.trim()) {
-                              setErrorMsg('Please enter Customer/Project Name before submitting review request.');
+                            const reqProjName =
+                              newProjectScope === 'sub'
+                                ? entrySubProjectName.trim()
+                                : entryCustomerName.trim() || ncEntryCustomerName.trim();
+                            if (!reqProjName) {
+                              setErrorMsg('Please enter Project or Customer Name in Card 2 before submitting review request.');
                               return;
                             }
-                            finalProjName = entryCustomerName.trim();
+                            finalProjName = reqProjName;
                             finalProjId = `PRJ-TEMP-${Math.floor(100 + Math.random() * 900)}`;
                           }
+
+                          const customValsPayload: Record<string, string> = {};
+                          Object.entries(entryCustomFieldValues).forEach(([k, v]) => {
+                            if (k.trim() && String(v || '').trim()) customValsPayload[k.trim()] = String(v).trim();
+                          });
 
                           createCrossProjectOverrideRequest({
                             projectId: finalProjId,
@@ -3653,9 +3604,14 @@ export const ProjectMaterialUsageView: React.FC = () => {
                             usagePayload: {
                               projectId: finalProjId,
                               projectName: finalProjName,
-                              customerName: targetProject?.customerName || entryCustomerName.trim(),
-                              customerPhone: targetProject?.customerPhone || entryCustomerPhone.trim(),
-                              siteIdentifier: targetProject?.siteIdentifier || entrySiteId.trim(),
+                              customerName: ncEntryCustomerName.trim() || targetProject?.customerName || entryCustomerName.trim(),
+                              customerPhone: ncEntryCustomerMobile.trim() || targetProject?.customerPhone || entryCustomerPhone.trim(),
+                              siteIdentifier: ncEntryNumber.trim() || targetProject?.siteIdentifier || entrySiteId.trim(),
+                              ncNumber: ncEntryNumber.trim() || targetProject?.ncNumber || undefined,
+                              ontSerialNo: ncEntryOntSerial.trim() || targetProject?.ontSerialNo || undefined,
+                              customerAddress: ncEntryCustomerAddress.trim() || targetProject?.customerAddress || undefined,
+                              exchangeArea: ncEntryExchangeArea.trim() || ncSessionArea.trim() || targetProject?.exchangeArea || undefined,
+                              customFieldValues: Object.keys(customValsPayload).length > 0 ? customValsPayload : undefined,
                               projectTypeId: selectedSectionId,
                               projectTypeName: activeSec?.name,
                               siteId: selectedSiteId,
