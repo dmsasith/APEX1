@@ -2483,10 +2483,10 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
-                  Core Utility &amp; Infrastructure Section Templates (1-Click Open &amp; Customize):
+                  Ready-Made Project Templates (Click Any Industry to Add):
                 </span>
                 <span className="text-[11px] font-bold text-emerald-700">
-                  All 11 trades also selectable inside the dropdown
+                  All 11 trades are also available in the dropdown
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
@@ -2520,10 +2520,10 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                 })}
               </div>
 
-              {/* Specialty & Finishing Contracting Trades Quick-Load */}
+              {/* More Contracting Trades Quick-Load */}
               <div className="pt-2.5 border-t border-slate-200/80 space-y-2">
                 <span className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-                  Specialty &amp; Finishing Contracting Trades (Click Any Trade to Create Section):
+                  More Contracting Trades (Click Any to Add):
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {SPECIALTY_TRADE_PRESET_KEYS.map((presetKey) => {
@@ -3401,11 +3401,11 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                       {/* Vertical Dropdown Card List */}
                       {isIndustryDropdownOpen && (
                         <div className="absolute left-0 right-0 mt-2 z-30 bg-white rounded-2xl border border-slate-300 shadow-2xl p-3 sm:p-4 max-h-[420px] overflow-y-auto space-y-4">
-                          {/* Group 1: Core Utility & Infrastructure */}
+                          {/* Group 1: Main Utility & Energy Trades */}
                           <div className="space-y-2">
                             <div className="px-1 flex items-center justify-between">
                               <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                                Core Utility &amp; Infrastructure Sectors (4)
+                                Main Utility &amp; Energy Trades (4)
                               </span>
                             </div>
                             <div className="space-y-2.5">
@@ -3413,11 +3413,11 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                             </div>
                           </div>
 
-                          {/* Group 2: Specialty & Finishing Contracting Trades */}
+                          {/* Group 2: Interior, Finishing & Civil Trades */}
                           <div className="space-y-2 pt-3 border-t border-slate-200">
                             <div className="px-1 flex items-center justify-between">
                               <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                                Specialty &amp; Finishing Contracting Trades (7)
+                                Interior, Finishing &amp; Civil Trades (7)
                               </span>
                             </div>
                             <div className="space-y-2.5">
@@ -3425,11 +3425,11 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                             </div>
                           </div>
 
-                          {/* Group 3: Standard / Custom */}
+                          {/* Group 3: Custom / Blank Section */}
                           <div className="space-y-2 pt-3 border-t border-slate-200">
                             <div className="px-1">
                               <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                                Standard / Custom Engineering Project
+                                Custom / Blank Section (1)
                               </span>
                             </div>
                             <div className="space-y-2.5">
