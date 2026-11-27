@@ -351,3 +351,103 @@ export function getEffectiveSectionCustomFields(
   }
   return [];
 }
+
+export interface Card1WorkAreaMeta {
+  label: string;
+  cleanLabel: string;
+  placeholder: string;
+}
+
+export function getEffectiveCard1WorkAreaMeta(
+  section?: ProjectType | null,
+  nameFallback?: string
+): Card1WorkAreaMeta {
+  const presetKey = inferSectionIndustryPreset(section, nameFallback);
+  const nameLower = (section?.name || nameFallback || '').trim().toLowerCase();
+
+  switch (presetKey) {
+    case 'telecom_nc':
+      return {
+        label: 'Exchange / LEA Area *',
+        cleanLabel: 'Exchange / LEA Area',
+        placeholder: 'e.g. Kalutara (KLL) / LEA-04 / OLT Zone',
+      };
+    case 'water_project':
+      return {
+        label: 'WSS Zone / DMA Area *',
+        cleanLabel: 'WSS Zone / DMA Area',
+        placeholder: 'e.g. Kalutara WSS / DMA Zone 03 / Scheme',
+      };
+    case 'electric_project':
+      return {
+        label: 'Substation / Feeder / Transformer Area *',
+        cleanLabel: 'Substation / Feeder / Transformer Area',
+        placeholder: 'e.g. Sub #AZ-104 / Feeder 02 / Pole Zone',
+      };
+    case 'solar_project':
+      return {
+        label: 'Grid Feeder / Solar Site Zone *',
+        cleanLabel: 'Grid Feeder / Solar Site Zone',
+        placeholder: 'e.g. Grid Feeder Sub-07 / Zone West',
+      };
+    case 'standard':
+    default: {
+      if (
+        nameLower.includes('cable') ||
+        nameLower.includes('fiber') ||
+        nameLower.includes('fibre') ||
+        nameLower.includes('telecom') ||
+        nameLower.includes('ftth') ||
+        nameLower.includes('lea') ||
+        nameLower.includes('exchange') ||
+        nameLower.includes('shifting')
+      ) {
+        return {
+          label: 'Exchange / LEA / Work Route *',
+          cleanLabel: 'Exchange / LEA / Work Route',
+          placeholder: 'e.g. Kalutara (KLL) / LEA-04 / Route Section',
+        };
+      }
+      if (
+        nameLower.includes('water') ||
+        nameLower.includes('pipe') ||
+        nameLower.includes('plumb')
+      ) {
+        return {
+          label: 'WSS Zone / DMA Area *',
+          cleanLabel: 'WSS Zone / DMA Area',
+          placeholder: 'e.g. WSS Zone 03 / Distribution Line',
+        };
+      }
+      if (
+        nameLower.includes('electric') ||
+        nameLower.includes('power') ||
+        nameLower.includes('grid')
+      ) {
+        return {
+          label: 'Substation / Feeder Area *',
+          cleanLabel: 'Substation / Feeder Area',
+          placeholder: 'e.g. Sub #AZ-104 / Feeder 02',
+        };
+      }
+      if (
+        nameLower.includes('civil') ||
+        nameLower.includes('road') ||
+        nameLower.includes('construct') ||
+        nameLower.includes('trench') ||
+        nameLower.includes('building')
+      ) {
+        return {
+          label: 'Work Zone / Chainage / Site Sector *',
+          cleanLabel: 'Work Zone / Chainage / Site Sector',
+          placeholder: 'e.g. Sector B / Km 12+400 / Route 02',
+        };
+      }
+      return {
+        label: 'Work Area / Operational Zone *',
+        cleanLabel: 'Work Area / Operational Zone',
+        placeholder: 'e.g. Work Site / Zone / Sub-Area',
+      };
+    }
+  }
+}

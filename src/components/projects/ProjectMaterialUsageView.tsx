@@ -82,6 +82,7 @@ import { getTemporaryAssignmentBadgeLabel } from '../../utils/teamAssignmentUtil
 import {
   getEffectiveSectionCoreLabels,
   getEffectiveSectionCustomFields,
+  getEffectiveCard1WorkAreaMeta,
 } from '../../utils/sectionTemplates';
 
 interface ItemEntryRow {
@@ -208,6 +209,10 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
     () => getEffectiveSectionCustomFields(targetSection),
     [targetSection]
   );
+  const card1WorkAreaMeta = React.useMemo(
+    () => getEffectiveCard1WorkAreaMeta(targetSection),
+    [targetSection]
+  );
   const [entryCustomFieldValues, setEntryCustomFieldValues] = useState<Record<string, string>>({});
 
   // Strict helper to check if a team belongs to the selected Project Section / Type
@@ -260,9 +265,7 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
 
   // Telecom New Connection / Utility Connection Daily Progress Session Lock & 6-Field States
   const [isNcTeamAreaLocked, setIsNcTeamAreaLocked] = useState<boolean>(false);
-  const [ncSessionArea, setNcSessionArea] = useState<string>(
-    () => sites.find((s) => s.id === initialSiteId)?.location || sites.find((s) => s.id === initialSiteId)?.name || ''
-  );
+  const [ncSessionArea, setNcSessionArea] = useState<string>('');
   const [ncSearchQuery, setNcSearchQuery] = useState<string>('');
   const [ncEntryNumber, setNcEntryNumber] = useState<string>('');
   const [ncEntryOntSerial, setNcEntryOntSerial] = useState<string>('');
@@ -765,9 +768,12 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
     );
     if (!matchingSectionTeams.some((t) => t.id === selectedTeamId)) {
       setIsNcTeamAreaLocked(false);
+      setNcSessionArea('');
       const nextTeam = matchingSectionTeams[0];
       setSelectedTeamId(nextTeam?.id || '');
       setSupervisorName(nextTeam?.teamLeaderName || '');
+    } else if (!isNcTeamAreaLocked) {
+      setNcSessionArea('');
     }
 
     if (sec && (sec.templateItems || []).length > 0) {
@@ -1014,9 +1020,8 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
   const handleSiteChange = (newSiteId: string) => {
     if (isNewConnectionSection && isNcTeamAreaLocked) return;
     setSelectedSiteId(newSiteId);
-    const sObj = sites.find((s) => s.id === newSiteId);
-    if (sObj && !isNcTeamAreaLocked) {
-      setNcSessionArea(sObj.location || sObj.name || '');
+    if (!isNcTeamAreaLocked) {
+      setNcSessionArea('');
     }
     const siteTeams = activeTeams.filter(
       (t) => t.assignedSiteId === newSiteId && doesTeamMatchSection(t, selectedSectionId)
@@ -1195,6 +1200,10 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
       setErrorMsg('Please enter or select the Supervisor / Team Leader name.');
       return;
     }
+    if (!ncSessionArea.trim()) {
+      setErrorMsg(`Please enter the mandatory "${card1WorkAreaMeta.cleanLabel}" field in Card 1.`);
+      return;
+    }
 
     // Validate item rows
     const validRows: ProjectUsageItemRow[] = [];
@@ -1325,7 +1334,7 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
         finalNcNumber = ncEntryNumber.trim() || resolvedAreaSub.projectId;
         finalOntSerialNo = ncEntryOntSerial.trim() || '';
         finalCustomerAddress = ncEntryCustomerAddress.trim() || '';
-        finalExchangeArea = ncEntryExchangeArea.trim() || ncSessionArea.trim() || siteAreaDisplay;
+        finalExchangeArea = ncEntryExchangeArea.trim() || ncSessionArea.trim();
       } else if (projectEntryMode === 'new') {
         const selectedSiteObj = sites.find((s) => s.id === selectedSiteId);
         const parentMainObj =
@@ -1370,7 +1379,7 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
           ncNumber: ncEntryNumber.trim() || undefined,
           ontSerialNo: ncEntryOntSerial.trim() || undefined,
           customerAddress: ncEntryCustomerAddress.trim() || undefined,
-          exchangeArea: ncEntryExchangeArea.trim() || entrySubArea.trim() || undefined,
+          exchangeArea: ncEntryExchangeArea.trim() || entrySubArea.trim() || ncSessionArea.trim() || undefined,
           projectTypeId: selectedSectionId || parentMainObj?.projectTypeId || undefined,
           projectTypeName: activeSec?.name || parentMainObj?.projectTypeName,
           referenceNo: parentMainObj?.referenceNo || `REF-${String(projects.length + 1).padStart(4, '0')}`,
@@ -2250,14 +2259,16 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                         <button
                           type="button"
                           onClick={() => {
-                            if (!selectedTeamId || !supervisorName.trim()) {
-                              setErrorMsg('Please select the Field Team and Supervisor before locking.');
+                            if (!selectedTeamId || !supervisorName.trim() || !ncSessionArea.trim()) {
+                              setErrorMsg(
+                                `Please select the Field Team, Supervisor, and enter "${card1WorkAreaMeta.cleanLabel}" before locking.`
+                              );
                               return;
                             }
                             setErrorMsg('');
                             setIsNcTeamAreaLocked(true);
                             setSuccessToast(
-                              `Team "${currentTeam?.teamName || 'Team'}" & Area "${ncSessionArea || activeSiteAreaDisplayName}" locked for this session!`
+                              `Team "${currentTeam?.teamName || 'Team'}" & ${card1WorkAreaMeta.cleanLabel} "${ncSessionArea.trim()}" locked for this session!`
                             );
                           }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 text-xs font-extrabold transition cursor-pointer shadow-xs"
@@ -2445,18 +2456,22 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                       </datalist>
                     </div>
 
-                    {/* Work / Exchange Area */}
+                    {/* Industry-Specific Work / Exchange / LEA Area (Mandatory, Empty by Default) */}
                     <div className="min-w-0">
-                      <label className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate">
-                        Work / Exchange Area
+                      <label
+                        className="block text-xs font-bold text-slate-100 leading-snug mb-1 truncate"
+                        title={card1WorkAreaMeta.label}
+                      >
+                        {card1WorkAreaMeta.label}
                       </label>
                       <input
                         type="text"
                         value={ncSessionArea}
                         disabled={isNewConnectionSection && isNcTeamAreaLocked}
                         onChange={(e) => setNcSessionArea(e.target.value)}
-                        placeholder="e.g. Kalutara (KLL), Maharagama"
+                        placeholder={card1WorkAreaMeta.placeholder}
                         className="w-full h-9 text-xs font-semibold px-3 border border-white/80 rounded-lg bg-white text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:bg-slate-200/90 disabled:text-slate-700 disabled:cursor-not-allowed"
+                        required
                       />
                     </div>
 

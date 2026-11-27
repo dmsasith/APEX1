@@ -54,6 +54,11 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
           label: 'Master Registrations',
           icon: Database,
         },
+        {
+          id: 'projects',
+          label: 'Project & New Section Registry',
+          icon: FolderKanban,
+        },
       ],
     },
     {
@@ -120,11 +125,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
     {
       title: 'Projects & Returns',
       items: [
-        {
-          id: 'projects',
-          label: 'Project & New Section Registry',
-          icon: FolderKanban,
-        },
         {
           id: 'project-usage',
           label: 'Material Usage / Daily Progress Entry',
