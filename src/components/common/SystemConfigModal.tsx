@@ -515,7 +515,19 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition"
                   >
                     <span className="truncate">
-                      {currencySymbol} ({ALL_WORLD_COUNTRIES.find((c: WorldCountryEntry) => c.defaultCurrency === currencySymbol || c.currencyLabel.includes(currencySymbol))?.name || 'Custom / Global'})
+                      {currencySymbol} ({
+                        currencySymbol === '$'
+                          ? 'United States Dollar (USD)'
+                          : currencySymbol === '€'
+                          ? 'Euro (EUR)'
+                          : currencySymbol === '£'
+                          ? 'British Pound (GBP)'
+                          : currencySymbol === 'A$'
+                          ? 'Australian Dollar (AUD)'
+                          : currencySymbol === 'S$'
+                          ? 'Singapore Dollar (SGD)'
+                          : ALL_WORLD_COUNTRIES.find((c: WorldCountryEntry) => c.defaultCurrency === currencySymbol || c.currencyLabel.includes(`(${currencySymbol}`))?.name || 'Custom / Global'
+                      })
                     </span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   </div>
@@ -551,8 +563,48 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                           }}
                           className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-100 cursor-pointer text-slate-900"
                         >
-                          <span>🇺🇸 $ (US Dollar)</span>
+                          <span>🇺🇸 $ (US Dollar - USD)</span>
                           {currencySymbol === '$' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </div>
+                        <div
+                          onClick={() => {
+                            setCurrencySymbol('€');
+                            setIsCurrencyDropdownOpen(false);
+                          }}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-100 cursor-pointer text-slate-900"
+                        >
+                          <span>🇪🇺 € (Euro - EUR)</span>
+                          {currencySymbol === '€' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </div>
+                        <div
+                          onClick={() => {
+                            setCurrencySymbol('£');
+                            setIsCurrencyDropdownOpen(false);
+                          }}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-100 cursor-pointer text-slate-900"
+                        >
+                          <span>🇬🇧 £ (British Pound - GBP)</span>
+                          {currencySymbol === '£' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </div>
+                        <div
+                          onClick={() => {
+                            setCurrencySymbol('A$');
+                            setIsCurrencyDropdownOpen(false);
+                          }}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-100 cursor-pointer text-slate-900"
+                        >
+                          <span>🇦🇺 A$ (Australian Dollar - AUD)</span>
+                          {currencySymbol === 'A$' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </div>
+                        <div
+                          onClick={() => {
+                            setCurrencySymbol('S$');
+                            setIsCurrencyDropdownOpen(false);
+                          }}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-100 cursor-pointer text-slate-900"
+                        >
+                          <span>🇸🇬 S$ (Singapore Dollar - SGD)</span>
+                          {currencySymbol === 'S$' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                         </div>
                         {filteredCurrencies.map((c) => (
                           <div
