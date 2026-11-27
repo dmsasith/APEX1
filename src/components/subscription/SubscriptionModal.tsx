@@ -622,10 +622,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setBillingCycle('monthly')}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer tabular-nums ${
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer tabular-nums ${
                   billingCycle === 'monthly'
-                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 bg-transparent'
                 }`}
               >
                 Monthly ({formatConvertedCurrency(monthlySelectedTotal, selectedCurrency)}/mo)
@@ -633,10 +633,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setBillingCycle('annual')}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer tabular-nums ${
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer tabular-nums ${
                   billingCycle === 'annual'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900 bg-transparent'
                 }`}
               >
                 <span>Annual ({formatConvertedCurrency(annualSelectedTotal, selectedCurrency)}/yr)</span>
