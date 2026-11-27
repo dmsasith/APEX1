@@ -675,6 +675,13 @@ export type SectionIndustryPreset =
   | 'water_project'
   | 'electric_project'
   | 'solar_project'
+  | 'pantry_joinery'
+  | 'ceiling_installation'
+  | 'landscaping_irrigation'
+  | 'aluminum_glazing'
+  | 'hvac_cooling'
+  | 'cctv_security'
+  | 'civil_road'
   | 'standard';
 
 export interface SectionCustomFieldDef {
@@ -706,7 +713,7 @@ export interface SectionCoreFieldLabels {
 export interface ProjectType {
   id: string;
   name: string; // e.g. "Telecom New Connection", "Water Supply & Connection Project", "Electrical Power & Service Connection", "Solar PV & Renewable Energy Project"
-  code?: string; // e.g. "TNC", "WTR", "ELC", "SLR"
+  code?: string; // e.g. "TNC", "WTR", "ELC", "SLR", "PCJ", "CLG", "LND", "ALU", "HVC", "SEC", "CVL"
   description?: string;
   color?: string; // 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'teal' | 'indigo'
   workflowMode?: 'standard' | 'new_connection'; // Explicit workflow format selector when registering/editing a section
@@ -728,13 +735,32 @@ export function isTelecomNewConnectionSection(
     section?.industryPreset === 'telecom_nc' ||
     section?.industryPreset === 'water_project' ||
     section?.industryPreset === 'electric_project' ||
-    section?.industryPreset === 'solar_project'
+    section?.industryPreset === 'solar_project' ||
+    section?.industryPreset === 'pantry_joinery' ||
+    section?.industryPreset === 'ceiling_installation' ||
+    section?.industryPreset === 'landscaping_irrigation' ||
+    section?.industryPreset === 'aluminum_glazing' ||
+    section?.industryPreset === 'hvac_cooling' ||
+    section?.industryPreset === 'cctv_security'
   ) {
     return true;
   }
   if (section?.id === 'pt-tnc') return true;
   const code = (section?.code || '').trim().toUpperCase();
-  if (code === 'TNC' || code === 'NC' || code === 'FTTH-NC' || code === 'WTR' || code === 'ELC' || code === 'SLR') {
+  if (
+    code === 'TNC' ||
+    code === 'NC' ||
+    code === 'FTTH-NC' ||
+    code === 'WTR' ||
+    code === 'ELC' ||
+    code === 'SLR' ||
+    code === 'PCJ' ||
+    code === 'CLG' ||
+    code === 'LND' ||
+    code === 'ALU' ||
+    code === 'HVC' ||
+    code === 'SEC'
+  ) {
     return true;
   }
   const name = (section?.name || sectionNameFallback || '').trim().toLowerCase();

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Briefcase,
   Plus,
@@ -35,6 +35,13 @@ import {
   Zap,
   Sun,
   SlidersHorizontal,
+  Hammer,
+  LayoutGrid,
+  Trees,
+  Ruler,
+  Wind,
+  Camera,
+  HardHat,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -70,6 +77,246 @@ import {
 interface ProjectsManagementViewProps {
   initialTab?: 'projects' | 'sections';
 }
+
+interface SectionPresetCardTheme {
+  icon: React.ComponentType<{ className?: string }>;
+  topBar: string;
+  unselectedCard: string;
+  selectedCard: string;
+  unselectedIcon: string;
+  selectedIcon: string;
+  unselectedBadge: string;
+  selectedBadge: string;
+  unselectedRef: string;
+  selectedRef: string;
+  unselectedFooter: string;
+  selectedFooter: string;
+  quickBtn: string;
+}
+
+const CORE_UTILITY_PRESET_KEYS: SectionIndustryPreset[] = [
+  'telecom_nc',
+  'water_project',
+  'electric_project',
+  'solar_project',
+];
+
+const SPECIALTY_TRADE_PRESET_KEYS: SectionIndustryPreset[] = [
+  'pantry_joinery',
+  'ceiling_installation',
+  'landscaping_irrigation',
+  'aluminum_glazing',
+  'hvac_cooling',
+  'cctv_security',
+  'civil_road',
+];
+
+const SECTION_PRESET_THEMES: Record<SectionIndustryPreset, SectionPresetCardTheme> = {
+  telecom_nc: {
+    icon: Radio,
+    topBar: 'from-emerald-400 via-teal-500 to-emerald-500',
+    unselectedCard:
+      'bg-gradient-to-r from-emerald-50/95 via-white to-teal-50/75 border-emerald-200/90 hover:border-emerald-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 text-white border-emerald-400 shadow-lg ring-2 ring-emerald-400/60',
+    unselectedIcon: 'bg-emerald-600 text-white shadow-xs',
+    selectedIcon: 'bg-emerald-400/20 text-emerald-200 border border-emerald-300/40',
+    unselectedBadge: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
+    selectedBadge: 'bg-emerald-400/25 text-emerald-100 border border-emerald-300/45',
+    unselectedRef: 'text-emerald-800/85',
+    selectedRef: 'text-emerald-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-emerald-100',
+    quickBtn: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300',
+  },
+  water_project: {
+    icon: Droplets,
+    topBar: 'from-sky-400 via-blue-500 to-cyan-500',
+    unselectedCard:
+      'bg-gradient-to-r from-sky-50/95 via-white to-blue-50/80 border-sky-200/90 hover:border-sky-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-[#0d3b6e] via-[#134e8e] to-[#08254d] text-white border-sky-400 shadow-lg ring-2 ring-sky-400/60',
+    unselectedIcon: 'bg-sky-600 text-white shadow-xs',
+    selectedIcon: 'bg-sky-400/20 text-sky-200 border border-sky-300/40',
+    unselectedBadge: 'bg-sky-100 text-sky-900 border border-sky-300/80',
+    selectedBadge: 'bg-sky-400/25 text-sky-100 border border-sky-300/45',
+    unselectedRef: 'text-sky-800/85',
+    selectedRef: 'text-sky-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-sky-100',
+    quickBtn: 'bg-sky-50 hover:bg-sky-100 text-sky-900 border-sky-300',
+  },
+  electric_project: {
+    icon: Zap,
+    topBar: 'from-amber-400 via-orange-400 to-yellow-500',
+    unselectedCard:
+      'bg-gradient-to-r from-amber-50/95 via-white to-orange-50/75 border-amber-200/90 hover:border-amber-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-amber-800 via-[#7c2d12] to-[#451a03] text-white border-amber-400 shadow-lg ring-2 ring-amber-400/60',
+    unselectedIcon: 'bg-amber-600 text-white shadow-xs',
+    selectedIcon: 'bg-amber-400/20 text-amber-200 border border-amber-300/40',
+    unselectedBadge: 'bg-amber-100 text-amber-950 border border-amber-300/80',
+    selectedBadge: 'bg-amber-400/25 text-amber-100 border border-amber-300/45',
+    unselectedRef: 'text-amber-900/80',
+    selectedRef: 'text-amber-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-amber-100',
+    quickBtn: 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300',
+  },
+  solar_project: {
+    icon: Sun,
+    topBar: 'from-violet-500 via-purple-500 to-indigo-500',
+    unselectedCard:
+      'bg-gradient-to-r from-violet-50/95 via-white to-indigo-50/75 border-violet-200/90 hover:border-violet-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-violet-900 via-indigo-900 to-[#1e1b4b] text-white border-violet-400 shadow-lg ring-2 ring-violet-400/60',
+    unselectedIcon: 'bg-violet-600 text-white shadow-xs',
+    selectedIcon: 'bg-violet-400/20 text-violet-200 border border-violet-300/40',
+    unselectedBadge: 'bg-violet-100 text-violet-900 border border-violet-300/80',
+    selectedBadge: 'bg-violet-400/25 text-violet-100 border border-violet-300/45',
+    unselectedRef: 'text-violet-800/85',
+    selectedRef: 'text-violet-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-violet-100',
+    quickBtn: 'bg-violet-50 hover:bg-violet-100 text-violet-950 border-violet-300',
+  },
+  pantry_joinery: {
+    icon: Hammer,
+    topBar: 'from-orange-400 via-amber-500 to-yellow-500',
+    unselectedCard:
+      'bg-gradient-to-r from-orange-50/95 via-white to-amber-50/75 border-orange-200/90 hover:border-orange-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-[#7c2d12] via-[#9a3412] to-[#431407] text-white border-orange-400 shadow-lg ring-2 ring-orange-400/60',
+    unselectedIcon: 'bg-orange-600 text-white shadow-xs',
+    selectedIcon: 'bg-orange-400/20 text-orange-200 border border-orange-300/40',
+    unselectedBadge: 'bg-orange-100 text-orange-950 border border-orange-300/80',
+    selectedBadge: 'bg-orange-400/25 text-orange-100 border border-orange-300/45',
+    unselectedRef: 'text-orange-900/80',
+    selectedRef: 'text-orange-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-orange-100',
+    quickBtn: 'bg-orange-50 hover:bg-orange-100 text-orange-950 border-orange-300',
+  },
+  ceiling_installation: {
+    icon: LayoutGrid,
+    topBar: 'from-indigo-400 via-blue-500 to-indigo-600',
+    unselectedCard:
+      'bg-gradient-to-r from-indigo-50/95 via-white to-slate-50 border-indigo-200/90 hover:border-indigo-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-indigo-900 via-[#312e81] to-[#1e1b4b] text-white border-indigo-400 shadow-lg ring-2 ring-indigo-400/60',
+    unselectedIcon: 'bg-indigo-600 text-white shadow-xs',
+    selectedIcon: 'bg-indigo-400/20 text-indigo-200 border border-indigo-300/40',
+    unselectedBadge: 'bg-indigo-100 text-indigo-900 border border-indigo-300/80',
+    selectedBadge: 'bg-indigo-400/25 text-indigo-100 border border-indigo-300/45',
+    unselectedRef: 'text-indigo-800/85',
+    selectedRef: 'text-indigo-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-indigo-100',
+    quickBtn: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border-indigo-300',
+  },
+  landscaping_irrigation: {
+    icon: Trees,
+    topBar: 'from-lime-500 via-emerald-500 to-green-600',
+    unselectedCard:
+      'bg-gradient-to-r from-lime-50/90 via-white to-emerald-50/75 border-emerald-200/90 hover:border-emerald-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-green-900 via-emerald-900 to-[#052e16] text-white border-lime-400 shadow-lg ring-2 ring-lime-400/60',
+    unselectedIcon: 'bg-green-700 text-white shadow-xs',
+    selectedIcon: 'bg-lime-400/20 text-lime-200 border border-lime-300/40',
+    unselectedBadge: 'bg-lime-100 text-green-900 border border-lime-300/80',
+    selectedBadge: 'bg-lime-400/25 text-lime-100 border border-lime-300/45',
+    unselectedRef: 'text-green-800/85',
+    selectedRef: 'text-lime-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-lime-100',
+    quickBtn: 'bg-lime-50 hover:bg-lime-100 text-green-950 border-lime-300',
+  },
+  aluminum_glazing: {
+    icon: Ruler,
+    topBar: 'from-cyan-400 via-sky-500 to-blue-600',
+    unselectedCard:
+      'bg-gradient-to-r from-cyan-50/95 via-white to-sky-50/75 border-cyan-200/90 hover:border-cyan-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-cyan-900 via-sky-900 to-[#082f49] text-white border-cyan-400 shadow-lg ring-2 ring-cyan-400/60',
+    unselectedIcon: 'bg-cyan-700 text-white shadow-xs',
+    selectedIcon: 'bg-cyan-400/20 text-cyan-200 border border-cyan-300/40',
+    unselectedBadge: 'bg-cyan-100 text-cyan-950 border border-cyan-300/80',
+    selectedBadge: 'bg-cyan-400/25 text-cyan-100 border border-cyan-300/45',
+    unselectedRef: 'text-cyan-900/80',
+    selectedRef: 'text-cyan-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-cyan-100',
+    quickBtn: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-950 border-cyan-300',
+  },
+  hvac_cooling: {
+    icon: Wind,
+    topBar: 'from-teal-400 via-cyan-500 to-teal-600',
+    unselectedCard:
+      'bg-gradient-to-r from-teal-50/95 via-white to-cyan-50/75 border-teal-200/90 hover:border-teal-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-teal-900 via-[#115e59] to-[#042f2e] text-white border-teal-400 shadow-lg ring-2 ring-teal-400/60',
+    unselectedIcon: 'bg-teal-600 text-white shadow-xs',
+    selectedIcon: 'bg-teal-400/20 text-teal-200 border border-teal-300/40',
+    unselectedBadge: 'bg-teal-100 text-teal-950 border border-teal-300/80',
+    selectedBadge: 'bg-teal-400/25 text-teal-100 border border-teal-300/45',
+    unselectedRef: 'text-teal-800/85',
+    selectedRef: 'text-teal-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-teal-100',
+    quickBtn: 'bg-teal-50 hover:bg-teal-100 text-teal-950 border-teal-300',
+  },
+  cctv_security: {
+    icon: Camera,
+    topBar: 'from-rose-400 via-red-500 to-pink-600',
+    unselectedCard:
+      'bg-gradient-to-r from-rose-50/95 via-white to-red-50/70 border-rose-200/90 hover:border-rose-400 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-rose-900 via-[#881337] to-[#4c0519] text-white border-rose-400 shadow-lg ring-2 ring-rose-400/60',
+    unselectedIcon: 'bg-rose-600 text-white shadow-xs',
+    selectedIcon: 'bg-rose-400/20 text-rose-200 border border-rose-300/40',
+    unselectedBadge: 'bg-rose-100 text-rose-950 border border-rose-300/80',
+    selectedBadge: 'bg-rose-400/25 text-rose-100 border border-rose-300/45',
+    unselectedRef: 'text-rose-900/80',
+    selectedRef: 'text-rose-200/95',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-rose-100',
+    quickBtn: 'bg-rose-50 hover:bg-rose-100 text-rose-950 border-rose-300',
+  },
+  civil_road: {
+    icon: HardHat,
+    topBar: 'from-yellow-500 via-amber-600 to-stone-600',
+    unselectedCard:
+      'bg-gradient-to-r from-stone-100/90 via-white to-amber-50/75 border-stone-300/90 hover:border-amber-500 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-stone-800 via-[#292524] to-[#1c1917] text-white border-amber-400 shadow-lg ring-2 ring-amber-400/60',
+    unselectedIcon: 'bg-stone-700 text-amber-300 shadow-xs',
+    selectedIcon: 'bg-amber-400/20 text-amber-200 border border-amber-300/40',
+    unselectedBadge: 'bg-stone-200 text-stone-900 border border-stone-300',
+    selectedBadge: 'bg-amber-400/25 text-amber-100 border border-amber-300/45',
+    unselectedRef: 'text-stone-700',
+    selectedRef: 'text-amber-200/90',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-stone-200',
+    quickBtn: 'bg-stone-100 hover:bg-stone-200 text-stone-900 border-stone-300',
+  },
+  standard: {
+    icon: SlidersHorizontal,
+    topBar: 'from-slate-500 via-teal-500 to-slate-600',
+    unselectedCard:
+      'bg-gradient-to-r from-slate-50 via-white to-teal-50/60 border-slate-300/90 hover:border-teal-500 hover:shadow-md text-slate-900',
+    selectedCard:
+      'bg-gradient-to-r from-slate-800 via-[#1e293b] to-[#0f172a] text-white border-teal-400 shadow-lg ring-2 ring-teal-400/60',
+    unselectedIcon: 'bg-slate-700 text-white shadow-xs',
+    selectedIcon: 'bg-teal-400/20 text-teal-200 border border-teal-300/40',
+    unselectedBadge: 'bg-slate-200/85 text-slate-800 border border-slate-300',
+    selectedBadge: 'bg-teal-400/25 text-teal-100 border border-teal-300/45',
+    unselectedRef: 'text-slate-600',
+    selectedRef: 'text-slate-300',
+    unselectedFooter: 'text-slate-600',
+    selectedFooter: 'text-slate-200',
+    quickBtn: 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300',
+  },
+};
 
 export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ initialTab }) => {
   const {
@@ -284,6 +531,31 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
   const [showEditCoreLabelsInSectionModal, setShowEditCoreLabelsInSectionModal] = useState(false);
   const [sectionError, setSectionError] = useState('');
   const [deleteConfirmSection, setDeleteConfirmSection] = useState<ProjectType | null>(null);
+  const [isIndustryDropdownOpen, setIsIndustryDropdownOpen] = useState(false);
+  const industryDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isIndustryDropdownOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        industryDropdownRef.current &&
+        !industryDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsIndustryDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsIndustryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isIndustryDropdownOpen]);
 
   // Material Template Modal States
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -920,6 +1192,7 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
     setNewCustomFieldPlaceholder('');
     setNewCustomFieldRequired(false);
     setShowEditCoreLabelsInSectionModal(false);
+    setIsIndustryDropdownOpen(false);
     setSectionError('');
     setShowSectionModal(true);
   };
@@ -939,6 +1212,7 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
     setNewCustomFieldPlaceholder('');
     setNewCustomFieldRequired(false);
     setShowEditCoreLabelsInSectionModal(false);
+    setIsIndustryDropdownOpen(false);
     setSectionError('');
     setShowSectionModal(true);
   };
@@ -2192,7 +2466,7 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                   New Section Registry, International Industry Templates &amp; BOM Material Templates
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Load ready-to-use international industry templates for <strong>Telecom New Connection</strong>, <strong>Water Supply Project</strong>, <strong>Electrical Power Project</strong>, or <strong>Solar PV Project</strong> — and add your own custom fields with <strong>+ Add Field</strong>.
+                  Load ready-to-use industry section templates across all <strong>11 Utility &amp; Specialty Contracting Trades</strong> (Telecom, Water, Electric, Solar, Joinery, Ceilings, Landscaping, Aluminum, HVAC, CCTV/Fire &amp; Civil/Road) — and add your own custom fields with <strong>+ Add Field</strong>.
                 </p>
               </div>
               <button
@@ -2206,57 +2480,72 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
             </div>
 
             {/* 1-Click International Section Template Loaders */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
-                  Quick-Load International Industry Section Templates (Click to Open &amp; Customize with + Add Field):
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
+                  Core Utility &amp; Infrastructure Section Templates (1-Click Open &amp; Customize):
+                </span>
+                <span className="text-[11px] font-bold text-emerald-700">
+                  All 11 trades also selectable inside the dropdown
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                {(
-                  [
-                    {
-                      preset: 'telecom_nc' as SectionIndustryPreset,
-                      btnClass: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300',
-                      badge: 'ITU-T / FTTH',
-                    },
-                    {
-                      preset: 'water_project' as SectionIndustryPreset,
-                      btnClass: 'bg-sky-50 hover:bg-sky-100 text-sky-900 border-sky-300',
-                      badge: 'ISO 4064 / AWWA',
-                    },
-                    {
-                      preset: 'electric_project' as SectionIndustryPreset,
-                      btnClass: 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300',
-                      badge: 'IEC 60364 / IEEE',
-                    },
-                    {
-                      preset: 'solar_project' as SectionIndustryPreset,
-                      btnClass: 'bg-purple-50 hover:bg-purple-100 text-purple-950 border-purple-300',
-                      badge: 'IEC 62446 / PV',
-                    },
-                  ] as const
-                ).map((item) => {
-                  const meta = INDUSTRY_SECTION_PRESETS[item.preset];
+                {CORE_UTILITY_PRESET_KEYS.map((presetKey) => {
+                  const meta = INDUSTRY_SECTION_PRESETS[presetKey];
+                  const theme = SECTION_PRESET_THEMES[presetKey];
+                  const QuickIcon = theme.icon;
                   return (
                     <button
-                      key={item.preset}
+                      key={presetKey}
                       type="button"
-                      onClick={() => handleOpenAddSectionModal(item.preset)}
-                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 shadow-2xs ${item.btnClass}`}
+                      onClick={() => handleOpenAddSectionModal(presetKey)}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-2 shadow-2xs ${theme.quickBtn}`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-extrabold">{meta.defaultSectionName}</span>
-                        <span className="px-1.5 py-0.5 rounded bg-white/80 text-[9px] font-bold border border-black/10 shrink-0">
-                          {item.badge}
-                        </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${theme.unselectedIcon}`}>
+                            <QuickIcon className="w-3.5 h-3.5" />
+                          </span>
+                          <span className="text-xs font-extrabold leading-snug">{meta.defaultSectionName}</span>
+                        </div>
                       </div>
-                      <div className="text-[10px] opacity-85 line-clamp-2">
-                        6 Core Fields + {meta.defaultCustomFields.length} International Fields (+ Add Field)
+                      <div className="flex items-center justify-between gap-1 text-[11px] opacity-85">
+                        <span>6 Core + {meta.defaultCustomFields.length} Fields</span>
+                        <span className="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-bold border border-black/10 shrink-0">
+                          {meta.defaultCode}
+                        </span>
                       </div>
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Specialty & Finishing Contracting Trades Quick-Load */}
+              <div className="pt-2.5 border-t border-slate-200/80 space-y-2">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                  Specialty &amp; Finishing Contracting Trades (Click Any Trade to Create Section):
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {SPECIALTY_TRADE_PRESET_KEYS.map((presetKey) => {
+                    const meta = INDUSTRY_SECTION_PRESETS[presetKey];
+                    const theme = SECTION_PRESET_THEMES[presetKey];
+                    const TradeIcon = theme.icon;
+                    return (
+                      <button
+                        key={presetKey}
+                        type="button"
+                        onClick={() => handleOpenAddSectionModal(presetKey)}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer shadow-2xs ${theme.quickBtn}`}
+                      >
+                        <TradeIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span>{meta.defaultSectionName}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-mono font-bold border border-black/10">
+                          {meta.defaultCode}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -2970,150 +3259,51 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
             )}
 
             <form onSubmit={handleSaveSection} className="space-y-4">
-              {/* STEP 1: INTERNATIONAL INDUSTRY TEMPLATE SELECTOR */}
+              {/* STEP 1: INTERNATIONAL INDUSTRY TEMPLATE DROPDOWN (VERTICAL CARD LIST) */}
               <div className="p-4 sm:p-5 bg-slate-50/90 border border-slate-200 rounded-2xl space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                   <label className="block text-sm font-black text-slate-900 uppercase tracking-wide">
-                    1. Load International Industry Template (Auto-Loads Standard Fields) *
+                    1. Load Industry Section Template (Auto-Loads Standard Fields) *
                   </label>
                   <span className="text-xs font-bold text-emerald-700">
-                    Click any template to load its international fields
+                    Open dropdown to choose from 11 trades + Custom
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(
-                    ['telecom_nc', 'water_project', 'electric_project', 'solar_project', 'standard'] as SectionIndustryPreset[]
-                  ).map((presetKey) => {
+                {(() => {
+                  const selectedMeta = INDUSTRY_SECTION_PRESETS[sectionIndustryPreset];
+                  const selectedTheme = SECTION_PRESET_THEMES[sectionIndustryPreset];
+                  const SelectedIcon = selectedTheme.icon;
+
+                  const renderDropdownCard = (presetKey: SectionIndustryPreset) => {
                     const meta = INDUSTRY_SECTION_PRESETS[presetKey];
-                    const isSelected = sectionIndustryPreset === presetKey;
-
-                    const themeMap: Record<
-                      SectionIndustryPreset,
-                      {
-                        icon: React.ComponentType<{ className?: string }>;
-                        topBar: string;
-                        unselectedCard: string;
-                        selectedCard: string;
-                        unselectedIcon: string;
-                        selectedIcon: string;
-                        unselectedBadge: string;
-                        selectedBadge: string;
-                        unselectedRef: string;
-                        selectedRef: string;
-                        unselectedFooter: string;
-                        selectedFooter: string;
-                      }
-                    > = {
-                      telecom_nc: {
-                        icon: Radio,
-                        topBar: 'from-emerald-400 via-teal-500 to-emerald-500',
-                        unselectedCard:
-                          'bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/70 border-emerald-200/90 hover:border-emerald-400 hover:shadow-md text-slate-900',
-                        selectedCard:
-                          'bg-gradient-to-br from-emerald-800 via-emerald-900 to-teal-950 text-white border-emerald-400 shadow-lg ring-2 ring-emerald-400/60',
-                        unselectedIcon: 'bg-emerald-600 text-white shadow-xs',
-                        selectedIcon: 'bg-emerald-400/20 text-emerald-200 border border-emerald-300/40',
-                        unselectedBadge: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
-                        selectedBadge: 'bg-emerald-400/25 text-emerald-100 border border-emerald-300/45',
-                        unselectedRef: 'text-emerald-800/85',
-                        selectedRef: 'text-emerald-200/95',
-                        unselectedFooter: 'text-slate-600 border-emerald-200/70',
-                        selectedFooter: 'text-emerald-100 border-white/15',
-                      },
-                      water_project: {
-                        icon: Droplets,
-                        topBar: 'from-sky-400 via-blue-500 to-cyan-500',
-                        unselectedCard:
-                          'bg-gradient-to-br from-sky-50/95 via-white to-blue-50/80 border-sky-200/90 hover:border-sky-400 hover:shadow-md text-slate-900',
-                        selectedCard:
-                          'bg-gradient-to-br from-[#0d3b6e] via-[#134e8e] to-[#08254d] text-white border-sky-400 shadow-lg ring-2 ring-sky-400/60',
-                        unselectedIcon: 'bg-sky-600 text-white shadow-xs',
-                        selectedIcon: 'bg-sky-400/20 text-sky-200 border border-sky-300/40',
-                        unselectedBadge: 'bg-sky-100 text-sky-900 border border-sky-300/80',
-                        selectedBadge: 'bg-sky-400/25 text-sky-100 border border-sky-300/45',
-                        unselectedRef: 'text-sky-800/85',
-                        selectedRef: 'text-sky-200/95',
-                        unselectedFooter: 'text-slate-600 border-sky-200/70',
-                        selectedFooter: 'text-sky-100 border-white/15',
-                      },
-                      electric_project: {
-                        icon: Zap,
-                        topBar: 'from-amber-400 via-orange-400 to-yellow-500',
-                        unselectedCard:
-                          'bg-gradient-to-br from-amber-50/95 via-white to-orange-50/70 border-amber-200/90 hover:border-amber-400 hover:shadow-md text-slate-900',
-                        selectedCard:
-                          'bg-gradient-to-br from-amber-800 via-[#7c2d12] to-[#451a03] text-white border-amber-400 shadow-lg ring-2 ring-amber-400/60',
-                        unselectedIcon: 'bg-amber-600 text-white shadow-xs',
-                        selectedIcon: 'bg-amber-400/20 text-amber-200 border border-amber-300/40',
-                        unselectedBadge: 'bg-amber-100 text-amber-950 border border-amber-300/80',
-                        selectedBadge: 'bg-amber-400/25 text-amber-100 border border-amber-300/45',
-                        unselectedRef: 'text-amber-900/80',
-                        selectedRef: 'text-amber-200/95',
-                        unselectedFooter: 'text-slate-600 border-amber-200/70',
-                        selectedFooter: 'text-amber-100 border-white/15',
-                      },
-                      solar_project: {
-                        icon: Sun,
-                        topBar: 'from-violet-500 via-purple-500 to-indigo-500',
-                        unselectedCard:
-                          'bg-gradient-to-br from-violet-50/95 via-white to-indigo-50/75 border-violet-200/90 hover:border-violet-400 hover:shadow-md text-slate-900',
-                        selectedCard:
-                          'bg-gradient-to-br from-violet-900 via-indigo-900 to-[#1e1b4b] text-white border-violet-400 shadow-lg ring-2 ring-violet-400/60',
-                        unselectedIcon: 'bg-violet-600 text-white shadow-xs',
-                        selectedIcon: 'bg-violet-400/20 text-violet-200 border border-violet-300/40',
-                        unselectedBadge: 'bg-violet-100 text-violet-900 border border-violet-300/80',
-                        selectedBadge: 'bg-violet-400/25 text-violet-100 border border-violet-300/45',
-                        unselectedRef: 'text-violet-800/85',
-                        selectedRef: 'text-violet-200/95',
-                        unselectedFooter: 'text-slate-600 border-violet-200/70',
-                        selectedFooter: 'text-violet-100 border-white/15',
-                      },
-                      standard: {
-                        icon: SlidersHorizontal,
-                        topBar: 'from-slate-500 via-teal-500 to-slate-600',
-                        unselectedCard:
-                          'bg-gradient-to-br from-slate-50 via-white to-teal-50/60 border-slate-300/90 hover:border-teal-500 hover:shadow-md text-slate-900',
-                        selectedCard:
-                          'bg-gradient-to-br from-slate-800 via-[#1e293b] to-[#0f172a] text-white border-teal-400 shadow-lg ring-2 ring-teal-400/60',
-                        unselectedIcon: 'bg-slate-700 text-white shadow-xs',
-                        selectedIcon: 'bg-teal-400/20 text-teal-200 border border-teal-300/40',
-                        unselectedBadge: 'bg-slate-200/85 text-slate-800 border border-slate-300',
-                        selectedBadge: 'bg-teal-400/25 text-teal-100 border border-teal-300/45',
-                        unselectedRef: 'text-slate-600',
-                        selectedRef: 'text-slate-300',
-                        unselectedFooter: 'text-slate-600 border-slate-200',
-                        selectedFooter: 'text-slate-200 border-white/15',
-                      },
-                    };
-
-                    const theme = themeMap[presetKey];
+                    const theme = SECTION_PRESET_THEMES[presetKey];
                     const PresetIcon = theme.icon;
+                    const isSelected = sectionIndustryPreset === presetKey;
 
                     return (
                       <button
                         key={presetKey}
                         type="button"
-                        onClick={() => applySectionIndustryPreset(presetKey, Boolean(editingSection))}
-                        className={`relative overflow-hidden p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                        onClick={() => {
+                          applySectionIndustryPreset(presetKey, Boolean(editingSection));
+                          setIsIndustryDropdownOpen(false);
+                        }}
+                        className={`w-full relative overflow-hidden p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                           isSelected ? theme.selectedCard : theme.unselectedCard
                         }`}
                       >
-                        {/* Top Accent Gradient Hairline */}
-                        <div
-                          className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${theme.topBar}`}
-                        />
-
-                        <div className="pt-0.5 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                  isSelected ? theme.selectedIcon : theme.unselectedIcon
-                                }`}
-                              >
-                                <PresetIcon className="w-4 h-4" />
-                              </span>
+                        <div className={`absolute left-0 inset-y-0 w-1.5 bg-gradient-to-b ${theme.topBar}`} />
+                        <div className="pl-2 flex items-start gap-3 min-w-0 flex-1">
+                          <span
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                              isSelected ? theme.selectedIcon : theme.unselectedIcon
+                            }`}
+                          >
+                            <PresetIcon className="w-5 h-5" />
+                          </span>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span
                                 className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide whitespace-nowrap ${
                                   isSelected ? theme.selectedBadge : theme.unselectedBadge
@@ -3121,38 +3311,136 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                               >
                                 {meta.shortBadge}
                               </span>
+                              <span
+                                className={`text-[11px] font-mono font-semibold ${
+                                  isSelected ? theme.selectedRef : theme.unselectedRef
+                                }`}
+                              >
+                                {meta.standardReference}
+                              </span>
                             </div>
-                            {isSelected && (
-                              <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
-                            )}
-                          </div>
-
-                          <div
-                            className={`text-[11px] font-mono font-semibold leading-snug ${
-                              isSelected ? theme.selectedRef : theme.unselectedRef
-                            }`}
-                          >
-                            {meta.standardReference}
-                          </div>
-
-                          <div className="text-sm sm:text-[15px] font-black leading-snug">
-                            {meta.defaultSectionName || meta.title}
+                            <div className="text-sm sm:text-[15px] font-black leading-snug">
+                              {meta.defaultSectionName || meta.title}
+                            </div>
+                            <div
+                              className={`text-xs font-semibold leading-snug ${
+                                isSelected ? theme.selectedFooter : theme.unselectedFooter
+                              }`}
+                            >
+                              {meta.defaultWorkflowMode === 'new_connection'
+                                ? `6 Core Connection Fields + ${meta.defaultCustomFields.length} Industry Fields`
+                                : `Main/Sub Project Hierarchy + ${meta.defaultCustomFields.length} Engineering Fields`}
+                            </div>
                           </div>
                         </div>
 
-                        <div
-                          className={`text-xs font-semibold pt-2 border-t leading-snug ${
-                            isSelected ? theme.selectedFooter : theme.unselectedFooter
-                          }`}
-                        >
-                          {meta.defaultWorkflowMode === 'new_connection'
-                            ? `6 Core Connection Fields + ${meta.defaultCustomFields.length} International Fields`
-                            : `Main/Sub Project Format + ${meta.defaultCustomFields.length} Engineering Fields`}
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          {isSelected ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 border border-white/25 text-xs font-extrabold text-white whitespace-nowrap">
+                              <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+                              <span>Selected</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg bg-slate-900/5 text-slate-700 text-[11px] font-bold whitespace-nowrap">
+                              Select
+                            </span>
+                          )}
                         </div>
                       </button>
                     );
-                  })}
-                </div>
+                  };
+
+                  return (
+                    <div ref={industryDropdownRef} className="relative">
+                      {/* Dropdown Trigger Button (Displays Selected Card) */}
+                      <button
+                        type="button"
+                        onClick={() => setIsIndustryDropdownOpen((prev) => !prev)}
+                        aria-expanded={isIndustryDropdownOpen}
+                        className={`w-full relative overflow-hidden p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${selectedTheme.selectedCard}`}
+                      >
+                        <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${selectedTheme.topBar}`} />
+                        <div className="flex items-start gap-3.5 min-w-0 flex-1 pt-0.5">
+                          <span
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${selectedTheme.selectedIcon}`}
+                          >
+                            <SelectedIcon className="w-5 h-5" />
+                          </span>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide whitespace-nowrap ${selectedTheme.selectedBadge}`}
+                              >
+                                {selectedMeta.shortBadge}
+                              </span>
+                              <span className={`text-[11px] font-mono font-semibold ${selectedTheme.selectedRef}`}>
+                                {selectedMeta.standardReference}
+                              </span>
+                            </div>
+                            <div className="text-base font-black text-white leading-snug">
+                              {selectedMeta.defaultSectionName || selectedMeta.title}
+                            </div>
+                            <div className={`text-xs font-semibold ${selectedTheme.selectedFooter}`}>
+                              {selectedMeta.defaultWorkflowMode === 'new_connection'
+                                ? `6 Core Connection Fields + ${selectedMeta.defaultCustomFields.length} International Fields`
+                                : `Main/Sub Project Format + ${selectedMeta.defaultCustomFields.length} Engineering Fields`}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-xs font-extrabold text-white transition">
+                          <span>{isIndustryDropdownOpen ? 'Close List' : 'Choose Industry'}</span>
+                          {isIndustryDropdownOpen ? (
+                            <ChevronUp className="w-4 h-4 shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 shrink-0" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Vertical Dropdown Card List */}
+                      {isIndustryDropdownOpen && (
+                        <div className="absolute left-0 right-0 mt-2 z-30 bg-white rounded-2xl border border-slate-300 shadow-2xl p-3 sm:p-4 max-h-[420px] overflow-y-auto space-y-4">
+                          {/* Group 1: Core Utility & Infrastructure */}
+                          <div className="space-y-2">
+                            <div className="px-1 flex items-center justify-between">
+                              <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                Core Utility &amp; Infrastructure Sectors (4)
+                              </span>
+                            </div>
+                            <div className="space-y-2.5">
+                              {CORE_UTILITY_PRESET_KEYS.map((key) => renderDropdownCard(key))}
+                            </div>
+                          </div>
+
+                          {/* Group 2: Specialty & Finishing Contracting Trades */}
+                          <div className="space-y-2 pt-3 border-t border-slate-200">
+                            <div className="px-1 flex items-center justify-between">
+                              <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                Specialty &amp; Finishing Contracting Trades (7)
+                              </span>
+                            </div>
+                            <div className="space-y-2.5">
+                              {SPECIALTY_TRADE_PRESET_KEYS.map((key) => renderDropdownCard(key))}
+                            </div>
+                          </div>
+
+                          {/* Group 3: Standard / Custom */}
+                          <div className="space-y-2 pt-3 border-t border-slate-200">
+                            <div className="px-1">
+                              <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                Standard / Custom Engineering Project
+                              </span>
+                            </div>
+                            <div className="space-y-2.5">
+                              {renderDropdownCard('standard')}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Workflow Mode Switcher (Subscriber/Connection 3-Step vs Standard Project Hierarchy) */}
                 <div className="pt-2.5 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
