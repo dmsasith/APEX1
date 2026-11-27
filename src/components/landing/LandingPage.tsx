@@ -22,7 +22,6 @@ import {
   CreditCard,
   Gift,
   FolderKanban,
-  Wrench,
   Radio,
   HardHat,
   Droplets,
@@ -32,6 +31,18 @@ import {
   ArrowUp,
   Infinity as InfinityIcon,
   Video,
+  AlertTriangle,
+  Sun,
+  Hammer,
+  LayoutGrid,
+  Trees,
+  Ruler,
+  Wind,
+  Camera,
+  Printer,
+  RotateCcw,
+  ClipboardCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { TenantSignupModal } from './TenantSignupModal';
 import { SystemUserGuideView } from './SystemUserGuideView';
@@ -207,79 +218,141 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     }
   };
 
-  // Target Industries ("Who Is This Built For?") — 100% International English
-  const industries = [
+  // Pain-to-Solution Challenges ("Sound Familiar?")
+  const painToSolutionItems = [
     {
-      icon: HardHat,
-      badge: 'Civil & Construction',
-      title: 'Civil, Building & Road Construction Firms',
-      subtitle: 'Multi-Site Construction Yards & Heavy Fleet Operations',
-      desc: 'Control cement, steel, aggregates, and heavy machinery fleets (excavators, generators, compactors) across multiple active construction sites and central storage yards.',
-      features: [
-        'Consumable Materials + Machinery Fleet',
-        'Central Warehouse to Site Transfers',
-        'Multi-Crew BOQ Material Consumption',
-      ],
+      icon: ShieldAlert,
+      painTitle: 'Unexplained Material & Stock Loss',
+      painDesc:
+        'Materials disappearing between central store, site yards, and field crews with no clear custody trail.',
+      solutionLabel: '2-Tier / 3-Tier Custody Ledger',
+      solutionDesc:
+        'Track every unit in real time across Central HQ, Regional & Sub-Sites, and Crew In-Hand balances with signed transfer notes.',
     },
     {
+      icon: AlertTriangle,
+      painTitle: 'Hidden Wastage & Offcut Costs',
+      painDesc:
+        'No separation between actual installed quantities and wastage/scrap, eating into project profit margins.',
+      solutionLabel: 'Installed Qty + Wastage Qty',
+      solutionDesc:
+        'Log Installed Qty separately from Wastage/Offcuts per item with live Team In-Hand validation and per-project wastage reports.',
+    },
+    {
+      icon: Gift,
+      painTitle: 'Client Free-Issue (FOC) & Audit Headaches',
+      painDesc:
+        'Struggling to reconcile client-supplied materials and returnable balances during final billing or audits.',
+      solutionLabel: '5-Stage Client FOC Reconciliation',
+      solutionDesc:
+        'Follows Receipt -> Site -> Team -> Usage & Wastage -> Returnable Client Balance with "ALL AREAS" tracking & 1-click A4 PDF audits.',
+    },
+    {
+      icon: FileSpreadsheet,
+      painTitle: 'Chaotic Excel, WhatsApp & Paper Slips',
+      painDesc:
+        'Lost handwritten vouchers, duplicate entries, and zero real-time visibility across multiple active sites.',
+      solutionLabel: 'ISO 9001:2015 Digital Control',
+      solutionDesc:
+        'Auto-numbered RN, IN, PU, RV, BRM & GRN vouchers, single-shot barcode scanning, and Admin Password delete locks.',
+    },
+  ];
+
+  // Top Featured Core Utility & Infrastructure Sectors (4 Prominent Cards)
+  const coreUtilityIndustries = [
+    {
       icon: Radio,
-      badge: 'Telecom & Fiber EPC',
-      title: 'Telecom & Fiber Optic Contractors',
-      subtitle: 'OSP Rollouts, FTTH Deployments & Tower Infrastructure',
-      desc: 'Track fiber cable drums, splice closures, poles, and network hardware across regional yards. Manage Client-Supplied Free Materials received from telecom operators with automatic project deduction.',
+      badge: '01 · Core Utility & Telecom',
+      title: 'Telecom FTTH, OSP & Tower Projects',
+      fitLabel: 'Client FOC tracking · Exchange/LEA fields · Cable usage + wastage',
+      desc: 'Track fiber cable drums, splice closures, drop cables, and network hardware across regional and sub-site yards with strict Client FOC section filtering.',
       features: [
-        'Client-Supplied Free Stock Tracking',
-        'Cable Drum & Batch Serial Remarks',
-        'Site / WBS Project Reconciliation',
+        'Main Project -> New Connections & FOC Pool',
+        'Installed Qty + Cable/Drop Wastage Tracking',
+        'Team In-Hand Ledger & Upstream Returns',
       ],
     },
     {
       icon: Zap,
-      badge: 'Power & Solar EPC',
-      title: 'Electrical, Solar & Power Grid Contractors',
-      subtitle: 'Substations, Renewable Energy & Transmission Projects',
-      desc: 'Manage high-value transformers, solar panels, inverters, and transmission cables. Issue materials to specialized electrical line crews and monitor live in-hand custody balances.',
+      badge: '02 · Core Utility & MEP',
+      title: 'Electrical & Power Distribution (MEP)',
+      fitLabel: 'HV/LV cable & switchgear issue · Crew custody · Tool returns',
+      desc: 'Control transformers, switchgear, armored cables, and testing tools issued to field crews with real-time branch balances and IEC section templates.',
       features: [
-        'High-Value Equipment Custody Audits',
-        'Field Crew In-Hand Stock Balances',
-        'Supplier Purchase Orders & GRN Logs',
+        'Material Consumables + Testing Tool Custody',
+        '2-Tier or 3-Tier Branch-Locked Stock Flow',
+        'Supplier PO, GRN & Outward Gate Passes',
+      ],
+    },
+    {
+      icon: Sun,
+      badge: '03 · Clean Energy EPC',
+      title: 'Solar PV & Net-Metering Installations',
+      fitLabel: 'Panels/inverters dispatch · Site/sub-site flow · Net-metering logs',
+      desc: 'Manage solar panels, inverters, DC cables, and mounting rails across multi-site installation crews with serialized notes and completion audits.',
+      features: [
+        'Solar PV Section Fields & BOM Auto-Fill',
+        'Crew-Wise Usage, Offcuts & Balance Audits',
+        'Printable ISO 9001:2015 A4 PDF Vouchers',
       ],
     },
     {
       icon: Droplets,
-      badge: 'Water & Utilities',
-      title: 'Water Supply, Drainage & Pipeline Projects',
-      subtitle: 'Municipal Utility Networks & Pipeline Infrastructure',
-      desc: 'Track HDPE/DI pipes, valves, fittings, and jointing kits across pipeline sections. Reconcile issued vs. installed quantities and process surplus material returns cleanly.',
+      badge: '04 · Municipal Infrastructure',
+      title: 'Water Supply, Pipeline & Utility Projects',
+      fitLabel: 'HDPE/DI pipe issue · Installed vs. wastage · Surplus BRM returns',
+      desc: 'Reconcile pipes, valves, meters, and jointing kits from depot to trench teams, separating installed lengths from wastage and returning surplus upstream.',
       features: [
-        'Reusable Pipeline Section Templates',
-        'Issued vs. Installed Variance Reports',
-        'Surplus & Damaged Stock Returns',
+        'Pipeline & New Connection Section Templates',
+        'Multi-Item Upstream Returns (RV & BRM)',
+        'Client FOC vs. Company Stock Separation',
       ],
     },
+  ];
+
+  // Specialty & Finishing Contracting Trades (Grouped Right Below with Exact Fit Micro-Labels)
+  const specialtyTradeIndustries = [
     {
-      icon: Warehouse,
-      badge: 'Warehousing & Supply',
-      title: 'Multi-Branch Hardware & Central Distributors',
-      subtitle: 'Central HQ, Regional Hubs & Optional Sub-Site Stores',
-      desc: 'Operate a Central HQ Warehouse that supplies up to 20 included Regional & nested Sub-Site Branches (+$10/mo extra site). Parent branches supply Sub-Sites directly while branch staff stay securely locked.',
-      features: [
-        'Central -> Regional -> Sub-Site Hierarchy',
-        'Automated Low-Stock Priority Requisitions',
-        'Official Printable Dispatch & Gate Passes',
-      ],
+      icon: Hammer,
+      num: '05',
+      title: 'Pantry Cupboards & Interior Joinery',
+      fitLabel: 'Boards, hardware, offcuts & site/unit installs',
     },
     {
-      icon: Wrench,
-      badge: 'MEP & Field Service',
-      title: 'Engineering, MEP & Facility Maintenance Teams',
-      subtitle: 'Mobile Service Crews, Technicians & Tool Custody',
-      desc: 'Issue returnable testing instruments, power tools, and spare parts to mobile technician teams. Know exactly which team leader holds every tool or instrument at any moment.',
-      features: [
-        'Returnable Tool & Instrument Custody',
-        'Field Technician Crew Directory',
-        'Tamper-Proof Transaction Audit Trail',
-      ],
+      icon: LayoutGrid,
+      num: '06',
+      title: 'Ceiling Installation — Gypsum, PVC, T-Grid & Acoustic',
+      fitLabel: 'Sheets, framing, wastage & returns',
+    },
+    {
+      icon: Trees,
+      num: '07',
+      title: 'Landscaping, Hardscaping & Irrigation',
+      fitLabel: 'Materials, plants/blocks, site stock & wastage',
+    },
+    {
+      icon: Ruler,
+      num: '08',
+      title: 'Aluminum Fabrication & Glazing',
+      fitLabel: 'Profiles, glass, consumables & scrap tracking',
+    },
+    {
+      icon: Wind,
+      num: '09',
+      title: 'HVAC / Air Conditioning & Refrigeration',
+      fitLabel: 'Units, copper/insulation & crew dispatch',
+    },
+    {
+      icon: Camera,
+      num: '10',
+      title: 'CCTV, Security & Fire Alarm Systems',
+      fitLabel: 'Cables, devices & multi-site installation',
+    },
+    {
+      icon: HardHat,
+      num: '11',
+      title: 'Civil, Road & Municipal Maintenance',
+      fitLabel: 'Depot-to-site materials, tools & daily progress',
     },
   ];
 
@@ -329,6 +402,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     detail: string;
     isSpecialHighlight?: boolean;
     apex: string;
+    manual: string;
     sortly: string;
     zoho: string;
     inflowCin7: string;
@@ -342,6 +416,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Complete multi-site warehouse, project, procurement & field crew ERP with zero hidden add-on fees.',
       isSpecialHighlight: true,
       apex: `$${pricingMetrics.monthlyPriceFormatted} / mo ($${pricingMetrics.annualMonthlyEquivalentFormatted}/mo Annual)`,
+      manual: '✕ Hidden stock loss, rework & admin hours',
       sortly: '$149 – $299+ / mo',
       zoho: '$99 – $249+ / mo',
       inflowCin7: '$149 – $399+ / mo',
@@ -351,13 +426,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       category: 'pricing',
       categoryLabel: 'Pricing & Scale',
       feature: `Annual Total Cost (Unlimited Users, Unlimited Teams & ${pricingMetrics.includedSiteBranches} Site Branches)`,
-      detail: `Flat yearly rate for your entire company with Unlimited Users, Unlimited Field Teams & 1 Central HQ + ${pricingMetrics.includedSiteBranches} Regional Site Branches (expandable at +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo per extra site) — vs. competitor tiered user/branch caps & add-on seat fees.`,
+      detail: `Flat yearly rate for your entire company with Unlimited Users, Unlimited Field Teams & 1 Central HQ + ${pricingMetrics.includedSiteBranches} Regional Site Branches (expandable at +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo per extra site) — vs. spreadsheet errors & competitor user/branch caps.`,
       isSpecialHighlight: true,
-      apex: `✓ $${pricingMetrics.annualPriceClean} / year Flat (Unlimited Users & Teams · ${pricingMetrics.includedSiteBranches} Sites Included · Save 90%+)`,
-      sortly: '✕ $1,788 – $3,588+ / year (Capped at 5–8 users; +$240/yr per extra user & no branch RBAC)',
-      zoho: '✕ $1,548 – $2,988+ / year (Capped at 2–5 users & limited warehouses; extra seats & locations billed extra)',
-      inflowCin7: '✕ $2,148 – $4,788+ / year (Capped at 2–5 users; +$468/yr per extra user & paid per-location add-ons)',
-      legacyErp: '✕ $10,000+ / year (+$900–$1,800/yr per user + paid branch licenses & setup fees)',
+      apex: `✓ $${pricingMetrics.annualPriceClean} / year Flat (Unlimited Users & Teams · ${pricingMetrics.includedSiteBranches} Sites Included)`,
+      manual: '✕ Lost stock, unbilled wastage & hours of manual reconciliation',
+      sortly: '✕ $1,788 – $3,588+ / year (Capped at 5–8 users; +$240/yr per extra user)',
+      zoho: '✕ $1,548 – $2,988+ / year (Capped at 2–5 users & limited warehouses)',
+      inflowCin7: '✕ $2,148 – $4,788+ / year (Capped at 2–5 users; paid per-location add-ons)',
+      legacyErp: '✕ $10,000+ / year (+$900–$1,800/yr per user + paid branch licenses)',
     },
     {
       category: 'pricing',
@@ -365,6 +441,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Unlimited System Users & Staff Logins',
       detail: 'Create accounts for all HQ Storekeepers, Branch Admins, and Site Supervisors without paying per-seat fees.',
       apex: '✓ Unlimited Users ($0 extra)',
+      manual: '✕ Broken Excel file copies & WhatsApp chats',
       sortly: '✕ 5–8 Users max (Extra seats $20+/mo each)',
       zoho: '✕ 2–5 Users max (Extra seats charged per user)',
       inflowCin7: '✕ 2–5 Users max (Extra seats $39+/mo each)',
@@ -373,9 +450,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'pricing',
       categoryLabel: 'Pricing & Scale',
-      feature: `3-Tier Regional & Sub-Site Branches (${pricingMetrics.includedSiteBranches} Included + Expandable)`,
-      detail: `Includes 1 Central HQ Warehouse + ${pricingMetrics.includedSiteBranches} Regional & Optional Nested Sub-Site Branches with full RBAC & real-time sync. Need more? Add extra site branches anytime for just +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo each.`,
-      apex: `✓ ${pricingMetrics.includedSiteBranches} Sites + HQ Included (+$${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site)`,
+      feature: `2-Tier or 3-Tier Branches (${pricingMetrics.includedSiteBranches} Sites + HQ Included + $${pricingMetrics.extraSiteMonthlyPriceClean}/mo Extra)`,
+      detail: `Choose 2-Tier (Store -> Site/Crew) or 3-Tier (Central HQ -> Regional -> Sub-Site -> Crew) with 1 HQ + ${pricingMetrics.includedSiteBranches} Sites included and expandable at +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo per extra site.`,
+      isSpecialHighlight: true,
+      apex: `✓ 2-Tier & 3-Tier (${pricingMetrics.includedSiteBranches} Sites + HQ · +$${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra)`,
+      manual: '✕ Separate confusing tabs per site & zero custody chain',
       sortly: '✕ Folder-based only (No branch RBAC)',
       zoho: '✕ Limited warehouses per tier (Extra locations paid)',
       inflowCin7: '✕ Paid per-location add-on fee ($99+/mo)',
@@ -387,6 +466,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Unlimited Items, Barcodes, Orders & Monthly Transactions',
       detail: 'Zero artificial caps on SKU count, monthly purchase orders, dispatches, or barcode scans.',
       apex: '✓ 100% Unlimited',
+      manual: '✕ Slow spreadsheets & formula crashes',
       sortly: '✕ Capped by item/entry tier',
       zoho: '✕ Capped by monthly order volume',
       inflowCin7: '◐ Capped on lower plans',
@@ -401,6 +481,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Select any item in Central Stock to trace every PO/Manual/FOC receipt, site splits, team issues, usage/wastage, and print both Per-Item A4/PDF reports and Consolidated All-Items Project Reports.',
       isSpecialHighlight: true,
       apex: '✓ Per-Item + Consolidated Project A4/PDF',
+      manual: '✕ Hours of manual VLOOKUP & copy-paste',
       sortly: '✕ Not Available',
       zoho: '✕ Basic stock card only (No team/site chain)',
       inflowCin7: '✕ Warehouse level only',
@@ -413,6 +494,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Site Branch Stock visually highlights Central-received free stock with a distinct "Central FOC" badge/row accent and tracks Inbound -> Site Issue -> Team Issue -> Usage & Wastage -> Balance.',
       isSpecialHighlight: true,
       apex: '✓ "Central FOC" Highlight + 5-Stage Print',
+      manual: '✕ Mixes client free stock with purchased stock',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -425,6 +507,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Standard 5-Stage FOC Flow (Central Receipt -> Site Issue -> Team Issue -> Usage & Wastage -> Client Returnable Balance) with color-coded Main Project cards, per-Sub-Project flows, and "ALL AREAS" island-wide contract support.',
       isSpecialHighlight: true,
       apex: '✓ 5-Stage FOC Flow + "ALL AREAS" Multi-Site',
+      manual: '✕ Billing disputes & missing client return balances',
       sortly: '✕ No Client FOC concept',
       zoho: '✕ Built for retail sales, not Client FOC',
       inflowCin7: '✕ No Client FOC accounting',
@@ -436,6 +519,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Admin FOC Voucher Reassignment (1-Click Project Correction)',
       detail: 'If a client FOC shipment was mistakenly logged under the wrong project, Admins can edit and reassign the voucher to the right project with full Audit Trail.',
       apex: '✓ 1-Click Admin Reassignment',
+      manual: '✕ Manual cell edits with no audit history',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -447,6 +531,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Official Supplier Purchase Orders (PO) & Multi-Item Atomic GRN',
       detail: 'Generate sequential 0001-numbered POs with tax/discount/commercial terms and receive full or partial multi-item batch deliveries with printable GRN vouchers.',
       apex: '✓ Included (PO + Full/Partial GRN)',
+      manual: '✕ Separate Word/Excel POs & paper GRNs',
       sortly: '◐ Basic PO only on higher tiers',
       zoho: '✓ Included',
       inflowCin7: '✓ Included',
@@ -458,6 +543,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Return to Vendor (RTV), Official Debit Notes & Outward Gate Passes',
       detail: 'Dispatch defective supplier goods with vehicle/driver Gate Pass, print official commercial Debit Notes, and track vendor settlements (Replacement, Credit, Refund).',
       apex: '✓ Full RTV + Debit Note + Gate Pass',
+      manual: '✕ Paper gate passes easily misplaced',
       sortly: '✕ Not Available',
       zoho: '◐ Vendor credits only (No Gate Pass)',
       inflowCin7: '◐ Basic vendor return',
@@ -469,6 +555,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Damaged Stock Ledger & 1-Click Repair Restoration to Main Stock',
       detail: 'Quarantine damaged items returned from teams/sites and restore repaired equipment back into usable Main Stock with DSR vouchers.',
       apex: '✓ Dedicated Damaged & Restoration Ledger',
+      manual: '✕ Forgotten broken tools & unrecorded scrap',
       sortly: '✕ Manual folder move only',
       zoho: '✕ Manual adjustment only',
       inflowCin7: '✕ Manual adjustment only',
@@ -481,6 +568,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Auto-compress item photos under 200KB, see item thumbnails directly inside Purchase Order (PO), Team/Branch Return (RV/BRM) & Requisition dropdowns, and toggle "Print with Image" on vouchers/reports.',
       isSpecialHighlight: true,
       apex: '✓ PO/Return Thumbnails + "Print with Image"',
+      manual: '✕ Text-only rows or broken spreadsheet images',
       sortly: '◐ Photos supported (No PO/Return print toggle)',
       zoho: '◐ Basic item image',
       inflowCin7: '◐ Basic item image',
@@ -495,6 +583,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Separate requisition tabs for regular warehouse stock and branch-assigned Client FOC projects so supervisors never request another site’s project materials.',
       isSpecialHighlight: true,
       apex: '✓ 2-Tab Normal vs. Branch-Locked FOC',
+      manual: '✕ WhatsApp voice notes & paper request chits',
       sortly: '✕ No requisition approval workflow',
       zoho: '✕ Inter-warehouse transfer only',
       inflowCin7: '✕ Standard stock transfer only',
@@ -507,6 +596,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'When a site creates a requisition, items low at that site automatically appear at the very top with a "⚠️ Site Low" badge and live Site vs. HQ stock numbers.',
       isSpecialHighlight: true,
       apex: '✓ Auto Priority Sort + Dual Live Balances',
+      manual: '✕ Stockouts discovered only when crews stop work',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -518,6 +608,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'HQ "Send Available Only" 1-Click Shortage Adjustment',
       detail: 'If a branch requests 100 units when Central HQ only holds 60, HQ can adjust to the available 60 units in one click during dispatch approval.',
       apex: '✓ 1-Click Shortage Adjustment',
+      manual: '✕ Phone calls & scribbled quantity edits',
       sortly: '✕ Not Available',
       zoho: '✕ Manual edit required',
       inflowCin7: '✕ Manual edit required',
@@ -527,9 +618,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       category: 'field',
       categoryLabel: 'Site & Field Crews',
       feature: 'Live Field Crew In-Hand Stock Custody Ledger (TSR Audit Reports)',
-      detail: 'Track exact balances held by every Field Crew Leader right now (Issued − Used in Projects − Wastage − Returned to Site) with printable TSR reports.',
+      detail: 'Eliminates unexplained stock loss: track exact balances held by every Field Crew right now (Issued - Installed - Wastage - Returned) with printable TSR custody reports.',
       isSpecialHighlight: true,
       apex: '✓ Real-Time Crew In-Hand Ledger',
+      manual: '✕ Zero visibility into what crews hold on site',
       sortly: '✕ No field crew custody tracking',
       zoho: '✕ Designed for customers, not field crews',
       inflowCin7: '✕ No crew custody balance',
@@ -538,11 +630,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'field',
       categoryLabel: 'Site & Field Crews',
-      feature: '3-Tier Hierarchy: Central HQ -> Regional Branch -> Sub-Site Branch -> Field Teams',
-      detail: 'Nest Sub-Site Branches under any Regional Site; supply via direct "Issue Stock to Sub-Site" or parent-routed Requisitions ("Parent Avl:"), run Field Teams in both tiers & route Sub-Site BRM returns upstream to the Parent Site.',
+      feature: 'Upstream Returns Routing: Field Crew -> Sub-Site -> Parent Regional -> Central HQ',
+      detail: 'Nest Sub-Site Branches under any Regional Site; supply via direct "Issue Stock to Sub-Site" or parent-routed Requisitions, and route unused or damaged returns cleanly upstream tier-by-tier.',
       isSpecialHighlight: true,
-      apex: '✓ Full 3-Tier Sub-Site & Team Routing',
-      sortly: '✕ Basic folders (No dispatch chain)',
+      apex: '✓ Full Upstream BRM & RV Return Routing',
+      manual: '✕ Returned materials vanish or get double-counted',
+      sortly: '✕ Basic folders (No dispatch/return chain)',
       zoho: '✕ Flat warehouses only',
       inflowCin7: '✕ Flat locations only (No team tier)',
       legacyErp: '◐ Requires complex ERP sub-org config',
@@ -554,6 +647,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Transferring a team to a new site marks them "Temporary Assigned to - [New Site]" until old-site stock is cleared (or Admin-confirmed), then promotes to Permanent "[Team Name] (Ref: [Old Site])" with full Assigned Sites History.',
       isSpecialHighlight: true,
       apex: '✓ Temp -> Permanent + "Ref: Old Site" History',
+      manual: '✕ Untracked crew moves leave old stock lost',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -566,6 +660,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Never mixes a transferred team’s stock across sites: unreturned old-site items appear under "Stock to Return - [Previous Site]" (blocked from new-site usage), while new-site stock is listed under the new site name.',
       isSpecialHighlight: true,
       apex: '✓ Strict Site-Wise Stock Isolation',
+      manual: '✕ Cross-site material mixing & wrong job costing',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -578,6 +673,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Add multiple items at once ("+ Add Item" / "+ Add All Held or Available"), set Good or Damaged condition per row, and return the entire batch on a single shared Return Voucher.',
       isSpecialHighlight: true,
       apex: '✓ Multi-Item Batch RV & BRM Vouchers',
+      manual: '✕ Loose paper return chits & slow entry',
       sortly: '✕ Single item move only',
       zoho: '✕ Customer sales returns only',
       inflowCin7: '✕ Customer sales returns only',
@@ -587,8 +683,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       category: 'field',
       categoryLabel: 'Site & Field Crews',
       feature: 'Consumable Materials vs. Returnable Heavy Machinery & Tools Fleet',
-      detail: 'Dedicated Plant & Equipment Fleet view to track excavators, generators, fusion splicers, and testing meters separately from consumable materials.',
+      detail: 'Dedicated Plant & Equipment Fleet view to track excavators, generators, fusion splicers, drills, and testing meters separately from consumable materials.',
       apex: '✓ Materials + Plant/Machinery Fleet',
+      manual: '✕ Missing power tools & untracked site machinery',
       sortly: '◐ Basic asset tags only',
       zoho: '✕ E-commerce SKU focus only',
       inflowCin7: '✕ Inventory parts only',
@@ -600,6 +697,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Auto Crew Size (1 Leader + N NIC Members) & Team Name Lock After Stock Issue',
       detail: 'Crew size auto-calculates as NIC-verified members are added; locks Team Name against renaming once stock has been issued to protect historical vouchers, and supports Admin Password team deletion.',
       apex: '✓ Auto Crew Size + Name Lock after Issue',
+      manual: '✕ Duplicate crew names across sheets',
       sortly: '✕ No crew directory',
       zoho: '✕ No crew directory',
       inflowCin7: '✕ No crew directory',
@@ -612,20 +710,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Mobile camera and USB gun scanner detects once, immediately stops/hides the camera to prevent duplicate rapid scans, and gives a 1-click "Scan Now" button + sticker printing.',
       isSpecialHighlight: true,
       apex: '✓ Single-Shot Anti-Duplicate Scan + Stickers',
+      manual: '✕ Manual typing errors & SKU mix-ups',
       sortly: '◐ Camera scan (No single-shot auto-hide)',
       zoho: '◐ Barcode support',
       inflowCin7: '◐ Barcode support',
       legacyErp: '◐ Requires paid mobile scanner license',
     },
 
-    // 4. PROJECTS, INTERNATIONAL SECTION TEMPLATES (TELECOM, WATER, ELECTRIC, SOLAR) & WASTAGE ACCOUNTING
+    // 4. PROJECTS, ALL 11 INDUSTRY TEMPLATES & WASTAGE / OFFCUT ACCOUNTING
     {
       category: 'projects',
-      categoryLabel: 'Projects & Industry Templates',
+      categoryLabel: 'Projects & All 11 Trades',
+      feature: 'All 11 Utility & Specialty Contracting Workflows (Core Utility + Finishing Trades)',
+      detail: 'Ready for Telecom, Electrical, Solar & Water utilities PLUS Pantry Joinery, Ceilings, Landscaping, Aluminum Fabrication, HVAC, CCTV/Security & Civil/Road Maintenance.',
+      isSpecialHighlight: true,
+      apex: '✓ Utility + Specialty Contractor Workflows',
+      manual: '✕ One-off messy sheets per project type',
+      sortly: '✕ Generic retail folders only',
+      zoho: '✕ E-commerce/retail workflow only',
+      inflowCin7: '✕ Wholesale/manufacturing only',
+      legacyErp: '◐ Heavy custom consulting required',
+    },
+    {
+      category: 'projects',
+      categoryLabel: 'Projects & All 11 Trades',
       feature: '3-Tier Project Hierarchy + "Main Project -> Under New Connections" & Section-Filtered FOC',
       detail: 'Receive bulk Client FOC under a Main Project and nest Sub-Projects OR New Connections (Telecom, Water, Electric, Solar) beneath it. Usage dropdowns show only FOC stock allocated to that active section—zero cross-section clutter.',
       isSpecialHighlight: true,
       apex: '✓ Main/Sub + New Connection Section FOC',
+      manual: '✕ Cannot link sub-jobs to bulk client FOC pools',
       sortly: '✕ Flat folders only',
       zoho: '✕ No Main/Sub-Project FOC pool sharing',
       inflowCin7: '✕ Single job reference only',
@@ -633,11 +746,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Industry Templates',
+      categoryLabel: 'Projects & All 11 Trades',
       feature: 'International Industry Section Templates (Telecom, Water, Electric & Solar PV)',
       detail: '1-click auto-load of international standard fields for Telecom New Connection (ITU-T G.984), Water Supply (ISO 4064 / AWWA), Electrical Power (IEC 60364), Solar PV & Net-Metering (IEC 62446) & Standard EPC.',
       isSpecialHighlight: true,
       apex: '✓ Telecom, Water, Electric & Solar Presets',
+      manual: '✕ Manual inconsistent columns per supervisor',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -645,11 +759,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Industry Templates',
+      categoryLabel: 'Projects & All 11 Trades',
       feature: '"+ Add Field" Dynamic Custom Section Field Builder & Core Label Customizer',
-      detail: 'Customize the 6 Core Connection Field labels and click "+ Add Field" when creating/editing a section (or inline during Project Registration) to add unlimited custom technical fields.',
+      detail: 'Adapt labels for any trade (e.g., Exchange/LEA, Unit/Apartment, Zone, Feeder) and click "+ Add Field" when creating/editing a section to add unlimited custom technical fields.',
       isSpecialHighlight: true,
       apex: '✓ Unlimited "+ Add Field" Custom Builder',
+      manual: '✕ Breaks spreadsheet formulas when columns change',
       sortly: '◐ Limited custom fields on higher plans',
       zoho: '◐ Generic SKU fields only',
       inflowCin7: '◐ Generic custom fields',
@@ -657,11 +772,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Industry Templates',
+      categoryLabel: 'Projects & All 11 Trades',
       feature: '3-Step Connection Daily Progress with Session-Locked Team & Area',
-      detail: 'For Telecom, Water, Electric & Solar connection sections, Step 1 (Team & Area) sits at the top and LOCKS until page refresh so supervisors can log 20+ daily connections back-to-back.',
+      detail: 'Step 1 (Team & Area) sits at the top and LOCKS until page refresh so supervisors across Telecom, Solar, Joinery, Ceiling & MEP jobs can log 20+ daily installs back-to-back.',
       isSpecialHighlight: true,
-      apex: '✓ 1-2-3 Connection Flow + Team/Area Lock',
+      apex: '✓ 1-2-3 Progress Flow + Team/Area Lock',
+      manual: '✕ Repeated typing for every daily job card',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -669,10 +785,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Industry Templates',
+      categoryLabel: 'Projects & All 11 Trades',
       feature: 'Custom Project Section Registry, BOM Templates & 1-Click Template Restore',
-      detail: 'Create custom sections, attach Default Material Templates (BOM) that auto-fill daily progress, and quick-load or restore Telecom, Water, Electric, or Solar templates in 1 click.',
+      detail: 'Create custom sections for any contracting trade, attach Default Material Templates (BOM) that auto-fill daily progress, and quick-load standard templates in 1 click.',
       apex: '✓ Custom Sections + Auto BOM + 1-Click Load',
+      manual: '✕ Copy-pasting templates across sheets',
       sortly: '✕ Not Available',
       zoho: '✕ Manufacturing BOM only (Not field sections)',
       inflowCin7: '✕ Assembly BOM only',
@@ -680,11 +797,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Telecom NC',
-      feature: 'Installed Qty + "Wastage Qty" Dual Tracking & Live In-Hand Validation',
-      detail: 'Enter both Installed Qty and Wastage Qty per item; validates live (Used + Wastage <= Team In-Hand) and updates Team Wastage columns, Reconciliation, and PU vouchers.',
+      categoryLabel: 'Projects & All 11 Trades',
+      feature: 'Installed Qty + "Wastage / Offcuts Qty" Dual Tracking & Live In-Hand Validation',
+      detail: 'Enter both Installed Qty and Wastage/Offcut Qty per item (cables, pipes, gypsum sheets, aluminum profiles, boards); validates live (Used + Wastage <= Team In-Hand) across ledgers and PU vouchers.',
       isSpecialHighlight: true,
-      apex: '✓ Installed + Wastage Dual Ledger',
+      apex: '✓ Installed + Wastage/Offcuts Dual Ledger',
+      manual: '✕ Wastage hidden inside "used" totals—kills margins',
       sortly: '✕ Simple quantity reduction only',
       zoho: '✕ No field crew wastage breakdown',
       inflowCin7: '✕ No field wastage tracking',
@@ -692,10 +810,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Telecom NC',
+      categoryLabel: 'Projects & All 11 Trades',
       feature: 'User-Site Branch Lock & Project-Reserved Item Override Workflow',
       detail: 'Automatically locks usage entry if a project belongs to another branch, and protects project-reserved items with an Admin Cross-Project Override approval flow.',
       apex: '✓ Auto Branch Lock + Override Approval',
+      manual: '✕ Anyone can overwrite any site’s numbers',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -703,11 +822,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     },
     {
       category: 'projects',
-      categoryLabel: 'Projects & Telecom NC',
+      categoryLabel: 'Projects & All 11 Trades',
       feature: '"Full Report for This Site (Project)" — Team Subtotals + Site Grand Total',
       detail: '1-click A4 PDF & Excel report showing Part 1 (Every Team’s individual consumption, wastage & Team Subtotal) and Part 2 (Full Site Consolidated Grand Total).',
       isSpecialHighlight: true,
       apex: '✓ 1-Click Team Subtotals + Grand Total Report',
+      manual: '✕ Days spent building end-of-month pivot tables',
       sortly: '✕ Not Available',
       zoho: '✕ Not Available',
       inflowCin7: '✕ Not Available',
@@ -719,9 +839,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       category: 'security',
       categoryLabel: 'ISO Formats & Security',
       feature: 'ISO 9001:2015 Controlled Formats (FORMAT-01 to 04) + Auto Tenant Header',
-      detail: 'Every RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO & RTV prints in official ISO 9001:2015 layout with your registered Company Name, Logo, Address & Contact auto-synced.',
+      detail: 'Every RN, IN, PU, TSR, GRN, FOC, RV, BRM, PO & RTV prints in official ISO 9001:2015 A4/PDF layout with your registered Company Name, Logo, Address & Contact auto-synced.',
       isSpecialHighlight: true,
-      apex: '✓ Built-In ISO 9001:2015 QMS Formats',
+      apex: '✓ Built-In ISO 9001:2015 A4/PDF Formats',
+      manual: '✕ Unformatted Word/Excel printouts fail QA audits',
       sortly: '✕ Basic generic PDF list',
       zoho: '◐ Retail invoice templates only',
       inflowCin7: '◐ Standard commercial invoices',
@@ -734,6 +855,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Upload your official company letterhead/stationery as PDF or Image, adjust header crop %, rename table columns, or unify Format-01 & 02 in 1 click.',
       isSpecialHighlight: true,
       apex: '✓ PDF/Image Upload + Live A4 Studio',
+      manual: '✕ Pre-printed carbon books or manual formatting',
       sortly: '✕ Cannot upload PDF stationery',
       zoho: '✕ HTML/CSS coding required',
       inflowCin7: '✕ Word template mail-merge required',
@@ -742,10 +864,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
     {
       category: 'security',
       categoryLabel: 'ISO Formats & Security',
-      feature: 'ISO Signer Matrix & Interactive Digital Signatures (Draw on Pad or Upload)',
-      detail: 'Configure Prepared By, Approved By & Reviewed By names/designations; draw signatures on screen or upload PNG/JPG that auto-match signers + Per-Voucher live override.',
+      feature: 'ISO Signer Matrix: Digital Signatures OR "Off Digital Signature" Wet-Ink Sign Blocks',
+      detail: 'Configure Prepared By, Approved By & Reviewed By names/designations; draw signatures on screen, upload PNG/JPG, or toggle "Off Digital Signature" for clean wet-ink pen signing & stamping.',
       isSpecialHighlight: true,
-      apex: '✓ Draw/Upload Signatures + Auto-Match',
+      apex: '✓ Digital Signatures OR Wet-Ink Sign Blocks',
+      manual: '✕ Chasing physical signatures on paper slips',
       sortly: '◐ Simple sign-on-glass only',
       zoho: '◐ Requires paid Zoho Sign integration',
       inflowCin7: '✕ Not built-in',
@@ -757,6 +880,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Isolated Single-Click A4 Print Preview & Genuine Vector PDF Download',
       detail: 'Clicking Print on any voucher or report opens an isolated, clean A4 print window of ONLY that document (never prints the messy browser screen).',
       apex: '✓ Isolated A4 Print + Direct Vector PDF',
+      manual: '✕ Awkward page breaks & cut-off columns',
       sortly: '✕ Basic browser print',
       zoho: '✓ PDF print',
       inflowCin7: '✓ PDF print',
@@ -769,6 +893,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Zero accidental deletions: deleting any item, project, section, or transaction across the system requires entering the Admin Password, backed by Recycle Bin restore.',
       isSpecialHighlight: true,
       apex: '✓ Admin Password Gate on Every Delete',
+      manual: '✕ Anyone can delete rows with zero trace',
       sortly: '✕ Simple click confirmation',
       zoho: '✕ Simple click confirmation',
       inflowCin7: '✕ Simple click confirmation',
@@ -780,6 +905,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       feature: 'Sequential 0001 Auto-Numbering & Country-Aware Phone Digit Validation',
       detail: 'All codes (ITM-0001, PO-2026-0001, PU-2026-0001) increment cleanly from 0001, and phone fields automatically enforce exact digit rules for your country.',
       apex: '✓ 0001 Sequential IDs + Country Phone Guard',
+      manual: '✕ Duplicate voucher numbers & typos',
       sortly: '✕ Random/manual IDs',
       zoho: '◐ Basic numbering (No phone digit guard)',
       inflowCin7: '◐ Basic numbering',
@@ -792,6 +918,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       detail: 'Requires real Personal Full Name on workspace registration and verifies First Name on every Super Admin password login, stamping all Audit Trail logs & Vouchers as "[Name] (as Super Admin)".',
       isSpecialHighlight: true,
       apex: '✓ First-Name Verified Personal Audit',
+      manual: '✕ No audit log of who changed numbers',
       sortly: '✕ Shared generic admin login',
       zoho: '✕ Generic admin account only',
       inflowCin7: '✕ Generic admin login',
@@ -801,9 +928,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
       category: 'security',
       categoryLabel: 'ISO Formats & Security',
       feature: '1-Click JSON Offline Backup Viewer, Admin View-As Mode & Bilingual (EN/SI) Help',
-      detail: 'Export/inspect full JSON backups offline, preview the workspace as any staff user (View-As Mode), and access built-in English & Sinhala User Guides + 24/7 AI Chat Support.',
+      detail: 'Export/inspect full JSON backups offline, preview the workspace as any staff user (View-As Mode), and access built-in English & Sinhala User Guides + Tutorial Videos.',
       isSpecialHighlight: true,
-      apex: '✓ Offline Backup Viewer + EN/SI AI Support',
+      apex: '✓ Offline Backup Viewer + EN/SI Guides',
+      manual: '✕ Corrupted files lost on one laptop crash',
       sortly: '✕ CSV export only (English only)',
       zoho: '✕ Paid backup add-on (English only)',
       inflowCin7: '✕ CSV export only (English only)',
@@ -1435,36 +1563,109 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
             </div>
           </section>
 
-          {/* ==================== SECTION 1: WHO IS THIS BUILT FOR? (#industries — CRISP PEARL PORCELAIN GLASS BAND) ==================== */}
-          <section
-            id="industries"
-            className="py-12 sm:py-22 relative z-10 bg-gradient-to-b from-[#f3f6fc] via-[#ffffff] to-[#eff4fb] text-slate-900 border-y border-white/80"
-          >
+          {/* ==================== PAIN POINTS WE SOLVE ("SOUND FAMILIAR?") — FROSTED SAPPHIRE & GOLD ==================== */}
+          <section id="challenges" className="py-10 sm:py-16 relative z-10">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-              {/* Section Header */}
-              <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
-                <div className="text-xs font-extrabold text-amber-700 tracking-wide mb-2 flex items-center justify-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-amber-600" />
-                  <span>Target Construction & Engineering Sectors</span>
+              <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+                <div className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300 tracking-wide mb-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                  <span>Sound Familiar? · Operational Challenges We Solve</span>
                 </div>
-                <h2 className="text-2xl sm:text-4xl font-black text-[#081024] tracking-tight text-balance">
-                  Built for Multi-Site Contractors, Civil Engineering & Warehousing
+                <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight text-balance">
+                  Why Contractors Switch From Paper &amp; Excel to{' '}
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-200">
+                    ApexStox
+                  </span>
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-600 mt-2.5 font-semibold">
-                  Whether you manage civil construction yards, road & bridge works, fiber optic rollouts, solar & power grid EPC projects, or multi-branch supply hubs—Apex Stock fits your exact field workflow.
+                <p className="text-xs sm:text-sm text-slate-300 mt-2.5 font-medium">
+                  Every daily headache across stores, site yards, and field crews—solved in one structured control system.
                 </p>
               </div>
 
-              {/* 6 Frosted Glass Sector Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                {industries.map((ind, idx) => {
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                {painToSolutionItems.map((item) => {
+                  const IconComp = item.icon;
+                  return (
+                    <div
+                      key={item.painTitle}
+                      className="landing-glass-card rounded-2xl sm:rounded-[24px] p-4 sm:p-6 border border-white/15 hover:border-amber-400/50 transition-all flex flex-col justify-between gap-4 relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+                      {/* Top: Daily Pain Point */}
+                      <div className="flex items-start gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-400/35 text-rose-300 flex items-center justify-center shrink-0 mt-0.5">
+                          <IconComp className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-extrabold uppercase tracking-wider text-rose-300 mb-0.5">
+                            Daily Contractor Headache
+                          </div>
+                          <h3 className="text-sm sm:text-base font-black text-white leading-snug">
+                            {item.painTitle}
+                          </h3>
+                          <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                            {item.painDesc}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Bottom: Direct ApexStox Solution */}
+                      <div className="rounded-xl bg-emerald-500/10 border border-emerald-400/30 p-3 sm:p-3.5 flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-extrabold text-amber-300">
+                            ApexStox Solution: {item.solutionLabel}
+                          </div>
+                          <p className="text-xs text-slate-100 mt-0.5 leading-relaxed font-medium">
+                            {item.solutionDesc}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* ==================== SECTION 1: PRIORITIZED INDUSTRIES (#industries — CRISP PEARL PORCELAIN GLASS BAND) ==================== */}
+          <section
+            id="industries"
+            className="py-12 sm:py-20 relative z-10 bg-gradient-to-b from-[#f3f6fc] via-[#ffffff] to-[#eff4fb] text-slate-900 border-y border-white/80"
+          >
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+              {/* Section Header */}
+              <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+                <div className="text-xs font-extrabold text-amber-700 tracking-wide mb-2 flex items-center justify-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-amber-600" />
+                  <span>Built for 11 Utility, Infrastructure &amp; Finishing Contracting Trades</span>
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-black text-[#081024] tracking-tight text-balance">
+                  See How ApexStox Fits Your Exact Field Workflow
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-2.5 font-semibold">
+                  Leading utility &amp; infrastructure sectors first, followed by specialty finishing &amp; contracting trades—every card highlights your exact stock, wastage, and site flow.
+                </p>
+              </div>
+
+              {/* Tier 1: Core Utility & Infrastructure Sectors (Featured 4) */}
+              <div className="mb-3 flex items-center justify-between gap-2 px-1">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-700">
+                  Core Utility &amp; Infrastructure Sectors
+                </span>
+                <span className="text-[11px] font-bold text-slate-500">
+                  Click any sector to highlight
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                {coreUtilityIndustries.map((ind, idx) => {
                   const IconComponent = ind.icon;
                   const isSelected = selectedIndustryIdx === idx;
                   return (
                     <div
                       key={ind.title}
                       onClick={() => setSelectedIndustryIdx(idx)}
-                      className={`group relative overflow-hidden rounded-2xl sm:rounded-[24px] p-4 sm:p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                      className={`group relative overflow-hidden rounded-2xl sm:rounded-[24px] p-4 sm:p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                         isSelected
                           ? 'bg-gradient-to-br from-[#071026]/98 via-[#0d1b3e]/98 to-[#060d20]/98 backdrop-blur-2xl text-white border border-amber-400/55 shadow-[0_24px_54px_-14px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.22)] -translate-y-0.5'
                           : 'landing-glass-card-light hover:bg-white text-slate-900 hover:border-amber-400/55'
@@ -1479,9 +1680,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       />
 
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-4">
+                        <div className="flex items-center justify-between gap-2 mb-3.5">
                           <div
-                            className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm ${
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
                               isSelected
                                 ? 'bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026]'
                                 : 'bg-[#081024] text-amber-400'
@@ -1490,7 +1691,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                             <IconComponent className="w-5 h-5" />
                           </div>
                           <span
-                            className={`text-[11px] font-bold ${
+                            className={`text-[10.5px] font-extrabold ${
                               isSelected ? 'text-amber-300' : 'text-slate-500'
                             }`}
                           >
@@ -1499,19 +1700,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                         </div>
 
                         <h3
-                          className={`text-base font-black tracking-tight leading-snug ${
+                          className={`text-[15px] font-black tracking-tight leading-snug ${
                             isSelected ? 'text-white' : 'text-[#081024]'
                           }`}
                         >
                           {ind.title}
                         </h3>
-                        <p
-                          className={`text-[11px] font-bold mt-1 ${
-                            isSelected ? 'text-amber-200' : 'text-amber-700'
+
+                        {/* Instant "Why It Fits" Micro-Label */}
+                        <div
+                          className={`mt-2 px-2.5 py-1.5 rounded-lg text-[10.5px] font-bold leading-snug border ${
+                            isSelected
+                              ? 'bg-amber-400/15 border-amber-300/35 text-amber-200'
+                              : 'bg-amber-50/90 border-amber-200/80 text-amber-900'
                           }`}
                         >
-                          {ind.subtitle}
-                        </p>
+                          Why it fits: {ind.fitLabel}
+                        </div>
+
                         <p
                           className={`text-xs mt-2.5 leading-relaxed font-medium ${
                             isSelected ? 'text-slate-200' : 'text-slate-600'
@@ -1522,7 +1728,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       </div>
 
                       <div
-                        className={`mt-5 pt-3.5 border-t space-y-1.5 ${
+                        className={`mt-4 pt-3 border-t space-y-1.5 ${
                           isSelected ? 'border-white/15' : 'border-slate-200/80'
                         }`}
                       >
@@ -1545,6 +1751,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Tier 2: Specialty & Finishing Contracting Trades (Compact Scannable Grid) */}
+              <div className="mt-8 sm:mt-10 pt-6 border-t border-slate-200/90">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4 px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#081024]">
+                      Specialty &amp; Finishing Contracting Trades
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      · Instant workflow fit across materials, offcuts &amp; multi-site installs
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {specialtyTradeIndustries.map((trade) => {
+                    const TradeIcon = trade.icon;
+                    return (
+                      <div
+                        key={trade.title}
+                        className="rounded-2xl bg-white/95 hover:bg-white border border-slate-200/90 hover:border-amber-400/70 p-3.5 shadow-2xs transition-all flex items-start gap-3"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-[#081024] text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                          <TradeIcon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-mono font-black text-amber-700">
+                            {trade.num}. SPECIALTY TRADE
+                          </div>
+                          <h4 className="text-xs sm:text-[13px] font-extrabold text-[#081024] leading-snug mt-0.5">
+                            {trade.title}
+                          </h4>
+                          <p className="text-[11px] font-semibold text-slate-600 mt-1 leading-snug">
+                            {trade.fitLabel}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>
@@ -2084,10 +2331,103 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 </div>
               </div>
 
+              {/* ==================== COMPACT 3-STEP VISUAL FLOW STRIP (RIGHT BEFORE COMPARISON) ==================== */}
+              <div className="mt-14 sm:mt-18 rounded-2xl sm:rounded-[26px] bg-gradient-to-br from-[#071026] via-[#0c1a3d] to-[#060d20] text-white border border-amber-300/35 shadow-[0_24px_60px_-18px_rgba(3,7,18,0.65)] p-5 sm:p-7 relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/85 to-transparent" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-3.5 border-b border-white/12">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-wider text-amber-300">
+                      How ApexStox Works in 3 Simple Steps
+                    </div>
+                    <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight mt-0.5">
+                      From Central Store Setup to ISO 9001:2015 Site Reconciliation
+                    </h3>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400/15 border border-amber-300/35 text-[11px] font-extrabold text-amber-200 whitespace-nowrap self-start sm:self-center">
+                    <Crown className="w-3.5 h-3.5 text-amber-300" />
+                    <span>1 HQ + {pricingMetrics.includedSiteBranches} Sites + Unlimited Users &amp; Teams</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative">
+                  {/* Step 1 */}
+                  <div className="rounded-2xl bg-white/[0.06] border border-white/14 p-4 sm:p-5 flex flex-col justify-between relative">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="inline-flex items-center gap-2 text-xs font-black text-amber-300">
+                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] font-mono text-xs font-black flex items-center justify-center shadow-sm">
+                            01
+                          </span>
+                          <span>Setup &amp; Hierarchy</span>
+                        </span>
+                        <Building2 className="w-4 h-4 text-sky-300 shrink-0" />
+                      </div>
+                      <h4 className="text-sm sm:text-base font-black text-white leading-snug">
+                        Central Store + 2-Tier or 3-Tier Sites
+                      </h4>
+                      <p className="text-xs text-slate-200 mt-1.5 leading-relaxed">
+                        Run <strong className="text-white">2-Tier</strong> (Store &rarr; Site/Crew) or <strong className="text-white">3-Tier</strong> (Central HQ &rarr; Regional Site &rarr; Sub-Site &rarr; Crew) — includes <strong className="text-amber-300">1 HQ + {pricingMetrics.includedSiteBranches} Sites + Unlimited Users/Teams</strong>.
+                      </p>
+                    </div>
+                    <div className="hidden lg:flex items-center justify-center absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-[#08122b] border border-amber-300/60 text-amber-300 shadow">
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="rounded-2xl bg-white/[0.06] border border-white/14 p-4 sm:p-5 flex flex-col justify-between relative">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="inline-flex items-center gap-2 text-xs font-black text-amber-300">
+                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] font-mono text-xs font-black flex items-center justify-center shadow-sm">
+                            02
+                          </span>
+                          <span>Issue &amp; Daily Usage</span>
+                        </span>
+                        <ClipboardCheck className="w-4 h-4 text-emerald-300 shrink-0" />
+                      </div>
+                      <h4 className="text-sm sm:text-base font-black text-white leading-snug">
+                        Issue Stock &amp; Log Daily Progress
+                      </h4>
+                      <p className="text-xs text-slate-200 mt-1.5 leading-relaxed">
+                        Dispatch to sites &amp; crews and record <strong className="text-white">Installed Qty + Wastage Qty</strong> separately alongside <strong className="text-amber-300">Client FOC tracking</strong>.
+                      </p>
+                    </div>
+                    <div className="hidden lg:flex items-center justify-center absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-[#08122b] border border-amber-300/60 text-amber-300 shadow">
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="rounded-2xl bg-white/[0.06] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="inline-flex items-center gap-2 text-xs font-black text-amber-300">
+                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-[#071026] font-mono text-xs font-black flex items-center justify-center shadow-sm">
+                            03
+                          </span>
+                          <span>Returns &amp; ISO Reports</span>
+                        </span>
+                        <div className="flex items-center gap-1.5 text-amber-300 shrink-0">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <Printer className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <h4 className="text-sm sm:text-base font-black text-white leading-snug">
+                        Upstream Returns &amp; ISO 9001:2015 PDFs
+                      </h4>
+                      <p className="text-xs text-slate-200 mt-1.5 leading-relaxed">
+                        Reconcile <strong className="text-white">upstream returns</strong> (Crew &rarr; Sub-Site &rarr; Regional &rarr; HQ) and print <strong className="text-amber-300">ISO 9001:2015 Vouchers &amp; Reports</strong> with Digital or Wet-Ink Signature blocks.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* ==================== GLOBAL COMPETITOR & ALL-FEATURES COMPARISON MATRIX ==================== */}
               <div
                 id="global-comparison"
-                className="mt-14 sm:mt-20 rounded-2xl sm:rounded-[30px] bg-gradient-to-br from-[#060c1d] via-[#0b1736] to-[#071026] text-white border border-white/18 shadow-[0_32px_80px_-20px_rgba(3,7,18,0.8)] p-5 sm:p-8 lg:p-10 relative overflow-hidden"
+                className="mt-10 sm:mt-14 rounded-2xl sm:rounded-[30px] bg-gradient-to-br from-[#060c1d] via-[#0b1736] to-[#071026] text-white border border-white/18 shadow-[0_32px_80px_-20px_rgba(3,7,18,0.8)] p-5 sm:p-8 lg:p-10 relative overflow-hidden"
               >
                 <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
 
@@ -2095,106 +2435,123 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
                   <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-extrabold text-amber-300 tracking-wide mb-3">
                     <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    <span>Global Market &amp; Feature-by-Feature Comparison ({comparisonRows.length} Built-In Capabilities)</span>
+                    <span>Spreadsheets / Manual Tracking &amp; Global Apps vs. ApexStox ({comparisonRows.length} Capabilities)</span>
                   </div>
                   <h3 className="text-2xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-tight text-balance">
-                    Why Pay <span className="text-rose-400 line-through decoration-2">$150 to $400+/Month</span> for Generic Retail Inventory Apps That Still Lack Field Site Control?
+                    Spreadsheets &amp; Generic Retail Apps Can&apos;t Stop Field Stock Loss—<span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-200">ApexStox Does</span>
                   </h3>
                   <p className="text-sm sm:text-base text-slate-200 mt-3.5 leading-relaxed max-w-3xl mx-auto font-medium">
-                    Global systems like <strong className="text-white">Sortly, Zoho Inventory, inFlow, and Cin7 Core</strong> were designed for retail shops and e-commerce boxes—not for multi-site construction yards, telecom FTTH / water / electrical / solar projects, client free-issue stock (FOC), or site-separated field crew custody. Even after charging you thousands of dollars a year for extra users and warehouses, they still cannot track what is in your field teams&apos; hands today.{' '}
+                    Whether you are struggling with <strong className="text-white">Excel sheets, WhatsApp &amp; paper slips</strong> or paying <span className="text-rose-300 font-bold">$150–$400+/mo</span> for retail apps like <strong className="text-white">Sortly, Zoho, inFlow, or Cin7</strong>, none give you 2-tier/3-tier site flexibility, Installed vs. Wastage/Offcut tracking, Client FOC reconciliation, upstream returns, or ISO 9001:2015 A4/PDF vouchers across all 11 contracting trades.{' '}
                     <strong className="text-amber-300">
-                      Apex Stock gives you 100% of these specialized field &amp; warehouse features for one flat ${pricingMetrics.monthlyPriceFormatted}/mo (${pricingMetrics.annualPriceClean}/year).
+                      ApexStox includes {pricingMetrics.includedSiteBranches} Sites + HQ (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra site) and Unlimited Users/Teams for ${pricingMetrics.monthlyPriceFormatted}/mo (${pricingMetrics.annualPriceClean}/year).
                     </strong>
                   </p>
                 </div>
 
                 {/* Visual Annual Cost Comparison Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 mb-8 sm:mb-10">
-                  {/* Apex Stock Winner Card */}
-                  <div className="lg:col-span-1 rounded-2xl bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 text-[#071026] p-4 sm:p-5 shadow-xl border border-white/60 flex flex-col justify-between">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-3.5 mb-8 sm:mb-10">
+                  {/* ApexStox Winner Card */}
+                  <div className="rounded-2xl bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 text-[#071026] p-4 shadow-xl border border-white/60 flex flex-col justify-between">
                     <div>
-                      <div className="text-xs font-black uppercase tracking-wider text-[#071026]/85">
+                      <div className="text-[11px] font-black uppercase tracking-wider text-[#071026]/85">
                         ★ Best Value Worldwide
                       </div>
-                      <div className="text-base sm:text-lg font-black text-[#071026] mt-1">Apex Stock VIP</div>
-                      <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#071026] mt-2">
-                        ${pricingMetrics.annualPriceClean}<span className="text-sm font-extrabold">/yr</span>
+                      <div className="text-base font-black text-[#071026] mt-1">ApexStox VIP</div>
+                      <div className="text-2xl font-black font-mono tabular-nums text-[#071026] mt-2">
+                        ${pricingMetrics.annualPriceClean}<span className="text-xs font-extrabold">/yr</span>
                       </div>
-                      <div className="text-xs sm:text-[13px] font-extrabold text-[#071026]/90 font-mono tabular-nums mt-0.5">
-                        (~${pricingMetrics.annualMonthlyEquivalentFormatted}/mo or ${pricingMetrics.monthlyPriceFormatted} monthly)
+                      <div className="text-xs font-extrabold text-[#071026]/90 font-mono tabular-nums mt-0.5">
+                        (~${pricingMetrics.annualMonthlyEquivalentFormatted}/mo · ${pricingMetrics.monthlyPriceFormatted}/mo)
                       </div>
                     </div>
-                    <div className="mt-3.5 pt-3 border-t border-[#071026]/20 text-xs sm:text-[13px] font-bold text-[#071026] space-y-1.5 leading-snug">
+                    <div className="mt-3 pt-3 border-t border-[#071026]/20 text-[11.5px] font-bold text-[#071026] space-y-1 leading-snug">
                       <div>✓ Unlimited Users &amp; Teams</div>
                       <div>✓ {pricingMetrics.includedSiteBranches} Sites + HQ (+${pricingMetrics.extraSiteMonthlyPriceClean}/mo extra)</div>
-                      <div>✓ $0 Setup · {pricingMetrics.trialDays}-Day Free Trial</div>
+                      <div>✓ ISO 9001:2015 PDF · {pricingMetrics.trialDays}-Day Free Trial</div>
+                    </div>
+                  </div>
+
+                  {/* Spreadsheets / Manual Tracking */}
+                  <div className="rounded-2xl bg-rose-500/[0.08] border border-rose-400/30 p-4 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[11px] font-bold text-rose-300">Manual Baseline</div>
+                      <div className="text-base font-extrabold text-white mt-0.5">Excel / Paper &amp; Chat</div>
+                      <div className="text-xl font-black font-mono tabular-nums text-rose-300 mt-2">
+                        High Hidden Loss
+                      </div>
+                      <div className="text-[11.5px] text-slate-200 font-medium mt-0.5">(Lost stock &amp; rework hours)</div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/10 text-[11.5px] text-slate-200 space-y-1 leading-snug">
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Unexplained crew stock loss</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Zero Installed vs. Wastage split</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Fails Client FOC &amp; QA audits</span></div>
                     </div>
                   </div>
 
                   {/* Sortly */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
                     <div>
-                      <div className="text-xs font-bold text-slate-300">Visual Asset Tracker</div>
+                      <div className="text-[11px] font-bold text-slate-300">Visual Asset Tracker</div>
                       <div className="text-base font-extrabold text-white mt-0.5">Sortly (Ultra / Ent.)</div>
-                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                      <div className="text-xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         ~$1,788+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">($149 – $299+ / month)</div>
+                      <div className="text-[11.5px] text-slate-200 font-mono tabular-nums mt-0.5">($149 – $299+ / month)</div>
                     </div>
-                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
+                    <div className="mt-3 pt-3 border-t border-white/10 text-[11.5px] text-slate-200 space-y-1 leading-snug">
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Capped at 5–8 users (+$20/mo/seat)</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Crew In-Hand or Client FOC</span></div>
-                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Industry Templates or Wastage</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Trade Presets or Wastage</span></div>
                     </div>
                   </div>
 
                   {/* Zoho Inventory */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
                     <div>
-                      <div className="text-xs font-bold text-slate-300">Retail / E-Commerce App</div>
+                      <div className="text-[11px] font-bold text-slate-300">Retail / E-Commerce App</div>
                       <div className="text-base font-extrabold text-white mt-0.5">Zoho Inventory</div>
-                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                      <div className="text-xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         ~$1,548+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">($129 – $249+ / month)</div>
+                      <div className="text-[11.5px] text-slate-200 font-mono tabular-nums mt-0.5">($129 – $249+ / month)</div>
                     </div>
-                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
-                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Capped at 2–5 users &amp; warehouses</span></div>
+                    <div className="mt-3 pt-3 border-t border-white/10 text-[11.5px] text-slate-200 space-y-1 leading-snug">
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Capped at 2–5 users &amp; branches</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Built for online shops, not sites</span></div>
-                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Main/Sub FOC or Team custody</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No FOC pools or Team custody</span></div>
                     </div>
                   </div>
 
                   {/* inFlow / Cin7 Core */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
                     <div>
-                      <div className="text-xs font-bold text-slate-300">Wholesale Warehouse</div>
+                      <div className="text-[11px] font-bold text-slate-300">Wholesale Warehouse</div>
                       <div className="text-base font-extrabold text-white mt-0.5">inFlow / Cin7 Core</div>
-                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                      <div className="text-xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         ~$2,388+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">($199 – $399+ / month)</div>
+                      <div className="text-[11.5px] text-slate-200 font-mono tabular-nums mt-0.5">($199 – $399+ / month)</div>
                     </div>
-                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
-                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>2–5 user cap (+$39/mo/user &amp; branch)</span></div>
+                    <div className="mt-3 pt-3 border-t border-white/10 text-[11.5px] text-slate-200 space-y-1 leading-snug">
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>2–5 user cap (+$39/mo/user &amp; site)</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Field Crew issue/return loop</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>No Custom PDF stationery upload</span></div>
                     </div>
                   </div>
 
                   {/* Legacy Construction ERP */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 sm:p-5 flex flex-col justify-between">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/14 p-4 flex flex-col justify-between">
                     <div>
-                      <div className="text-xs font-bold text-slate-300">Heavy Legacy ERP</div>
+                      <div className="text-[11px] font-bold text-slate-300">Heavy Legacy ERP</div>
                       <div className="text-base font-extrabold text-white mt-0.5">Procore / SAP / NetSuite</div>
-                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-rose-400 mt-2">
+                      <div className="text-xl font-black font-mono tabular-nums text-rose-400 mt-2">
                         $10,000+<span className="text-xs font-semibold text-slate-300">/yr</span>
                       </div>
-                      <div className="text-xs sm:text-[13px] text-slate-200 font-mono tabular-nums mt-0.5">(+ $5,000+ Consultant Setup)</div>
+                      <div className="text-[11.5px] text-slate-200 font-mono tabular-nums mt-0.5">(+ $5,000+ Consultant Setup)</div>
                     </div>
-                    <div className="mt-3.5 pt-3 border-t border-white/10 text-xs sm:text-[13px] text-slate-200 space-y-1.5 leading-snug">
-                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>$75–$150+/mo per user &amp; branch license</span></div>
-                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Paid consultants for every change</span></div>
+                    <div className="mt-3 pt-3 border-t border-white/10 text-[11.5px] text-slate-200 space-y-1 leading-snug">
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>$75–$150+/mo per user &amp; site</span></div>
+                      <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Paid consultants for changes</span></div>
                       <div className="flex items-start gap-1.5"><span className="text-rose-400 font-black">✗</span><span>Locked into multi-year contracts</span></div>
                     </div>
                   </div>
@@ -2204,10 +2561,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 mb-5 pb-4 border-b border-white/15">
                   <div className="text-left">
                     <h4 className="text-base sm:text-lg font-black text-white">
-                      Complete {comparisonRows.length}-Point Feature &amp; Micro-Capability Comparison
+                      Spreadsheets / Manual Tracking vs. ApexStox &amp; Global Apps ({comparisonRows.length} Capabilities)
                     </h4>
                     <p className="text-xs sm:text-sm text-slate-200 mt-0.5">
-                      Filter by operational area or inspect all {comparisonRows.length} large and small specialized features side-by-side:
+                      Compare 2-tier/3-tier sites, Installed vs. Wastage tracking, Client FOC, upstream returns, 20-site scale &amp; ISO 9001:2015 PDFs:
                     </p>
                   </div>
 
@@ -2217,7 +2574,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                       { id: 'pricing', label: 'Pricing & Scale' },
                       { id: 'warehouse', label: 'Warehouse, PO & FOC' },
                       { id: 'field', label: 'Site & Field Crews' },
-                      { id: 'projects', label: 'Projects & Industry Templates' },
+                      { id: 'projects', label: 'Projects & All 11 Trades' },
                       { id: 'security', label: 'ISO Formats & Security' },
                     ].map((tab) => (
                       <button
@@ -2242,25 +2599,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
                 {/* Responsive Comparison Table */}
                 <div className="overflow-x-auto rounded-2xl border border-white/15 bg-[#040917]/90 shadow-inner">
-                  <table className="w-full text-left border-collapse min-w-[920px]">
+                  <table className="w-full text-left border-collapse min-w-[1080px]">
                     <thead>
                       <tr className="bg-white/[0.06] border-b border-white/15 text-xs sm:text-[13px] font-black text-slate-100">
-                        <th className="py-4 px-4 w-[34%]">
-                          System Capability / Specialized Feature ({filteredComparisonRows.length})
+                        <th className="py-4 px-4 w-[30%]">
+                          System Capability / Operational Challenge ({filteredComparisonRows.length})
                         </th>
-                        <th className="py-4 px-4 w-[18%] bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] font-black">
+                        <th className="py-4 px-4 w-[16%] bg-gradient-to-r from-amber-300 to-amber-400 text-[#071026] font-black">
                           <div className="flex items-center gap-1.5">
                             <Crown className="w-4 h-4 fill-[#071026] shrink-0" />
-                            <span>Apex Stock (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
+                            <span>ApexStox (${pricingMetrics.monthlyPriceFormatted}/mo)</span>
                           </div>
                         </th>
-                        <th className="py-4 px-4 w-[16%] text-slate-100">
+                        <th className="py-4 px-4 w-[15%] bg-rose-500/12 text-rose-200 border-r border-white/10">
+                          Spreadsheets / Manual Slips
+                        </th>
+                        <th className="py-4 px-4 w-[13%] text-slate-100">
                           Sortly ($149+/mo)
                         </th>
-                        <th className="py-4 px-4 w-[16%] text-slate-100">
+                        <th className="py-4 px-4 w-[13%] text-slate-100">
                           Zoho Inventory ($99+/mo)
                         </th>
-                        <th className="py-4 px-4 w-[16%] text-slate-100">
+                        <th className="py-4 px-4 w-[13%] text-slate-100">
                           inFlow / Cin7 ($199+/mo)
                         </th>
                       </tr>
@@ -2363,6 +2723,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                                 }
                                 return <span className="text-emerald-200 font-bold leading-relaxed">{row.apex}</span>;
                               })()}
+                            </td>
+
+                            {/* Excel / Manual Tracking Highlighted Pain Column */}
+                            <td className="py-3.5 px-4 align-middle bg-rose-500/[0.05] border-r border-white/10 text-slate-200 font-medium text-xs sm:text-[13px]">
+                              {renderCompetitorCell(row.manual)}
                             </td>
 
                             {/* Sortly */}
