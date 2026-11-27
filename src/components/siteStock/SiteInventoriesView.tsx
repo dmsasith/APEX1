@@ -27,6 +27,9 @@ import {
   ChevronUp,
   Plus,
   Trash2,
+  ArrowRight,
+  ArrowDown,
+  MapPin,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { formatNumber, exportToCsv, formatDateTime } from '../../utils/exportUtils';
@@ -922,97 +925,335 @@ export const SiteInventoriesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Site Selector Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-3 flex-wrap gap-2">
-        <div className="flex flex-wrap gap-2">
-          {branchSites.map((s) => {
-            const subFlag = isSubSite(s);
-            const subParent = subFlag ? getParentSite(s, activeSites) : undefined;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setSelectedSiteId(s.id)}
-                className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-2 ${
-                  selectedSiteId === s.id
-                    ? subFlag
-                      ? 'bg-sky-800 text-white border-sky-900 shadow-xs ring-2 ring-sky-700/20'
-                      : 'bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-slate-900/20'
-                    : subFlag
-                    ? 'bg-sky-50/70 text-sky-900 border-sky-200 hover:bg-sky-100/70'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <Building2 className={`w-3.5 h-3.5 ${subFlag ? 'text-sky-500' : 'text-emerald-400'}`} />
-                <span>{subFlag ? `↳ ${s.name}` : s.name}</span>
-                {subFlag && (
-                  <span
-                    className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase ${
-                      selectedSiteId === s.id
-                        ? 'bg-sky-600 text-white'
-                        : 'bg-sky-100 text-sky-800 border border-sky-300'
-                    }`}
-                  >
-                    Sub ({subParent?.name || s.parentSiteName || 'Parent'})
-                  </span>
-                )}
-              </button>
-            );
-          })}
+      {/* SELECT SITE Panel (Regional Site -> Matched Sub-Site 1 -> Downward Arrows for Additional Sub-Sites) */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-slate-900 text-emerald-400 flex items-center justify-center shadow-2xs shrink-0">
+              <MapPin className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase text-slate-900">
+                SELECT SITE
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Regional sites &amp; color-matched linked sub-sites arranged in operational order
+              </p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold tabular-nums">
+            {branchSites.length} Active Branch{branchSites.length === 1 ? '' : 'es'}
+          </span>
         </div>
 
+        {(() => {
+          const CLUSTER_PALETTES = [
+            {
+              clusterWrap:
+                'bg-gradient-to-r from-emerald-50/90 via-emerald-50/45 to-teal-50/35 border-emerald-200/90',
+              arrow: 'text-emerald-500',
+              regIdle: 'bg-white text-emerald-950 border-emerald-300 hover:bg-emerald-50',
+              regActive:
+                'bg-emerald-700 text-white border-emerald-800 shadow-sm ring-2 ring-emerald-500/30',
+              regIconIdle: 'text-emerald-600',
+              regBadgeIdle: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+              regBadgeActive: 'bg-emerald-600 text-white border-emerald-500',
+              subIdle:
+                'bg-gradient-to-r from-emerald-100/65 to-emerald-50/40 text-emerald-950 border-emerald-200 hover:from-emerald-100 hover:to-emerald-50/80',
+              subActive:
+                'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-500/25',
+              subIconIdle: 'text-emerald-600',
+              subBadgeIdle: 'bg-white/85 text-emerald-800 border-emerald-200',
+              subBadgeActive: 'bg-emerald-500 text-white border-emerald-400',
+            },
+            {
+              clusterWrap:
+                'bg-gradient-to-r from-indigo-50/90 via-indigo-50/45 to-blue-50/35 border-indigo-200/90',
+              arrow: 'text-indigo-500',
+              regIdle: 'bg-white text-indigo-950 border-indigo-300 hover:bg-indigo-50',
+              regActive:
+                'bg-indigo-700 text-white border-indigo-800 shadow-sm ring-2 ring-indigo-500/30',
+              regIconIdle: 'text-indigo-600',
+              regBadgeIdle: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+              regBadgeActive: 'bg-indigo-600 text-white border-indigo-500',
+              subIdle:
+                'bg-gradient-to-r from-indigo-100/65 to-indigo-50/40 text-indigo-950 border-indigo-200 hover:from-indigo-100 hover:to-indigo-50/80',
+              subActive:
+                'bg-indigo-600 text-white border-indigo-700 shadow-sm ring-2 ring-indigo-500/25',
+              subIconIdle: 'text-indigo-600',
+              subBadgeIdle: 'bg-white/85 text-indigo-800 border-indigo-200',
+              subBadgeActive: 'bg-indigo-500 text-white border-indigo-400',
+            },
+            {
+              clusterWrap:
+                'bg-gradient-to-r from-violet-50/90 via-violet-50/45 to-purple-50/35 border-violet-200/90',
+              arrow: 'text-violet-500',
+              regIdle: 'bg-white text-violet-950 border-violet-300 hover:bg-violet-50',
+              regActive:
+                'bg-violet-700 text-white border-violet-800 shadow-sm ring-2 ring-violet-500/30',
+              regIconIdle: 'text-violet-600',
+              regBadgeIdle: 'bg-violet-100 text-violet-800 border-violet-200',
+              regBadgeActive: 'bg-violet-600 text-white border-violet-500',
+              subIdle:
+                'bg-gradient-to-r from-violet-100/65 to-violet-50/40 text-violet-950 border-violet-200 hover:from-violet-100 hover:to-violet-50/80',
+              subActive:
+                'bg-violet-600 text-white border-violet-700 shadow-sm ring-2 ring-violet-500/25',
+              subIconIdle: 'text-violet-600',
+              subBadgeIdle: 'bg-white/85 text-violet-800 border-violet-200',
+              subBadgeActive: 'bg-violet-500 text-white border-violet-400',
+            },
+            {
+              clusterWrap:
+                'bg-gradient-to-r from-amber-50/90 via-amber-50/45 to-orange-50/35 border-amber-200/90',
+              arrow: 'text-amber-500',
+              regIdle: 'bg-white text-amber-950 border-amber-300 hover:bg-amber-50',
+              regActive:
+                'bg-amber-700 text-white border-amber-800 shadow-sm ring-2 ring-amber-500/30',
+              regIconIdle: 'text-amber-600',
+              regBadgeIdle: 'bg-amber-100 text-amber-900 border-amber-200',
+              regBadgeActive: 'bg-amber-600 text-white border-amber-500',
+              subIdle:
+                'bg-gradient-to-r from-amber-100/65 to-amber-50/40 text-amber-950 border-amber-200 hover:from-amber-100 hover:to-amber-50/80',
+              subActive:
+                'bg-amber-600 text-white border-amber-700 shadow-sm ring-2 ring-amber-500/25',
+              subIconIdle: 'text-amber-600',
+              subBadgeIdle: 'bg-white/85 text-amber-900 border-amber-200',
+              subBadgeActive: 'bg-amber-500 text-white border-amber-400',
+            },
+            {
+              clusterWrap:
+                'bg-gradient-to-r from-sky-50/90 via-sky-50/45 to-cyan-50/35 border-sky-200/90',
+              arrow: 'text-sky-500',
+              regIdle: 'bg-white text-sky-950 border-sky-300 hover:bg-sky-50',
+              regActive:
+                'bg-sky-700 text-white border-sky-800 shadow-sm ring-2 ring-sky-500/30',
+              regIconIdle: 'text-sky-600',
+              regBadgeIdle: 'bg-sky-100 text-sky-900 border-sky-200',
+              regBadgeActive: 'bg-sky-600 text-white border-sky-500',
+              subIdle:
+                'bg-gradient-to-r from-sky-100/65 to-sky-50/40 text-sky-950 border-sky-200 hover:from-sky-100 hover:to-sky-50/80',
+              subActive:
+                'bg-sky-600 text-white border-sky-700 shadow-sm ring-2 ring-sky-500/25',
+              subIconIdle: 'text-sky-600',
+              subBadgeIdle: 'bg-white/85 text-sky-900 border-sky-200',
+              subBadgeActive: 'bg-sky-500 text-white border-sky-400',
+            },
+            {
+              clusterWrap:
+                'bg-gradient-to-r from-rose-50/90 via-rose-50/45 to-pink-50/35 border-rose-200/90',
+              arrow: 'text-rose-500',
+              regIdle: 'bg-white text-rose-950 border-rose-300 hover:bg-rose-50',
+              regActive:
+                'bg-rose-700 text-white border-rose-800 shadow-sm ring-2 ring-rose-500/30',
+              regIconIdle: 'text-rose-600',
+              regBadgeIdle: 'bg-rose-100 text-rose-900 border-rose-200',
+              regBadgeActive: 'bg-rose-600 text-white border-rose-500',
+              subIdle:
+                'bg-gradient-to-r from-rose-100/65 to-rose-50/40 text-rose-950 border-rose-200 hover:from-rose-100 hover:to-rose-50/80',
+              subActive:
+                'bg-rose-600 text-white border-rose-700 shadow-sm ring-2 ring-rose-500/25',
+              subIconIdle: 'text-rose-600',
+              subBadgeIdle: 'bg-white/85 text-rose-900 border-rose-200',
+              subBadgeActive: 'bg-rose-500 text-white border-rose-400',
+            },
+          ];
+
+          const topRegionalBranches = branchSites.filter((s) => !isSubSite(s));
+          const topRegionalIds = new Set(topRegionalBranches.map((s) => s.id));
+          const orphanSubSites = branchSites.filter(
+            (s) => isSubSite(s) && (!s.parentSiteId || !topRegionalIds.has(s.parentSiteId))
+          );
+
+          return (
+            <div className="flex flex-wrap items-start gap-3">
+              {topRegionalBranches.map((reg, regIdx) => {
+                const palette = CLUSTER_PALETTES[regIdx % CLUSTER_PALETTES.length];
+                const childSubs = branchSites.filter(
+                  (s) => isSubSite(s) && s.parentSiteId === reg.id
+                );
+                const isRegSelected = selectedSiteId === reg.id;
+
+                return (
+                  <div
+                    key={reg.id}
+                    className={`rounded-2xl border p-2.5 transition-all ${palette.clusterWrap} ${
+                      childSubs.length > 0 ? 'flex flex-col sm:flex-row items-start gap-2' : 'inline-flex items-start'
+                    }`}
+                  >
+                    {/* Regional Site Button */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSiteId(reg.id)}
+                      className={`px-3.5 py-2 text-xs font-extrabold rounded-xl border transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                        isRegSelected ? palette.regActive : palette.regIdle
+                      }`}
+                    >
+                      <Building2
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          isRegSelected ? 'text-white' : palette.regIconIdle
+                        }`}
+                      />
+                      <span className="whitespace-nowrap">{reg.name}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase border ${
+                          isRegSelected ? palette.regBadgeActive : palette.regBadgeIdle
+                        }`}
+                      >
+                        {reg.isMainWarehouse ? 'HQ' : 'Regional'}
+                      </span>
+                    </button>
+
+                    {/* Linked Sub-Sites: First Sub-Site directly in front of Regional Site via horizontal arrow, additional Sub-Sites stacked downward via vertical arrows */}
+                    {childSubs.length > 0 && (
+                      <div className="flex items-start gap-2 pl-2 sm:pl-0">
+                        {/* Arrow connecting Regional Site -> First Sub-Site */}
+                        <div
+                          className={`flex items-center gap-1 pt-2.5 shrink-0 ${palette.arrow}`}
+                          aria-hidden="true"
+                          title={`Sub-sites under ${reg.name}`}
+                        >
+                          <span className="hidden sm:inline-block w-3 h-0.5 bg-current rounded-full opacity-75" />
+                          <ArrowRight className="w-4 h-4 shrink-0" />
+                        </div>
+
+                        {/* Vertical Stack of Matched Sub-Sites */}
+                        <div className="flex flex-col items-stretch">
+                          {childSubs.map((sub, subIdx) => {
+                            const isSubSelected = selectedSiteId === sub.id;
+                            return (
+                              <React.Fragment key={sub.id}>
+                                {subIdx > 0 && (
+                                  <div
+                                    className={`flex items-center justify-center py-0.5 ${palette.arrow}`}
+                                    aria-hidden="true"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5 shrink-0" />
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedSiteId(sub.id)}
+                                  className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                                    isSubSelected ? palette.subActive : palette.subIdle
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <Building2
+                                      className={`w-3.5 h-3.5 shrink-0 ${
+                                        isSubSelected ? 'text-white' : palette.subIconIdle
+                                      }`}
+                                    />
+                                    <span className="truncate whitespace-nowrap">{sub.name}</span>
+                                  </div>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase border shrink-0 ${
+                                      isSubSelected ? palette.subBadgeActive : palette.subBadgeIdle
+                                    }`}
+                                  >
+                                    Sub {subIdx + 1}
+                                  </span>
+                                </button>
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Fallback for any sub-sites whose parent branch is hidden/filtered by site permissions */}
+              {orphanSubSites.map((sub) => {
+                const subParent = getParentSite(sub, activeSites);
+                const isSubSelected = selectedSiteId === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => setSelectedSiteId(sub.id)}
+                    className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-2 ${
+                      isSubSelected
+                        ? 'bg-sky-700 text-white border-sky-800 shadow-xs ring-2 ring-sky-600/25'
+                        : 'bg-sky-50/75 text-sky-900 border-sky-200 hover:bg-sky-100/80'
+                    }`}
+                  >
+                    <Building2 className={`w-3.5 h-3.5 ${isSubSelected ? 'text-white' : 'text-sky-600'}`} />
+                    <span>↳ {sub.name}</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                        isSubSelected
+                          ? 'bg-sky-600 text-white'
+                          : 'bg-sky-100 text-sky-800 border border-sky-300'
+                      }`}
+                    >
+                      Sub ({subParent?.name || sub.parentSiteName || 'Parent'})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* View Section Tabs (Live Stock vs FOC Reconciliation vs Damaged Returns vs Usage History) */}
-        <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => setActiveSection('inventory')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeSection === 'inventory'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Boxes className="w-4 h-4 text-emerald-600" />
-            <span>Live Yard Stock</span>
-          </button>
+        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Site Operations View
+          </span>
+          <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveSection('inventory')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeSection === 'inventory'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Boxes className="w-4 h-4 text-emerald-600" />
+              <span>Live Yard Stock</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveSection('foc-materials')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeSection === 'foc-materials'
-                ? 'bg-indigo-600 text-white shadow-2xs font-bold'
-                : 'text-indigo-800 hover:bg-indigo-50'
-            }`}
-          >
-            <span>🎁</span>
-            <span>Central FOC Materials ({siteCentralFocItemsCount})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('foc-materials')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeSection === 'foc-materials'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                  : 'text-indigo-800 hover:bg-indigo-50'
+              }`}
+            >
+              <span>🎁</span>
+              <span>Central FOC Materials ({siteCentralFocItemsCount})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveSection('damaged-returns')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeSection === 'damaged-returns'
-                ? 'bg-amber-600 text-white shadow-2xs font-bold'
-                : 'text-amber-800 hover:bg-amber-50'
-            }`}
-          >
-            <AlertTriangle className={`w-4 h-4 ${activeSection === 'damaged-returns' ? 'text-white' : 'text-amber-600'}`} />
-            <span>Damaged Returns ({siteDamagedUnitsBalanceTotal})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('damaged-returns')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeSection === 'damaged-returns'
+                  ? 'bg-amber-600 text-white shadow-2xs font-bold'
+                  : 'text-amber-800 hover:bg-amber-50'
+              }`}
+            >
+              <AlertTriangle className={`w-4 h-4 ${activeSection === 'damaged-returns' ? 'text-white' : 'text-amber-600'}`} />
+              <span>Damaged Returns ({siteDamagedUnitsBalanceTotal})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveSection('history')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeSection === 'history'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Clock className="w-4 h-4 text-teal-600" />
-            <span>Site Material Usage Vouchers ({siteTotalVouchersCount})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('history')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                activeSection === 'history'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Clock className="w-4 h-4 text-teal-600" />
+              <span>Site Material Usage Vouchers ({siteTotalVouchersCount})</span>
+            </button>
+          </div>
         </div>
       </div>
 
