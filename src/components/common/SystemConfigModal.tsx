@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sliders,
   X,
@@ -16,11 +16,13 @@ import {
   Volume2,
   RefreshCw,
   Database,
+  ChevronDown,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import { APP_THEMES } from '../../utils/themeUtils';
 import { isSuperAdmin } from '../../types';
 import { playScanBeep } from '../../utils/barcodeUtils';
+import { ALL_WORLD_COUNTRIES, WorldCountryEntry } from '../../utils/worldCountriesData';
 import {
   detectActivePhoneCountry,
   enforceCountryPhoneInput,
@@ -60,6 +62,21 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [barcodeSyncNotice, setBarcodeSyncNotice] = useState<string | null>(null);
+
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+  const [currencySearchQuery, setCurrencySearchQuery] = useState('');
+
+  const filteredCurrencies = useMemo(() => {
+    const q = currencySearchQuery.trim().toLowerCase();
+    if (!q) return ALL_WORLD_COUNTRIES;
+    return ALL_WORLD_COUNTRIES.filter(
+      (c) =>
+        c.defaultCurrency.toLowerCase().includes(q) ||
+        c.currencyLabel.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q)
+    );
+  }, [currencySearchQuery]);
 
   useEffect(() => {
     if (isOpen) {
@@ -489,17 +506,74 @@ export const SystemConfigModal: React.FC<SystemConfigModalProps> = ({ isOpen, on
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Default minimum quantity for alert</span>
                 </div>
 
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                    <DollarSign className="w-3 h-3 text-slate-400" /> Currency Symbol
+                    <DollarSign className="w-3 h-3 text-slate-400" /> Currency Symbol &amp; Country
                   </label>
-                  <input
-                    type="text"
-                    value={currencySymbol}
-                    onChange={(e) => setCurrencySymbol(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900"
-                    placeholder="Rs. or LKR"
-                  />
+                  <div
+                    onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-900 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition"
+                  >
+                    <span className="truncate">
+                      {currencySymbol} ({ALL_WORLD_COUNTRIES.find((c: WorldCountryEntry) => c.defaultCurrency === currencySymbol || c.currencyLabel.includes(currencySymbol))?.name || 'Custom / Global'})
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  </div>
+
+                  {isCurrencyDropdownOpen && (
+                    <div className="absolute left-0 right-0 mt-1 z-50 bg-white border border-slate-300 rounded-xl shadow-xl overflow-hidden">
+                      <div className="p-2 bg-slate-50 border-b border-slate-200">
+                        <input
+                          type="text"
+                          placeholder="Search country, currency symbol (e.g. Rs, $, €)..."
+                          value={currencySearchQuery}
+                          onChange={(e) => setCurrencySearchQuery(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <div className="max-h-60 overflow-y-auto p-1 space-y-0.5">
+                        <div
+                          onClick={() => {
+                            setCurrencySymbol('Rs.');
+                            setIsCurrencyDropdownOpen(false);
+                          }}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-100 cursor-pointer text-slate-900"
+                        >
+                          <span>🇱🇰 Rs. (Sri Lankan Rupee - Default)</span>
+                          {currencySymbol === 'Rs.' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </div>
+                        <div
+                          onClick={() => {
+                            setCurrencySymbol('$');
+                            setIsCurrencyDropdownOpen(false);
+                          }}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-100 cursor-pointer text-slate-900"
+                        >
+                          <span>🇺🇸 $ (US Dollar)</span>
+                          {currencySymbol === '$' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </div>
+                        {filteredCurrencies.map((c) => (
+                          <div
+                            key={c.code}
+                            onClick={() => {
+                              setCurrencySymbol(c.defaultCurrency);
+                              setIsCurrencyDropdownOpen(false);
+                            }}
+                            className="flex items-center justify-between px-3 py-2 rounded-lg text-xs hover:bg-slate-100 cursor-pointer text-slate-900 font-medium"
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="shrink-0">{c.flag}</span>
+                              <span className="font-extrabold">{c.defaultCurrency}</span>
+                              <span className="text-slate-600 truncate">({c.currencyLabel} — {c.name})</span>
+                            </div>
+                            {currencySymbol === c.defaultCurrency && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
