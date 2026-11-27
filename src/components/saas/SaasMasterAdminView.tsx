@@ -45,6 +45,9 @@ import {
   LandingVideoTab,
   normalizeLandingVideos,
   extractYouTubeVideoInfo,
+  TutorialVideoItem,
+  normalizeTutorialVideos,
+  resolveTutorialVideoSource,
 } from '../../types';
 import {
   SUPPORTED_SUBSCRIPTION_CURRENCIES,
@@ -94,6 +97,17 @@ export const SaasMasterAdminView: React.FC = () => {
   const [editVideoTabName, setEditVideoTabName] = useState('');
   const [editVideoYoutubeUrl, setEditVideoYoutubeUrl] = useState('');
   const [editVideoSubtitle, setEditVideoSubtitle] = useState('');
+
+  // In-App Header Tutorial Videos Manager State
+  const [showTutorialVideosPanel, setShowTutorialVideosPanel] = useState(true);
+  const tutorialVideos = normalizeTutorialVideos(platformPricing.tutorialVideos);
+  const [newTutTitle, setNewTutTitle] = useState('');
+  const [newTutUrl, setNewTutUrl] = useState('');
+  const [newTutSubtitle, setNewTutSubtitle] = useState('');
+  const [editingTutId, setEditingTutId] = useState<string | null>(null);
+  const [editTutTitle, setEditTutTitle] = useState('');
+  const [editTutUrl, setEditTutUrl] = useState('');
+  const [editTutSubtitle, setEditTutSubtitle] = useState('');
 
   const pricingMetrics = computePlatformPricingMetrics(platformPricing);
 
@@ -576,6 +590,87 @@ export const SaasMasterAdminView: React.FC = () => {
     showNotification(`Removed "${video.tabName}" tab from Landing Page.`);
   };
 
+  // ==================== IN-APP TUTORIAL VIDEOS CRUD HANDLERS ====================
+  const handleAddTutorialVideo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanTitle = newTutTitle.trim();
+    const cleanUrl = newTutUrl.trim();
+    const cleanSubtitle = newTutSubtitle.trim();
+
+    if (!cleanTitle) {
+      showNotification('Please enter a Tutorial Video Name / Title.');
+      return;
+    }
+    const resolved = resolveTutorialVideoSource(cleanUrl);
+    if (resolved.kind === 'invalid') {
+      showNotification('Please paste a valid Video Link (YouTube, Vimeo, Google Drive, or MP4 URL).');
+      return;
+    }
+
+    const newItem: TutorialVideoItem = {
+      id: `tut-${Date.now().toString(36)}`,
+      title: cleanTitle,
+      videoUrl: cleanUrl,
+      subtitle: cleanSubtitle,
+      createdAt: new Date().toISOString(),
+    };
+
+    const nextList = [...tutorialVideos, newItem];
+    updatePlatformPricing({ tutorialVideos: nextList }, false);
+    setNewTutTitle('');
+    setNewTutUrl('');
+    setNewTutSubtitle('');
+    showNotification(`Added Tutorial Video #${nextList.length}: "${cleanTitle}" and synced to all workspaces!`);
+  };
+
+  const handleStartEditTutorialVideo = (vid: TutorialVideoItem) => {
+    setEditingTutId(vid.id);
+    setEditTutTitle(vid.title);
+    setEditTutUrl(vid.videoUrl);
+    setEditTutSubtitle(vid.subtitle || '');
+  };
+
+  const handleSaveEditTutorialVideo = (vidId: string) => {
+    const cleanTitle = editTutTitle.trim();
+    const cleanUrl = editTutUrl.trim();
+    const cleanSubtitle = editTutSubtitle.trim();
+
+    if (!cleanTitle) {
+      showNotification('Tutorial Video Name cannot be empty.');
+      return;
+    }
+    if (resolveTutorialVideoSource(cleanUrl).kind === 'invalid') {
+      showNotification('Please enter a valid Video Link.');
+      return;
+    }
+
+    const nextList = tutorialVideos.map((v) =>
+      v.id === vidId
+        ? { ...v, title: cleanTitle, videoUrl: cleanUrl, subtitle: cleanSubtitle }
+        : v
+    );
+    updatePlatformPricing({ tutorialVideos: nextList }, false);
+    setEditingTutId(null);
+    showNotification(`Updated Tutorial Video "${cleanTitle}"!`);
+  };
+
+  const handleMoveTutorialVideo = (index: number, direction: -1 | 1) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= tutorialVideos.length) return;
+    const nextList = [...tutorialVideos];
+    const [moved] = nextList.splice(index, 1);
+    nextList.splice(targetIdx, 0, moved);
+    updatePlatformPricing({ tutorialVideos: nextList }, false);
+    showNotification(`Moved "${moved.title}" to #${targetIdx + 1}.`);
+  };
+
+  const handleDeleteTutorialVideo = (vid: TutorialVideoItem) => {
+    const nextList = tutorialVideos.filter((v) => v.id !== vid.id);
+    updatePlatformPricing({ tutorialVideos: nextList }, false);
+    if (editingTutId === vid.id) setEditingTutId(null);
+    showNotification(`Removed Tutorial Video "${vid.title}".`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Title Header */}
@@ -623,6 +718,20 @@ export const SaasMasterAdminView: React.FC = () => {
             >
               <Video className="w-3.5 h-3.5" />
               <span>Landing Page Videos ({landingVideos.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowTutorialVideosPanel((prev) => !prev)}
+              className={`px-3.5 py-2.5 font-bold rounded-xl text-xs transition border flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer ${
+                showTutorialVideosPanel
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                  : 'bg-slate-800 hover:bg-slate-700 text-emerald-300 border-emerald-500/30'
+              }`}
+              title="Manage In-App Tutorial Videos Shown in Workspace Header"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Tutorial Videos ({tutorialVideos.length})</span>
             </button>
 
             <button
@@ -1165,6 +1274,306 @@ export const SaasMasterAdminView: React.FC = () => {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== WORKSPACE TUTORIAL VIDEOS MANAGER ==================== */}
+      {showTutorialVideosPanel && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border-2 border-emerald-500/50 rounded-2xl p-5 sm:p-6 text-white shadow-xl space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <Play className="w-5 h-5 fill-emerald-400 ml-0.5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-black text-white">
+                    System Header Tutorial Videos Manager
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Synced to All Workspaces
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Add numbered tutorial videos (<strong>1, 2, 3...</strong>) with a name and video link. Every user can open and play them from the <strong>Tutorial Videos</strong> button in the header.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Add New Tutorial Video Form */}
+            <form
+              onSubmit={handleAddTutorialVideo}
+              className="lg:col-span-5 bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-3.5"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h3 className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  <span>Add Tutorial Video</span>
+                </h3>
+                <span className="text-[10px] font-mono text-slate-400">YouTube / Drive / MP4</span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Video Name / Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newTutTitle}
+                  onChange={(e) => setNewTutTitle(e.target.value)}
+                  placeholder="e.g. How to Issue Stock to Field Teams"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-lg text-xs font-semibold text-white placeholder:text-slate-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Video Link (URL) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newTutUrl}
+                  onChange={(e) => setNewTutUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=... or Vimeo / Drive / MP4"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-lg text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none"
+                />
+                {newTutUrl.trim() && (() => {
+                  const preview = resolveTutorialVideoSource(newTutUrl);
+                  return preview.kind !== 'invalid' ? (
+                    <div className="mt-2 p-2 rounded-lg bg-slate-900 border border-emerald-500/40 flex items-center gap-2.5">
+                      {preview.thumbnailUrl ? (
+                        <img
+                          src={preview.thumbnailUrl}
+                          alt="Tutorial preview"
+                          className="w-16 h-10 rounded object-cover shrink-0 border border-slate-700"
+                        />
+                      ) : (
+                        <div className="w-12 h-10 rounded bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                          <Play className="w-4 h-4 fill-emerald-400" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold text-emerald-400">
+                          {preview.provider} Video Ready
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400 truncate">
+                          {preview.directUrl}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 text-[11px] font-semibold text-amber-400">
+                      Paste a valid YouTube, Vimeo, Google Drive, or MP4 video URL
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Short Description (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newTutSubtitle}
+                  onChange={(e) => setNewTutSubtitle(e.target.value)}
+                  placeholder="Brief description shown under the video title"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Tutorial Video</span>
+              </button>
+            </form>
+
+            {/* Existing Tutorial Videos Numbered List (1, 2, 3...) */}
+            <div className="lg:col-span-7 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-slate-300 pb-1">
+                <span className="font-bold">
+                  Published Tutorial Videos ({tutorialVideos.length})
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Shown as 1, 2, 3... inside Tutorial Videos window
+                </span>
+              </div>
+
+              {tutorialVideos.length === 0 ? (
+                <div className="p-6 rounded-xl border border-dashed border-slate-700 bg-slate-950/70 text-center space-y-1.5">
+                  <Play className="w-6 h-6 text-slate-500 mx-auto" />
+                  <div className="text-xs font-bold text-slate-300">
+                    No Tutorial Videos Added Yet
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Use the form on the left to add video names and links for your users.
+                  </p>
+                </div>
+              ) : (
+                tutorialVideos.map((vid, vIdx) => {
+                  const srcInfo = resolveTutorialVideoSource(vid.videoUrl);
+                  const isEditing = editingTutId === vid.id;
+
+                  return (
+                    <div
+                      key={vid.id}
+                      className={`rounded-xl border p-3.5 transition-all ${
+                        isEditing
+                          ? 'bg-slate-900 border-emerald-400'
+                          : 'bg-slate-950/90 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {isEditing ? (
+                        <div className="space-y-2.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-400 mb-1">
+                                Video Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={editTutTitle}
+                                onChange={(e) => setEditTutTitle(e.target.value)}
+                                className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 focus:border-emerald-400 rounded-lg text-xs font-bold text-white focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-400 mb-1">
+                                Short Description
+                              </label>
+                              <input
+                                type="text"
+                                value={editTutSubtitle}
+                                onChange={(e) => setEditTutSubtitle(e.target.value)}
+                                className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 focus:border-emerald-400 rounded-lg text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 mb-1">
+                              Video Link (URL) *
+                            </label>
+                            <input
+                              type="text"
+                              value={editTutUrl}
+                              onChange={(e) => setEditTutUrl(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 focus:border-emerald-400 rounded-lg text-xs font-mono text-white focus:outline-none"
+                            />
+                          </div>
+                          <div className="flex items-center justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingTutId(null)}
+                              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditTutorialVideo(vid.id)}
+                              className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Save Video</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs flex items-center justify-center shrink-0 tabular-nums">
+                              {vIdx + 1}
+                            </div>
+
+                            {srcInfo.thumbnailUrl ? (
+                              <div className="relative w-16 h-11 rounded-lg overflow-hidden border border-slate-700 shrink-0 bg-slate-900">
+                                <img
+                                  src={srcInfo.thumbnailUrl}
+                                  alt={vid.title}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                  <Play className="w-3.5 h-3.5 fill-white text-white" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-14 h-11 rounded-lg border border-slate-700 bg-slate-900 flex flex-col items-center justify-center text-emerald-400 shrink-0">
+                                <Play className="w-4 h-4 fill-emerald-400" />
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-extrabold text-white truncate">
+                                  {vid.title}
+                                </span>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700">
+                                  {srcInfo.provider}
+                                </span>
+                              </div>
+                              {vid.subtitle && (
+                                <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                                  {vid.subtitle}
+                                </div>
+                              )}
+                              <div className="text-[10px] font-mono text-slate-500 truncate mt-0.5">
+                                {vid.videoUrl}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              disabled={vIdx === 0}
+                              onClick={() => handleMoveTutorialVideo(vIdx, -1)}
+                              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                              title="Move up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={vIdx === tutorialVideos.length - 1}
+                              onClick={() => handleMoveTutorialVideo(vIdx, 1)}
+                              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                              title="Move down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditTutorialVideo(vid)}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-emerald-300 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                              title="Edit Video Name or Link"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTutorialVideo(vid)}
+                              className="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-800 hover:border-rose-700 text-slate-400 hover:text-rose-400 cursor-pointer"
+                              title="Delete Tutorial Video"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

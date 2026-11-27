@@ -1296,6 +1296,14 @@ export const DEFAULT_LANDING_VIDEOS: LandingVideoTab[] = [
   },
 ];
 
+export interface TutorialVideoItem {
+  id: string;
+  title: string;
+  videoUrl: string;
+  subtitle?: string;
+  createdAt?: string;
+}
+
 export interface PlatformPricingConfig {
   monthlyPrice: number; // e.g. 19.90
   annualPrice: number; // e.g. 189.00
@@ -1308,6 +1316,7 @@ export interface PlatformPricingConfig {
   annualPlanName?: string; // 'Pro Annual'
   trialPlanName?: string; // '7-Day Free Trial'
   landingVideos?: LandingVideoTab[];
+  tutorialVideos?: TutorialVideoItem[];
   updatedAt?: string;
 }
 
@@ -1323,6 +1332,7 @@ export const DEFAULT_PLATFORM_PRICING: PlatformPricingConfig = {
   annualPlanName: 'Pro Annual',
   trialPlanName: '7-Day Free Trial',
   landingVideos: DEFAULT_LANDING_VIDEOS,
+  tutorialVideos: [],
 };
 
 export function computePlatformPricingMetrics(raw?: Partial<PlatformPricingConfig> | null) {
@@ -1451,7 +1461,7 @@ export function extractYouTubeVideoInfo(rawUrl?: string | null): {
 
   return {
     videoId,
-    embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`,
+    embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1`,
     thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
     fallbackThumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
   };
@@ -1481,6 +1491,105 @@ export function normalizeLandingVideos(raw?: unknown): LandingVideoTab[] {
   }
 
   return cleaned;
+}
+
+export function normalizeTutorialVideos(raw?: unknown): TutorialVideoItem[] {
+  let list: TutorialVideoItem[] = [];
+
+  if (Array.isArray(raw)) {
+    list = raw.filter(Boolean) as TutorialVideoItem[];
+  } else if (raw && typeof raw === 'object') {
+    list = Object.values(raw as Record<string, TutorialVideoItem>).filter(Boolean);
+  }
+
+  return list
+    .map((item, idx) => ({
+      id: typeof item?.id === 'string' && item.id.trim() ? item.id.trim() : `tut-${idx + 1}`,
+      title: typeof item?.title === 'string' && item.title.trim() ? item.title.trim() : `Tutorial ${idx + 1}`,
+      videoUrl: typeof item?.videoUrl === 'string' ? item.videoUrl.trim() : '',
+      subtitle: typeof item?.subtitle === 'string' ? item.subtitle.trim() : '',
+      createdAt: item?.createdAt,
+    }))
+    .filter((item) => Boolean(item.title));
+}
+
+export function resolveTutorialVideoSource(rawUrl?: string | null): {
+  kind: 'iframe' | 'video' | 'invalid';
+  provider: string;
+  embedUrl: string;
+  directUrl: string;
+  thumbnailUrl?: string;
+} {
+  const input = (rawUrl || '').trim();
+  if (!input) {
+    return { kind: 'invalid', provider: 'None', embedUrl: '', directUrl: '' };
+  }
+
+  const yt = extractYouTubeVideoInfo(input);
+  if (yt) {
+    return {
+      kind: 'iframe',
+      provider: 'YouTube',
+      embedUrl: yt.embedUrl,
+      directUrl: /^https?:\/\//i.test(input) ? input : `https://www.youtube.com/watch?v=${yt.videoId}`,
+      thumbnailUrl: yt.fallbackThumbnailUrl,
+    };
+  }
+
+  const normalizedUrl = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+
+  try {
+    const parsed = new URL(normalizedUrl);
+    const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+    // Vimeo
+    if (host.endsWith('vimeo.com')) {
+      const match = parsed.pathname.match(/\/(\d+)/);
+      if (match?.[1]) {
+        return {
+          kind: 'iframe',
+          provider: 'Vimeo',
+          embedUrl: `https://player.vimeo.com/video/${match[1]}?autoplay=1&api=1`,
+          directUrl: normalizedUrl,
+        };
+      }
+    }
+
+    // Google Drive preview
+    if (host === 'drive.google.com') {
+      const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+      const idParam = parsed.searchParams.get('id');
+      const fileId = fileMatch?.[1] || idParam;
+      if (fileId) {
+        return {
+          kind: 'iframe',
+          provider: 'Google Drive',
+          embedUrl: `https://drive.google.com/file/d/${fileId}/preview`,
+          directUrl: normalizedUrl,
+        };
+      }
+    }
+
+    // Direct HTML5 video file
+    if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(parsed.pathname)) {
+      return {
+        kind: 'video',
+        provider: 'Direct Video',
+        embedUrl: normalizedUrl,
+        directUrl: normalizedUrl,
+      };
+    }
+
+    // Generic embeddable HTTPS video link
+    return {
+      kind: 'iframe',
+      provider: 'Web Video',
+      embedUrl: normalizedUrl,
+      directUrl: normalizedUrl,
+    };
+  } catch {
+    return { kind: 'invalid', provider: 'Invalid', embedUrl: '', directUrl: input };
+  }
 }
 
 export interface QueuedSubscription {

@@ -40,6 +40,7 @@ import {
   DEFAULT_PLATFORM_PRICING,
   computePlatformPricingMetrics,
   normalizeLandingVideos,
+  normalizeTutorialVideos,
   ProjectType,
   ProjectTypeTemplateItem,
   CrossProjectOverrideRequest,
@@ -1497,6 +1498,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           includedSiteBranches: metrics.includedSiteBranches,
           extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
           landingVideos: normalizeLandingVideos(parsed.landingVideos),
+          tutorialVideos: normalizeTutorialVideos(parsed.tutorialVideos),
         };
       }
     } catch {
@@ -1518,6 +1520,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           includedSiteBranches: metrics.includedSiteBranches,
           extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
           landingVideos: normalizeLandingVideos(remotePricing.landingVideos),
+          tutorialVideos: normalizeTutorialVideos(remotePricing.tutorialVideos),
         };
         setPlatformPricing(normalized);
         try {
@@ -3694,6 +3697,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         extraSiteMonthlyPrice: metrics.extraSiteMonthlyPrice,
         trialPlanName: updates.trialPlanName || `${metrics.trialDays}-Day Free Trial`,
         landingVideos: normalizeLandingVideos(mergedRaw.landingVideos),
+        tutorialVideos: normalizeTutorialVideos(mergedRaw.tutorialVideos),
       };
 
       try {

@@ -31,8 +31,10 @@ import { printHtmlElement } from '../../utils/printUtils';
 
 interface SystemUserGuideViewProps {
   onBackToOverview: () => void;
-  onOpenSignup: () => void;
-  onOpenLogin: () => void;
+  onOpenSignup?: () => void;
+  onOpenLogin?: () => void;
+  initialLanguage?: GuideLanguage;
+  isInsideWorkspaceModal?: boolean;
 }
 
 type GuideLanguage = 'en' | 'si';
@@ -948,8 +950,14 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
   onBackToOverview,
   onOpenSignup,
   onOpenLogin,
+  initialLanguage = 'en',
+  isInsideWorkspaceModal = false,
 }) => {
-  const [guideLang, setGuideLang] = useState<GuideLanguage>('en');
+  const [guideLang, setGuideLang] = useState<GuideLanguage>(initialLanguage);
+
+  useEffect(() => {
+    setGuideLang(initialLanguage);
+  }, [initialLanguage]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -1725,7 +1733,15 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/[0.09] hover:bg-white/[0.16] backdrop-blur-xl text-white border border-amber-300/35 text-xs font-extrabold flex items-center justify-center gap-1.5 sm:gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] cursor-pointer transition whitespace-nowrap"
             >
               <ArrowLeft className="w-4 h-4 text-amber-400" />
-              <span>{guideLang === 'si' ? 'ප්‍රධාන පිටුවට (Overview)' : 'Back to Platform Overview'}</span>
+              <span>
+                {isInsideWorkspaceModal
+                  ? guideLang === 'si'
+                    ? 'වසන්න (Close Guide)'
+                    : 'Close User Guide'
+                  : guideLang === 'si'
+                  ? 'ප්‍රධාන පිටුවට (Overview)'
+                  : 'Back to Platform Overview'}
+              </span>
             </button>
 
             {/* 2-TAB LANGUAGE SWITCHER: ENGLISH GUIDE vs SINHALA GUIDE */}
@@ -1779,16 +1795,18 @@ export const SystemUserGuideView: React.FC<SystemUserGuideViewProps> = ({
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={onOpenSignup}
-              className="w-full sm:w-auto px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] backdrop-blur-xl text-white border border-white/18 font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] cursor-pointer transition whitespace-nowrap"
-            >
-              <span className="text-amber-300 font-black">
-                {guideLang === 'si' ? 'දින 7ක නොමිලේ ගිණුම අරඹන්න' : 'Start 7-Day Free Trial'}
-              </span>
-              <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
-            </button>
+            {!isInsideWorkspaceModal && onOpenSignup && (
+              <button
+                type="button"
+                onClick={onOpenSignup}
+                className="w-full sm:w-auto px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] backdrop-blur-xl text-white border border-white/18 font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] cursor-pointer transition whitespace-nowrap"
+              >
+                <span className="text-amber-300 font-black">
+                  {guideLang === 'si' ? 'දින 7ක නොමිලේ ගිණුම අරඹන්න' : 'Start 7-Day Free Trial'}
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+            )}
           </div>
         </div>
 

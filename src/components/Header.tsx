@@ -25,6 +25,8 @@ import {
   FileSpreadsheet,
   Barcode,
   ChevronDown,
+  Play,
+  BookOpen,
 } from 'lucide-react';
 import { useStock } from '../context/StockContext';
 import { ConfirmModal } from './common/ConfirmModal';
@@ -34,6 +36,8 @@ import { UserProfileModal } from './auth/UserProfileModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';
 import { SystemConfigModal } from './common/SystemConfigModal';
 import { BarcodeScannerModal } from './common/BarcodeScannerModal';
+import { TutorialVideosModal } from './common/TutorialVideosModal';
+import { SystemUserGuideView } from './landing/SystemUserGuideView';
 import { getThemeConfig, APP_THEMES } from '../utils/themeUtils';
 import {
   isCentralOrAllSiteAdmin,
@@ -44,6 +48,7 @@ import {
   formatActorDisplayName,
   stripSuperAdminSuffix,
   isGenericSuperAdminName,
+  normalizeTutorialVideos,
 } from '../types';
 
 interface HeaderProps {
@@ -96,6 +101,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
     actorDisplayName,
     superAdminDisplayLabel,
     needsSuperAdminIdentity,
+    platformPricing,
   } = useStock();
 
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -105,6 +111,11 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
   const [dismissedIdentityPrompt, setDismissedIdentityPrompt] = useState(false);
   const [identityInput, setIdentityInput] = useState('');
   const [identityError, setIdentityError] = useState<string | null>(null);
+  const [showTutorialVideosModal, setShowTutorialVideosModal] = useState(false);
+  const [isTutorialMinimized, setIsTutorialMinimized] = useState(false);
+  const [showUserGuideModal, setShowUserGuideModal] = useState(false);
+  const [userGuideModalLang, setUserGuideModalLang] = useState<'en' | 'si'>('en');
+  const tutorialVideosCount = normalizeTutorialVideos(platformPricing?.tutorialVideos).length;
 
   const isAdmin = isCentralOrAllSiteAdmin(currentUser?.role) || currentUser?.username === 'admin' || authUser?.username === 'admin';
 
@@ -517,6 +528,61 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 </button>
               </>
             )}
+
+            {/* Tutorial Videos Play Button & Bilingual User Guides (Available to All System Users) */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTutorialVideosModal(true);
+                  setIsTutorialMinimized(false);
+                }}
+                className="h-9 flex items-center gap-2 px-3 rounded-xl text-xs font-extrabold whitespace-nowrap bg-gradient-to-r from-emerald-500/25 to-teal-500/25 hover:from-emerald-500/35 hover:to-teal-500/35 border border-emerald-400/50 text-emerald-100 transition cursor-pointer shadow-2xs"
+                title={
+                  showTutorialVideosModal && isTutorialMinimized
+                    ? 'Restore Minimized Tutorial Video Window'
+                    : 'Watch Step-by-Step System Tutorial Videos'
+                }
+              >
+                <span className="w-5 h-5 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center shrink-0 shadow-xs">
+                  <Play className="w-2.5 h-2.5 fill-slate-950 ml-0.5" />
+                </span>
+                <span>
+                  {showTutorialVideosModal && isTutorialMinimized ? 'Tutorial (Docked)' : 'Tutorial Videos'}
+                </span>
+                {tutorialVideosCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-400/25 text-emerald-200 border border-emerald-400/35 text-[10px] font-black leading-none tabular-nums">
+                    {tutorialVideosCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUserGuideModalLang('en');
+                  setShowUserGuideModal(true);
+                }}
+                className="h-9 flex items-center gap-1.5 px-2.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/[0.08] hover:bg-white/[0.16] border border-sky-400/40 text-sky-100 transition cursor-pointer shadow-2xs"
+                title="Open Complete System User Guide (English)"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+                <span>User Guide (EN)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUserGuideModalLang('si');
+                  setShowUserGuideModal(true);
+                }}
+                className="h-9 flex items-center gap-1.5 px-2.5 rounded-xl text-xs font-bold whitespace-nowrap bg-white/[0.08] hover:bg-white/[0.16] border border-amber-400/45 text-amber-100 transition cursor-pointer shadow-2xs"
+                title="සිංහල පරිශීලක අත්පොත විවෘත කරන්න (Sinhala User Guide)"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                <span>සිංහල Guide</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -780,6 +846,29 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
           title="Live Inventory Barcode Lookup (USB & Mobile)"
           subtitle="Scan any item via USB Barcode Gun or Mobile Phone Camera to inspect stock balances"
         />
+      )}
+      <TutorialVideosModal
+        isOpen={showTutorialVideosModal}
+        isMinimized={isTutorialMinimized}
+        onMinimizeChange={setIsTutorialMinimized}
+        onClose={() => {
+          setShowTutorialVideosModal(false);
+          setIsTutorialMinimized(false);
+        }}
+      />
+      {showUserGuideModal && (
+        <div
+          className="fixed inset-0 z-[120] bg-gradient-to-br from-[#060f26] via-[#0b1a3d] to-[#060f26] overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-label="System User Guide"
+        >
+          <SystemUserGuideView
+            initialLanguage={userGuideModalLang}
+            isInsideWorkspaceModal={true}
+            onBackToOverview={() => setShowUserGuideModal(false)}
+          />
+        </div>
       )}
 
       {/* Personal Super Admin Identity Prompt for already-signed-in generic sessions */}
