@@ -1463,7 +1463,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               }`}
             >
               <UserPlus className={`w-4 h-4 ${activeTab === 'users' ? 'text-emerald-600' : 'text-emerald-400'}`} />
-              <span>Users ({activeUsers.length})</span>
+              <span>System Users ({activeUsers.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('teams')}
@@ -1474,7 +1474,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               }`}
             >
               <Users2 className={`w-4 h-4 ${activeTab === 'teams' ? 'text-emerald-600' : 'text-emerald-400'}`} />
-              <span>Teams ({activeTeams.length})</span>
+              <span>Field Working Teams ({activeTeams.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('clients')}
@@ -3942,7 +3942,7 @@ export const MasterRegistrationsView: React.FC<MasterRegistrationsViewProps> = (
               </div>
               <div className="space-y-1.5">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Field Teams Registry (View-Only)
+                  Field Working Teams Registry (View-Only)
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm leading-relaxed">
                   Team registration, editing, and deletion are managed exclusively by <strong>Main Admin (Super Admin Central)</strong>.
