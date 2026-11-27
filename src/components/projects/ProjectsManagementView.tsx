@@ -30,6 +30,11 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  Radio,
+  Droplets,
+  Zap,
+  Sun,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useStock } from '../../context/StockContext';
 import {
@@ -2939,11 +2944,11 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
       {/* CREATE / EDIT PROJECT SECTION MODAL (WITH INTERNATIONAL TEMPLATES & + ADD FIELD BUILDER) */}
       {showSectionModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4 sticky top-0 bg-white z-10">
-              <div className="flex items-center gap-2">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3.5 mb-4 sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-2.5">
                 <Layers className="w-5 h-5 text-emerald-700" />
-                <h3 className="font-bold text-base text-slate-900">
+                <h3 className="font-black text-lg text-slate-900">
                   {editingSection
                     ? `Edit Project Section & Fields: ${editingSection.name}`
                     : 'Create Project Section & Load Industry Template'}
@@ -2952,7 +2957,7 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
               <button
                 type="button"
                 onClick={() => setShowSectionModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2966,55 +2971,178 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
 
             <form onSubmit={handleSaveSection} className="space-y-4">
               {/* STEP 1: INTERNATIONAL INDUSTRY TEMPLATE SELECTOR */}
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+              <div className="p-4 sm:p-5 bg-slate-50/90 border border-slate-200 rounded-2xl space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <label className="block text-sm font-black text-slate-900 uppercase tracking-wide">
                     1. Load International Industry Template (Auto-Loads Standard Fields) *
                   </label>
-                  <span className="text-[10px] font-bold text-emerald-700">
+                  <span className="text-xs font-bold text-emerald-700">
                     Click any template to load its international fields
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {(
                     ['telecom_nc', 'water_project', 'electric_project', 'solar_project', 'standard'] as SectionIndustryPreset[]
                   ).map((presetKey) => {
                     const meta = INDUSTRY_SECTION_PRESETS[presetKey];
                     const isSelected = sectionIndustryPreset === presetKey;
+
+                    const themeMap: Record<
+                      SectionIndustryPreset,
+                      {
+                        icon: React.ComponentType<{ className?: string }>;
+                        topBar: string;
+                        unselectedCard: string;
+                        selectedCard: string;
+                        unselectedIcon: string;
+                        selectedIcon: string;
+                        unselectedBadge: string;
+                        selectedBadge: string;
+                        unselectedRef: string;
+                        selectedRef: string;
+                        unselectedFooter: string;
+                        selectedFooter: string;
+                      }
+                    > = {
+                      telecom_nc: {
+                        icon: Radio,
+                        topBar: 'from-emerald-400 via-teal-500 to-emerald-500',
+                        unselectedCard:
+                          'bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/70 border-emerald-200/90 hover:border-emerald-400 hover:shadow-md text-slate-900',
+                        selectedCard:
+                          'bg-gradient-to-br from-emerald-800 via-emerald-900 to-teal-950 text-white border-emerald-400 shadow-lg ring-2 ring-emerald-400/60',
+                        unselectedIcon: 'bg-emerald-600 text-white shadow-xs',
+                        selectedIcon: 'bg-emerald-400/20 text-emerald-200 border border-emerald-300/40',
+                        unselectedBadge: 'bg-emerald-100 text-emerald-900 border border-emerald-300/80',
+                        selectedBadge: 'bg-emerald-400/25 text-emerald-100 border border-emerald-300/45',
+                        unselectedRef: 'text-emerald-800/85',
+                        selectedRef: 'text-emerald-200/95',
+                        unselectedFooter: 'text-slate-600 border-emerald-200/70',
+                        selectedFooter: 'text-emerald-100 border-white/15',
+                      },
+                      water_project: {
+                        icon: Droplets,
+                        topBar: 'from-sky-400 via-blue-500 to-cyan-500',
+                        unselectedCard:
+                          'bg-gradient-to-br from-sky-50/95 via-white to-blue-50/80 border-sky-200/90 hover:border-sky-400 hover:shadow-md text-slate-900',
+                        selectedCard:
+                          'bg-gradient-to-br from-[#0d3b6e] via-[#134e8e] to-[#08254d] text-white border-sky-400 shadow-lg ring-2 ring-sky-400/60',
+                        unselectedIcon: 'bg-sky-600 text-white shadow-xs',
+                        selectedIcon: 'bg-sky-400/20 text-sky-200 border border-sky-300/40',
+                        unselectedBadge: 'bg-sky-100 text-sky-900 border border-sky-300/80',
+                        selectedBadge: 'bg-sky-400/25 text-sky-100 border border-sky-300/45',
+                        unselectedRef: 'text-sky-800/85',
+                        selectedRef: 'text-sky-200/95',
+                        unselectedFooter: 'text-slate-600 border-sky-200/70',
+                        selectedFooter: 'text-sky-100 border-white/15',
+                      },
+                      electric_project: {
+                        icon: Zap,
+                        topBar: 'from-amber-400 via-orange-400 to-yellow-500',
+                        unselectedCard:
+                          'bg-gradient-to-br from-amber-50/95 via-white to-orange-50/70 border-amber-200/90 hover:border-amber-400 hover:shadow-md text-slate-900',
+                        selectedCard:
+                          'bg-gradient-to-br from-amber-800 via-[#7c2d12] to-[#451a03] text-white border-amber-400 shadow-lg ring-2 ring-amber-400/60',
+                        unselectedIcon: 'bg-amber-600 text-white shadow-xs',
+                        selectedIcon: 'bg-amber-400/20 text-amber-200 border border-amber-300/40',
+                        unselectedBadge: 'bg-amber-100 text-amber-950 border border-amber-300/80',
+                        selectedBadge: 'bg-amber-400/25 text-amber-100 border border-amber-300/45',
+                        unselectedRef: 'text-amber-900/80',
+                        selectedRef: 'text-amber-200/95',
+                        unselectedFooter: 'text-slate-600 border-amber-200/70',
+                        selectedFooter: 'text-amber-100 border-white/15',
+                      },
+                      solar_project: {
+                        icon: Sun,
+                        topBar: 'from-violet-500 via-purple-500 to-indigo-500',
+                        unselectedCard:
+                          'bg-gradient-to-br from-violet-50/95 via-white to-indigo-50/75 border-violet-200/90 hover:border-violet-400 hover:shadow-md text-slate-900',
+                        selectedCard:
+                          'bg-gradient-to-br from-violet-900 via-indigo-900 to-[#1e1b4b] text-white border-violet-400 shadow-lg ring-2 ring-violet-400/60',
+                        unselectedIcon: 'bg-violet-600 text-white shadow-xs',
+                        selectedIcon: 'bg-violet-400/20 text-violet-200 border border-violet-300/40',
+                        unselectedBadge: 'bg-violet-100 text-violet-900 border border-violet-300/80',
+                        selectedBadge: 'bg-violet-400/25 text-violet-100 border border-violet-300/45',
+                        unselectedRef: 'text-violet-800/85',
+                        selectedRef: 'text-violet-200/95',
+                        unselectedFooter: 'text-slate-600 border-violet-200/70',
+                        selectedFooter: 'text-violet-100 border-white/15',
+                      },
+                      standard: {
+                        icon: SlidersHorizontal,
+                        topBar: 'from-slate-500 via-teal-500 to-slate-600',
+                        unselectedCard:
+                          'bg-gradient-to-br from-slate-50 via-white to-teal-50/60 border-slate-300/90 hover:border-teal-500 hover:shadow-md text-slate-900',
+                        selectedCard:
+                          'bg-gradient-to-br from-slate-800 via-[#1e293b] to-[#0f172a] text-white border-teal-400 shadow-lg ring-2 ring-teal-400/60',
+                        unselectedIcon: 'bg-slate-700 text-white shadow-xs',
+                        selectedIcon: 'bg-teal-400/20 text-teal-200 border border-teal-300/40',
+                        unselectedBadge: 'bg-slate-200/85 text-slate-800 border border-slate-300',
+                        selectedBadge: 'bg-teal-400/25 text-teal-100 border border-teal-300/45',
+                        unselectedRef: 'text-slate-600',
+                        selectedRef: 'text-slate-300',
+                        unselectedFooter: 'text-slate-600 border-slate-200',
+                        selectedFooter: 'text-slate-200 border-white/15',
+                      },
+                    };
+
+                    const theme = themeMap[presetKey];
+                    const PresetIcon = theme.icon;
+
                     return (
                       <button
                         key={presetKey}
                         type="button"
                         onClick={() => applySectionIndustryPreset(presetKey, Boolean(editingSection))}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-[#233e54] text-white border-[#3c6687] shadow-xs ring-2 ring-sky-400/50'
-                            : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
+                        className={`relative overflow-hidden p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                          isSelected ? theme.selectedCard : theme.unselectedCard
                         }`}
                       >
-                        <div>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                                isSelected
-                                  ? 'bg-sky-400/20 text-sky-200 border border-sky-300/40'
-                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
-                              }`}
-                            >
-                              {meta.shortBadge}
-                            </span>
-                            <span className="text-[9px] font-mono opacity-75">
-                              {meta.standardReference}
-                            </span>
+                        {/* Top Accent Gradient Hairline */}
+                        <div
+                          className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${theme.topBar}`}
+                        />
+
+                        <div className="pt-0.5 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                  isSelected ? theme.selectedIcon : theme.unselectedIcon
+                                }`}
+                              >
+                                <PresetIcon className="w-4 h-4" />
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide whitespace-nowrap ${
+                                  isSelected ? theme.selectedBadge : theme.unselectedBadge
+                                }`}
+                              >
+                                {meta.shortBadge}
+                              </span>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+                            )}
                           </div>
-                          <div className="text-xs font-extrabold leading-snug">
-                            {meta.defaultSectionName}
+
+                          <div
+                            className={`text-[11px] font-mono font-semibold leading-snug ${
+                              isSelected ? theme.selectedRef : theme.unselectedRef
+                            }`}
+                          >
+                            {meta.standardReference}
+                          </div>
+
+                          <div className="text-sm sm:text-[15px] font-black leading-snug">
+                            {meta.defaultSectionName || meta.title}
                           </div>
                         </div>
+
                         <div
-                          className={`text-[10px] mt-1.5 leading-snug ${
-                            isSelected ? 'text-sky-100' : 'text-slate-500'
+                          className={`text-xs font-semibold pt-2 border-t leading-snug ${
+                            isSelected ? theme.selectedFooter : theme.unselectedFooter
                           }`}
                         >
                           {meta.defaultWorkflowMode === 'new_connection'
@@ -3027,17 +3155,17 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                 </div>
 
                 {/* Workflow Mode Switcher (Subscriber/Connection 3-Step vs Standard Project Hierarchy) */}
-                <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold text-slate-700">
+                <div className="pt-2.5 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <span className="text-xs font-extrabold text-slate-800">
                     Workflow &amp; Daily Progress Entry Mode:
                   </span>
-                  <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 text-[11px] font-bold">
+                  <div className="inline-flex rounded-xl border border-slate-300 bg-white p-1 text-xs font-bold shadow-2xs">
                     <button
                       type="button"
                       onClick={() => setSectionWorkflowMode('new_connection')}
-                      className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
                         sectionWorkflowMode === 'new_connection'
-                          ? 'bg-[#233e54] text-white'
+                          ? 'bg-[#233e54] text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -3046,9 +3174,9 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                     <button
                       type="button"
                       onClick={() => setSectionWorkflowMode('standard')}
-                      className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
                         sectionWorkflowMode === 'standard'
-                          ? 'bg-slate-900 text-white'
+                          ? 'bg-slate-900 text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
