@@ -338,8 +338,8 @@ function MainAppContent({ onReturnToGateway }: { onReturnToGateway?: () => void 
         ))}
       </div>
 
-      {/* Main Body with Sleek Glass Desktop Sidebar - Aligned to exact 1600px grid as Header */}
-      <div className="flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 gap-6 items-start">
+      {/* Main Body with Sleek Glass Desktop Sidebar - Aligned to exact 1680px grid as Header */}
+      <div className="flex-1 flex max-w-[1680px] w-full mx-auto px-4 sm:px-5 lg:px-5 py-5 gap-5 items-start">
         <div className="hidden lg:block no-print shrink-0">
           <Sidebar currentTab={currentTab === 'projects-sections' ? 'projects' : currentTab} onSelectTab={setCurrentTab} />
         </div>

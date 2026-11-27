@@ -1131,15 +1131,15 @@ export const StockRequestsView: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
+            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
               <tr>
-                <th className="py-3 px-2.5 w-32">Request Note #</th>
-                <th className="py-3 px-2 w-24">Date & Time</th>
-                <th className="py-3 px-2.5 w-36">Site Branch</th>
-                <th className="py-3 px-2 w-20">Priority</th>
-                <th className="py-3 px-2.5">Items & Material Description Summary</th>
-                <th className="py-3 px-2.5 w-28">Status</th>
-                <th className="py-3 px-2.5 text-right w-36">Workflow Actions</th>
+                <th className="py-3 px-2 whitespace-nowrap">Request Note #</th>
+                <th className="py-3 px-1.5 whitespace-nowrap">Date &amp; Time</th>
+                <th className="py-3 px-2 whitespace-nowrap">Site Branch</th>
+                <th className="py-3 px-1.5 whitespace-nowrap">Priority</th>
+                <th className="py-3 px-2 min-w-[240px]">Items &amp; Material Description Summary</th>
+                <th className="py-3 px-2 whitespace-nowrap">Status</th>
+                <th className="py-3 px-2 text-right whitespace-nowrap">Workflow Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1171,38 +1171,38 @@ export const StockRequestsView: React.FC = () => {
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
-                        <div className="text-sm leading-tight">{req.requestNoteNumber}</div>
+                      <td className="py-3 px-2 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
+                        <div className="text-[13px] leading-tight">{req.requestNoteNumber}</div>
                         {req.requestCategory === 'foc' ? (
-                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[11px] font-sans font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10.5px] font-sans font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
                             🎁 Client FOC
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[11px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10.5px] font-sans font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                             📦 Normal Stock
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-2 text-slate-700 font-mono text-xs whitespace-nowrap align-top leading-tight">
+                      <td className="py-3 px-1.5 text-slate-700 font-mono text-[11.5px] whitespace-nowrap align-top leading-tight">
                         <div className="font-semibold text-slate-800">{dtParts.date}</div>
                         {dtParts.time && (
-                          <div className="text-[11px] text-slate-500 mt-0.5">{dtParts.time}</div>
+                          <div className="text-[10.5px] text-slate-500 mt-0.5">{dtParts.time}</div>
                         )}
                       </td>
-                      <td className="py-3 px-2.5 align-top">
-                        <div className="font-bold text-slate-900 text-sm leading-tight">
+                      <td className="py-3 px-2 align-top max-w-[140px]">
+                        <div className="font-bold text-slate-900 text-[13px] leading-tight truncate" title={site?.name}>
                           {site && isSubSite(site) ? `↳ ${site.name}` : site?.name}
                         </div>
-                        <div className="text-[11px] text-sky-700 font-semibold mt-0.5 truncate max-w-[160px]" title={req.sourceSiteName || 'Main Central Warehouse'}>
+                        <div className="text-[10.5px] text-sky-700 font-semibold mt-0.5 truncate" title={req.sourceSiteName || 'Main Central Warehouse'}>
                           From: {req.sourceSiteName || 'Main Warehouse'}
                         </div>
-                        <div className="text-xs text-slate-500 mt-0.5 truncate max-w-[140px]" title={req.requestedBy}>
+                        <div className="text-[11px] text-slate-500 mt-0.5 truncate" title={req.requestedBy}>
                           By: {req.requestedBy}
                         </div>
                       </td>
-                      <td className="py-3 px-2 whitespace-nowrap align-top">
+                      <td className="py-3 px-1.5 whitespace-nowrap align-top">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${
+                          className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
                             req.priority === 'Emergency'
                               ? 'bg-red-100 text-red-800 border border-red-300'
                               : req.priority === 'Urgent'
@@ -1213,15 +1213,15 @@ export const StockRequestsView: React.FC = () => {
                           {req.priority}
                         </span>
                       </td>
-                      <td className="py-3 px-2.5 align-top">
+                      <td className="py-3 px-2 align-top">
                         {req.requestCategory === 'foc' && (req.focProjectName || req.focProjectCode) && (
-                          <div className="mb-1.5 p-1.5 rounded-lg bg-indigo-50/80 border border-indigo-200 text-xs text-indigo-950">
+                          <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-indigo-50/85 border border-indigo-200/90 text-xs text-indigo-950 shadow-2xs">
                             <div className="flex items-center gap-1.5 flex-wrap font-bold">
-                              <span className="px-1.5 py-0.5 rounded bg-indigo-700 text-white text-[10px] uppercase tracking-wider">
+                              <span className="px-1.5 py-0.5 rounded-md bg-indigo-700 text-white text-[10px] uppercase tracking-wider shrink-0">
                                 {req.focProjectScope === 'main' ? '🏢 Main Project' : '📄 Individual Project'}
                               </span>
                               <span className="font-mono text-indigo-800">{req.focProjectCode}</span>
-                              <span>·</span>
+                              <span className="text-indigo-400">·</span>
                               <span className="truncate">{req.focProjectName}</span>
                             </div>
                             {req.focClientName && (
@@ -1231,57 +1231,114 @@ export const StockRequestsView: React.FC = () => {
                             )}
                           </div>
                         )}
-                        <div className="space-y-1">
-                          {req.items.map((row) => {
-                            const itm = items.find((i) => i.id === row.itemId);
-                            const isMach = itm ? isMachineryItem(itm) : false;
-                            return (
-                              <div
-                                key={row.itemId}
-                                className="flex items-center gap-1.5 text-slate-800 flex-wrap bg-slate-50/90 px-2 py-1 rounded-lg border border-slate-200/80"
-                              >
-                                <span className="font-mono font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded text-xs border border-slate-300 shadow-2xs">
-                                  {itm?.itemCode || 'ITEM'}
-                                </span>
-                                {isMach ? (
-                                  <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
-                                    🚜 Machinery
-                                  </span>
-                                ) : (
-                                  <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                                    📦 Material
-                                  </span>
-                                )}
-                                <span className="font-bold text-slate-900 text-sm">
-                                  {itm?.itemName || 'Material Item'}
-                                </span>
-                                <span className="text-slate-300 font-bold">·</span>
-                                <span className="font-mono font-extrabold text-slate-900 text-sm bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                                  {formatNumber(row.requestedQty)} {itm?.unit}
-                                </span>
-                                {row.approvedQty !== undefined && (
-                                  <span className="text-slate-600 text-xs font-medium">
-                                    (Apprv: <strong className="text-slate-900">{formatNumber(row.approvedQty)}</strong>)
-                                  </span>
-                                )}
-                                {row.receivedQty !== undefined && (
-                                  <span className="text-emerald-700 text-xs font-bold">
-                                    (Recv: {formatNumber(row.receivedQty)})
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
+
+                        {/* Clean ERP-style Aligned Line-Item Breakdown */}
+                        <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs">
+                          <div className="grid grid-cols-[minmax(0,1fr)_136px] items-center gap-1.5 px-2.5 py-1.5 bg-slate-50/95 border-b border-slate-200/80 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                            <span className="truncate">
+                              Item Description ({req.items.length} {req.items.length === 1 ? 'Item' : 'Items'})
+                            </span>
+                            <div className="grid grid-cols-3 gap-1 text-right">
+                              <span>Req</span>
+                              <span className="text-sky-700">Apprv</span>
+                              <span className="text-emerald-700">Recv</span>
+                            </div>
+                          </div>
+
+                          <div className="divide-y divide-slate-100">
+                            {req.items.map((row, idx) => {
+                              const itm = items.find((i) => i.id === row.itemId);
+                              const isMach = itm ? isMachineryItem(itm) : false;
+                              const isPartialRecv =
+                                row.receivedQty !== undefined &&
+                                row.approvedQty !== undefined &&
+                                row.receivedQty < row.approvedQty;
+
+                              return (
+                                <div
+                                  key={row.itemId}
+                                  className="grid grid-cols-[minmax(0,1fr)_136px] items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-50/70 transition-colors"
+                                >
+                                  {/* Left: Clean Item Name + Code / Type Subtitle */}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="text-[10px] font-bold text-slate-400 font-mono tabular-nums shrink-0">
+                                        {idx + 1}.
+                                      </span>
+                                      <span
+                                        className="font-bold text-slate-900 text-xs leading-snug truncate"
+                                        title={itm?.itemName || 'Material Item'}
+                                      >
+                                        {itm?.itemName || 'Material Item'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5 pl-4 flex-wrap">
+                                      <span className="font-mono font-bold text-[10px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
+                                        {itm?.itemCode || 'ITEM'}
+                                      </span>
+                                      {isMach ? (
+                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80">
+                                          Machinery
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50/80 px-1.5 py-0.5 rounded border border-emerald-200/70">
+                                          Material
+                                        </span>
+                                      )}
+                                      {itm?.unit && (
+                                        <span className="text-[10px] font-semibold text-slate-400">
+                                          Unit: {itm.unit}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Right: Fixed Aligned Qty Columns (Req / Apprv / Recv) */}
+                                  <div className="grid grid-cols-3 gap-1 items-center text-right font-mono tabular-nums text-[11.5px] shrink-0">
+                                    <span className="font-extrabold text-slate-900 bg-slate-100/90 px-1 py-0.5 rounded border border-slate-200/80 truncate">
+                                      {formatNumber(row.requestedQty)}
+                                    </span>
+                                    <span
+                                      className={`px-1 py-0.5 rounded font-bold truncate ${
+                                        row.approvedQty !== undefined
+                                          ? 'bg-sky-50 text-sky-900 border border-sky-200/80'
+                                          : 'text-slate-300 font-normal'
+                                      }`}
+                                    >
+                                      {row.approvedQty !== undefined ? formatNumber(row.approvedQty) : '—'}
+                                    </span>
+                                    <span
+                                      className={`px-1 py-0.5 rounded font-extrabold truncate ${
+                                        row.receivedQty !== undefined
+                                          ? isPartialRecv
+                                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200/90'
+                                          : 'text-slate-300 font-normal'
+                                      }`}
+                                    >
+                                      {row.receivedQty !== undefined ? formatNumber(row.receivedQty) : '—'}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
+
                         {req.purpose && (
-                          <div className="text-xs text-slate-500 italic mt-1">
-                            Purpose: {req.purpose}
+                          <div className="mt-1.5 px-2.5 py-1 rounded-lg bg-slate-50/90 border border-slate-200/70 text-[11px] text-slate-600 flex items-baseline gap-1.5">
+                            <span className="font-extrabold uppercase tracking-wider text-[9.5px] text-slate-400 shrink-0">
+                              Purpose:
+                            </span>
+                            <span className="truncate" title={req.purpose}>
+                              {req.purpose}
+                            </span>
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-2.5 whitespace-nowrap align-top">
+                      <td className="py-3 px-2 whitespace-nowrap align-top">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold ${
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-bold ${
                             req.status === 'Accepted'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : req.status === 'Approved / In-Transit'
@@ -1298,7 +1355,7 @@ export const StockRequestsView: React.FC = () => {
                       </td>
 
                       {/* Workflow Actions */}
-                      <td className="py-3 px-2.5 text-right whitespace-nowrap align-top">
+                      <td className="py-3 px-2 text-right whitespace-nowrap align-top">
                         <div className="flex items-center justify-end gap-1">
                           {/* 1. Print Official Request Note */}
                           <button
@@ -1369,7 +1426,7 @@ export const StockRequestsView: React.FC = () => {
                           )}
 
                           {req.status === 'Accepted' && (
-                            <span className="text-xs text-emerald-700 font-bold px-1.5 py-0.5">
+                            <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/80 rounded-md px-2 py-1">
                               Stock Received
                             </span>
                           )}

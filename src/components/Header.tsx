@@ -330,8 +330,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
         {/* Top Specular Crystal Rule matching Active Glass Tone */}
         <div className={`h-[2px] w-full ${currentTheme.topRuleBg}`} />
 
-        {/* Main Top Glass Bar - Aligned to exact same 1600px grid as Workspace */}
-        <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 min-h-[60px] flex items-center justify-between gap-3 xl:gap-4">
+        {/* Main Top Glass Bar - Aligned to exact same 1680px grid as Workspace */}
+        <div className="max-w-[1680px] w-full mx-auto px-4 sm:px-5 lg:px-5 py-2.5 min-h-[60px] flex items-center justify-between gap-3 xl:gap-4">
           {/* Zone 1: Company & System Identity (Left-aligned with Sidebar) */}
           <div className="flex items-center gap-3.5 min-w-0 flex-1">
             {isCentralAdmin ? (
@@ -588,7 +588,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
 
         {/* Row 2: Theme-Synchronized Glass Sub-Bar */}
         <div className={`${currentTheme.headerSubBarBg} border-t border-white/10 transition-colors duration-200`}>
-          <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 xl:gap-3 text-xs text-slate-300">
+          <div className="max-w-[1680px] w-full mx-auto px-4 sm:px-5 lg:px-5 py-2 flex flex-wrap items-center justify-between gap-2 xl:gap-3 text-xs text-slate-300">
             {/* Active User Controls (Left-aligned with Logo & Sidebar) */}
             <div className="flex items-center gap-2 min-w-0 max-w-full flex-wrap">
               <div className={`h-8 flex items-center gap-2 ${currentTheme.headerPillBg} border rounded-xl px-2.5 text-xs shadow-2xs max-w-full min-w-0`}>
