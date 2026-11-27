@@ -370,8 +370,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onOpenPendingRequests
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-300 truncate mt-0.5">
                   <span className={`${currentTheme.accentText} font-semibold truncate`}>{config.systemName}</span>
-                  <span aria-hidden="true" className="text-white/25 hidden sm:inline">·</span>
-                  <span className={`${currentTheme.subAccentText} hidden sm:inline font-medium whitespace-nowrap`}>Liquid Glass Enterprise OS</span>
                 </div>
               </div>
             ) : (
