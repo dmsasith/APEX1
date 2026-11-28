@@ -718,10 +718,13 @@ export const SiteInventoriesView: React.FC = () => {
   }, [teams, selectedSiteId]);
 
   const handleDirectReceive = (req: StockTransferRequest) => {
-    const fullItems = req.items.map((r) => ({
-      itemId: r.itemId,
-      receivedQty: r.approvedQty ?? r.requestedQty,
-    }));
+    const fullItems = req.items.map((r) => {
+      const isNotIssued = Boolean(r.willNotIssue) || (r.approvedQty !== undefined && Number(r.approvedQty) <= 0);
+      return {
+        itemId: r.itemId,
+        receivedQty: isNotIssued ? 0 : (r.approvedQty ?? r.requestedQty),
+      };
+    });
     acceptStockRequest(req.id, fullItems, 'Direct received into site yard.');
     setToastMessage(`Shipment ${req.requestNoteNumber} received! Site inventory updated.`);
     setTimeout(() => setToastMessage(null), 4000);
@@ -730,20 +733,31 @@ export const SiteInventoriesView: React.FC = () => {
   const handleOpenEditReceive = (req: StockTransferRequest) => {
     setAcceptingShipment(req);
     setReceivedItems(
-      req.items.map((r) => ({
-        itemId: r.itemId,
-        receivedQty: r.receivedQty ?? (r.approvedQty ?? r.requestedQty),
-      }))
+      req.items.map((r) => {
+        const isNotIssued = Boolean(r.willNotIssue) || (r.approvedQty !== undefined && Number(r.approvedQty) <= 0);
+        return {
+          itemId: r.itemId,
+          receivedQty: isNotIssued ? 0 : (r.receivedQty ?? (r.approvedQty ?? r.requestedQty)),
+        };
+      })
     );
     setReceivingNotes('');
   };
 
   const handleConfirmEditReceive = () => {
     if (!acceptingShipment) return;
-    const normalizedReceived = receivedItems.map((r) => ({
-      itemId: r.itemId,
-      receivedQty: Math.max(0, Number(r.receivedQty || 0)),
-    }));
+    const normalizedReceived = acceptingShipment.items.map((origRow) => {
+      const isNotIssued =
+        Boolean(origRow.willNotIssue) || (origRow.approvedQty !== undefined && Number(origRow.approvedQty) <= 0);
+      if (isNotIssued) {
+        return { itemId: origRow.itemId, receivedQty: 0 };
+      }
+      const match = receivedItems.find((r) => r.itemId === origRow.itemId);
+      return {
+        itemId: origRow.itemId,
+        receivedQty: Math.max(0, Number(match?.receivedQty || 0)),
+      };
+    });
     acceptStockRequest(
       acceptingShipment.id,
       normalizedReceived,
@@ -1380,21 +1394,28 @@ export const SiteInventoriesView: React.FC = () => {
                         <div className="mt-2 space-y-1">
                           <div className="text-xs font-semibold text-slate-700">Dispatched Materials:</div>
                           <div className="space-y-1 bg-slate-50 p-2 rounded border border-slate-100">
-                            {req.items.map((row) => {
-                              const itm = items.find((i) => i.id === row.itemId);
-                              const apprv = row.approvedQty ?? row.requestedQty;
-                              return (
-                                <div key={row.itemId} className="flex items-center justify-between text-xs text-slate-800">
-                                  <span className="truncate max-w-[200px]" title={itm?.itemName}>
-                                    <strong className="font-mono">{itm?.itemCode}</strong> · {itm?.itemName}
-                                  </span>
-                                  <span className="font-mono font-bold text-emerald-700 shrink-0 ml-2">
-                                    +{apprv} {itm?.unit}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                            {req.items
+                              .filter((row) => !row.willNotIssue && (row.approvedQty ?? row.requestedQty) > 0)
+                              .map((row) => {
+                                const itm = items.find((i) => i.id === row.itemId);
+                                const apprv = row.approvedQty ?? row.requestedQty;
+                                return (
+                                  <div key={row.itemId} className="flex items-center justify-between text-xs text-slate-800">
+                                    <span className="truncate max-w-[200px]" title={itm?.itemName}>
+                                      <strong className="font-mono">{itm?.itemCode}</strong> · {itm?.itemName}
+                                    </span>
+                                    <span className="font-mono font-bold text-emerald-700 shrink-0 ml-2">
+                                      +{apprv} {itm?.unit}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                           </div>
+                          {req.items.some((r) => Boolean(r.willNotIssue) || r.approvedQty === 0) && (
+                            <div className="text-[10.5px] text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded px-2 py-1">
+                              {req.items.filter((r) => Boolean(r.willNotIssue) || r.approvedQty === 0).length} item(s) marked &quot;Will Not Issue&quot; on {req.requestNoteNumber} are not included in this delivery.
+                            </div>
+                          )}
                         </div>
 
                         {req.approvalNotes && (
@@ -2080,31 +2101,33 @@ export const SiteInventoriesView: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {req.items.map((row, idx) => {
-                          const itm = items.find((i) => i.id === row.itemId);
-                          const rec = siteItemReconciliationMap.get(row.itemId);
-                          const qty =
-                            req.status === 'Accepted'
-                              ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
-                              : (row.approvedQty ?? row.requestedQty);
-                          return (
-                            <tr key={idx} className="bg-white">
-                              <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                {itm?.itemCode || 'ITEM'}
-                              </td>
-                              <td className="py-2.5 px-3 font-medium text-slate-800">
-                                {itm?.itemName || 'Material Item'}
-                              </td>
-                              <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
-                              <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
-                                +{formatNumber(qty)} {itm?.unit}
-                              </td>
-                              <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
-                                {formatNumber(rec?.stage5SiteFocReturnableBalance ?? 0)} {itm?.unit}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {req.items
+                          .filter((row) => !row.willNotIssue && (req.status === 'Accepted' ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty) : (row.approvedQty ?? row.requestedQty)) > 0)
+                          .map((row, idx) => {
+                            const itm = items.find((i) => i.id === row.itemId);
+                            const rec = siteItemReconciliationMap.get(row.itemId);
+                            const qty =
+                              req.status === 'Accepted'
+                                ? (row.receivedQty ?? row.approvedQty ?? row.requestedQty)
+                                : (row.approvedQty ?? row.requestedQty);
+                            return (
+                              <tr key={idx} className="bg-white">
+                                <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                  {itm?.itemCode || 'ITEM'}
+                                </td>
+                                <td className="py-2.5 px-3 font-medium text-slate-800">
+                                  {itm?.itemName || 'Material Item'}
+                                </td>
+                                <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
+                                <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
+                                  +{formatNumber(qty)} {itm?.unit}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700">
+                                  {formatNumber(rec?.stage5SiteFocReturnableBalance ?? 0)} {itm?.unit}
+                                </td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
@@ -2836,46 +2859,48 @@ export const SiteInventoriesView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {acceptingShipment.items.map((row) => {
-                    const itm = items.find((i) => i.id === row.itemId);
-                    const apprv = row.approvedQty ?? row.requestedQty;
-                    const currentRecv =
-                      receivedItems.find((r) => r.itemId === row.itemId)?.receivedQty ?? apprv;
+                  {acceptingShipment.items
+                    .filter((row) => !row.willNotIssue && (row.approvedQty ?? row.requestedQty) > 0)
+                    .map((row) => {
+                      const itm = items.find((i) => i.id === row.itemId);
+                      const apprv = row.approvedQty ?? row.requestedQty;
+                      const currentRecv =
+                        receivedItems.find((r) => r.itemId === row.itemId)?.receivedQty ?? apprv;
 
-                    return (
-                      <tr key={row.itemId}>
-                        <td className="py-2.5 px-3">
-                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200">
-                            {itm?.itemCode}
-                          </span>
-                          <div className="text-xs font-semibold text-slate-800 mt-0.5">{itm?.itemName}</div>
-                        </td>
-                        <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-700">
-                          {formatNumber(apprv)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={currentRecv}
-                            onChange={(e) => {
-                              const val = e.target.value === '' ? '' : Number(e.target.value);
-                              setReceivedItems((prev) =>
-                                prev.map((item) =>
-                                  item.itemId === row.itemId ? { ...item, receivedQty: val } : item
-                                )
-                              );
-                            }}
-                            placeholder="0"
-                            className="w-24 px-2 py-1.5 border border-emerald-400 bg-emerald-50/40 rounded text-xs font-mono font-bold text-right focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                            required
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={row.itemId}>
+                          <td className="py-2.5 px-3">
+                            <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200">
+                              {itm?.itemCode}
+                            </span>
+                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{itm?.itemName}</div>
+                          </td>
+                          <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-700">
+                            {formatNumber(apprv)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={currentRecv}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? '' : Number(e.target.value);
+                                setReceivedItems((prev) =>
+                                  prev.map((item) =>
+                                    item.itemId === row.itemId ? { ...item, receivedQty: val } : item
+                                  )
+                                );
+                              }}
+                              placeholder="0"
+                              className="w-24 px-2 py-1.5 border border-emerald-400 bg-emerald-50/40 rounded text-xs font-mono font-bold text-right focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                              required
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>

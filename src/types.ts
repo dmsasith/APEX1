@@ -518,6 +518,7 @@ export interface RequestItemRow {
   requestedQty: number;
   approvedQty?: number;
   receivedQty?: number;
+  willNotIssue?: boolean;
 }
 
 export interface StockTransferRequest {

@@ -437,7 +437,7 @@ interface StockContextType {
   }) => StockTransferRequest;
   approveStockRequest: (
     requestId: string,
-    approvedItems: Array<{ itemId: string; approvedQty: number }>,
+    approvedItems: Array<{ itemId: string; approvedQty: number; willNotIssue?: boolean }>,
     approvalNotes?: string
   ) => void;
   rejectStockRequest: (requestId: string, notes?: string) => void;
@@ -8600,7 +8600,7 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const approveStockRequest = (
     requestId: string,
-    approvedItems: Array<{ itemId: string; approvedQty: number }>,
+    approvedItems: Array<{ itemId: string; approvedQty: number; willNotIssue?: boolean }>,
     approvalNotes?: string
   ) => {
     const nowIso = new Date().toISOString();
@@ -8609,11 +8609,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (req.id !== requestId) return req;
         const updatedItems = req.items.map((itemRow) => {
           const match = approvedItems.find((a) => a.itemId === itemRow.itemId);
-          const approvedQtyVal = match ? Number(match.approvedQty) : Number(itemRow.requestedQty);
+          const rawQty = match ? Number(match.approvedQty) : Number(itemRow.requestedQty);
+          const isWillNotIssue = Boolean(match?.willNotIssue) || rawQty <= 0;
+          const approvedQtyVal = isWillNotIssue ? 0 : rawQty;
+          const { willNotIssue: _prevWillNotIssue, ...restRow } = itemRow;
           return {
-            ...itemRow,
+            ...restRow,
             approvedQty: approvedQtyVal,
             receivedQty: approvedQtyVal,
+            ...(isWillNotIssue ? { willNotIssue: true } : {}),
           };
         });
         return {
@@ -8639,13 +8643,15 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const site = sites.find((s) => s.id === targetReq?.siteId);
     const sourceSite = targetReq?.sourceSiteId ? sites.find((s) => s.id === targetReq.sourceSiteId) : undefined;
     const isParentBranchSupply = Boolean(sourceSite && !sourceSite.isMainWarehouse);
+    const heldCount = approvedItems.filter((a) => Boolean(a.willNotIssue) || Number(a.approvedQty) <= 0).length;
+    const heldSuffix = heldCount > 0 ? ` (${heldCount} item(s) marked "Will Not Issue" on Request Note)` : '';
     addAuditLog(
       'SITE_REQUEST_APPROVED',
       targetReq?.requestNoteNumber || 'RN-REQ',
       site?.name || 'Site',
       isParentBranchSupply
-        ? `Parent Branch (${sourceSite?.name}) approved Sub-Site transfer request. Stock deducted from ${sourceSite?.name} and allocated to ${site?.name || 'Sub-Site'}.`
-        : `Main Branch approved transfer request. Stock deducted from Central Pool and allocated to ${site?.name || 'Site'}.`
+        ? `Parent Branch (${sourceSite?.name}) approved Sub-Site transfer request. Stock deducted from ${sourceSite?.name} and allocated to ${site?.name || 'Sub-Site'}.${heldSuffix}`
+        : `Main Branch approved transfer request. Stock deducted from Central Pool and allocated to ${site?.name || 'Site'}.${heldSuffix}`
     );
   };
 
@@ -8741,6 +8747,12 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const next = prev.map((req) => {
         if (req.id !== requestId) return req;
         const updatedItems = req.items.map((itemRow) => {
+          if (itemRow.willNotIssue || (itemRow.approvedQty !== undefined && Number(itemRow.approvedQty) <= 0)) {
+            return {
+              ...itemRow,
+              receivedQty: 0,
+            };
+          }
           const match = receivedItems.find((r) => r.itemId === itemRow.itemId);
           const received = match !== undefined ? Number(match.receivedQty) : Number(itemRow.approvedQty ?? itemRow.requestedQty);
           return {

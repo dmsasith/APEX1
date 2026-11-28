@@ -14,6 +14,7 @@ import {
   Edit2,
   AlertTriangle,
   RotateCcw,
+  PauseCircle,
   XCircle,
   Search,
 } from 'lucide-react';
@@ -54,7 +55,6 @@ export const StockRequestsView: React.FC = () => {
     createStockRequest,
     approveStockRequest,
     rejectStockRequest,
-    removeStockRequestItem,
     acceptStockRequest,
     deleteStockRequest,
     clearStockRequests,
@@ -211,8 +211,11 @@ export const StockRequestsView: React.FC = () => {
 
   // Approval Modal State
   const [reviewingRequest, setReviewingRequest] = useState<StockTransferRequest | null>(null);
-  const [approvalItems, setApprovalItems] = useState<Array<{ itemId: string; approvedQty: number | '' }>>([]);
+  const [approvalItems, setApprovalItems] = useState<
+    Array<{ itemId: string; approvedQty: number | ''; willNotIssue: boolean; previousApprovedQty?: number }>
+  >([]);
   const [approvalNotes, setApprovalNotes] = useState('');
+  const [approvalError, setApprovalError] = useState('');
   const [showRejectInline, setShowRejectInline] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
@@ -547,37 +550,79 @@ export const StockRequestsView: React.FC = () => {
   const handleOpenApproveModal = (req: StockTransferRequest) => {
     setReviewingRequest(req);
     setApprovalItems(
-      req.items.map((row) => ({
-        itemId: row.itemId,
-        approvedQty: row.approvedQty ?? row.requestedQty,
-      }))
+      req.items.map((row) => {
+        const isIdle = Boolean(row.willNotIssue) || row.approvedQty === 0;
+        const qty = isIdle ? 0 : (row.approvedQty ?? row.requestedQty);
+        return {
+          itemId: row.itemId,
+          approvedQty: qty,
+          willNotIssue: isIdle,
+          previousApprovedQty: row.requestedQty,
+        };
+      })
     );
     setApprovalNotes('');
+    setApprovalError('');
+    setShowRejectInline(false);
   };
 
   const handleConfirmApproval = () => {
     if (!reviewingRequest) return;
-    const normalizedApproval = approvalItems.map((item) => ({
-      itemId: item.itemId,
-      approvedQty: Math.max(0, Number(item.approvedQty || 0)),
-    }));
+    setApprovalError('');
+    const normalizedApproval = approvalItems.map((item) => {
+      const qty = item.willNotIssue ? 0 : Math.max(0, Number(item.approvedQty || 0));
+      const isWillNotIssue = item.willNotIssue || qty <= 0;
+      return {
+        itemId: item.itemId,
+        approvedQty: qty,
+        willNotIssue: isWillNotIssue,
+      };
+    });
+
+    const hasIssuedItem = normalizedApproval.some((item) => !item.willNotIssue && item.approvedQty > 0);
+    if (!hasIssuedItem) {
+      setApprovalError(
+        'All items are currently set to "Will Not Issue" (0). Restore at least one item with a positive quantity, or click "Reject Entire Request".'
+      );
+      return;
+    }
+
     approveStockRequest(reviewingRequest.id, normalizedApproval, approvalNotes.trim());
     setReviewingRequest(null);
   };
 
-  const handleRemoveItemFromRequest = (itemId: string) => {
+  // Toggle an item between idle "Will Not Issue" (keeps row in Request Note at 0) and active/restored
+  const handleToggleWillNotIssue = (itemId: string) => {
     if (!reviewingRequest) return;
-    removeStockRequestItem(reviewingRequest.id, itemId);
-    const remaining = reviewingRequest.items.filter((i) => i.itemId !== itemId);
-    if (remaining.length === 0) {
-      setReviewingRequest(null);
-    } else {
-      setReviewingRequest({
-        ...reviewingRequest,
-        items: remaining,
-      });
-      setApprovalItems((prev) => prev.filter((i) => i.itemId !== itemId));
-    }
+    setApprovalError('');
+    const origRow = reviewingRequest.items.find((i) => i.itemId === itemId);
+    const fallbackQty = origRow ? origRow.requestedQty : 1;
+    setApprovalItems((prev) =>
+      prev.map((item) => {
+        if (item.itemId !== itemId) return item;
+        if (!item.willNotIssue) {
+          const currentNum = Number(item.approvedQty || 0);
+          return {
+            ...item,
+            previousApprovedQty: currentNum > 0 ? currentNum : (item.previousApprovedQty || fallbackQty),
+            approvedQty: 0,
+            willNotIssue: true,
+          };
+        }
+        const avail = getRequestItemAvailableBalance(reviewingRequest, itemId);
+        const restored =
+          item.previousApprovedQty && item.previousApprovedQty > 0
+            ? item.previousApprovedQty
+            : avail > 0
+            ? Math.min(fallbackQty, avail)
+            : fallbackQty;
+        return {
+          ...item,
+          approvedQty: restored,
+          willNotIssue: false,
+        };
+      })
+    );
   };
 
   // Helper to get available balance for a request item (supports Main Stock, Parent Regional Branch Stock for Sub-Sites, and Project FOC Pool)
@@ -592,51 +637,45 @@ export const StockRequestsView: React.FC = () => {
     return getMainWarehouseStock(itemId).availableBalance;
   };
 
-  // 1-Click: Send only available stock (caps approvedQty to warehouse/FOC balance, 0 if out of stock)
+  // 1-Click: Send only available stock (caps approvedQty to warehouse/FOC balance, marks 0-stock items as idle Will Not Issue)
   const handleSetAllToAvailable = () => {
     if (!reviewingRequest) return;
+    setApprovalError('');
     setApprovalItems((prev) =>
       prev.map((item) => {
         const avail = getRequestItemAvailableBalance(reviewingRequest, item.itemId);
         const originalReq = reviewingRequest.items.find((r) => r.itemId === item.itemId);
         const reqQty = originalReq ? originalReq.requestedQty : Number(item.approvedQty || 0);
         const capped = Math.max(0, Math.min(reqQty, avail));
-        return { ...item, approvedQty: capped };
+        return {
+          ...item,
+          approvedQty: capped,
+          willNotIssue: capped <= 0,
+          previousApprovedQty: capped > 0 ? capped : (item.previousApprovedQty || reqQty),
+        };
       })
     );
   };
 
-  // 1-Click: Remove all items that have 0 stock from the requisition note
-  const handleRemoveAllOutOfStock = () => {
+  // 1-Click: Put all 0-stock items into idle "Will Not Issue" state without removing them from Request Note
+  const handleMarkOutOfStockWillNotIssue = () => {
     if (!reviewingRequest) return;
-    const outOfStockItems = reviewingRequest.items.filter((r) => {
-      const avail = getRequestItemAvailableBalance(reviewingRequest, r.itemId);
-      return avail <= 0;
-    });
-
-    if (outOfStockItems.length === 0) return;
-
-    outOfStockItems.forEach((r) => {
-      removeStockRequestItem(reviewingRequest.id, r.itemId);
-    });
-
-    const remaining = reviewingRequest.items.filter((r) => {
-      const avail = getRequestItemAvailableBalance(reviewingRequest, r.itemId);
-      return avail > 0;
-    });
-
-    if (remaining.length === 0) {
-      const srcSite = reviewingRequest.sourceSiteId ? sites.find((s) => s.id === reviewingRequest.sourceSiteId) : undefined;
-      const srcName = srcSite && !srcSite.isMainWarehouse ? srcSite.name : 'Central Warehouse';
-      rejectStockRequest(reviewingRequest.id, `All requested items are completely out of stock at ${srcName}`);
-      setReviewingRequest(null);
-    } else {
-      setReviewingRequest({
-        ...reviewingRequest,
-        items: remaining,
-      });
-      setApprovalItems((prev) => prev.filter((item) => remaining.some((r) => r.itemId === item.itemId)));
-    }
+    setApprovalError('');
+    setApprovalItems((prev) =>
+      prev.map((item) => {
+        const avail = getRequestItemAvailableBalance(reviewingRequest, item.itemId);
+        if (avail > 0) return item;
+        const originalReq = reviewingRequest.items.find((r) => r.itemId === item.itemId);
+        const currentNum = Number(item.approvedQty || 0);
+        return {
+          ...item,
+          previousApprovedQty:
+            currentNum > 0 ? currentNum : (item.previousApprovedQty || originalReq?.requestedQty || 1),
+          approvedQty: 0,
+          willNotIssue: true,
+        };
+      })
+    );
   };
 
   const handleExecuteReject = () => {
@@ -650,33 +689,47 @@ export const StockRequestsView: React.FC = () => {
     setRejectionReason('');
   };
 
-  // Direct Accept Handler
+  // Direct Accept Handler (only issues positive approved items; unissued rows stay at 0)
   const handleDirectAccept = (req: StockTransferRequest) => {
-    const fullApprovedItems = req.items.map((r) => ({
-      itemId: r.itemId,
-      receivedQty: r.approvedQty ?? r.requestedQty,
-    }));
+    const fullApprovedItems = req.items.map((r) => {
+      const isNotIssued = Boolean(r.willNotIssue) || (r.approvedQty !== undefined && Number(r.approvedQty) <= 0);
+      return {
+        itemId: r.itemId,
+        receivedQty: isNotIssued ? 0 : (r.approvedQty ?? r.requestedQty),
+      };
+    });
     acceptStockRequest(req.id, fullApprovedItems, 'Directly accepted full dispatched quantity.');
   };
 
-  // Open Edit Received Amount & Accept Dialog
+  // Open Edit Received Amount & Accept Dialog (excludes "Will Not Issue" items from physical gate count)
   const handleOpenEditAcceptModal = (req: StockTransferRequest) => {
     setAcceptingRequest(req);
     setReceivedItems(
-      req.items.map((r) => ({
-        itemId: r.itemId,
-        receivedQty: r.receivedQty ?? (r.approvedQty ?? r.requestedQty),
-      }))
+      req.items.map((r) => {
+        const isNotIssued = Boolean(r.willNotIssue) || (r.approvedQty !== undefined && Number(r.approvedQty) <= 0);
+        return {
+          itemId: r.itemId,
+          receivedQty: isNotIssued ? 0 : (r.receivedQty ?? (r.approvedQty ?? r.requestedQty)),
+        };
+      })
     );
     setAcceptanceNotes('');
   };
 
   const handleConfirmAcceptance = () => {
     if (!acceptingRequest) return;
-    const normalizedReceived = receivedItems.map((item) => ({
-      itemId: item.itemId,
-      receivedQty: Math.max(0, Number(item.receivedQty || 0)),
-    }));
+    const normalizedReceived = acceptingRequest.items.map((origRow) => {
+      const isNotIssued =
+        Boolean(origRow.willNotIssue) || (origRow.approvedQty !== undefined && Number(origRow.approvedQty) <= 0);
+      if (isNotIssued) {
+        return { itemId: origRow.itemId, receivedQty: 0 };
+      }
+      const match = receivedItems.find((item) => item.itemId === origRow.itemId);
+      return {
+        itemId: origRow.itemId,
+        receivedQty: Math.max(0, Number(match?.receivedQty || 0)),
+      };
+    });
     acceptStockRequest(
       acceptingRequest.id,
       normalizedReceived,
@@ -1249,7 +1302,11 @@ export const StockRequestsView: React.FC = () => {
                             {req.items.map((row, idx) => {
                               const itm = items.find((i) => i.id === row.itemId);
                               const isMach = itm ? isMachineryItem(itm) : false;
+                              const isNotIssued =
+                                (req.status === 'Approved / In-Transit' || req.status === 'Accepted') &&
+                                (Boolean(row.willNotIssue) || row.approvedQty === 0);
                               const isPartialRecv =
+                                !isNotIssued &&
                                 row.receivedQty !== undefined &&
                                 row.approvedQty !== undefined &&
                                 row.receivedQty < row.approvedQty;
@@ -1257,7 +1314,9 @@ export const StockRequestsView: React.FC = () => {
                               return (
                                 <div
                                   key={row.itemId}
-                                  className="grid grid-cols-[minmax(0,1fr)_136px] items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-50/70 transition-colors"
+                                  className={`grid grid-cols-[minmax(0,1fr)_136px] items-center gap-1.5 px-2.5 py-1.5 transition-colors ${
+                                    isNotIssued ? 'bg-slate-50/80 opacity-80' : 'hover:bg-slate-50/70'
+                                  }`}
                                 >
                                   {/* Left: Clean Item Name + Code / Type Subtitle */}
                                   <div className="min-w-0">
@@ -1266,7 +1325,9 @@ export const StockRequestsView: React.FC = () => {
                                         {idx + 1}.
                                       </span>
                                       <span
-                                        className="font-bold text-slate-900 text-xs leading-snug truncate"
+                                        className={`font-bold text-xs leading-snug truncate ${
+                                          isNotIssued ? 'text-slate-500' : 'text-slate-900'
+                                        }`}
                                         title={itm?.itemName || 'Material Item'}
                                       >
                                         {itm?.itemName || 'Material Item'}
@@ -1290,6 +1351,11 @@ export const StockRequestsView: React.FC = () => {
                                           Unit: {itm.unit}
                                         </span>
                                       )}
+                                      {isNotIssued && (
+                                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                          Will Not Issue
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
 
@@ -1300,16 +1366,21 @@ export const StockRequestsView: React.FC = () => {
                                     </span>
                                     <span
                                       className={`px-1 py-0.5 rounded font-bold truncate ${
-                                        row.approvedQty !== undefined
+                                        isNotIssued
+                                          ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                                          : row.approvedQty !== undefined
                                           ? 'bg-sky-50 text-sky-900 border border-sky-200/80'
                                           : 'text-slate-300 font-normal'
                                       }`}
+                                      title={isNotIssued ? 'Marked Will Not Issue (kept on Request Note)' : undefined}
                                     >
                                       {row.approvedQty !== undefined ? formatNumber(row.approvedQty) : '—'}
                                     </span>
                                     <span
                                       className={`px-1 py-0.5 rounded font-extrabold truncate ${
-                                        row.receivedQty !== undefined
+                                        isNotIssued
+                                          ? 'bg-slate-100 text-slate-400 border border-slate-200 font-semibold'
+                                          : row.receivedQty !== undefined
                                           ? isPartialRecv
                                             ? 'bg-amber-50 text-amber-800 border border-amber-200'
                                             : 'bg-emerald-50 text-emerald-800 border border-emerald-200/90'
@@ -2397,6 +2468,13 @@ export const StockRequestsView: React.FC = () => {
         );
         const hasShortage = shortageSummary.outOfStockCount > 0 || shortageSummary.partialStockCount > 0;
 
+        const issuingCount = approvalItems.filter(
+          (item) => !item.willNotIssue && Number(item.approvedQty || 0) > 0
+        ).length;
+        const idleCount = approvalItems.filter(
+          (item) => item.willNotIssue || Number(item.approvedQty || 0) <= 0
+        ).length;
+
         return (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-2 sm:p-4 backdrop-blur-xs overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-4xl xl:max-w-5xl w-full p-4 sm:p-5 border border-slate-200 max-h-[94vh] flex flex-col my-auto">
@@ -2443,6 +2521,7 @@ export const StockRequestsView: React.FC = () => {
                   onClick={() => {
                     setReviewingRequest(null);
                     setShowRejectInline(false);
+                    setApprovalError('');
                   }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                 >
@@ -2483,7 +2562,7 @@ export const StockRequestsView: React.FC = () => {
                         type="button"
                         onClick={handleSetAllToAvailable}
                         className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
-                        title="Auto-cap all approved quantities to available stock"
+                        title="Auto-cap approved quantities to available stock and hold 0-stock items as Will Not Issue"
                       >
                         <CheckCircle className="w-3.5 h-3.5 text-amber-200" />
                         <span>⚡ Send Available Only</span>
@@ -2492,12 +2571,12 @@ export const StockRequestsView: React.FC = () => {
                       {shortageSummary.outOfStockCount > 0 && (
                         <button
                           type="button"
-                          onClick={handleRemoveAllOutOfStock}
-                          className="px-2.5 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
-                          title="Remove all items with 0 stock from this requisition note"
+                          onClick={handleMarkOutOfStockWillNotIssue}
+                          className="px-2.5 py-1.5 bg-white hover:bg-amber-100/70 text-amber-900 border border-amber-300 rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Hold all 0-stock items as Will Not Issue (kept on Request Note for audit trail, excluded from site dispatch)"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                          <span>🗑️ Remove Out-of-Stock</span>
+                          <PauseCircle className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Hold Out-of-Stock (Will Not Issue)</span>
                         </button>
                       )}
 
@@ -2532,10 +2611,17 @@ export const StockRequestsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
+                      setApprovalError('');
                       setApprovalItems((prev) =>
                         prev.map((item) => {
                           const req = reviewingRequest.items.find((r) => r.itemId === item.itemId);
-                          return { ...item, approvedQty: req ? req.requestedQty : item.approvedQty };
+                          const fullQty = req ? req.requestedQty : item.approvedQty;
+                          return {
+                            ...item,
+                            approvedQty: fullQty,
+                            willNotIssue: false,
+                            previousApprovedQty: Number(fullQty) || item.previousApprovedQty,
+                          };
                         })
                       );
                     }}
@@ -2543,6 +2629,31 @@ export const StockRequestsView: React.FC = () => {
                   >
                     Set All Full
                   </button>
+                </div>
+              )}
+
+              {/* Audit Trail & Dispatch Status Strip */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 mb-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-slate-800">
+                    Dispatch Summary: <span className="text-emerald-700">{issuingCount} Issuing to Site</span>
+                  </span>
+                  {idleCount > 0 && (
+                    <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                      <PauseCircle className="w-3 h-3" />
+                      {idleCount} Will Not Issue (Idle · Kept on Request Note)
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10.5px] text-slate-500">
+                  Items marked <strong>Will Not Issue</strong> remain on the Request Note ({reviewingRequest.requestNoteNumber}) as proof of site request, while only issued items go to Site Dispatch.
+                </span>
+              </div>
+
+              {approvalError && (
+                <div className="bg-rose-50 border border-rose-300 text-rose-800 rounded-xl px-3 py-2 mb-2.5 text-xs font-semibold flex items-center gap-2 shrink-0">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{approvalError}</span>
                 </div>
               )}
 
@@ -2608,7 +2719,7 @@ export const StockRequestsView: React.FC = () => {
                 </div>
               )}
 
-              {/* Items Table Container: Spacious to display at least 5 rows comfortably without vertical cramped box */}
+              {/* Items Table Container */}
               <div className="border border-slate-200 rounded-xl overflow-x-auto overflow-y-auto min-h-[300px] max-h-[460px] flex-1 mb-2.5 bg-white shadow-2xs">
                 <table className="w-full text-sm text-left min-w-[640px]">
                   <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold text-xs uppercase tracking-wider sticky top-0 z-10">
@@ -2622,18 +2733,19 @@ export const StockRequestsView: React.FC = () => {
                           : 'Main Warehouse Avail.'}
                       </th>
                       <th className="py-2.5 px-3.5 text-right">Site Requested</th>
-                      <th className="py-2.5 px-3.5 text-right w-48 font-bold text-slate-900">Approved Qty to Dispatch</th>
-                      <th className="py-2.5 px-3.5 text-center w-28">Item Action</th>
+                      <th className="py-2.5 px-3.5 text-right w-52 font-bold text-slate-900">Approved Qty to Dispatch</th>
+                      <th className="py-2.5 px-3.5 text-center w-36">Item Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {reviewingRequest.items.map((row) => {
                       const itm = items.find((i) => i.id === row.itemId);
-                      const approvedVal =
-                        approvalItems.find((a) => a.itemId === row.itemId)?.approvedQty ?? row.requestedQty;
+                      const entry = approvalItems.find((a) => a.itemId === row.itemId);
+                      const isIdle = Boolean(entry?.willNotIssue);
+                      const approvedVal = isIdle ? 0 : (entry?.approvedQty ?? row.requestedQty);
                       const approvedNum = Number(approvedVal || 0);
                       const avail = getRequestItemAvailableBalance(reviewingRequest, row.itemId);
-                      const isExceeding = approvedNum > avail;
+                      const isExceeding = !isIdle && approvedNum > avail;
                       const isZeroStock = avail <= 0;
                       const isPartialStock = !isZeroStock && avail < row.requestedQty;
 
@@ -2641,7 +2753,9 @@ export const StockRequestsView: React.FC = () => {
                         <tr
                           key={row.itemId}
                           className={`transition-colors ${
-                            isZeroStock
+                            isIdle
+                              ? 'bg-slate-100/80 hover:bg-slate-100 border-l-4 border-l-slate-400'
+                              : isZeroStock
                               ? 'bg-rose-50/50 hover:bg-rose-50 border-l-4 border-l-rose-500'
                               : isPartialStock
                               ? 'bg-amber-50/40 hover:bg-amber-50 border-l-4 border-l-amber-500'
@@ -2662,14 +2776,22 @@ export const StockRequestsView: React.FC = () => {
                                   📦 Material
                                 </span>
                               )}
+                              {isIdle && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <PauseCircle className="w-3 h-3 text-amber-700" />
+                                  Will Not Issue (Idle)
+                                </span>
+                              )}
                             </div>
-                            <div className="text-sm font-bold text-slate-900 mt-1">{itm?.itemName}</div>
+                            <div className={`text-sm font-bold mt-1 ${isIdle ? 'text-slate-500' : 'text-slate-900'}`}>
+                              {itm?.itemName}
+                            </div>
                             {itm?.description && (
                               <div className="text-xs text-slate-500 italic line-clamp-1 max-w-[260px]">{itm.description}</div>
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono whitespace-nowrap">
-                            <div className="flex flex-col items-end">
+                            <div className={`flex flex-col items-end ${isIdle ? 'opacity-65' : ''}`}>
                               <span className={`font-bold ${isZeroStock ? 'text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200' : isPartialStock ? 'text-amber-600' : 'text-emerald-700'}`}>
                                 {formatNumber(avail)} {itm?.unit}
                               </span>
@@ -2692,105 +2814,143 @@ export const StockRequestsView: React.FC = () => {
                             {formatNumber(row.requestedQty)} <span className="text-[10px] text-slate-400 font-normal">{itm?.unit}</span>
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            <div className="flex flex-col items-end gap-1">
-                              <div className="flex items-center gap-1.5 justify-end">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  value={approvedVal}
-                                  onChange={(e) => {
-                                    const val = e.target.value === '' ? '' : Number(e.target.value);
-                                    setApprovalItems((prev) =>
-                                      prev.map((item) =>
-                                        item.itemId === row.itemId ? { ...item, approvedQty: val } : item
-                                      )
-                                    );
-                                  }}
-                                  placeholder="0"
-                                  className={`w-24 px-2 py-1.5 border rounded-lg text-xs font-mono font-bold text-right focus:outline-none transition-all ${
-                                    isExceeding
-                                      ? 'border-amber-500 bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-500'
-                                      : approvedNum === 0
-                                      ? 'border-rose-300 bg-rose-50/60 text-rose-800 focus:ring-2 focus:ring-rose-500'
-                                      : 'border-slate-300 focus:ring-2 focus:ring-slate-900 bg-white'
-                                  }`}
-                                  title="Enter the approved quantity to dispatch"
-                                />
-                                <span className="text-[11px] text-slate-500">{itm?.unit}</span>
+                            {isIdle ? (
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-200/80 border border-slate-300 text-slate-600 text-xs font-mono font-bold">
+                                  0 {itm?.unit} · Not Issuing
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  Stays on Request Note · Excluded from dispatch
+                                </span>
                               </div>
-
-                              {/* Quick Presets */}
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setApprovalItems((prev) =>
-                                      prev.map((item) =>
-                                        item.itemId === row.itemId ? { ...item, approvedQty: row.requestedQty } : item
-                                      )
-                                    );
-                                  }}
-                                  className="px-1.5 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium transition-colors cursor-pointer"
-                                  title="Approve full requested quantity"
-                                >
-                                  Full
-                                </button>
-                                {avail > 0 && avail !== row.requestedQty && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
+                            ) : (
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="flex items-center gap-1.5 justify-end">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={approvedVal}
+                                    onChange={(e) => {
+                                      setApprovalError('');
+                                      const val = e.target.value === '' ? '' : Number(e.target.value);
                                       setApprovalItems((prev) =>
                                         prev.map((item) =>
-                                          item.itemId === row.itemId ? { ...item, approvedQty: avail } : item
+                                          item.itemId === row.itemId
+                                            ? {
+                                                ...item,
+                                                approvedQty: val,
+                                                willNotIssue: false,
+                                                previousApprovedQty:
+                                                  typeof val === 'number' && val > 0 ? val : item.previousApprovedQty,
+                                              }
+                                            : item
                                         )
                                       );
                                     }}
-                                    className="px-1.5 py-0.5 text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 rounded font-bold transition-colors cursor-pointer border border-amber-200"
-                                    title="Approve max available stock in warehouse"
-                                  >
-                                    Avail ({avail})
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setApprovalItems((prev) =>
-                                      prev.map((item) =>
-                                        item.itemId === row.itemId ? { ...item, approvedQty: 0 } : item
-                                      )
-                                    );
-                                  }}
-                                  className={`px-1.5 py-0.5 text-[10px] rounded transition-colors cursor-pointer ${
-                                    approvedVal === 0
-                                      ? 'bg-rose-200 text-rose-900 font-bold'
-                                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700'
-                                  }`}
-                                  title="Set 0 (Cannot supply this item)"
-                                >
-                                  0
-                                </button>
-                              </div>
+                                    placeholder="0"
+                                    className={`w-24 px-2 py-1.5 border rounded-lg text-xs font-mono font-bold text-right focus:outline-none transition-all ${
+                                      isExceeding
+                                        ? 'border-amber-500 bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-500'
+                                        : approvedNum === 0
+                                        ? 'border-amber-300 bg-amber-50/60 text-amber-800 focus:ring-2 focus:ring-amber-500'
+                                        : 'border-slate-300 focus:ring-2 focus:ring-slate-900 bg-white'
+                                    }`}
+                                    title="Enter the approved quantity to dispatch"
+                                  />
+                                  <span className="text-[11px] text-slate-500">{itm?.unit}</span>
+                                </div>
 
-                              {isExceeding && (
-                                <span className="text-[10px] text-amber-700 font-semibold">
-                                  ⚠️ Exceeds stock ({avail} avail)
-                                </span>
-                              )}
-                            </div>
+                                {/* Quick Presets */}
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setApprovalError('');
+                                      setApprovalItems((prev) =>
+                                        prev.map((item) =>
+                                          item.itemId === row.itemId
+                                            ? {
+                                                ...item,
+                                                approvedQty: row.requestedQty,
+                                                willNotIssue: false,
+                                                previousApprovedQty: row.requestedQty,
+                                              }
+                                            : item
+                                        )
+                                      );
+                                    }}
+                                    className="px-1.5 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium transition-colors cursor-pointer"
+                                    title="Approve full requested quantity"
+                                  >
+                                    Full
+                                  </button>
+                                  {avail > 0 && avail !== row.requestedQty && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setApprovalError('');
+                                        setApprovalItems((prev) =>
+                                          prev.map((item) =>
+                                            item.itemId === row.itemId
+                                              ? {
+                                                  ...item,
+                                                  approvedQty: avail,
+                                                  willNotIssue: false,
+                                                  previousApprovedQty: avail,
+                                                }
+                                              : item
+                                          )
+                                        );
+                                      }}
+                                      className="px-1.5 py-0.5 text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 rounded font-bold transition-colors cursor-pointer border border-amber-200"
+                                      title="Approve max available stock in warehouse"
+                                    >
+                                      Avail ({avail})
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleWillNotIssue(row.itemId)}
+                                    className="px-1.5 py-0.5 text-[10px] rounded transition-colors cursor-pointer bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900"
+                                    title="Set 0 & hold as Will Not Issue"
+                                  >
+                                    0
+                                  </button>
+                                </div>
+
+                                {isExceeding && (
+                                  <span className="text-[10px] text-amber-700 font-semibold">
+                                    ⚠️ Exceeds stock ({avail} avail)
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
 
-                          {/* Remove from Request button */}
+                          {/* Reversible Will Not Issue / Restore Item Action */}
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItemFromRequest(row.itemId)}
-                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs hover:border-rose-300 active:scale-95"
-                              title="Remove item completely from this requisition note"
-                            >
-                              <Trash2 className="w-3 h-3 text-rose-600" />
-                              <span>Remove</span>
-                            </button>
+                            {isIdle ? (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleWillNotIssue(row.itemId)}
+                                className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs active:scale-95"
+                                title="Restore this item so it can be approved and issued to site"
+                              >
+                                <RotateCcw className="w-3 h-3 text-emerald-700" />
+                                <span>Restore</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleWillNotIssue(row.itemId)}
+                                className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs active:scale-95"
+                                title="Hold this item as Will Not Issue (keeps item on Request Note at 0 without deleting)"
+                              >
+                                <PauseCircle className="w-3 h-3 text-amber-700" />
+                                <span>Will Not Issue</span>
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -2836,6 +2996,7 @@ export const StockRequestsView: React.FC = () => {
                     onClick={() => {
                       setReviewingRequest(null);
                       setShowRejectInline(false);
+                      setApprovalError('');
                     }}
                     className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
                   >
@@ -2844,9 +3005,19 @@ export const StockRequestsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleConfirmApproval}
-                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer transition-colors flex items-center gap-1.5"
+                    disabled={issuingCount === 0}
+                    className={`px-5 py-2 rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 ${
+                      issuingCount === 0
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                        : 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
+                    }`}
+                    title={
+                      issuingCount === 0
+                        ? 'Restore at least one item or click Reject Entire Request'
+                        : 'Approve issued items and record Request Note'
+                    }
                   >
-                    <CheckCircle className="w-4 h-4 text-emerald-200" />
+                    <CheckCircle className={`w-4 h-4 ${issuingCount === 0 ? 'text-slate-400' : 'text-emerald-200'}`} />
                     <span>Approve & Issue Request Note</span>
                   </button>
                 </div>
@@ -2857,118 +3028,131 @@ export const StockRequestsView: React.FC = () => {
       })()}
 
       {/* EDIT RECEIVED AMOUNT & ACCEPT MODAL (Site Admin) */}
-      {acceptingRequest && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-6 border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <FileCheck2 className="w-5 h-5 text-emerald-700" />
-                <h3 className="font-semibold text-base text-slate-900">
-                  Verify & Edit Received Amount ({acceptingRequest.requestNoteNumber})
-                </h3>
+      {acceptingRequest && (() => {
+        const issuedRows = acceptingRequest.items.filter(
+          (r) => !r.willNotIssue && (r.approvedQty ?? r.requestedQty) > 0
+        );
+        const heldRowsCount = acceptingRequest.items.length - issuedRows.length;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-6 border border-slate-200">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <FileCheck2 className="w-5 h-5 text-emerald-700" />
+                  <h3 className="font-semibold text-base text-slate-900">
+                    Verify & Edit Received Amount ({acceptingRequest.requestNoteNumber})
+                  </h3>
+                </div>
+                <button onClick={() => setAcceptingRequest(null)} className="p-1 text-slate-400 hover:text-slate-700">✕</button>
               </div>
-              <button onClick={() => setAcceptingRequest(null)} className="p-1 text-slate-400 hover:text-slate-700">✕</button>
-            </div>
 
-            <p className="text-xs text-slate-600 mb-4">
-              Site Admin Receiving Verification: Check physical count delivered to the site gate. If there is a delivery discrepancy (e.g. damaged in-transit or shortage), input the actual counted quantity.
-            </p>
+              <p className="text-xs text-slate-600 mb-3">
+                Site Admin Receiving Verification: Check physical count delivered to the site gate. If there is a delivery discrepancy (e.g. damaged in-transit or shortage), input the actual counted quantity.
+              </p>
 
-            <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-700 border-b border-slate-200 text-xs font-bold uppercase tracking-wider">
-                  <tr>
-                    <th className="py-2.5 px-3.5">Material Description</th>
-                    <th className="py-2.5 px-3.5 text-center">Unit</th>
-                    <th className="py-2.5 px-3.5 text-right">Dispatched Qty</th>
-                    <th className="py-2.5 px-3.5 text-right">Actually Received Qty</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {acceptingRequest.items.map((row) => {
-                    const itm = items.find((i) => i.id === row.itemId);
-                    const recvVal =
-                      receivedItems.find((r) => r.itemId === row.itemId)?.receivedQty ?? (row.approvedQty ?? row.requestedQty);
+              {heldRowsCount > 0 && (
+                <div className="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 font-medium">
+                  Note: <strong>{heldRowsCount}</strong> item(s) on {acceptingRequest.requestNoteNumber} were marked <strong>Will Not Issue</strong> during approval and are excluded from this site delivery.
+                </div>
+              )}
 
-                    return (
-                      <tr key={row.itemId}>
-                        <td className="py-3 px-3.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-xs border border-slate-200">
-                              {itm?.itemCode}
-                            </span>
-                            {itm && isMachineryItem(itm) ? (
-                              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                🚜 Machinery
+              <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-slate-700 border-b border-slate-200 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                      <th className="py-2.5 px-3.5">Material Description</th>
+                      <th className="py-2.5 px-3.5 text-center">Unit</th>
+                      <th className="py-2.5 px-3.5 text-right">Dispatched Qty</th>
+                      <th className="py-2.5 px-3.5 text-right">Actually Received Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {issuedRows.map((row) => {
+                      const itm = items.find((i) => i.id === row.itemId);
+                      const recvVal =
+                        receivedItems.find((r) => r.itemId === row.itemId)?.receivedQty ?? (row.approvedQty ?? row.requestedQty);
+
+                      return (
+                        <tr key={row.itemId}>
+                          <td className="py-3 px-3.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-xs border border-slate-200">
+                                {itm?.itemCode}
                               </span>
-                            ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                📦 Material
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm font-bold text-slate-900 mt-1">{itm?.itemName}</div>
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-medium text-slate-600">{itm?.unit}</td>
-                        <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-600">
-                          {formatNumber(row.approvedQty ?? row.requestedQty)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={recvVal}
-                            onChange={(e) => {
-                              const val = e.target.value === '' ? '' : Number(e.target.value);
-                              setReceivedItems((prev) =>
-                                prev.map((item) =>
-                                  item.itemId === row.itemId ? { ...item, receivedQty: val } : item
-                                )
-                              );
-                            }}
-                            placeholder="0"
-                            className="w-24 px-2 py-1 border border-emerald-400 bg-emerald-50/40 rounded text-xs font-mono font-bold text-right focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                            required
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              {itm && isMachineryItem(itm) ? (
+                                <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                  🚜 Machinery
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  📦 Material
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm font-bold text-slate-900 mt-1">{itm?.itemName}</div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center font-medium text-slate-600">{itm?.unit}</td>
+                          <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-600">
+                            {formatNumber(row.approvedQty ?? row.requestedQty)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={recvVal}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? '' : Number(e.target.value);
+                                setReceivedItems((prev) =>
+                                  prev.map((item) =>
+                                    item.itemId === row.itemId ? { ...item, receivedQty: val } : item
+                                  )
+                                );
+                              }}
+                              placeholder="0"
+                              className="w-24 px-2 py-1 border border-emerald-400 bg-emerald-50/40 rounded text-xs font-mono font-bold text-right focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                              required
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-            <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Receiving Remarks / Notes</label>
-              <textarea
-                value={acceptanceNotes}
-                onChange={(e) => setAcceptanceNotes(e.target.value)}
-                placeholder="e.g. Unloaded and verified at Gate 3. Packaging intact."
-                rows={2}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none"
-              />
-            </div>
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Receiving Remarks / Notes</label>
+                <textarea
+                  value={acceptanceNotes}
+                  onChange={(e) => setAcceptanceNotes(e.target.value)}
+                  placeholder="e.g. Unloaded and verified at Gate 3. Packaging intact."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none"
+                />
+              </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setAcceptingRequest(null)}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmAcceptance}
-                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold shadow-xs"
-              >
-                Accept & Update Site Inventory
-              </button>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setAcceptingRequest(null)}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmAcceptance}
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold shadow-xs"
+                >
+                  Accept & Update Site Inventory
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* PRINTABLE OFFICIAL REQUEST NOTE MODAL */}
       {selectedRequestForPrint && (

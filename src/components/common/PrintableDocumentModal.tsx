@@ -79,6 +79,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
   // Selected template for this print session (auto-enriched with Tenant Company Details from StockContext)
   const [currentTemplateId, setCurrentTemplateId] = useState<string>(activeTemplateId);
+  const [requestPrintMode, setRequestPrintMode] = useState<'request_note' | 'issue_note'>('request_note');
   const activeTemplate: LetterheadTemplate = contextActiveTemplate || letterheadTemplates[0];
 
   const tenantHeaderCompanyName =
@@ -190,6 +191,7 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
 
   // Derive initial doc number & date
   useEffect(() => {
+    setRequestPrintMode('request_note');
     if (document) {
       switch (document.type) {
         case 'REQUEST_NOTE': {
@@ -480,6 +482,16 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           (site?.parentSiteName ? `${site.parentSiteName} (Parent Branch)` : '') ||
           (parentSite ? `${parentSite.name} (Parent Branch)` : '') ||
           'Main Central Warehouse (HQ Logistics)';
+
+        const isApprovedOrAccepted = req.status === 'Approved / In-Transit' || req.status === 'Accepted';
+        const isIssueSlipView = isApprovedOrAccepted && requestPrintMode === 'issue_note';
+        const heldItemsCount = isApprovedOrAccepted
+          ? req.items.filter((row) => Boolean(row.willNotIssue) || row.approvedQty === 0).length
+          : 0;
+        const renderedRows = isIssueSlipView
+          ? req.items.filter((row) => !row.willNotIssue && (row.approvedQty ?? row.requestedQty) > 0)
+          : req.items;
+
         return (
           <div className="space-y-4">
             <div className="text-center my-2">
@@ -491,7 +503,9 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     : { color: effectiveFormat.accentColor || '#0f172a' }
                 }
               >
-                {effectiveFormat.customMainTitle || 'MATERIAL REQUISITION & TRANSFER NOTE'}
+                {isIssueSlipView
+                  ? 'APPROVED STOCK ISSUE & SITE DISPATCH NOTE'
+                  : effectiveFormat.customMainTitle || 'MATERIAL REQUISITION & TRANSFER NOTE'}
               </h2>
             </div>
 
@@ -529,15 +543,19 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                     <th className="py-1.5 px-2 w-[42%] text-left border-r border-black/40 font-extrabold">{colDesc}</th>
                     <th className="py-1.5 px-1 w-[8%] border-r border-black/40 font-extrabold">{colUnit}</th>
                     <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Requested Qty</th>
-                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">Approved Qty</th>
+                    <th className="py-1.5 px-1.5 w-[14%] border-r border-black/40 font-extrabold text-right">
+                      {isIssueSlipView ? 'Issued Qty' : 'Approved Qty'}
+                    </th>
                     <th className="py-1.5 px-1.5 w-[16%] text-right font-extrabold">Received Qty</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black text-black bg-white/90">
-                  {req.items.map((row, idx) => {
+                  {renderedRows.map((row, idx) => {
                     const itm = items.find((i) => i.id === row.itemId);
+                    const isNotIssued =
+                      isApprovedOrAccepted && (Boolean(row.willNotIssue) || row.approvedQty === 0);
                     return (
-                      <tr key={row.itemId} className="h-7">
+                      <tr key={row.itemId} className={`h-7 ${isNotIssued ? 'bg-slate-50 text-slate-600' : ''}`}>
                         <td className="py-1.5 px-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
                         <td className="py-1.5 px-2 text-left border-r border-black font-medium">
                           <div className="flex items-center gap-2">
@@ -556,16 +574,31 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                                 </span>
                               )}
                               <span>{itm?.itemName}</span>
+                              {isNotIssued && (
+                                <span className="ml-1.5 text-[10px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-400">
+                                  Will Not Issue
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="py-1.5 px-1 text-center font-mono border-r border-black">{itm?.unit}</td>
                         <td className="py-1.5 px-1.5 text-right font-mono border-r border-black">{formatNumber(row.requestedQty)}</td>
                         <td className="py-1.5 px-1.5 text-right font-mono font-medium border-r border-black">
-                          {row.approvedQty !== undefined ? formatNumber(row.approvedQty) : '—'}
+                          {isNotIssued
+                            ? '0 (Not Issued)'
+                            : row.approvedQty !== undefined
+                            ? formatNumber(row.approvedQty)
+                            : '—'}
                         </td>
                         <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-900">
-                          {row.receivedQty !== undefined ? formatNumber(row.receivedQty) : (row.approvedQty ? formatNumber(row.approvedQty) : '—')}
+                          {isNotIssued
+                            ? '0'
+                            : row.receivedQty !== undefined
+                            ? formatNumber(row.receivedQty)
+                            : row.approvedQty !== undefined
+                            ? formatNumber(row.approvedQty)
+                            : '—'}
                         </td>
                       </tr>
                     );
@@ -573,6 +606,21 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
                 </tbody>
               </table>
             </div>
+
+            {isIssueSlipView && heldItemsCount > 0 && (
+              <div className="p-2 bg-amber-50 border border-amber-300 rounded text-[11px] text-amber-950">
+                <strong>Dispatch Scope Notice:</strong> {heldItemsCount} item(s) originally requested on{' '}
+                <span className="font-mono font-bold">{req.requestNoteNumber}</span> were marked{' '}
+                <strong>Will Not Issue</strong> and remain recorded on the official Request Note while excluded from this Site Dispatch / Issue Note.
+              </div>
+            )}
+
+            {!isIssueSlipView && heldItemsCount > 0 && (
+              <div className="p-2 bg-slate-50 border border-slate-300 rounded text-[11px] text-slate-700">
+                <strong>Requisition Audit Notice:</strong> All {req.items.length} requested item(s) are preserved above.{' '}
+                {heldItemsCount} item(s) marked <strong>Will Not Issue (0)</strong> were withheld by approving store/admin and excluded from site dispatch.
+              </div>
+            )}
 
             {req.acceptanceNotes && (
               <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700">
@@ -942,6 +990,37 @@ export const PrintableDocumentModal: React.FC<PrintableDocumentModalProps> = ({
           </div>
 
           <div className="flex items-center flex-wrap gap-2">
+            {/* Toggle between full Request Note (audit trail) and Site Dispatch / Issue Note (approved items only) */}
+            {document?.type === 'REQUEST_NOTE' &&
+              (document.data.status === 'Approved / In-Transit' || document.data.status === 'Accepted') && (
+                <div className="inline-flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRequestPrintMode('request_note')}
+                    className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+                      requestPrintMode === 'request_note'
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="Show all originally requested items including Will Not Issue items"
+                  >
+                    Request Note (All Requested)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRequestPrintMode('issue_note')}
+                    className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+                      requestPrintMode === 'issue_note'
+                        ? 'bg-sky-600 text-white'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="Show only approved/issued items sent to site"
+                  >
+                    Issue Note (Approved Only)
+                  </button>
+                </div>
+              )}
+
             {/* Print with Image Option Checkbox */}
             <label className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 px-2.5 py-1.5 rounded-lg border border-amber-500/40 text-xs text-amber-300 font-bold cursor-pointer select-none">
               <input
