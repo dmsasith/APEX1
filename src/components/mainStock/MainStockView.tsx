@@ -663,24 +663,25 @@ export const MainStockView: React.FC = () => {
 
         {/* Tier 2: Separated Tactile Filter Buttons */}
         {activeTab === 'inventory' && (
-          <div className="px-3.5 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2.5 text-xs bg-white">
+          <div className="px-3.5 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2.5 text-xs bg-gradient-to-r from-slate-50/80 via-white to-slate-50/80">
             {/* Classification Buttons */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setItemTypeFilter('all')}
-                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`h-9 px-3.5 rounded-xl border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
                   itemTypeFilter === 'all'
-                    ? 'bg-[#071128] text-white border-[#071128] shadow-xs'
-                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300 hover:text-slate-950 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                    ? 'bg-gradient-to-r from-[#071128] to-[#11244f] text-white border-[#071128] shadow-sm ring-2 ring-[#071128]/15'
+                    : 'bg-slate-100/90 text-slate-800 border-slate-300/90 hover:bg-slate-200/80 hover:border-slate-400 hover:text-slate-950 shadow-2xs'
                 }`}
               >
+                <Layers className={`w-3.5 h-3.5 shrink-0 ${itemTypeFilter === 'all' ? 'text-amber-400' : 'text-slate-600'}`} />
                 <span>All Items</span>
                 <span
-                  className={`px-1.5 py-0.2 rounded font-mono text-[10px] tabular-nums ${
+                  className={`px-1.5 py-0.5 rounded-md font-mono text-[11px] leading-none tabular-nums font-extrabold ${
                     itemTypeFilter === 'all'
-                      ? 'bg-amber-400 text-[#071026] font-bold'
-                      : 'bg-white text-slate-700 border border-slate-200'
+                      ? 'bg-amber-400 text-[#071026]'
+                      : 'bg-white text-slate-800 border border-slate-300'
                   }`}
                 >
                   {activeItems.length}
@@ -689,18 +690,19 @@ export const MainStockView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setItemTypeFilter('Material')}
-                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`h-9 px-3.5 rounded-xl border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
                   itemTypeFilter === 'Material'
-                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
-                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-indigo-50/60 hover:border-indigo-300 hover:text-indigo-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-indigo-700 shadow-sm ring-2 ring-indigo-500/20'
+                    : 'bg-indigo-50/85 text-indigo-900 border-indigo-200/95 hover:bg-indigo-100/90 hover:border-indigo-400 shadow-2xs'
                 }`}
               >
+                <Boxes className={`w-3.5 h-3.5 shrink-0 ${itemTypeFilter === 'Material' ? 'text-indigo-100' : 'text-indigo-600'}`} />
                 <span>Materials & Consumables</span>
                 <span
-                  className={`px-1.5 py-0.2 rounded font-mono text-[10px] tabular-nums ${
+                  className={`px-1.5 py-0.5 rounded-md font-mono text-[11px] leading-none tabular-nums font-extrabold ${
                     itemTypeFilter === 'Material'
-                      ? 'bg-indigo-800 text-white font-bold'
-                      : 'bg-white text-slate-700 border border-slate-200'
+                      ? 'bg-white/20 text-white border border-white/25'
+                      : 'bg-white text-indigo-800 border border-indigo-200'
                   }`}
                 >
                   {materialsCount}
@@ -709,18 +711,19 @@ export const MainStockView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setItemTypeFilter('Machinery')}
-                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`h-9 px-3.5 rounded-xl border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98] ${
                   itemTypeFilter === 'Machinery'
-                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-amber-50/60 hover:border-amber-300 hover:text-amber-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-600 shadow-sm ring-2 ring-amber-400/25'
+                    : 'bg-amber-50/90 text-amber-900 border-amber-200/95 hover:bg-amber-100/90 hover:border-amber-400 shadow-2xs'
                 }`}
               >
+                <Wrench className={`w-3.5 h-3.5 shrink-0 ${itemTypeFilter === 'Machinery' ? 'text-slate-950' : 'text-amber-600'}`} />
                 <span>Machinery & Equipment</span>
                 <span
-                  className={`px-1.5 py-0.2 rounded font-mono text-[10px] tabular-nums ${
+                  className={`px-1.5 py-0.5 rounded-md font-mono text-[11px] leading-none tabular-nums font-extrabold ${
                     itemTypeFilter === 'Machinery'
-                      ? 'bg-amber-800 text-white font-bold'
-                      : 'bg-white text-slate-700 border border-slate-200'
+                      ? 'bg-slate-950/15 text-slate-950 border border-slate-950/15'
+                      : 'bg-white text-amber-800 border border-amber-200'
                   }`}
                 >
                   {machineryCount}
@@ -729,17 +732,17 @@ export const MainStockView: React.FC = () => {
             </div>
 
             {/* Stock Level Buttons & Category Select (Aligned Horizontally) */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setAvailabilityFilter('all');
                   setOnlyAvailable(false);
                 }}
-                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`h-9 px-3.5 rounded-xl border font-bold whitespace-nowrap transition-all cursor-pointer active:scale-[0.98] ${
                   availabilityFilter === 'all' && !onlyAvailable
-                    ? 'bg-[#071128] text-white border-[#071128] shadow-xs'
-                    : 'bg-slate-50/70 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300 hover:text-slate-950 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                    ? 'bg-[#071128] text-white border-[#071128] shadow-sm ring-2 ring-[#071128]/15'
+                    : 'bg-slate-100/90 text-slate-800 border-slate-300/90 hover:bg-slate-200/80 hover:border-slate-400 hover:text-slate-950 shadow-2xs'
                 }`}
               >
                 All
@@ -750,10 +753,10 @@ export const MainStockView: React.FC = () => {
                   setAvailabilityFilter('in-stock');
                   setOnlyAvailable(true);
                 }}
-                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`h-9 px-3 rounded-xl border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
                   availabilityFilter === 'in-stock' || onlyAvailable
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                    : 'bg-slate-50/70 text-emerald-800 border-slate-200 hover:bg-emerald-50/70 hover:border-emerald-300 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-500/20'
+                    : 'bg-emerald-50/90 text-emerald-900 border-emerald-200/95 hover:bg-emerald-100/90 hover:border-emerald-400 shadow-2xs'
                 }`}
               >
                 <CheckCircle2
@@ -761,7 +764,16 @@ export const MainStockView: React.FC = () => {
                     availabilityFilter === 'in-stock' || onlyAvailable ? 'text-white' : 'text-emerald-600'
                   }`}
                 />
-                <span className="tabular-nums">In Stock ({availableStockItemsCount})</span>
+                <span>In Stock</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-md font-mono text-[11px] leading-none tabular-nums font-extrabold ${
+                    availabilityFilter === 'in-stock' || onlyAvailable
+                      ? 'bg-white/20 text-white border border-white/25'
+                      : 'bg-white text-emerald-800 border border-emerald-200'
+                  }`}
+                >
+                  {availableStockItemsCount}
+                </span>
               </button>
               <button
                 type="button"
@@ -769,18 +781,27 @@ export const MainStockView: React.FC = () => {
                   setAvailabilityFilter('low-stock');
                   setOnlyAvailable(false);
                 }}
-                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`h-9 px-3 rounded-xl border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
                   availabilityFilter === 'low-stock'
-                    ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
-                    : 'bg-slate-50/70 text-amber-800 border-slate-200 hover:bg-amber-50/70 hover:border-amber-300 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 border-amber-600 shadow-sm ring-2 ring-amber-400/25'
+                    : 'bg-amber-50/90 text-amber-900 border-amber-200/95 hover:bg-amber-100/90 hover:border-amber-400 shadow-2xs'
                 }`}
               >
                 <AlertTriangle
                   className={`w-3.5 h-3.5 shrink-0 ${
-                    availabilityFilter === 'low-stock' ? 'text-slate-950' : 'text-amber-500'
+                    availabilityFilter === 'low-stock' ? 'text-slate-950' : 'text-amber-600'
                   }`}
                 />
-                <span className="tabular-nums">Low ({lowStockCount})</span>
+                <span>Low</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-md font-mono text-[11px] leading-none tabular-nums font-extrabold ${
+                    availabilityFilter === 'low-stock'
+                      ? 'bg-slate-950/15 text-slate-950 border border-slate-950/15'
+                      : 'bg-white text-amber-800 border border-amber-200'
+                  }`}
+                >
+                  {lowStockCount}
+                </span>
               </button>
               <button
                 type="button"
@@ -788,19 +809,33 @@ export const MainStockView: React.FC = () => {
                   setAvailabilityFilter('out-of-stock');
                   setOnlyAvailable(false);
                 }}
-                className={`h-8 px-3 rounded-lg border font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`h-9 px-3 rounded-xl border font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
                   availabilityFilter === 'out-of-stock'
-                    ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
-                    : 'bg-slate-50/70 text-rose-700 border-slate-200 hover:bg-rose-50/70 hover:border-rose-300 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                    ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white border-rose-700 shadow-sm ring-2 ring-rose-500/20'
+                    : 'bg-rose-50/90 text-rose-800 border-rose-200/95 hover:bg-rose-100/90 hover:border-rose-400 shadow-2xs'
                 }`}
               >
-                <span className="tabular-nums">Out of Stock ({outOfStockCount})</span>
+                <ShieldAlert
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    availabilityFilter === 'out-of-stock' ? 'text-white' : 'text-rose-600'
+                  }`}
+                />
+                <span>Out of Stock</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-md font-mono text-[11px] leading-none tabular-nums font-extrabold ${
+                    availabilityFilter === 'out-of-stock'
+                      ? 'bg-white/20 text-white border border-white/25'
+                      : 'bg-white text-rose-700 border border-rose-200'
+                  }`}
+                >
+                  {outOfStockCount}
+                </span>
               </button>
 
-              <span className="hidden sm:block h-5 w-px bg-slate-200 mx-0.5" aria-hidden="true" />
+              <span className="hidden sm:block h-5 w-px bg-slate-300/80 mx-0.5" aria-hidden="true" />
 
-              <div className="h-8 flex items-center gap-1.5 bg-slate-50/70 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-lg px-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors">
-                <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <div className="h-9 flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-300/90 hover:border-indigo-400 rounded-xl px-3 shadow-2xs transition-colors">
+                <Filter className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
