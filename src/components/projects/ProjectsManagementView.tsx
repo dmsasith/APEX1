@@ -2400,16 +2400,27 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                                 <span className="text-slate-400 text-[11px]">No usage yet</span>
                               )}
 
-                              {freeStockPool.length > 0 && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
-                                  <Gift className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
-                                  <span>
-                                    {effScope === 'sub'
-                                      ? `Main Pool: ${freeStockPool.length} FOC`
-                                      : `FOC Stock: ${freeStockPool.length} items`}
+                              {freeStockPool.length > 0 && (() => {
+                                const poolClients = Array.from(
+                                  new Set(
+                                    freeStockPool.flatMap((f) => f.clientNames || (f.clientName ? [f.clientName] : []))
+                                  )
+                                ).join(', ') || p.customerName || '';
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-50 text-purple-900 border border-purple-200 text-[10px] font-extrabold"
+                                    title={poolClients ? `Client FOC Stock: ${poolClients}` : undefined}
+                                  >
+                                    <Gift className="w-2.5 h-2.5 text-purple-700 shrink-0" />
+                                    <span>
+                                      {effScope === 'sub'
+                                        ? `Main Pool: ${freeStockPool.length} FOC`
+                                        : `FOC Stock: ${freeStockPool.length} items`}
+                                      {poolClients ? ` (${poolClients})` : ''}
+                                    </span>
                                   </span>
-                                </span>
-                              )}
+                                );
+                              })()}
                             </div>
                           </td>
 
@@ -2903,13 +2914,16 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                         <option value="">-- Choose Parent Main Project --</option>
                         {selectableParentProjects.map((mp) => {
                           const mpSite = resolveProjectSite(mp);
-                          const mpFocCount = getProjectFreeStockList(mp.id).length;
+                          const mpFoc = getProjectFreeStockList(mp.id);
+                          const mpClients = Array.from(
+                            new Set(mpFoc.flatMap((f) => f.clientNames || (f.clientName ? [f.clientName] : [])))
+                          ).join(', ') || mp.customerName || '';
                           return (
                             <option key={mp.id} value={mp.id}>
                               [{mp.projectId}] {mp.projectName}
                               {mpSite.siteName ? ` — Area: ${mpSite.siteName}` : ''}
-                              {mp.customerName ? ` — Client: ${mp.customerName}` : ''}
-                              {mpFocCount > 0 ? ` — 🎁 Client FOC Stock (${mpFocCount} items)` : ''}
+                              {mpClients ? ` — Client: ${mpClients}` : ''}
+                              {mpFoc.length > 0 ? ` — 🎁 Client FOC Stock (${mpFoc.length} items)` : ''}
                             </option>
                           );
                         })}
@@ -2918,10 +2932,13 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                     {(() => {
                       const chosenParent = selectableParentProjects.find((mp) => mp.id === parentProjectId);
                       const chosenParentFoc = chosenParent ? getProjectFreeStockList(chosenParent.id) : [];
+                      const chosenClients = Array.from(
+                        new Set(chosenParentFoc.flatMap((f) => f.clientNames || (f.clientName ? [f.clientName] : [])))
+                      ).join(', ') || chosenParent?.customerName || '';
                       if (chosenParent && chosenParentFoc.length > 0) {
                         return (
-                          <p className="text-[11px] text-purple-800 bg-purple-50 border border-purple-200 rounded-lg px-2.5 py-1.5 mt-1.5 font-semibold">
-                            🎁 Client FOC Free Stock Available on [{chosenParent.projectId}] ({chosenParentFoc.length} material item{chosenParentFoc.length > 1 ? 's' : ''}). Any FOC usage in this Site Area Sub-Project will automatically deduct from the Main Project&apos;s FOC balance.
+                          <p className="text-[11px] text-purple-900 bg-purple-50 border border-purple-200 rounded-lg px-2.5 py-1.5 mt-1.5 font-semibold">
+                            🎁 Client FOC Free Stock Available on [{chosenParent.projectId}]{chosenClients ? ` (Client: ${chosenClients})` : ''} ({chosenParentFoc.length} material item{chosenParentFoc.length > 1 ? 's' : ''}). Any FOC usage in this Site Area Sub-Project will automatically deduct from the Main Project&apos;s FOC balance.
                           </p>
                         );
                       }
@@ -3964,16 +3981,25 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
 
             <div className="flex-1 overflow-y-auto space-y-6 pr-1">
               {/* 1. Free Stock Pool Reconciliation (Main Project or Shared Pool) */}
-              {modalFreeStockList.length > 0 && (
+              {modalFreeStockList.length > 0 && (() => {
+                const modalClients = Array.from(
+                  new Set(modalFreeStockList.flatMap((f) => f.clientNames || (f.clientName ? [f.clientName] : [])))
+                ).join(', ') || viewingProjectUsages.customerName || '';
+                return (
                 <div className="bg-slate-900 text-white rounded-xl p-4 border border-slate-800 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Gift className="w-4 h-4 text-indigo-400" />
                       <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">
                         {viewingEffectiveScope === 'sub'
                           ? `Shared Free Stock Pool (Under Main Project: ${modalFreeStockList[0]?.rootProjectName})`
                           : 'Total Main Project Free Stock Reconciliation'}
                       </h4>
+                      {modalClients && (
+                        <span className="px-2 py-0.5 rounded bg-amber-400/20 border border-amber-300/40 text-amber-200 text-[11px] font-extrabold">
+                          Client: {modalClients}
+                        </span>
+                      )}
                     </div>
                     <span className="text-[11px] text-indigo-300 font-semibold">
                       Auto-deducts as Sub-Projects log usage
@@ -3984,7 +4010,7 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                     <table className="w-full text-xs text-left">
                       <thead className="text-[10px] uppercase text-slate-400 border-b border-slate-800">
                         <tr>
-                          <th className="py-2 px-2">Material</th>
+                          <th className="py-2 px-2">Material &amp; Client</th>
                           <th className="py-2 px-2 text-right">Received Under Main</th>
                           {viewingEffectiveScope === 'sub' && (
                             <th className="py-2 px-2 text-right">Used by THIS Sub-Project</th>
@@ -3997,7 +4023,14 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                         {modalFreeStockList.map((row) => (
                           <tr key={row.itemId}>
                             <td className="py-2 px-2 font-sans font-semibold text-white">
-                              [{row.itemCode}] {row.itemName}
+                              <div>[{row.itemCode}] {row.itemName}</div>
+                              {row.clientName && (
+                                <div className="mt-0.5">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-400/20 border border-amber-300/40 text-amber-200 text-[10.5px] font-extrabold">
+                                    🎁 Client: {row.clientName}
+                                  </span>
+                                </div>
+                              )}
                             </td>
                             <td className="py-2 px-2 text-right text-cyan-300 font-bold">
                               {formatNumber(row.totalReceived)} {row.unit}
@@ -4019,7 +4052,8 @@ export const ProjectsManagementView: React.FC<ProjectsManagementViewProps> = ({ 
                     </table>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* 2. Sub-Projects Breakdown (When viewing a Major / Main Project) */}
               {viewingEffectiveScope === 'main' && (

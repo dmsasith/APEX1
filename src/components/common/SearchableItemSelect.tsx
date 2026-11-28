@@ -86,8 +86,9 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
       return {
         available: focStock.centralWarehouseAvailable,
         totalFocReceived: focStock.totalReceived,
+        clientName: focStock.clientName,
         isLow: focStock.totalReceived > 0 && focStock.centralWarehouseAvailable <= 0,
-        label: 'Project FOC HQ Pool',
+        label: focStock.clientName ? `FOC Client: ${focStock.clientName}` : 'Project FOC HQ Pool',
         isFocMode: true,
         siteAvailable: reqSiteStk ? reqSiteStk.availableBalance : undefined,
         siteThreshold: reqSiteStk ? reqSiteStk.threshold : undefined,
@@ -100,6 +101,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
       return {
         available: siteStock.availableBalance,
         totalFocReceived: 0,
+        clientName: '',
         isLow: siteStock.isLowStock,
         label: 'Site Yard Stock',
         isFocMode: false,
@@ -114,6 +116,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
       return {
         available: parentStock.availableBalance,
         totalFocReceived: 0,
+        clientName: '',
         isLow: parentStock.isLowStock,
         label: sourceSiteName ? `${sourceSiteName} Stock` : resolvedSourceSite?.name ? `${resolvedSourceSite.name} Stock` : 'Parent Branch Stock',
         isFocMode: false,
@@ -128,6 +131,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
       return {
         available: mainStock.availableBalance,
         totalFocReceived: 0,
+        clientName: '',
         isLow: mainStock.isLowStock,
         label: 'Central Main Stock',
         isFocMode: false,
@@ -163,7 +167,8 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
         (i.barcode && i.barcode.toLowerCase().includes(q)) ||
         i.itemName.toLowerCase().includes(q) ||
         i.category.toLowerCase().includes(q) ||
-        (i.description && i.description.toLowerCase().includes(q))
+        (i.description && i.description.toLowerCase().includes(q)) ||
+        (stock.clientName && stock.clientName.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
@@ -300,6 +305,14 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                           title={`Site Available Stock: ${formatNumber(stock.siteAvailable)} ${selectedItem.unit} (Min Threshold: ${stock.siteThreshold ?? 0})`}
                         >
                           {stock.siteIsLowOrZero ? '⚠️ ' : ''}Site Avl: {formatNumber(stock.siteAvailable)} {selectedItem.unit}
+                        </span>
+                      )}
+                      {stock.isFocMode && stock.clientName && (
+                        <span
+                          className="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300"
+                          title={`Supplied by FOC Client: ${stock.clientName}`}
+                        >
+                          🎁 Client: {stock.clientName}
                         </span>
                       )}
                       <span
@@ -590,6 +603,11 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                             ⚠️ {stock.siteIsLowActive ? 'Low Site Stock' : (stock.siteAvailable ?? 0) === 0 ? 'Site Avl: 0' : 'Low at Site'}
                           </span>
                         )}
+                        {stock.isFocMode && stock.clientName && (
+                          <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300 shrink-0">
+                            🎁 Client: {stock.clientName}
+                          </span>
+                        )}
                       </div>
 
                       {/* Line 2 (Directly Underneath Item Code): Full Item Name */}
@@ -659,7 +677,7 @@ export const SearchableItemSelect: React.FC<SearchableItemSelectProps> = ({
                                 ? `${isParentBranchSupply ? 'Parent Avl' : 'Main Avl'}: ${formatNumber(stock.available)} ${item.unit}`
                                 : `${formatNumber(stock.available)} ${item.unit}`}
                             </span>
-                            <div className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                            <div className={`text-[10px] mt-0.5 font-semibold ${stock.isFocMode && stock.clientName ? 'text-purple-700 font-bold' : 'text-slate-400'}`}>
                               {stock.label}
                             </div>
                           </div>

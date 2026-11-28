@@ -706,8 +706,18 @@ export const ClientFreeIssueView: React.FC = () => {
           stage1CentralFocReceipt - stage4TotalConsumed
         );
 
+        const itemClientNames = Array.from(
+          new Set([
+            ...initialFocVouchers.map((v) => (v.clientName || '').trim()).filter(Boolean),
+            ...(it.clientNames || (it.clientName ? [it.clientName] : [])),
+          ])
+        );
+        const itemClientLabel = itemClientNames.join(', ');
+
         return {
           ...it,
+          itemClientNames,
+          itemClientLabel,
           stage1CentralFocReceipt,
           stage2SiteIssue,
           centralFocPoolRem,
@@ -755,6 +765,7 @@ export const ClientFreeIssueView: React.FC = () => {
             itemId: fi.itemId,
             itemCode: fi.itemCode,
             itemName: fi.itemName,
+            itemClientLabel: fi.itemClientLabel,
             unit: fi.unit,
             stage1MainCentralFoc: fi.stage1CentralFocReceipt,
             stage2MainSiteIssue: fi.stage2SiteIssue,
@@ -1533,8 +1544,8 @@ export const ClientFreeIssueView: React.FC = () => {
                               </h3>
 
                               <div className="text-xs text-slate-200 flex flex-wrap items-center gap-3 pt-0.5">
-                                <span className="bg-white/10 px-2.5 py-0.5 rounded-md border border-white/15">
-                                  Client: <strong className="text-white">{primaryClientName}</strong>
+                                <span className="bg-amber-400/20 px-2.5 py-0.5 rounded-md border border-amber-300/50 text-amber-200 font-bold">
+                                  🎁 Client: <strong className="text-white">{primaryClientName}</strong>
                                 </span>
                                 <span className="bg-white/10 px-2.5 py-0.5 rounded-md border border-white/15">
                                   FOC Items: <strong className="text-amber-300">{freeItems.length}</strong>
@@ -1730,6 +1741,13 @@ export const ClientFreeIssueView: React.FC = () => {
                                                   <div className="font-bold text-slate-800 mt-0.5">
                                                     {it.itemName}
                                                   </div>
+                                                  {(it.itemClientLabel || primaryClientName) && (
+                                                    <div className="mt-1">
+                                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[10.5px] font-extrabold">
+                                                        🎁 Client: {it.itemClientLabel || primaryClientName}
+                                                      </span>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               </div>
                                             </td>
@@ -2147,6 +2165,13 @@ export const ClientFreeIssueView: React.FC = () => {
                                                 </span>
                                               </div>
                                               <div className="font-semibold text-slate-800">{spIt.itemName}</div>
+                                              {(spIt.itemClientLabel || primaryClientName) && (
+                                                <div className="mt-0.5">
+                                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-extrabold">
+                                                    🎁 Client: {spIt.itemClientLabel || primaryClientName}
+                                                  </span>
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                         </td>

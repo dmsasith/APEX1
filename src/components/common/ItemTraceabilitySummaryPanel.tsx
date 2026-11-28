@@ -1463,15 +1463,25 @@ export const ItemTraceabilitySummaryPanel: React.FC<ItemTraceabilitySummaryPanel
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-200 font-semibold">
               <span className="text-white font-extrabold tracking-tight">{perspectiveTitle}</span>
-              {grandTotals.hasFocFlow && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1 text-indigo-200 font-extrabold">
-                    <Gift className="w-3.5 h-3.5 text-indigo-300" />
-                    Central FOC
-                  </span>
-                </>
-              )}
+              {grandTotals.hasFocFlow && (() => {
+                const focClientLabel = Array.from(
+                  new Set(initialCentralFocReceipts.map((r) => (r.clientName || '').trim()).filter(Boolean))
+                ).join(', ') || targetFocProject?.customerName || '';
+                return (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="inline-flex items-center gap-1 text-indigo-200 font-extrabold">
+                      <Gift className="w-3.5 h-3.5 text-indigo-300" />
+                      Central FOC
+                    </span>
+                    {focClientLabel && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/40 text-amber-200 font-extrabold text-[11px]">
+                        Client: {focClientLabel}
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
               {targetFocProject && (
                 <>
                   <span aria-hidden="true">·</span>

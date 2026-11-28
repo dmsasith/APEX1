@@ -654,13 +654,20 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
         const focItems = getProjectFreeStockList(p.id).filter(
           (fm) => (fm.uninstalledProjectBalance || 0) > 0 || (fm.remainingBalance || 0) > 0
         );
-        const matchingVoucher = (clientFreeIssues || []).find(
+        const matchingVouchers = (clientFreeIssues || []).filter(
           (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id)
+        );
+        const matchingVoucher = matchingVouchers[0];
+        const uniqueClients = Array.from(
+          new Set([
+            ...focItems.flatMap((fi) => fi.clientNames || (fi.clientName ? [fi.clientName] : [])),
+            ...matchingVouchers.map((v) => (v.clientName || '').trim()).filter(Boolean),
+          ])
         );
         return {
           project: p,
           focItems,
-          clientName: matchingVoucher?.clientName || p.customerName || 'Client FOC',
+          clientName: uniqueClients.join(', ') || matchingVoucher?.clientName || p.customerName || 'Client FOC',
           isExactArea,
           isAllAreas:
             branch.siteId === 'ALL_AREAS' ||
@@ -2563,8 +2570,11 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-purple-200/90 mt-0.5">
-                              Client: <strong className="text-white">{bannerFocPool.clientName}</strong> · Items in this pool automatically deduct from Client FOC Stock; all other items deduct from Company Stock.
+                            <div className="text-[11px] text-purple-200/95 mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/60 text-amber-200 font-extrabold">
+                                Client: {bannerFocPool.clientName}
+                              </span>
+                              <span>· Items in this pool automatically deduct from Client FOC Stock; all other items deduct from Company Stock.</span>
                             </div>
                           </div>
                         </div>
@@ -2600,14 +2610,22 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                         {bannerFocPool.focItems.map((fm) => {
                           const focAvail = Math.max(fm.uninstalledProjectBalance || 0, fm.remainingBalance || 0);
+                          const fmClient = fm.clientName || bannerFocPool.clientName;
                           return (
                             <div
                               key={fm.itemId}
                               className="flex items-center justify-between gap-2 bg-white/95 px-2.5 py-1.5 rounded-lg border border-purple-200 font-mono text-[11px]"
                             >
-                              <span className="text-slate-900 font-bold truncate">
-                                [{fm.itemCode}] {fm.itemName}
-                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-slate-900 font-bold truncate">
+                                  [{fm.itemCode}] {fm.itemName}
+                                </div>
+                                {fmClient && (
+                                  <div className="text-[10px] font-sans font-extrabold text-purple-800 truncate">
+                                    Client: {fmClient}
+                                  </div>
+                                )}
+                              </div>
                               <span className="shrink-0 font-extrabold text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
                                 {formatNumber(focAvail)} {fm.unit} Left
                               </span>
@@ -2617,8 +2635,10 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                       </div>
 
                       {detectedAreaFocPools.length > 1 && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] text-purple-200">
-                          <span className="font-bold">Other FOC Pools in this Area/Section:</span>
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-purple-200 border-t border-purple-500/30">
+                          <span className="font-bold text-amber-200">
+                            Multiple Client FOC Pools ({detectedAreaFocPools.length}) — Switch by Client &amp; Project:
+                          </span>
                           {detectedAreaFocPools.map((pool) => {
                             const isActivePool = bannerFocPool.project?.id === pool.project.id;
                             return (
@@ -2637,11 +2657,11 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                 }}
                                 className={`px-2 py-0.5 rounded-md font-bold text-[10px] border cursor-pointer transition ${
                                   isActivePool
-                                    ? 'bg-white text-purple-950 border-white'
+                                    ? 'bg-white text-purple-950 border-white shadow-xs'
                                     : 'bg-purple-900/60 text-purple-100 border-purple-400/50 hover:bg-purple-800/80'
                                 }`}
                               >
-                                [{pool.project.projectId}] {pool.project.projectName}
+                                [{pool.project.projectId}] {pool.project.projectName} · Client: {pool.clientName}
                               </button>
                             );
                           })}
@@ -2787,6 +2807,12 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                             <>
                               {ncCandidateMainProjects.map((mp) => {
                                 const focItems = getProjectFreeStockList(mp.id);
+                                const focClientNames = Array.from(
+                                  new Set(
+                                    focItems.flatMap((fi) => fi.clientNames || (fi.clientName ? [fi.clientName] : []))
+                                  )
+                                ).join(', ');
+                                const clientLabel = focClientNames || mp.customerName || '';
                                 const areaBadge =
                                   mp.siteId === 'ALL_AREAS' || mp.siteName === 'ALL AREAS'
                                     ? '🌐 ALL AREAS'
@@ -2794,7 +2820,9 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                 return (
                                   <option key={mp.id} value={mp.id}>
                                     🏢 [{mp.projectId}] {mp.projectName} ({areaBadge})
-                                    {focItems.length > 0 ? ` — 🎁 ${focItems.length} FOC Item(s)` : ' — Company Stock'}
+                                    {focItems.length > 0
+                                      ? ` — 🎁 ${focItems.length} FOC Item(s)${clientLabel ? ` [Client: ${clientLabel}]` : ''}`
+                                      : ' — Company Stock'}
                                   </option>
                                 );
                               })}
@@ -2802,6 +2830,19 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                             </>
                           )}
                         </select>
+                        {effectiveNcMainProjectObj && projectFreeMaterials.length > 0 && (() => {
+                          const activeFocClients = Array.from(
+                            new Set(
+                              projectFreeMaterials.flatMap((fi) => fi.clientNames || (fi.clientName ? [fi.clientName] : []))
+                            )
+                          ).join(', ') || effectiveNcMainProjectObj.customerName;
+                          if (!activeFocClients) return null;
+                          return (
+                            <div className="mt-1 text-[11px] font-extrabold text-purple-900 bg-purple-50 border border-purple-200 rounded px-2 py-0.5 inline-flex items-center gap-1 self-start">
+                              <span>🎁 FOC Client: {activeFocClients}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       <div className="lg:col-span-6 flex flex-col justify-center bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 min-h-[58px]">
@@ -2875,11 +2916,20 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                 ? `-- Choose Major / Main Project (${targetSection?.code || 'Section'}) --`
                                 : `-- No Major / Main Projects in ${targetSection?.name || 'this Section'} --`}
                             </option>
-                            {mainProjectsList.map((mp) => (
-                              <option key={mp.id} value={mp.id}>
-                                🏢 [{mp.projectId}] {mp.projectName} {mp.customerName ? `(${mp.customerName})` : ''}
-                              </option>
-                            ))}
+                            {mainProjectsList.map((mp) => {
+                              const mpFoc = getProjectFreeStockList(mp.id);
+                              const mpFocClients = Array.from(
+                                new Set(mpFoc.flatMap((fi) => fi.clientNames || (fi.clientName ? [fi.clientName] : [])))
+                              ).join(', ');
+                              const clientDisplay = mpFocClients || mp.customerName || '';
+                              return (
+                                <option key={mp.id} value={mp.id}>
+                                  🏢 [{mp.projectId}] {mp.projectName}
+                                  {mpFoc.length > 0 ? ` — 🎁 ${mpFoc.length} FOC` : ''}
+                                  {clientDisplay ? ` [Client: ${clientDisplay}]` : ''}
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
                         <div>
@@ -3008,14 +3058,31 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                               ? '🏢 [MAIN PROJECT]'
                               : '📄 [INDIVIDUAL]';
                             const pBranch = resolveProjectBranch(p);
+                            const pFoc = getProjectFreeStockList(p.id);
+                            const pFocClients = Array.from(
+                              new Set(pFoc.flatMap((fi) => fi.clientNames || (fi.clientName ? [fi.clientName] : [])))
+                            ).join(', ') || p.customerName || '';
                             return (
                               <option key={p.id} value={p.id}>
-                                {prefix} [{p.projectId}] {p.projectName}{pBranch.siteName ? ` — [Site: ${pBranch.siteName}]` : ''}
+                                {prefix} [{p.projectId}] {p.projectName}{pBranch.siteName ? ` — [Site: ${pBranch.siteName}]` : ''}{pFoc.length > 0 ? ` [🎁 FOC Client: ${pFocClients || 'Client'}]` : ''}
                               </option>
                             );
                           })
                         )}
                       </select>
+                      {activeTargetProject && projectFreeMaterials.length > 0 && (() => {
+                        const selFocClients = Array.from(
+                          new Set(
+                            projectFreeMaterials.flatMap((fi) => fi.clientNames || (fi.clientName ? [fi.clientName] : []))
+                          )
+                        ).join(', ') || activeTargetProject.customerName;
+                        if (!selFocClients) return null;
+                        return (
+                          <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-100 border border-purple-300 text-purple-900 text-[11px] font-extrabold">
+                            <span>🎁 Active FOC Client: {selFocClients}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -3342,6 +3409,12 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                     return !(fb.totalReceived > 0 && ((fb.uninstalledProjectBalance || 0) > 0 || (fb.remainingBalance || 0) > 0));
                   }).length;
 
+                  const activeFocClientsLabel = Array.from(
+                    new Set(
+                      projectFreeMaterials.flatMap((fi) => fi.clientNames || (fi.clientName ? [fi.clientName] : []))
+                    )
+                  ).join(', ');
+
                   return (
                     <div className="mb-3 px-3 py-2 rounded-lg bg-slate-900/50 border border-emerald-300/30 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white">
                       <span className="font-bold flex items-center gap-1.5">
@@ -3350,7 +3423,7 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                       </span>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="px-2 py-0.5 rounded bg-purple-500/30 border border-purple-300/50 font-bold text-purple-100">
-                          🎁 {focMatchedCount} Client FOC Item(s)
+                          🎁 {focMatchedCount} Client FOC Item(s){activeFocClientsLabel ? ` · Client: ${activeFocClientsLabel}` : ''}
                         </span>
                         <span className="px-2 py-0.5 rounded bg-emerald-500/25 border border-emerald-300/40 font-bold text-emerald-100">
                           🏢 {companyMatchedCount} Company Stock Item(s)
@@ -3452,8 +3525,8 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                 </label>
                                 {row.itemId &&
                                   (isRowClientFoc ? (
-                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
-                                      🎁 Client FOC Stock ({formatNumber(rowFocAvail)} {itemObj?.unit || 'units'} Left)
+                                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300">
+                                      🎁 Client FOC ({rowFocInfo?.clientName || existingProjectFocClientId || 'Client'}): {formatNumber(rowFocAvail)} {itemObj?.unit || 'units'} Left
                                     </span>
                                   ) : (
                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -3507,11 +3580,11 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                     prevSiteLocks.length > 0 ? ` [⚠️ ${prevSiteLocks.join(' | ')} — Cannot Use Here]` : '';
                                   const focBal = effectiveFocLookupProjectId
                                     ? getClientFreeStockBalance(effectiveFocLookupProjectId, itm.id)
-                                    : { remainingBalance: 0, uninstalledProjectBalance: 0, totalReceived: 0 };
+                                    : { remainingBalance: 0, uninstalledProjectBalance: 0, totalReceived: 0, clientName: '' };
                                   const focOptAvail = Math.max(focBal.uninstalledProjectBalance || 0, focBal.remainingBalance || 0);
                                   const focTag =
                                     focBal.totalReceived > 0 && focOptAvail > 0
-                                      ? ` [🎁 Client FOC: ${formatNumber(focOptAvail)} ${itm.unit} Left]`
+                                      ? ` [🎁 FOC — Client: ${focBal.clientName || 'Client'}: ${formatNumber(focOptAvail)} ${itm.unit} Left]`
                                       : '';
                                   let resTag = '';
                                   if (itm.isProjectReserved && itm.reservedProjectId) {
@@ -4115,6 +4188,9 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                             {usage.items.map((row) => {
                               const itm = items.find((i) => i.id === row.itemId);
                               const wQty = Number(row.wastageQuantity || 0);
+                              const focLookupId = usage.parentProjectId || usage.projectId;
+                              const focMeta = focLookupId ? getClientFreeStockBalance(focLookupId, row.itemId) : null;
+                              const isFocItemRow = Boolean(focMeta && focMeta.totalReceived > 0);
                               return (
                                 <div
                                   key={row.itemId}
@@ -4126,6 +4202,11 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                   <span className="font-bold text-slate-900 text-sm">
                                     {itm?.itemName || 'Material Item'}
                                   </span>
+                                  {isFocItemRow && focMeta?.clientName && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300">
+                                      🎁 FOC Client: {focMeta.clientName}
+                                    </span>
+                                  )}
                                   <span className="text-slate-300">·</span>
                                   <span className="font-mono font-extrabold text-teal-800 text-sm">
                                     Used: {formatNumber(row.quantity)} {itm?.unit}
@@ -4320,6 +4401,9 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
               {(() => {
                 const projectFocList = getProjectFreeStockList(reconcileProject.id);
                 if (projectFocList.length === 0) return null;
+                const allReconcileClients = Array.from(
+                  new Set(projectFocList.flatMap((f) => f.clientNames || (f.clientName ? [f.clientName] : [])))
+                ).join(', ');
                 return (
                   <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-xs border border-indigo-900">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-indigo-800/60">
@@ -4339,6 +4423,11 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
                               Official Statement
                             </span>
+                            {allReconcileClients && (
+                              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-amber-400/20 text-amber-200 border border-amber-300/40">
+                                Client: {allReconcileClients}
+                              </span>
+                            )}
                           </h4>
                           <p className="text-xs text-indigo-300/80">
                             {isReconcileMainProject
@@ -4356,7 +4445,7 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                         <thead>
                           <tr className="border-b border-indigo-800/80 text-indigo-300 font-bold uppercase text-xs">
                             <th className="py-2 px-3">Item Code</th>
-                            <th className="py-2 px-3">Material Description</th>
+                            <th className="py-2 px-3">Material Description &amp; Client</th>
                             <th className="py-2 px-3 text-right">Received in Main Pool</th>
                             {reconcileProject.parentProjectId && (
                               <th className="py-2 px-3 text-right">Used by THIS Sub-Project</th>
@@ -4378,6 +4467,13 @@ export const ProjectMaterialUsageView: React.FC<ProjectMaterialUsageViewProps> =
                                 <td className="py-2.5 px-3 font-mono font-bold text-white">{foc.itemCode}</td>
                                 <td className="py-2.5 px-3 text-slate-200 font-semibold">
                                   <div>{foc.itemName}</div>
+                                  {foc.clientName && (
+                                    <div className="mt-1">
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-400/20 text-amber-200 border border-amber-300/40 text-[11px] font-extrabold">
+                                        🎁 Client: {foc.clientName}
+                                      </span>
+                                    </div>
+                                  )}
                                   {isReconcileMainProject && foc.subProjectBreakdown && foc.subProjectBreakdown.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-1">
                                       {foc.subProjectBreakdown.map((sb) => (

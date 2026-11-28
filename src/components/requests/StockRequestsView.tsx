@@ -310,10 +310,16 @@ export const StockRequestsView: React.FC = () => {
         const focList = getProjectFreeStockList(p.id);
         const totalFocReceived = focList.reduce((acc, it) => acc + it.totalReceived, 0);
         const totalHqAvail = focList.reduce((acc, it) => acc + it.centralWarehouseAvailable, 0);
-        const matchingVoucher = (clientFreeIssues || []).find(
+        const matchingVouchers = (clientFreeIssues || []).filter(
           (v) => !v.isDeleted && (v.projectId === p.id || v.parentProjectId === p.id)
         );
-        const clientName = p.customerName || matchingVoucher?.clientName || '';
+        const uniqueClientNames = Array.from(
+          new Set([
+            ...focList.flatMap((f) => f.clientNames || (f.clientName ? [f.clientName] : [])),
+            ...matchingVouchers.map((v) => (v.clientName || '').trim()).filter(Boolean),
+          ])
+        );
+        const clientName = uniqueClientNames.join(', ') || p.customerName || matchingVouchers[0]?.clientName || '';
         const resolvedBranch = resolveProjectBranch(p);
         return {
           project: p,
@@ -958,7 +964,14 @@ export const StockRequestsView: React.FC = () => {
                                 {itm?.itemCode || 'ITEM'}
                               </td>
                               <td className="py-3 px-3.5 font-bold text-slate-900">
-                                {itm?.itemName || 'Material Item'}
+                                <div>{itm?.itemName || 'Material Item'}</div>
+                                {(bal.clientName || foc.clientName) && (
+                                  <div className="mt-1">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[11px] font-extrabold">
+                                      🎁 Client: {bal.clientName || foc.clientName}
+                                    </span>
+                                  </div>
+                                )}
                               </td>
                               <td className="py-3 px-3.5 text-center font-medium text-slate-600">{itm?.unit || 'units'}</td>
                               <td className="py-3 px-3.5 text-right font-mono font-bold text-indigo-700">
@@ -968,7 +981,12 @@ export const StockRequestsView: React.FC = () => {
                                 {bal.dispatchedToSites > 0 ? `-${formatNumber(bal.dispatchedToSites)}` : '0'} {itm?.unit}
                               </td>
                               <td className="py-3 px-3.5 text-right font-mono font-extrabold text-emerald-700">
-                                {formatNumber(bal.centralWarehouseAvailable)} {itm?.unit}
+                                <div>{formatNumber(bal.centralWarehouseAvailable)} {itm?.unit}</div>
+                                {(bal.clientName || foc.clientName) && (
+                                  <div className="text-[10px] font-sans font-bold text-indigo-700">
+                                    Client: {bal.clientName || foc.clientName}
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           );
@@ -1267,21 +1285,31 @@ export const StockRequestsView: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-2 align-top">
-                        {req.requestCategory === 'foc' && (req.focProjectName || req.focProjectCode) && (
-                          <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-indigo-50/85 border border-indigo-200/90 text-xs text-indigo-950 shadow-2xs">
+                        {req.requestCategory === 'foc' && (req.focProjectName || req.focProjectCode || req.focClientName) && (
+                          <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-indigo-50/90 border border-indigo-200/90 text-xs text-indigo-950 shadow-2xs">
                             <div className="flex items-center gap-1.5 flex-wrap font-bold">
                               <span className="px-1.5 py-0.5 rounded-md bg-indigo-700 text-white text-[10px] uppercase tracking-wider shrink-0">
                                 {req.focProjectScope === 'main' ? '🏢 Main Project' : '📄 Individual Project'}
                               </span>
-                              <span className="font-mono text-indigo-800">{req.focProjectCode}</span>
-                              <span className="text-indigo-400">·</span>
-                              <span className="truncate">{req.focProjectName}</span>
+                              {req.focProjectCode && <span className="font-mono text-indigo-800">{req.focProjectCode}</span>}
+                              {req.focProjectCode && req.focProjectName && <span className="text-indigo-400">·</span>}
+                              {req.focProjectName && <span className="truncate">{req.focProjectName}</span>}
                             </div>
-                            {req.focClientName && (
-                              <div className="text-[11px] text-indigo-700 mt-0.5">
-                                Client Free Pool: <strong>{req.focClientName}</strong>
-                              </div>
-                            )}
+                            {(() => {
+                              const resolvedClient =
+                                req.focClientName ||
+                                (req.focProjectId
+                                  ? projects.find((p) => p.id === req.focProjectId)?.customerName || ''
+                                  : '');
+                              if (!resolvedClient) return null;
+                              return (
+                                <div className="mt-1">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[11px] font-extrabold">
+                                    🎁 Client: {resolvedClient}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
 
@@ -1870,10 +1898,10 @@ export const StockRequestsView: React.FC = () => {
                             </span>
                           </div>
 
-                          <div className="text-xs text-slate-700 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <div className="text-xs text-slate-700 flex flex-wrap items-center gap-x-3 gap-y-1">
                             {selectedFocProjectMeta.clientName && (
-                              <span>
-                                Client: <strong className="text-slate-900">{selectedFocProjectMeta.clientName}</strong>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-[11px]">
+                                🎁 Client: {selectedFocProjectMeta.clientName}
                               </span>
                             )}
                             <span>
@@ -1935,6 +1963,11 @@ export const StockRequestsView: React.FC = () => {
                                       <span className="text-emerald-700 font-mono">
                                         ({formatNumber(entry.centralWarehouseAvailable)} {itm.unit} avail)
                                       </span>
+                                      {(entry.clientName || selectedFocProjectMeta.clientName) && (
+                                        <span className="block text-[10px] font-extrabold text-purple-800 mt-0.5">
+                                          Client: {entry.clientName || selectedFocProjectMeta.clientName}
+                                        </span>
+                                      )}
                                     </button>
                                   );
                                 })}
@@ -2236,11 +2269,16 @@ export const StockRequestsView: React.FC = () => {
                       ) : (
                         displayedRows.map(({ row, index: originalIndex, item }) => {
                           const isMach = item ? isMachineryItem(item) : false;
+                          const focBal =
+                            item && formRequestCategory === 'foc' && selectedFocProjectMeta
+                              ? getClientFreeStockBalance(selectedFocProjectMeta.project.id, item.id)
+                              : null;
+                          const rowFocClientName = focBal?.clientName || selectedFocProjectMeta?.clientName || '';
                           const availBalance = item
                             ? formParentSite
                               ? getSiteItemStock(formParentSite.id, item.id).availableBalance
-                              : formRequestCategory === 'foc' && selectedFocProjectMeta
-                              ? getClientFreeStockBalance(selectedFocProjectMeta.project.id, item.id).centralWarehouseAvailable
+                              : focBal
+                              ? focBal.centralWarehouseAvailable
                               : getMainWarehouseStock(item.id).availableBalance
                             : 0;
                           const siteStk = item && formSiteId ? getSiteItemStock(formSiteId, item.id) : null;
@@ -2272,8 +2310,8 @@ export const StockRequestsView: React.FC = () => {
                                       </span>
                                     )}
                                     {formRequestCategory === 'foc' && (
-                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                        🎁 Client FOC Pool
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300">
+                                        🎁 Client FOC{rowFocClientName ? `: ${rowFocClientName}` : ' Pool'}
                                       </span>
                                     )}
                                     {item && (
@@ -2352,8 +2390,8 @@ export const StockRequestsView: React.FC = () => {
                                     Parent: {formParentSite.name}
                                   </div>
                                 ) : formRequestCategory === 'foc' ? (
-                                  <div className="text-[10px] font-sans font-semibold text-indigo-600">
-                                    Project FOC Pool
+                                  <div className="text-[10px] font-sans font-extrabold text-purple-800 mt-0.5">
+                                    {rowFocClientName ? `Client: ${rowFocClientName}` : 'Project FOC Pool'}
                                   </div>
                                 ) : (
                                   <div className="text-[10px] font-sans text-slate-400 font-medium mt-0.5">
@@ -2514,6 +2552,19 @@ export const StockRequestsView: React.FC = () => {
                           </span>
                         </>
                       )}
+                      {reviewingRequest.requestCategory === 'foc' && (() => {
+                        const hdrClient =
+                          reviewingRequest.focClientName ||
+                          (reviewingRequest.focProjectId
+                            ? projects.find((p) => p.id === reviewingRequest.focProjectId)?.customerName || ''
+                            : '');
+                        if (!hdrClient) return null;
+                        return (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-[11px]">
+                            🎁 Client: {hdrClient}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -2782,6 +2833,20 @@ export const StockRequestsView: React.FC = () => {
                                   Will Not Issue (Idle)
                                 </span>
                               )}
+                              {reviewingRequest.requestCategory === 'foc' && (() => {
+                                const rowClient =
+                                  (reviewingRequest.focProjectId
+                                    ? getClientFreeStockBalance(reviewingRequest.focProjectId, row.itemId).clientName
+                                    : '') ||
+                                  reviewingRequest.focClientName ||
+                                  '';
+                                if (!rowClient) return null;
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300">
+                                    🎁 Client: {rowClient}
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <div className={`text-sm font-bold mt-1 ${isIdle ? 'text-slate-500' : 'text-slate-900'}`}>
                               {itm?.itemName}

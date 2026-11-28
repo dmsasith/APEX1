@@ -173,6 +173,7 @@ export const SiteInventoriesView: React.FC = () => {
         hasCentralFoc: boolean;
         primaryFocProjectId?: string;
         primaryFocProjectName?: string;
+        primaryFocClientName?: string;
       }
     >();
 
@@ -192,6 +193,7 @@ export const SiteInventoriesView: React.FC = () => {
       let stage1InitialCentralFoc = 0;
       let primaryFocProjectId: string | undefined;
       let primaryFocProjectName: string | undefined;
+      const focClientNamesSet = new Set<string>();
 
       if (stage2SiteFocIssued > 0) {
         const focReqsForItem = siteFocRequests.filter((req) =>
@@ -199,6 +201,9 @@ export const SiteInventoriesView: React.FC = () => {
         );
         const issuedProjectFamilyIds = new Set<string>();
         focReqsForItem.forEach((req) => {
+          if (req.focClientName && req.focClientName.trim()) {
+            focClientNamesSet.add(req.focClientName.trim());
+          }
           if (req.focProjectId) {
             issuedProjectFamilyIds.add(req.focProjectId);
             const p = (projects || []).find((pr) => pr.id === req.focProjectId);
@@ -238,6 +243,9 @@ export const SiteInventoriesView: React.FC = () => {
             const row = (f.items || []).find((i) => i.itemId === item.id);
             if (row && Number(row.quantity) > 0) {
               stage1InitialCentralFoc += Number(row.quantity);
+              if (f.clientName && f.clientName.trim()) {
+                focClientNamesSet.add(f.clientName.trim());
+              }
               if (!primaryFocProjectId) {
                 primaryFocProjectId = f.projectId;
                 primaryFocProjectName = f.projectName;
@@ -252,7 +260,14 @@ export const SiteInventoriesView: React.FC = () => {
             primaryFocProjectName = reqWithProj.focProjectName;
           }
         }
+        if (focClientNamesSet.size === 0 && primaryFocProjectId) {
+          const matchedProj = (projects || []).find((p) => p.id === primaryFocProjectId);
+          if (matchedProj?.customerName?.trim()) {
+            focClientNamesSet.add(matchedProj.customerName.trim());
+          }
+        }
       }
+      const primaryFocClientName = Array.from(focClientNamesSet).join(', ') || undefined;
 
       if (stage2SiteFocIssued > 0 && stage1InitialCentralFoc === 0) {
         stage1InitialCentralFoc = stage2SiteFocIssued;
@@ -359,6 +374,7 @@ export const SiteInventoriesView: React.FC = () => {
         hasCentralFoc,
         primaryFocProjectId,
         primaryFocProjectName,
+        primaryFocClientName,
       });
     });
 
@@ -1385,6 +1401,16 @@ export const SiteInventoriesView: React.FC = () => {
                                 Central FOC
                               </span>
                             )}
+                            {isFocShipment && req.focClientName && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300">
+                                🎁 Client: {req.focClientName}
+                              </span>
+                            )}
+                            {isFocShipment && req.focProjectName && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                Project: {req.focProjectName}
+                              </span>
+                            )}
                           </div>
                           <span className="text-[11px] text-slate-500 font-mono">
                             {formatDateTime(req.approvalDate || req.requestedDate)}
@@ -1697,6 +1723,14 @@ export const SiteInventoriesView: React.FC = () => {
                                 <div className="text-[10px] font-normal text-slate-500 mt-0.5 leading-tight">
                                   {item.category} ({item.unit})
                                 </div>
+                                {rec?.primaryFocClientName && (
+                                  <div
+                                    className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-extrabold max-w-full truncate"
+                                    title={`Client: ${rec.primaryFocClientName}`}
+                                  >
+                                    🎁 Client: {rec.primaryFocClientName}
+                                  </div>
+                                )}
                                 {rec?.primaryFocProjectName && (
                                   <div
                                     className="mt-0.5 text-[10px] font-semibold text-indigo-800 truncate"
@@ -1956,8 +1990,18 @@ export const SiteInventoriesView: React.FC = () => {
                                 </span>
                               </div>
                               <div className="font-bold text-slate-900 mt-0.5 break-words">{itm.itemName}</div>
+                              {rec.primaryFocClientName && (
+                                <div className="mt-1">
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[10.5px] font-extrabold max-w-full truncate"
+                                    title={`Client: ${rec.primaryFocClientName}`}
+                                  >
+                                    🎁 Client: {rec.primaryFocClientName}
+                                  </span>
+                                </div>
+                              )}
                               {rec.primaryFocProjectName && (
-                                <div className="text-[10.5px] text-indigo-700 font-semibold truncate" title={rec.primaryFocProjectName}>
+                                <div className="text-[10.5px] text-indigo-700 font-semibold truncate mt-0.5" title={rec.primaryFocProjectName}>
                                   Project: {rec.primaryFocProjectName}
                                 </div>
                               )}
@@ -2072,11 +2116,11 @@ export const SiteInventoriesView: React.FC = () => {
                           Project: <span className="text-indigo-700">{req.focProjectCode ? `[${req.focProjectCode}] ` : ''}{req.focProjectName}</span>
                         </span>
                       )}
-                      {req.focClientName && (
-                        <>
-                          <span aria-hidden="true" className="text-slate-300">·</span>
-                          <span className="text-xs text-slate-600">Client: <strong>{req.focClientName}</strong></span>
-                        </>
+                      {(req.focClientName ||
+                        (req.focProjectId && projects.find((p) => p.id === req.focProjectId)?.customerName)) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-300 text-xs font-extrabold">
+                          🎁 Client: {req.focClientName || projects.find((p) => p.id === req.focProjectId)?.customerName}
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -2116,7 +2160,12 @@ export const SiteInventoriesView: React.FC = () => {
                                   {itm?.itemCode || 'ITEM'}
                                 </td>
                                 <td className="py-2.5 px-3 font-medium text-slate-800">
-                                  {itm?.itemName || 'Material Item'}
+                                  <div>{itm?.itemName || 'Material Item'}</div>
+                                  {(rec?.primaryFocClientName || req.focClientName) && (
+                                    <div className="mt-0.5 text-[10.5px] font-extrabold text-purple-800">
+                                      Client: {rec?.primaryFocClientName || req.focClientName}
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="py-2.5 px-3 text-center text-slate-600">{itm?.unit || 'units'}</td>
                                 <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">

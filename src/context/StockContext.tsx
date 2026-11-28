@@ -516,6 +516,8 @@ interface StockContextType {
     rootProjectId: string;
     rootProjectName: string;
     isSubProjectPool: boolean;
+    clientName: string;
+    clientNames: string[];
   };
   getProjectFreeStockList: (projectId: string) => Array<{
     itemId: string;
@@ -534,6 +536,8 @@ interface StockContextType {
     rootProjectId: string;
     rootProjectName: string;
     isSubProjectPool: boolean;
+    clientName: string;
+    clientNames: string[];
     subProjectBreakdown: Array<{
       subProjectId: string;
       subProjectCode: string;
@@ -588,6 +592,8 @@ interface StockContextType {
     totalReceived: number;
     companyReceived: number;
     focReceived: number;
+    focClientNames: string[];
+    focClientLabel: string;
     dispatched: number;
     companyDispatched: number;
     focDispatched: number;
@@ -9292,12 +9298,28 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         .map((s) => String(s).trim().toLowerCase())
     );
 
-    const totalReceived = clientFreeIssues
-      .filter((e) => !e.isDeleted && (familyIds.has(e.projectId) || (e.parentProjectId && e.parentProjectId === rootProjectId)))
-      .reduce((sum, entry) => {
-        const row = entry.items.find((it) => it.itemId === itemId);
-        return sum + (row ? Number(row.quantity) || 0 : 0);
-      }, 0);
+    const matchingFocEntries = clientFreeIssues.filter(
+      (e) => !e.isDeleted && (familyIds.has(e.projectId) || (e.parentProjectId && e.parentProjectId === rootProjectId))
+    );
+    const focClientNamesSet = new Set<string>();
+    const totalReceived = matchingFocEntries.reduce((sum, entry) => {
+      const row = entry.items.find((it) => it.itemId === itemId);
+      if (row && Number(row.quantity) > 0 && entry.clientName?.trim()) {
+        focClientNamesSet.add(entry.clientName.trim());
+      }
+      return sum + (row ? Number(row.quantity) || 0 : 0);
+    }, 0);
+    if (focClientNamesSet.size === 0) {
+      matchingFocEntries.forEach((entry) => {
+        if (entry.clientName?.trim()) focClientNamesSet.add(entry.clientName.trim());
+      });
+    }
+    if (focClientNamesSet.size === 0) {
+      const fallbackClient = rootProjObj?.customerName?.trim() || targetProj?.customerName?.trim();
+      if (fallbackClient) focClientNamesSet.add(fallbackClient);
+    }
+    const clientNames = Array.from(focClientNamesSet);
+    const clientName = clientNames.join(', ');
 
     // Check if this item is only stocked in this single root project's FOC pool (and has 0 company GRN stock)
     const companyGrnReceivedForItem = mainStockEntries
@@ -9403,6 +9425,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rootProjectId,
       rootProjectName,
       isSubProjectPool,
+      clientName,
+      clientNames,
     };
   };
 
@@ -9442,21 +9466,40 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...childSubProjects.map((sp) => sp.id),
     ]);
 
-    const itemMap = new Map<string, { itemId: string; itemCode: string; itemName: string; unit: string; totalReceived: number }>();
+    const itemMap = new Map<
+      string,
+      {
+        itemId: string;
+        itemCode: string;
+        itemName: string;
+        unit: string;
+        totalReceived: number;
+        clientNamesSet: Set<string>;
+      }
+    >();
     clientFreeIssues
       .filter((e) => !e.isDeleted && (familyIds.has(e.projectId) || (e.parentProjectId && e.parentProjectId === rootProjectId)))
       .forEach((entry) => {
+        const trimmedClient = entry.clientName?.trim() || '';
         entry.items.forEach((it) => {
           const existing = itemMap.get(it.itemId);
           if (existing) {
             existing.totalReceived += Number(it.quantity) || 0;
+            if (trimmedClient && Number(it.quantity) > 0) {
+              existing.clientNamesSet.add(trimmedClient);
+            }
           } else {
+            const clientSet = new Set<string>();
+            if (trimmedClient && Number(it.quantity) > 0) {
+              clientSet.add(trimmedClient);
+            }
             itemMap.set(it.itemId, {
               itemId: it.itemId,
               itemCode: it.itemCode || '',
               itemName: it.itemName || '',
               unit: it.unit || 'units',
               totalReceived: Number(it.quantity) || 0,
+              clientNamesSet: clientSet,
             });
           }
         });
@@ -9528,6 +9571,16 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
       });
 
+      const itemClientNames = Array.from(info.clientNamesSet);
+      const resolvedClientNames =
+        itemClientNames.length > 0
+          ? itemClientNames
+          : balance.clientNames && balance.clientNames.length > 0
+          ? balance.clientNames
+          : rootProjObj?.customerName?.trim()
+          ? [rootProjObj.customerName.trim()]
+          : [];
+
       return {
         itemId: info.itemId,
         itemCode: info.itemCode,
@@ -9545,6 +9598,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         rootProjectId: balance.rootProjectId,
         rootProjectName: balance.rootProjectName,
         isSubProjectPool: balance.isSubProjectPool,
+        clientNames: resolvedClientNames,
+        clientName: resolvedClientNames.join(', '),
         subProjectBreakdown,
       };
     });
@@ -10421,12 +10476,18 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const companyReceived = loggedCompanyReceived + unloggedPoReceived;
 
+    const focClientsSet = new Set<string>();
     const focReceived = clientFreeIssues
       .filter((entry) => !entry.isDeleted)
       .reduce((sum, entry) => {
         const row = entry.items.find((it) => it.itemId === itemId);
+        if (row && Number(row.quantity) > 0 && entry.clientName?.trim()) {
+          focClientsSet.add(entry.clientName.trim());
+        }
         return sum + (row ? Number(row.quantity) || 0 : 0);
       }, 0);
+    const focClientNames = Array.from(focClientsSet);
+    const focClientLabel = focClientNames.join(', ');
 
     const totalReceived = companyReceived + focReceived;
 
@@ -10520,6 +10581,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       totalReceived,
       companyReceived,
       focReceived,
+      focClientNames,
+      focClientLabel,
       dispatched,
       companyDispatched,
       focDispatched,

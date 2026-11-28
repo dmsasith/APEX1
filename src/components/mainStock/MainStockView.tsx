@@ -998,7 +998,7 @@ export const MainStockView: React.FC = () => {
                             {stock.focReceived > 0 && (
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                  🎁 Includes Client FOC: {formatNumber(stock.focReceived)} {item.unit}
+                                  🎁 Includes Client FOC{stock.focClientLabel ? ` (${stock.focClientLabel})` : ''}: {formatNumber(stock.focReceived)} {item.unit}
                                 </span>
                                 {stock.companyReceived > 0 && (
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
