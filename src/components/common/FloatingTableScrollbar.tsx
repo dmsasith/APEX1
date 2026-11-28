@@ -1,87 +1,168 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, MoveHorizontal } from 'lucide-react';
 
+interface CachedMetrics {
+  scrollWidth: number;
+  clientWidth: number;
+  maxScroll: number;
+  trackWidth: number;
+  thumbPx: number;
+  usableTrackPx: number;
+}
+
 export const FloatingTableScrollbar: React.FC = () => {
   const [activeContainer, setActiveContainer] = useState<HTMLElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [edges, setEdges] = useState<{ canLeft: boolean; canRight: boolean }>({
-    canLeft: false,
-    canRight: false,
-  });
   const [isDragging, setIsDragging] = useState(false);
 
+  const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const thumbRef = useRef<HTMLDivElement | null>(null);
   const percentRef = useRef<HTMLSpanElement | null>(null);
+  const leftBtnRef = useRef<HTMLButtonElement | null>(null);
+  const rightBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const lastInteractedRef = useRef<HTMLElement | null>(null);
   const activeContainerRef = useRef<HTMLElement | null>(null);
   const rafPaintRef = useRef<number | null>(null);
   const holdPanRafRef = useRef<number | null>(null);
+  const wheelRafRef = useRef<number | null>(null);
+  const pendingWheelDeltaRef = useRef<number>(0);
+
+  const metricsRef = useRef<CachedMetrics>({
+    scrollWidth: 0,
+    clientWidth: 0,
+    maxScroll: 1,
+    trackWidth: 0,
+    thumbPx: 44,
+    usableTrackPx: 1,
+  });
+
+  const lastPctRef = useRef<string>('');
+  const lastEdgesRef = useRef<{ canLeft: boolean; canRight: boolean }>({
+    canLeft: false,
+    canRight: false,
+  });
 
   const dragStateRef = useRef<{
     startX: number;
+    latestX: number;
     startScrollLeft: number;
     maxScroll: number;
-    thumbPx: number;
     usableTrackPx: number;
+    rafId: number | null;
   } | null>(null);
 
   activeContainerRef.current = activeContainer;
 
-  // Direct DOM paint via GPU translate3d — ZERO React re-renders during scroll/drag
-  const paintScrollbarNow = useCallback((el?: HTMLElement | null) => {
+  const updateEdgeButtonsDom = useCallback((canLeft: boolean, canRight: boolean) => {
+    const prev = lastEdgesRef.current;
+    if (prev.canLeft === canLeft && prev.canRight === canRight) return;
+    lastEdgesRef.current = { canLeft, canRight };
+
+    const leftBtn = leftBtnRef.current;
+    if (leftBtn) {
+      leftBtn.disabled = !canLeft;
+      leftBtn.className = `w-7 h-7 rounded-xl flex items-center justify-center border shrink-0 ${
+        canLeft
+          ? 'bg-white/12 hover:bg-emerald-500/25 text-white border-white/15 hover:border-emerald-400/50 cursor-pointer active:scale-95'
+          : 'bg-white/5 text-slate-500 border-white/5 cursor-not-allowed'
+      }`;
+    }
+
+    const rightBtn = rightBtnRef.current;
+    if (rightBtn) {
+      rightBtn.disabled = !canRight;
+      rightBtn.className = `w-7 h-7 rounded-xl flex items-center justify-center border shrink-0 ${
+        canRight
+          ? 'bg-white/12 hover:bg-emerald-500/25 text-white border-white/15 hover:border-emerald-400/50 cursor-pointer active:scale-95'
+          : 'bg-white/5 text-slate-500 border-white/5 cursor-not-allowed'
+      }`;
+    }
+  }, []);
+
+  // Measure layout dimensions ONLY when container changes or resizes (never per scroll frame)
+  const refreshMetrics = useCallback((el?: HTMLElement | null): CachedMetrics | null => {
     const target = el ?? activeContainerRef.current;
     const trackEl = trackRef.current;
     const thumbEl = thumbRef.current;
-    const pctEl = percentRef.current;
-    if (!target) return;
+    if (!target) return null;
 
     const scrollWidth = target.scrollWidth;
     const clientWidth = target.clientWidth;
-    const scrollLeft = target.scrollLeft;
-
     if (scrollWidth <= clientWidth + 6) {
       setIsVisible(false);
-      return;
+      return null;
     }
 
     const maxScroll = Math.max(1, scrollWidth - clientWidth);
-    const clampedLeft = Math.max(0, Math.min(maxScroll, scrollLeft));
-    const ratio = clampedLeft / maxScroll;
+    const trackWidth = trackEl ? trackEl.clientWidth : metricsRef.current.trackWidth || 320;
+    const thumbWidthPct = Math.max(0.18, Math.min(0.82, clientWidth / scrollWidth));
+    const thumbPx = Math.max(40, Math.round(trackWidth * thumbWidthPct));
+    const usableTrackPx = Math.max(1, trackWidth - thumbPx);
 
-    if (trackEl && thumbEl) {
-      const trackWidth = trackEl.clientWidth;
-      if (trackWidth > 0) {
-        const thumbWidthPct = Math.max(0.18, Math.min(0.82, clientWidth / scrollWidth));
-        const thumbPx = Math.max(36, Math.round(trackWidth * thumbWidthPct));
-        const usableTrackPx = Math.max(1, trackWidth - thumbPx);
-        const thumbX = Math.round(ratio * usableTrackPx);
-        thumbEl.style.width = `${thumbPx}px`;
+    if (thumbEl && metricsRef.current.thumbPx !== thumbPx) {
+      thumbEl.style.width = `${thumbPx}px`;
+    }
+
+    const next: CachedMetrics = {
+      scrollWidth,
+      clientWidth,
+      maxScroll,
+      trackWidth,
+      thumbPx,
+      usableTrackPx,
+    };
+    metricsRef.current = next;
+    return next;
+  }, []);
+
+  // Pure transform paint using cached metrics — ZERO reflows and ZERO React re-renders
+  const paintThumbFromScrollLeft = useCallback(
+    (scrollLeftValue: number) => {
+      const m = metricsRef.current;
+      const clampedLeft = Math.max(0, Math.min(m.maxScroll, scrollLeftValue));
+      const ratio = clampedLeft / m.maxScroll;
+
+      const thumbEl = thumbRef.current;
+      if (thumbEl) {
+        const thumbX = Math.round(ratio * m.usableTrackPx);
         thumbEl.style.transform = `translate3d(${thumbX}px, 0, 0)`;
       }
-    }
 
-    if (pctEl) {
-      pctEl.textContent = `${Math.round(ratio * 100)}%`;
-    }
+      const pctText = `${Math.round(ratio * 100)}%`;
+      if (percentRef.current && lastPctRef.current !== pctText) {
+        lastPctRef.current = pctText;
+        percentRef.current.textContent = pctText;
+      }
 
-    const nextCanLeft = clampedLeft > 2;
-    const nextCanRight = clampedLeft < maxScroll - 2;
-    setEdges((prev) =>
-      prev.canLeft === nextCanLeft && prev.canRight === nextCanRight
-        ? prev
-        : { canLeft: nextCanLeft, canRight: nextCanRight }
-    );
-  }, []);
+      updateEdgeButtonsDom(clampedLeft > 2, clampedLeft < m.maxScroll - 2);
+    },
+    [updateEdgeButtonsDom]
+  );
+
+  const paintScrollbarNow = useCallback(
+    (el?: HTMLElement | null) => {
+      const target = el ?? activeContainerRef.current;
+      if (!target) return;
+      if (metricsRef.current.scrollWidth === 0 || metricsRef.current.trackWidth === 0) {
+        if (!refreshMetrics(target)) return;
+      }
+      paintThumbFromScrollLeft(target.scrollLeft);
+    },
+    [refreshMetrics, paintThumbFromScrollLeft]
+  );
 
   const schedulePaint = useCallback(() => {
     if (rafPaintRef.current !== null) return;
     rafPaintRef.current = window.requestAnimationFrame(() => {
       rafPaintRef.current = null;
-      paintScrollbarNow();
+      const target = activeContainerRef.current;
+      if (target) {
+        paintThumbFromScrollLeft(target.scrollLeft);
+      }
     });
-  }, [paintScrollbarNow]);
+  }, [paintThumbFromScrollLeft]);
 
   const findBestOverflowingTableContainer = useCallback((): HTMLElement | null => {
     if (typeof document === 'undefined') return null;
@@ -126,14 +207,16 @@ export const FloatingTableScrollbar: React.FC = () => {
     const best = findBestOverflowingTableContainer();
     setActiveContainer((prev) => (prev === best ? prev : best));
     if (best) {
+      best.style.scrollBehavior = 'auto';
       setIsVisible(best.scrollWidth > best.clientWidth + 6);
-      paintScrollbarNow(best);
+      refreshMetrics(best);
+      paintThumbFromScrollLeft(best.scrollLeft);
     } else {
       setIsVisible(false);
     }
-  }, [findBestOverflowingTableContainer, paintScrollbarNow]);
+  }, [findBestOverflowingTableContainer, refreshMetrics, paintThumbFromScrollLeft]);
 
-  // Lightweight observer for structural DOM changes, resize, and vertical page scroll
+  // Lightweight observer for structural DOM changes, resize, vertical scroll, and Shift+Wheel fast pan
   useEffect(() => {
     let rafSyncId: number | null = null;
     let mutationTimer: number | null = null;
@@ -153,13 +236,12 @@ export const FloatingTableScrollbar: React.FC = () => {
       mutationTimer = window.setTimeout(() => {
         mutationTimer = null;
         scheduleSync();
-      }, 90);
+      }, 140);
     };
 
     scheduleSync();
 
     const mainEl = document.querySelector('main');
-    // Watch structural subtree changes ONLY (never attribute/hover churn!)
     const mutationObserver = mainEl
       ? new MutationObserver(scheduleDebouncedSync)
       : null;
@@ -179,7 +261,6 @@ export const FloatingTableScrollbar: React.FC = () => {
       const target = e.target as HTMLElement | null;
       const container = target?.closest?.('.overflow-x-auto') as HTMLElement | null;
       if (!container) return;
-      // Fast O(1) exit if already tracking this exact table container
       if (container === activeContainerRef.current) {
         lastInteractedRef.current = container;
         return;
@@ -190,39 +271,77 @@ export const FloatingTableScrollbar: React.FC = () => {
       }
     };
 
+    // Accelerate Shift + Mouse Wheel horizontal panning directly on wide tables (rAF batched)
+    const handleTableWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      const container = target?.closest?.('.overflow-x-auto') as HTMLElement | null;
+      if (!container) return;
+
+      if (container !== activeContainerRef.current) {
+        if (container.scrollWidth > container.clientWidth + 6 && container.querySelector('table')) {
+          lastInteractedRef.current = container;
+          scheduleSync();
+        }
+      }
+
+      // If user holds Shift + Mouse Wheel vertically over a wide table, pan fast & smoothly
+      if (e.shiftKey && Math.abs(e.deltaY) > 0 && Math.abs(e.deltaX) < 4) {
+        if (container.scrollWidth <= container.clientWidth + 6) return;
+        e.preventDefault();
+        container.style.scrollBehavior = 'auto';
+        pendingWheelDeltaRef.current += e.deltaY * 2.2;
+        if (wheelRafRef.current === null) {
+          wheelRafRef.current = window.requestAnimationFrame(() => {
+            wheelRafRef.current = null;
+            const d = pendingWheelDeltaRef.current;
+            pendingWheelDeltaRef.current = 0;
+            if (d !== 0) {
+              container.scrollLeft += d;
+              if (container === activeContainerRef.current) {
+                paintThumbFromScrollLeft(container.scrollLeft);
+              }
+            }
+          });
+        }
+      }
+    };
+
     window.addEventListener('resize', scheduleSync, { passive: true });
     window.addEventListener('scroll', scheduleSync, { passive: true });
     mainEl?.addEventListener('pointerdown', handlePointerHint, { passive: true });
-    mainEl?.addEventListener('wheel', handlePointerHint, { passive: true });
+    mainEl?.addEventListener('wheel', handleTableWheel, { passive: false });
 
     return () => {
       if (rafSyncId !== null) window.cancelAnimationFrame(rafSyncId);
       if (mutationTimer !== null) window.clearTimeout(mutationTimer);
+      if (wheelRafRef.current !== null) window.cancelAnimationFrame(wheelRafRef.current);
       mutationObserver?.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener('resize', scheduleSync);
       window.removeEventListener('scroll', scheduleSync);
       mainEl?.removeEventListener('pointerdown', handlePointerHint);
-      mainEl?.removeEventListener('wheel', handlePointerHint);
+      mainEl?.removeEventListener('wheel', handleTableWheel);
     };
-  }, [syncTargetContainer]);
+  }, [syncTargetContainer, paintThumbFromScrollLeft]);
 
-  // Attach fast passive scroll listener + resize observer to active container
+  // Attach fast passive scroll listener + resize observer to active container & track
   useEffect(() => {
     if (!activeContainer) return;
 
+    activeContainer.style.scrollBehavior = 'auto';
+
     const handleTableScroll = () => {
-      // Skip redundant rAF scheduling if thumb drag is already driving scrollLeft + thumb position
-      if (dragStateRef.current) return;
+      if (dragStateRef.current || holdPanRafRef.current !== null) return;
       schedulePaint();
     };
 
     const containerResizeObserver = new ResizeObserver(() => {
-      if (activeContainer.scrollWidth <= activeContainer.clientWidth + 6) {
+      const m = refreshMetrics(activeContainer);
+      if (!m) {
         setIsVisible(false);
       } else {
         setIsVisible(true);
-        schedulePaint();
+        paintThumbFromScrollLeft(activeContainer.scrollLeft);
       }
     });
 
@@ -231,9 +350,13 @@ export const FloatingTableScrollbar: React.FC = () => {
     if (tableChild) {
       containerResizeObserver.observe(tableChild);
     }
+    if (trackRef.current) {
+      containerResizeObserver.observe(trackRef.current);
+    }
 
     activeContainer.addEventListener('scroll', handleTableScroll, { passive: true });
-    paintScrollbarNow(activeContainer);
+    refreshMetrics(activeContainer);
+    paintThumbFromScrollLeft(activeContainer.scrollLeft);
 
     return () => {
       activeContainer.removeEventListener('scroll', handleTableScroll);
@@ -243,14 +366,18 @@ export const FloatingTableScrollbar: React.FC = () => {
         rafPaintRef.current = null;
       }
     };
-  }, [activeContainer, paintScrollbarNow, schedulePaint]);
+  }, [activeContainer, refreshMetrics, paintThumbFromScrollLeft, schedulePaint]);
 
-  // Ensure initial thumb width/position paints as soon as the bar mounts into DOM
+  // Ensure initial thumb width/position & button states paint cleanly whenever the bar mounts into DOM
   useEffect(() => {
     if (isVisible && activeContainer) {
-      paintScrollbarNow(activeContainer);
+      lastPctRef.current = '';
+      lastEdgesRef.current = { canLeft: false, canRight: false };
+      metricsRef.current.thumbPx = 0;
+      refreshMetrics(activeContainer);
+      paintThumbFromScrollLeft(activeContainer.scrollLeft);
     }
-  }, [isVisible, activeContainer, paintScrollbarNow]);
+  }, [isVisible, activeContainer, refreshMetrics, paintThumbFromScrollLeft]);
 
   // Cleanup any active hold-to-pan loop on unmount
   useEffect(() => {
@@ -261,49 +388,50 @@ export const FloatingTableScrollbar: React.FC = () => {
     };
   }, []);
 
-  // Zero-reflow, 1:1 GPU-composited pointer drag across the scrollbar track
+  // Single-rAF-per-frame, zero-reflow pointer drag across the scrollbar track
   useEffect(() => {
     if (!isDragging) return;
 
     const prevUserSelect = document.body.style.userSelect;
     document.body.style.userSelect = 'none';
 
-    const handlePointerMove = (e: PointerEvent) => {
-      const targetEl = activeContainerRef.current;
+    const flushDragFrame = () => {
       const drag = dragStateRef.current;
-      const thumbEl = thumbRef.current;
-      const pctEl = percentRef.current;
-      if (!targetEl || !drag) return;
+      const targetEl = activeContainerRef.current;
+      if (!drag || !targetEl) return;
+      drag.rafId = null;
 
-      const deltaX = e.clientX - drag.startX;
+      const deltaX = drag.latestX - drag.startX;
       const scrollDelta = (deltaX / drag.usableTrackPx) * drag.maxScroll;
       const nextScrollLeft = Math.max(0, Math.min(drag.maxScroll, drag.startScrollLeft + scrollDelta));
 
       targetEl.scrollLeft = nextScrollLeft;
+      paintThumbFromScrollLeft(nextScrollLeft);
+    };
 
-      // Update thumb GPU transform + percentage directly with zero DOM layout reads
-      const ratio = nextScrollLeft / drag.maxScroll;
-      if (thumbEl) {
-        const thumbX = Math.round(ratio * drag.usableTrackPx);
-        thumbEl.style.transform = `translate3d(${thumbX}px, 0, 0)`;
+    const handlePointerMove = (e: PointerEvent) => {
+      const drag = dragStateRef.current;
+      if (!drag) return;
+      drag.latestX = e.clientX;
+      if (drag.rafId === null) {
+        drag.rafId = window.requestAnimationFrame(flushDragFrame);
       }
-      if (pctEl) {
-        pctEl.textContent = `${Math.round(ratio * 100)}%`;
-      }
-
-      const nextCanLeft = nextScrollLeft > 2;
-      const nextCanRight = nextScrollLeft < drag.maxScroll - 2;
-      setEdges((prev) =>
-        prev.canLeft === nextCanLeft && prev.canRight === nextCanRight
-          ? prev
-          : { canLeft: nextCanLeft, canRight: nextCanRight }
-      );
     };
 
     const handlePointerUp = () => {
+      const drag = dragStateRef.current;
+      if (drag?.rafId !== null && drag?.rafId !== undefined) {
+        window.cancelAnimationFrame(drag.rafId);
+      }
+      if (drag && activeContainerRef.current) {
+        const deltaX = drag.latestX - drag.startX;
+        const scrollDelta = (deltaX / drag.usableTrackPx) * drag.maxScroll;
+        const finalLeft = Math.max(0, Math.min(drag.maxScroll, drag.startScrollLeft + scrollDelta));
+        activeContainerRef.current.scrollLeft = finalLeft;
+        paintThumbFromScrollLeft(finalLeft);
+      }
       dragStateRef.current = null;
       setIsDragging(false);
-      paintScrollbarNow();
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
@@ -316,7 +444,7 @@ export const FloatingTableScrollbar: React.FC = () => {
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [isDragging, paintScrollbarNow]);
+  }, [isDragging, paintThumbFromScrollLeft]);
 
   if (!activeContainer || !isVisible) {
     return null;
@@ -329,32 +457,44 @@ export const FloatingTableScrollbar: React.FC = () => {
     }
   };
 
-  // Hold arrow button for silky 60fps fast glide, or quick tap for instant jump step
+  // Hold arrow button for high-speed 60fps glide without DOM layout reads inside tick
   const startHoldPan = (direction: -1 | 1) => {
-    if (!activeContainer) return;
+    const target = activeContainerRef.current;
+    if (!target) return;
     stopHoldPan();
-    activeContainer.style.scrollBehavior = 'auto';
+    target.style.scrollBehavior = 'auto';
+    const m = refreshMetrics(target) || metricsRef.current;
 
-    // Immediate snappy step on press
-    const immediateStep = Math.max(180, Math.round(activeContainer.clientWidth * 0.35));
-    activeContainer.scrollLeft += direction * immediateStep;
-    paintScrollbarNow(activeContainer);
+    const immediateStep = Math.max(260, Math.round(m.clientWidth * 0.45));
+    let virtualScrollLeft = Math.max(0, Math.min(m.maxScroll, target.scrollLeft + direction * immediateStep));
+    target.scrollLeft = virtualScrollLeft;
+    paintThumbFromScrollLeft(virtualScrollLeft);
 
-    let holdStartedAt = performance.now();
+    const holdStartedAt = performance.now();
     let lastFrameAt = holdStartedAt;
 
     const tick = (now: number) => {
-      const target = activeContainerRef.current;
-      if (!target) {
+      const currentTarget = activeContainerRef.current;
+      if (!currentTarget) {
         holdPanRafRef.current = null;
         return;
       }
-      // Start continuous fast glide after 190ms press-and-hold
-      if (now - holdStartedAt > 190) {
+      if (now - holdStartedAt > 75) {
         const dt = Math.min(40, now - lastFrameAt) / 1000;
-        const speedPxPerSec = Math.max(1200, target.clientWidth * 1.6);
-        target.scrollLeft += direction * speedPxPerSec * dt;
-        paintScrollbarNow(target);
+        const speedPxPerSec = Math.max(2400, metricsRef.current.clientWidth * 2.8);
+        virtualScrollLeft = Math.max(
+          0,
+          Math.min(metricsRef.current.maxScroll, virtualScrollLeft + direction * speedPxPerSec * dt)
+        );
+        currentTarget.scrollLeft = virtualScrollLeft;
+        paintThumbFromScrollLeft(virtualScrollLeft);
+        if (
+          (direction < 0 && virtualScrollLeft <= 0) ||
+          (direction > 0 && virtualScrollLeft >= metricsRef.current.maxScroll)
+        ) {
+          holdPanRafRef.current = null;
+          return;
+        }
       }
       lastFrameAt = now;
       holdPanRafRef.current = window.requestAnimationFrame(tick);
@@ -363,37 +503,55 @@ export const FloatingTableScrollbar: React.FC = () => {
     holdPanRafRef.current = window.requestAnimationFrame(tick);
   };
 
+  // Clicking anywhere on the track immediately jumps AND allows smooth dragging in one motion
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!activeContainer || !trackRef.current) return;
-    const rect = trackRef.current.getBoundingClientRect();
-    const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
-    const maxScroll = Math.max(1, activeContainer.scrollWidth - activeContainer.clientWidth);
-    activeContainer.style.scrollBehavior = 'auto';
-    activeContainer.scrollLeft = clickRatio * maxScroll;
-    paintScrollbarNow(activeContainer);
-  };
-
-  const handleThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
     const targetEl = activeContainerRef.current;
     const trackEl = trackRef.current;
     if (!targetEl || !trackEl) return;
 
     targetEl.style.scrollBehavior = 'auto';
-    const trackWidth = trackEl.clientWidth;
-    const scrollWidth = targetEl.scrollWidth;
-    const clientWidth = targetEl.clientWidth;
-    const maxScroll = Math.max(1, scrollWidth - clientWidth);
-    const thumbWidthPct = Math.max(0.18, Math.min(0.82, clientWidth / scrollWidth));
-    const thumbPx = Math.max(36, Math.round(trackWidth * thumbWidthPct));
-    const usableTrackPx = Math.max(1, trackWidth - thumbPx);
+    const m = refreshMetrics(targetEl) || metricsRef.current;
+    const rect = trackEl.getBoundingClientRect();
+    const clickX = e.clientX - rect.left - m.thumbPx / 2;
+    const clickRatio = Math.max(0, Math.min(1, clickX / m.usableTrackPx));
+    const jumpedLeft = clickRatio * m.maxScroll;
+
+    targetEl.scrollLeft = jumpedLeft;
+    paintThumbFromScrollLeft(jumpedLeft);
 
     dragStateRef.current = {
       startX: e.clientX,
-      startScrollLeft: targetEl.scrollLeft,
-      maxScroll,
-      thumbPx,
-      usableTrackPx,
+      latestX: e.clientX,
+      startScrollLeft: jumpedLeft,
+      maxScroll: m.maxScroll,
+      usableTrackPx: m.usableTrackPx,
+      rafId: null,
+    };
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore if pointer capture unavailable
+    }
+    setIsDragging(true);
+  };
+
+  const handleThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const targetEl = activeContainerRef.current;
+    if (!targetEl) return;
+
+    targetEl.style.scrollBehavior = 'auto';
+    const m = refreshMetrics(targetEl) || metricsRef.current;
+    const startScrollLeft = targetEl.scrollLeft;
+
+    dragStateRef.current = {
+      startX: e.clientX,
+      latestX: e.clientX,
+      startScrollLeft,
+      maxScroll: m.maxScroll,
+      usableTrackPx: m.usableTrackPx,
+      rafId: null,
     };
 
     try {
@@ -410,13 +568,14 @@ export const FloatingTableScrollbar: React.FC = () => {
     const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     if (delta !== 0) {
       target.style.scrollBehavior = 'auto';
-      target.scrollLeft += delta * 1.65;
+      target.scrollLeft += delta * 2.5;
       paintScrollbarNow(target);
     }
   };
 
   return (
     <div
+      ref={barRef}
       onWheel={handleBarWheel}
       className="fixed bottom-[136px] sm:bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 sm:left-4 sm:translate-x-0 lg:left-1/2 lg:-translate-x-1/2 z-40 no-print w-[calc(100vw-24px)] sm:w-[calc(100vw-230px)] lg:w-[440px] xl:w-[520px] pointer-events-auto select-none"
       role="region"
@@ -425,17 +584,13 @@ export const FloatingTableScrollbar: React.FC = () => {
       <div className="px-2.5 py-2 rounded-2xl bg-slate-900/96 border border-slate-700/90 shadow-[0_14px_34px_-8px_rgba(2,6,23,0.72),inset_0_1px_0_rgba(255,255,255,0.12)] flex items-center gap-2">
         {/* Left Scroll Step / Hold-to-Glide Button */}
         <button
+          ref={leftBtnRef}
           type="button"
           onPointerDown={() => startHoldPan(-1)}
           onPointerUp={stopHoldPan}
           onPointerLeave={stopHoldPan}
           onPointerCancel={stopHoldPan}
-          disabled={!edges.canLeft}
-          className={`w-7 h-7 rounded-xl flex items-center justify-center border shrink-0 ${
-            edges.canLeft
-              ? 'bg-white/12 hover:bg-emerald-500/25 text-white border-white/15 hover:border-emerald-400/50 cursor-pointer active:scale-95'
-              : 'bg-white/5 text-slate-500 border-white/5 cursor-not-allowed'
-          }`}
+          className="w-7 h-7 rounded-xl flex items-center justify-center border shrink-0 bg-white/5 text-slate-500 border-white/5 cursor-not-allowed"
           title="Click or hold to scroll table left"
           aria-label="Scroll Table Left"
         >
@@ -457,7 +612,7 @@ export const FloatingTableScrollbar: React.FC = () => {
           <div
             ref={thumbRef}
             onPointerDown={handleThumbPointerDown}
-            style={{ width: '36px', transform: 'translate3d(0px, 0, 0)', willChange: 'transform' }}
+            style={{ width: '40px', transform: 'translate3d(0px, 0, 0)', willChange: 'transform' }}
             className={`absolute left-0 top-0.5 bottom-0.5 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400 flex items-center justify-center gap-0.5 touch-none ${
               isDragging
                 ? 'cursor-grabbing brightness-110 ring-2 ring-white/60'
@@ -480,17 +635,13 @@ export const FloatingTableScrollbar: React.FC = () => {
 
         {/* Right Scroll Step / Hold-to-Glide Button */}
         <button
+          ref={rightBtnRef}
           type="button"
           onPointerDown={() => startHoldPan(1)}
           onPointerUp={stopHoldPan}
           onPointerLeave={stopHoldPan}
           onPointerCancel={stopHoldPan}
-          disabled={!edges.canRight}
-          className={`w-7 h-7 rounded-xl flex items-center justify-center border shrink-0 ${
-            edges.canRight
-              ? 'bg-white/12 hover:bg-emerald-500/25 text-white border-white/15 hover:border-emerald-400/50 cursor-pointer active:scale-95'
-              : 'bg-white/5 text-slate-500 border-white/5 cursor-not-allowed'
-          }`}
+          className="w-7 h-7 rounded-xl flex items-center justify-center border shrink-0 bg-white/12 hover:bg-emerald-500/25 text-white border-white/15 hover:border-emerald-400/50 cursor-pointer active:scale-95"
           title="Click or hold to scroll table right"
           aria-label="Scroll Table Right"
         >

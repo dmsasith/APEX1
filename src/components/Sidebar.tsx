@@ -186,9 +186,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentTab, onSelec
         {/* Top Specular Crystal Rule matching Active Glass Tone */}
         <div className={`h-[2px] w-full ${theme.topRuleBg} shrink-0`} />
 
-        {/* Subtle Ambient Glass Refraction Glows */}
-        <div className={`pointer-events-none absolute -top-20 -left-16 w-48 h-48 rounded-full ${theme.navGlowPrimary} blur-3xl`} />
-        <div className={`pointer-events-none absolute bottom-12 -right-16 w-44 h-44 rounded-full ${theme.navGlowSecondary} blur-3xl`} />
+        {/* Subtle Ambient Glows (No heavy GPU blur-3xl filter) */}
+        <div className={`pointer-events-none absolute -top-20 -left-16 w-48 h-48 rounded-full ${theme.navGlowPrimary} opacity-40`} />
+        <div className={`pointer-events-none absolute bottom-12 -right-16 w-44 h-44 rounded-full ${theme.navGlowSecondary} opacity-35`} />
 
         <div className="relative z-10 p-4 flex-1 flex flex-col justify-between overflow-y-auto">
           <div>

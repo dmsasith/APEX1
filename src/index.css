@@ -23,10 +23,16 @@
     color: #0f172a;
   }
 
-  .overflow-x-auto {
-    scroll-behavior: auto;
+  .overflow-x-auto,
+  .overflow-auto {
+    scroll-behavior: auto !important;
     overscroll-behavior-x: contain;
+    will-change: scroll-position;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .overflow-x-auto tbody tr {
+    transition: none !important;
   }
 
   .font-mono {
@@ -348,6 +354,19 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.55);
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  height: 10px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.45);
+  border-radius: 9999px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.65);
 }
 
 @media print {
